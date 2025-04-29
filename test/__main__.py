@@ -23,8 +23,8 @@ network = Vcn(
 
 # Export important values
 pulumi.export("vcn_id", network.id)
-pulumi.export("public_subnet_id", network.public_a_subnet.id)
-pulumi.export("private_subnet_id", network.private_a_subnet.id)
+pulumi.export("public_subnet_id", network.public_subnet.id)
+pulumi.export("private_subnet_id", network.private_subnet.id)
 
 
 # infra = ociblocks.CreateCluster(

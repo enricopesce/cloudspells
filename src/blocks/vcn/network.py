@@ -24,7 +24,7 @@ class Vcn(BaseResource):
         self.cidr_block = cidr_block or "10.0.0.0/16"
         
         h = Helper()
-        subnets = h.calculate_subnets(self.cidr_block, 6)
+        subnets = h.calculate_subnets(self.cidr_block, 2)
         
         self._create_vcn()
         self._create_gateways()
@@ -93,10 +93,8 @@ class Vcn(BaseResource):
 
     def _create_security_lists(self) -> None:
         security_lists = {
-            "pub-a": ("public-a", "public"),
-            "pub-b": ("public-b", "public"),
-            "prv-a": ("private-a", "private"),
-            "prv-b": ("private-b", "private")
+            "public": ("public", "public"),
+            "private": ("private", "private"),
         }
         
         for short_name, (full_name, network_type) in security_lists.items():
@@ -142,10 +140,8 @@ class Vcn(BaseResource):
         ]
         
         route_tables = {
-            ("prv-a", "private-a"): (private_route_rules, "private"),
-            ("prv-b", "private-b"): (private_route_rules, "private"),
-            ("pub-a", "public-a"): (public_route_rules, "public"),
-            ("pub-b", "public-b"): (public_route_rules, "public"),
+            ("public", "public"): (public_route_rules, "public"),
+            ("private", "private"): (private_route_rules, "private"),
         }
         
         for (short_name, full_name), (rules, network_type) in route_tables.items():
@@ -200,13 +196,11 @@ class Vcn(BaseResource):
         )
 
     def _create_subnets(self, subnet_cidrs: tuple) -> None:
-        lb_subnet, pub_subnet, pods_subnet, workers_subnet, _, _ = subnet_cidrs
+        public_subnet, private_subnet = subnet_cidrs
         
         subnet_configs = {
-            ("pub-a", "public_a"): SubnetConfig(pub_subnet, True, "puba"),
-            ("pub-b", "public_b"): SubnetConfig(lb_subnet, True, "pubb"),
-            ("prv-a", "private_a"): SubnetConfig(workers_subnet, False, "prva"),
-            ("prv-b", "private_b"): SubnetConfig(pods_subnet, False, "prvb"),
+            ("public", "public"): SubnetConfig(public_subnet, True, "pub"),
+            ("private", "private"): SubnetConfig(private_subnet, False, "priv"),
         }
         
         for (short_name, attr_name), config in subnet_configs.items():
