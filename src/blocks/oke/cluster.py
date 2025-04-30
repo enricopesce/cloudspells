@@ -45,7 +45,7 @@ class OkeCluster(BaseResource):
         self.compartment_id = compartment_id
         self.kubernetes_version = kubernetes_version
 
-        self._create_security_lists()
+        self.sl = self._create_security_lists()
 
         # Create the OKE cluster
         self.cluster = oci.containerengine.Cluster(
@@ -74,15 +74,16 @@ class OkeCluster(BaseResource):
 
         self.id = self.cluster.id
 
-        if image is None:
-            test_node_pool_option = oci.containerengine.get_node_pool_option_output(
-                node_pool_option_id=self.cluster.id, compartment_id=self.compartment_id
-            )
+        # if image is None:
+        #     test_node_pool_option = oci.containerengine.get_node_pool_option_output(
+        #         node_pool_option_id=self.cluster.id, compartment_id=self.compartment_id
+        #     )
 
-            c = test_node_pool_option.sources
-            image_id = c.apply(lambda images: h.get_oke_image(images, shape, kubernetes_version))
-        else:
-            image_id = image
+        #     c = test_node_pool_option.sources
+        #     image_id = c.apply(lambda images: h.get_oke_image(images, shape, kubernetes_version))
+        # else:
+        #     image_id = image
+        image_id = image
 
         get_ad_names = oci.identity.get_availability_domains_output(compartment_id=self.compartment_id)
         ads = get_ad_names.availability_domains
@@ -484,6 +485,13 @@ class OkeCluster(BaseResource):
                 ),
             ],
         )
+        
+        return [
+            public_security_list,
+            workers_security_list,
+            pods_security_list,
+            loadbalancers_security_list,
+        ]
 
     def create_kubeconfig(self, filename) -> None:
         cluster_kube_config = self.cluster.id.apply(

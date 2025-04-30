@@ -7,22 +7,22 @@ class Helper():
         r = RandomWords()
         return r.get_random_word()
 
-    def format_version(self, input_string):
-        version_number = input_string.lstrip("v")
-        formatted_version = re.sub(r"\.", r"\\.", version_number)
-        return formatted_version
+    # def format_version(self, input_string):
+    #     version_number = input_string.lstrip("v")
+    #     formatted_version = re.sub(r"\.", r"\\.", version_number)
+    #     return formatted_version
 
-    def get_oke_image(self, source, shape, kubernetes_version):
-        version = self.format_version(kubernetes_version)
-        if re.match(r"^VM\.Standard\.A\d+\.Flex", shape):
-            pattern = f"(Oracle-Linux).*?(aarch64).*?({version})"
-        elif re.match(r".*GPU.*", shape):
-            pattern = f"(Oracle-Linux).*?(GPU).*?({version})"
-        else:
-            pattern = rf"(Oracle-Linux)-(?!.*?(?:GPU|aarch64)).*?({version})"
-        return list(filter(lambda x: re.search(pattern, x["source_name"]), source))[0][
-            "image_id"
-        ]
+    # def get_oke_image(self, source, shape, kubernetes_version):
+    #     version = self.format_version(kubernetes_version)
+    #     if re.match("^VM\.Standard\.A\d+\.Flex", shape):
+    #         pattern = f"(Oracle-Linux).*?(aarch64).*?({version})"
+    #     elif re.match(".*GPU.*", shape):
+    #         pattern = f"(Oracle-Linux).*?(GPU).*?({version})"
+    #     else:
+    #         pattern = f"(Oracle-Linux)-(?!.*?(?:GPU|aarch64)).*?({version})"
+    #     return list(filter(lambda x: re.search(pattern, x["source_name"]), source))[0][
+    #         "image_id"
+    #     ]
 
     def get_ads(self, ads, net):
         z = []
