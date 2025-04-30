@@ -14,12 +14,12 @@ class Helper():
 
     def get_oke_image(self, source, shape, kubernetes_version):
         version = self.format_version(kubernetes_version)
-        if re.match("^VM\.Standard\.A\d+\.Flex", shape):
+        if re.match(r"^VM\.Standard\.A\d+\.Flex", shape):
             pattern = f"(Oracle-Linux).*?(aarch64).*?({version})"
-        elif re.match(".*GPU.*", shape):
+        elif re.match(r".*GPU.*", shape):
             pattern = f"(Oracle-Linux).*?(GPU).*?({version})"
         else:
-            pattern = f"(Oracle-Linux)-(?!.*?(?:GPU|aarch64)).*?({version})"
+            pattern = rf"(Oracle-Linux)-(?!.*?(?:GPU|aarch64)).*?({version})"
         return list(filter(lambda x: re.search(pattern, x["source_name"]), source))[0][
             "image_id"
         ]

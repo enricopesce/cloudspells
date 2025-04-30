@@ -41,8 +41,8 @@ class Vcn(BaseResource):
         # Register the subnet properties in the outputs
         self.register_outputs(
             {
-                "public_subnet_id": self.public_subnet.id,
-                "private_subnet_id": self.private_subnet.id,
+                "public_subnet": self.public_subnet,
+                "private_subnet": self.private_subnet,
                 "cidr_block": self.cidr_block,
             }
         )
@@ -204,6 +204,9 @@ class Vcn(BaseResource):
 
             subnet_name = self.create_resource_name(f"sn-{short_name}")
             setattr(self, f"{attr_name}_subnet", self._create_subnet(subnet_name, config, security_list, route_table))
+
+    def banana(self):
+        self.public_subnet
 
 
 def get_resources_by_tag(vcn_instance, tag_key: str, tag_value: str):

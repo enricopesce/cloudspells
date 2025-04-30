@@ -22,11 +22,13 @@ vcn_network = Vcn(
     stack_name=pulumi.get_stack()
 )
 
-# Export important values
+# # Export important values
 pulumi.export("vcn_id", vcn_network.id)
 pulumi.export("public_subnet_id", vcn_network.public_subnet.id)
 pulumi.export("private_subnet_id", vcn_network.private_subnet.id)
 pulumi.export("cidr_block", vcn_network.cidr_block)
+pulumi.export("public_subnet_cidr", vcn_network.public_subnet.cidr_block)
+pulumi.export("private_subnet_cidr", vcn_network.private_subnet.cidr_block)
 
 # create custom security lists using vcn object
 
@@ -39,5 +41,6 @@ oke = OkeCluster(
     display_name="infra",
     memory_in_gbs=oke_memory_in_gbs,
     min_nodes=oke_min_nodes,
-    ocpus=oke_ocpus
+    ocpus=oke_ocpus,
+    stack_name=pulumi.get_stack()
 )
