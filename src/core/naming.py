@@ -1,5 +1,10 @@
 class ResourceNamer:
-    def __init__(self, stack_name: str, resource_name: str):
+    """Helper class for creating standardized resource names and DNS labels."""
+
+    stack_name: str
+    resource_name: str
+
+    def __init__(self, stack_name: str, resource_name: str) -> None:
         self.stack_name = stack_name
         self.resource_name = resource_name
 

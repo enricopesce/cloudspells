@@ -3,10 +3,21 @@ import pulumi_oci as oci
 from core.base import BaseResource
 from core.helper import Helper
 from blocks.vcn.network import Vcn
-from typing import Optional
+from typing import Optional, List
 
 
 class OkeCluster(BaseResource):
+    """Oracle Kubernetes Engine (OKE) cluster with node pool and security configurations."""
+
+    vcn: Vcn
+    kubernetes_version: pulumi.Input[str]
+    display_name: pulumi.Input[str]
+    oke_public_security_list: oci.core.SecurityList
+    oke_workers_security_list: oci.core.SecurityList
+    cluster: oci.containerengine.Cluster
+    node_pool: oci.containerengine.NodePool
+    id: pulumi.Output[str]
+
     def __init__(
         self,
         name: str,
@@ -23,7 +34,7 @@ class OkeCluster(BaseResource):
         ssh_public_key: Optional[pulumi.Input[str]] = None,
         opts: Optional[pulumi.ResourceOptions] = None,
         image: Optional[pulumi.Input[str]] = None,
-    ):
+    ) -> None:
         """
         This resource provides a complete OKE cluster infrastructure with all depending resources
 

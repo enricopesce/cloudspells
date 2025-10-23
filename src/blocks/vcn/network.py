@@ -1,19 +1,35 @@
 from core.base import BaseResource
 import pulumi
 import pulumi_oci as oci
-from typing import Optional
+from typing import Optional, List, Tuple, Dict, Any
 from dataclasses import dataclass
 from core.helper import Helper
 
 
 @dataclass
 class SubnetConfig:
+    """Configuration for subnet creation."""
     cidr: str
     is_public: bool
     dns_label: str
 
 
 class Vcn(BaseResource):
+    """Virtual Cloud Network (VCN) resource with subnets, gateways, and routing."""
+
+    cidr_block: pulumi.Input[str]
+    vcn: oci.core.Vcn
+    internet_gateway: oci.core.InternetGateway
+    nat_gateway: oci.core.NatGateway
+    service_gateway: oci.core.ServiceGateway
+    public_security_list: oci.core.SecurityList
+    private_security_list: oci.core.SecurityList
+    public_route_table: oci.core.RouteTable
+    private_route_table: oci.core.RouteTable
+    public_subnet: Optional[oci.core.Subnet]
+    private_subnet: Optional[oci.core.Subnet]
+    id: pulumi.Output[str]
+
     def __init__(
         self,
         name: str,
@@ -21,7 +37,7 @@ class Vcn(BaseResource):
         stack_name: str,
         opts: Optional[pulumi.ResourceOptions] = None,
         cidr_block: Optional[pulumi.Input[str]] = None,
-    ):
+    ) -> None:
         super().__init__("custom:network:Vcn", name, compartment_id, stack_name, opts)
         self.cidr_block = cidr_block or "10.0.0.0/16"
 
@@ -29,8 +45,8 @@ class Vcn(BaseResource):
         self.public_subnet = None
         self.private_subnet = None
 
-        h = Helper()
-        subnets = h.calculate_subnets(self.cidr_block, 2)
+        h: Helper = Helper()
+        subnets: List[str] = h.calculate_subnets(self.cidr_block, 2)
 
         self._create_vcn()
         self._create_gateways()
@@ -190,30 +206,44 @@ class Vcn(BaseResource):
             opts=pulumi.ResourceOptions(parent=self),
         )
 
-    def _create_subnets(self, subnet_cidrs: tuple) -> None:
-        public_subnet, private_subnet = subnet_cidrs
+    def _create_subnets(self, subnet_cidrs: List[str]) -> None:
+        """Create public and private subnets from CIDR blocks.
 
-        subnet_configs = {
+        Args:
+            subnet_cidrs: List of CIDR blocks for subnets.
+        """
+        public_subnet: str
+        private_subnet: str
+        public_subnet, private_subnet = subnet_cidrs[0], subnet_cidrs[1]
+
+        subnet_configs: Dict[Tuple[str, str], SubnetConfig] = {
             ("public", "public"): SubnetConfig(public_subnet, True, "pub"),
             ("private", "private"): SubnetConfig(private_subnet, False, "priv"),
         }
 
         for (short_name, attr_name), config in subnet_configs.items():
-            security_list = getattr(self, f"{attr_name}_security_list")
-            route_table = getattr(self, f"{attr_name}_route_table")
+            security_list: oci.core.SecurityList = getattr(self, f"{attr_name}_security_list")
+            route_table: oci.core.RouteTable = getattr(self, f"{attr_name}_route_table")
 
-            subnet_name = self.create_resource_name(f"sn-{short_name}")
+            subnet_name: str = self.create_resource_name(f"sn-{short_name}")
             setattr(self, f"{attr_name}_subnet", self._create_subnet(subnet_name, config, security_list, route_table))
 
-    def banana(self):
-        self.public_subnet
 
+def get_resources_by_tag(vcn_instance: Vcn, tag_key: str, tag_value: str) -> List[Any]:
+    """Get all resources from a VCN instance that match specific tag criteria.
 
-def get_resources_by_tag(vcn_instance, tag_key: str, tag_value: str):
-    resources = []
+    Args:
+        vcn_instance: The VCN instance to search.
+        tag_key: The tag key to match.
+        tag_value: The tag value to match.
+
+    Returns:
+        List of resources that have matching tags.
+    """
+    resources: List[Any] = []
     for attr_name in dir(vcn_instance):
         if hasattr(getattr(vcn_instance, attr_name), "freeform_tags"):
-            resource = getattr(vcn_instance, attr_name)
+            resource: Any = getattr(vcn_instance, attr_name)
             if resource.freeform_tags.get(tag_key) == tag_value:
                 resources.append(resource)
     return resources

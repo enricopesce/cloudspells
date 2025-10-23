@@ -3,7 +3,17 @@ from typing import Optional, Dict, Any
 from .naming import ResourceNamer
 from .tagging import ResourceTagger
 
+
 class BaseResource(pulumi.ComponentResource):
+    """Base class for all custom OCI resources providing common naming and tagging functionality."""
+
+    compartment_id: pulumi.Input[str]
+    stack_name: str
+    name: str
+    display_name: str
+    namer: ResourceNamer
+    tagger: ResourceTagger
+
     def __init__(
         self,
         resource_type: str,
@@ -11,14 +21,14 @@ class BaseResource(pulumi.ComponentResource):
         compartment_id: pulumi.Input[str],
         stack_name: str,
         opts: Optional[pulumi.ResourceOptions] = None
-    ):
+    ) -> None:
         super().__init__(resource_type, f"{stack_name}-{name}", {}, opts)
-        
+
         self.compartment_id = compartment_id
         self.stack_name = stack_name
         self.name = name
         self.display_name = f"{stack_name}-{name}"
-        
+
         # Initialize helper classes
         self.namer = ResourceNamer(stack_name, name)
         self.tagger = ResourceTagger(stack_name, name)
