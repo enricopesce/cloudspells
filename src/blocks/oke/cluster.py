@@ -229,7 +229,7 @@ class OkeCluster(BaseResource):
             # - Report their status and health
             # - Receive instructions about pods to schedule
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Kubernetes worker to Kubernetes API endpoint communication.",
+                description="Worker nodes communicate with Kubernetes API server for cluster operations and status updates",
                 protocol="6",  # TCP
                 source=private_subnet_cidr,
                 source_type="CIDR_BLOCK",
@@ -240,7 +240,7 @@ class OkeCluster(BaseResource):
             # Port 12250: Kubernetes Control Plane Communication
             # Used for internal communication between control plane components
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Kubernetes worker to control plane communication.",
+                description="Worker nodes internal communication with Kubernetes control plane components",
                 protocol="6",  # TCP
                 source=private_subnet_cidr,
                 source_type="CIDR_BLOCK",
@@ -252,7 +252,7 @@ class OkeCluster(BaseResource):
             # Allows nodes to discover the maximum packet size for network paths
             # Essential for proper network communication and avoiding fragmentation
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Path discovery.",
+                description="ICMP path discovery from worker nodes to optimize network packet size",
                 protocol="1",  # ICMP
                 source=private_subnet_cidr,
                 source_type="CIDR_BLOCK",
@@ -265,7 +265,7 @@ class OkeCluster(BaseResource):
             # When using VCN-native pod networking, pods get IPs from the VCN CIDR
             # and can communicate directly with the Kubernetes API without NAT
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Pod to Kubernetes API endpoint (VCN-native pod networking).",
+                description="Pods access Kubernetes API server for service discovery and cluster resources",
                 protocol="6",  # TCP
                 source=private_subnet_cidr,
                 source_type="CIDR_BLOCK",
@@ -275,7 +275,7 @@ class OkeCluster(BaseResource):
             ),
             # VCN-Native Pod Networking: Pods to control plane
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Pod to control plane (VCN-native pod networking).",
+                description="Pods communicate with control plane for advanced Kubernetes features",
                 protocol="6",  # TCP
                 source=private_subnet_cidr,
                 source_type="CIDR_BLOCK",
@@ -288,7 +288,7 @@ class OkeCluster(BaseResource):
             # Consider restricting this to specific IP ranges in production
             # Use: kubectl get nodes, kubectl apply -f deployment.yaml, etc.
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="External access to Kubernetes API endpoint.",
+                description="Allow external access to Kubernetes API for kubectl and cluster management tools",
                 protocol="6",  # TCP
                 source="0.0.0.0/0",  # All internet traffic
                 source_type="CIDR_BLOCK",
@@ -308,14 +308,14 @@ class OkeCluster(BaseResource):
             # OCI Services: Control plane communicates with Oracle Cloud services
             # For cluster management, updates, and telemetry
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="API endpoint to OKE service.",
+                description="Control plane communicates with OCI services for cluster management and telemetry",
                 protocol="6",  # TCP
                 destination=oci.core.get_services().services[0].cidr_block,
                 destination_type="SERVICE_CIDR_BLOCK",
             ),
             # Path MTU Discovery to OCI Services
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Path discovery to OKE service.",
+                description="ICMP path discovery to OCI services for optimal network performance",
                 protocol="1",  # ICMP
                 destination=oci.core.get_services().services[0].cidr_block,
                 destination_type="SERVICE_CIDR_BLOCK",
@@ -329,7 +329,7 @@ class OkeCluster(BaseResource):
             # - Monitor pod health and status
             # - Manage pod lifecycle
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="API endpoint to worker nodes kubelet.",
+                description="Control plane manages worker nodes via kubelet for pod operations and monitoring",
                 protocol="6",  # TCP
                 destination=private_subnet_cidr,
                 destination_type="CIDR_BLOCK",
@@ -339,7 +339,7 @@ class OkeCluster(BaseResource):
             ),
             # Path MTU Discovery to worker nodes
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Path discovery to worker nodes.",
+                description="ICMP path discovery to worker nodes for network optimization",
                 protocol="1",  # ICMP
                 destination=private_subnet_cidr,
                 destination_type="CIDR_BLOCK",
@@ -351,7 +351,7 @@ class OkeCluster(BaseResource):
             # Allows control plane to communicate directly with pods
             # Used for: webhooks, admission controllers, metrics collection
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="API endpoint to pods (VCN-native pod networking).",
+                description="Control plane communicates with pods for webhooks, admission controllers, and metrics",
                 protocol="all",  # All protocols
                 destination=private_subnet_cidr,
                 destination_type="CIDR_BLOCK",
@@ -370,7 +370,7 @@ class OkeCluster(BaseResource):
             # HTTPS from private subnet (internal services communication)
             # Example: Internal microservices calling other services via HTTPS
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="LB from private subnet - HTTPS.",
+                description="Load Balancer receives HTTPS traffic from internal services for secure inter-service communication",
                 protocol="6",  # TCP
                 source=private_subnet_cidr,
                 source_type="CIDR_BLOCK",
@@ -380,7 +380,7 @@ class OkeCluster(BaseResource):
             ),
             # HTTP from private subnet (internal services communication)
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="LB from private subnet - HTTP.",
+                description="Load Balancer receives HTTP traffic from internal services for application communication",
                 protocol="6",  # TCP
                 source=private_subnet_cidr,
                 source_type="CIDR_BLOCK",
@@ -392,7 +392,7 @@ class OkeCluster(BaseResource):
             # Example: Web applications, REST APIs, public services
             # NOTE: Restrict this if your application shouldn't be publicly accessible
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="LB from internet - HTTPS.",
+                description="Load Balancer receives HTTPS traffic from internet for public web applications and APIs",
                 protocol="6",  # TCP
                 source="0.0.0.0/0",  # All internet traffic
                 source_type="CIDR_BLOCK",
@@ -403,7 +403,7 @@ class OkeCluster(BaseResource):
             # HTTP from Internet (public-facing applications)
             # WARNING: Unencrypted traffic - consider redirecting to HTTPS in production
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="LB from internet - HTTP.",
+                description="Load Balancer receives HTTP traffic from internet for public applications (consider HTTPS redirect)",
                 protocol="6",  # TCP
                 source="0.0.0.0/0",  # All internet traffic
                 source_type="CIDR_BLOCK",
@@ -425,7 +425,7 @@ class OkeCluster(BaseResource):
             # a NodePort that the LB forwards traffic to. Each node listens on
             # this port and forwards traffic to the appropriate pod.
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="LB to worker nodes NodePort range.",
+                description="Load Balancer forwards traffic to worker nodes via NodePort for Kubernetes service routing",
                 protocol="6",  # TCP
                 destination=private_subnet_cidr,
                 destination_type="CIDR_BLOCK",
@@ -437,7 +437,7 @@ class OkeCluster(BaseResource):
             # Load balancer performs health checks on kube-proxy to ensure
             # worker nodes are healthy and can receive traffic
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="LB to kube-proxy health check.",
+                description="Load Balancer checks worker node health via kube-proxy to ensure traffic routing availability",
                 protocol="6",  # TCP
                 destination=private_subnet_cidr,
                 destination_type="CIDR_BLOCK",
@@ -464,7 +464,7 @@ class OkeCluster(BaseResource):
             # - kubectl logs to view container logs
             # - Health checks and metrics collection
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="API endpoint to worker nodes kubelet.",
+                description="Control plane manages pods on worker nodes via kubelet for commands, logs, and health monitoring",
                 protocol="6",  # TCP
                 source=public_subnet_cidr,
                 source_type="CIDR_BLOCK",
@@ -475,7 +475,7 @@ class OkeCluster(BaseResource):
             # ICMP Path MTU Discovery from anywhere
             # Ensures optimal packet size across network paths
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Path discovery from anywhere.",
+                description="ICMP path discovery to worker nodes for optimal network packet size from any source",
                 protocol="1",  # ICMP
                 source="0.0.0.0/0",
                 source_type="CIDR_BLOCK",
@@ -486,7 +486,7 @@ class OkeCluster(BaseResource):
             # NodePort Range from Load Balancer
             # Allows load balancers to forward traffic to services exposed via NodePort
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="LB to worker nodes NodePort range.",
+                description="Load Balancer forwards traffic to worker nodes via NodePort to reach Kubernetes services",
                 protocol="6",  # TCP
                 source=public_subnet_cidr,
                 source_type="CIDR_BLOCK",
@@ -497,7 +497,7 @@ class OkeCluster(BaseResource):
             # Port 10256: kube-proxy health check endpoint
             # Load balancers use this to verify worker node health
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="LB to kube-proxy health check.",
+                description="Load Balancer verifies worker node health via kube-proxy endpoint before routing traffic",
                 protocol="6",  # TCP
                 source=public_subnet_cidr,
                 source_type="CIDR_BLOCK",
@@ -517,14 +517,14 @@ class OkeCluster(BaseResource):
             # All protocols to pods (VCN-native pod networking)
             # Worker nodes manage pod networking, health checks, and inter-pod communication
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Worker nodes to pods.",
+                description="Worker nodes manage pod networking, health checks, and inter-pod communication",
                 protocol="all",  # All protocols
                 destination=private_subnet_cidr,
                 destination_type="CIDR_BLOCK",
             ),
             # ICMP Path MTU Discovery to internet
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Path discovery to internet.",
+                description="ICMP path discovery from worker nodes to internet for network optimization",
                 protocol="1",  # ICMP
                 destination="0.0.0.0/0",
                 destination_type="CIDR_BLOCK",
@@ -535,7 +535,7 @@ class OkeCluster(BaseResource):
             # OCI Services: Worker nodes communicate with Oracle Cloud services
             # For image pulls from OCIR, telemetry, logging, monitoring
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Worker nodes to OKE service.",
+                description="Worker nodes communicate with OCI services for container images, logging, and monitoring",
                 protocol="6",  # TCP
                 destination=oci.core.get_services().services[0].cidr_block,
                 destination_type="SERVICE_CIDR_BLOCK",
@@ -543,7 +543,7 @@ class OkeCluster(BaseResource):
             # Port 6443: Worker nodes to Kubernetes API
             # Workers need to register, send status updates, and receive instructions
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Worker nodes to API endpoint.",
+                description="Worker nodes communicate with Kubernetes API to register, report status, and receive instructions",
                 protocol="6",  # TCP
                 destination=public_subnet_cidr,
                 destination_type="CIDR_BLOCK",
@@ -554,7 +554,7 @@ class OkeCluster(BaseResource):
             # Port 12250: Worker nodes to control plane
             # Internal communication with control plane components
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Worker nodes to control plane.",
+                description="Worker nodes communicate with control plane components for internal cluster operations",
                 protocol="6",  # TCP
                 destination=public_subnet_cidr,
                 destination_type="CIDR_BLOCK",
@@ -569,7 +569,7 @@ class OkeCluster(BaseResource):
             # - Other public registries
             # - Private registries over HTTPS
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Worker nodes to external container registries.",
+                description="Worker nodes pull container images from external registries via HTTPS",
                 protocol="6",  # TCP
                 destination="0.0.0.0/0",
                 destination_type="CIDR_BLOCK",
@@ -594,7 +594,7 @@ class OkeCluster(BaseResource):
             # - Log collection
             # - Metrics gathering
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Worker nodes to pods.",
+                description="Worker nodes access pods for networking setup, health checks, logs, and metrics",
                 protocol="all",  # All protocols
                 source=private_subnet_cidr,
                 source_type="CIDR_BLOCK",
@@ -606,7 +606,7 @@ class OkeCluster(BaseResource):
             # - Custom resource definitions (CRDs)
             # - Metrics server communication
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="API endpoint to pods.",
+                description="Control plane accesses pods for webhooks, admission controllers, and metrics collection",
                 protocol="all",  # All protocols
                 source=public_subnet_cidr,
                 source_type="CIDR_BLOCK",
@@ -618,7 +618,7 @@ class OkeCluster(BaseResource):
             # - API calls between services
             # - Message queues and event streaming
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Pods to pods communication.",
+                description="Pods communicate with each other for microservices, databases, and service mesh",
                 protocol="all",  # All protocols
                 source=private_subnet_cidr,
                 source_type="CIDR_BLOCK",
@@ -640,14 +640,14 @@ class OkeCluster(BaseResource):
             # - Database connections
             # - Redis/Memcached access
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Pods to pods communication.",
+                description="Pods communicate with each other for APIs, databases, and distributed systems",
                 protocol="all",  # All protocols
                 destination=private_subnet_cidr,
                 destination_type="CIDR_BLOCK",
             ),
             # ICMP Path MTU Discovery to OCI Services
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Path discovery to OKE service.",
+                description="ICMP path discovery from pods to OCI services for network optimization",
                 protocol="1",  # ICMP
                 destination=oci.core.get_services().services[0].cidr_block,
                 destination_type="SERVICE_CIDR_BLOCK",
@@ -662,7 +662,7 @@ class OkeCluster(BaseResource):
             # - Streaming
             # - Monitoring and Logging
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Pods to OCI services.",
+                description="Pods access OCI services for storage, databases, streaming, and logging",
                 protocol="6",  # TCP
                 destination=oci.core.get_services().services[0].cidr_block,
                 destination_type="SERVICE_CIDR_BLOCK",
@@ -675,7 +675,7 @@ class OkeCluster(BaseResource):
             # - Software updates
             # NOTE: Remove this if pods shouldn't access internet
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Pods to internet (optional).",
+                description="Pods access external internet services via HTTPS for APIs and third-party integrations",
                 protocol="6",  # TCP
                 destination="0.0.0.0/0",
                 destination_type="CIDR_BLOCK",
@@ -690,7 +690,7 @@ class OkeCluster(BaseResource):
             # - Custom resources (Operators)
             # - Client libraries (client-go)
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Pods to API endpoint.",
+                description="Pods access Kubernetes API for service discovery, configuration, and custom resources",
                 protocol="6",  # TCP
                 destination=public_subnet_cidr,
                 destination_type="CIDR_BLOCK",
@@ -701,7 +701,7 @@ class OkeCluster(BaseResource):
             # Port 12250: Pods to control plane
             # For advanced Kubernetes features and internal communication
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Pods to control plane.",
+                description="Pods communicate with control plane for advanced Kubernetes features and internal operations",
                 protocol="6",  # TCP
                 destination=public_subnet_cidr,
                 destination_type="CIDR_BLOCK",
