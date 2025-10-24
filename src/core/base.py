@@ -1,5 +1,5 @@
 import pulumi
-from typing import Optional, Dict, Any
+from typing import Any, Optional
 from .naming import ResourceNamer
 from .tagging import ResourceTagger
 
@@ -20,7 +20,7 @@ class BaseResource(pulumi.ComponentResource):
         name: str,
         compartment_id: pulumi.Input[str],
         stack_name: str,
-        opts: Optional[pulumi.ResourceOptions] = None
+        opts: pulumi.ResourceOptions | None = None,
     ) -> None:
         super().__init__(resource_type, f"{stack_name}-{name}", {}, opts)
 
@@ -43,8 +43,8 @@ class BaseResource(pulumi.ComponentResource):
         self,
         resource_name: str,
         resource_type: str,
-        additional_tags: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, str]:
+        additional_tags: dict[str, Any] | None = None,
+    ) -> dict[str, str]:
         return self.tagger.create_freeform_tags(resource_name, resource_type, additional_tags)
 
     def create_network_resource_tags(
@@ -52,21 +52,40 @@ class BaseResource(pulumi.ComponentResource):
         resource_name: str,
         resource_type: str,
         network_type: str,
-        subnet_group: Optional[str] = None,
-        additional_tags: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, str]:
+        subnet_group: str | None = None,
+        additional_tags: dict[str, Any] | None = None,
+    ) -> dict[str, str]:
         return self.tagger.create_network_resource_tags(
             resource_name,
             resource_type,
             network_type,
             subnet_group,
-            additional_tags
+            additional_tags,
         )
 
     def create_gateway_tags(
         self,
         resource_name: str,
         gateway_type: str,
-        additional_tags: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, str]:
+        additional_tags: dict[str, Any] | None = None,
+    ) -> dict[str, str]:
         return self.tagger.create_gateway_tags(resource_name, gateway_type, additional_tags)
+
+    def get_resource(self, resource_name: str) -> Any | None:
+        """Get a child resource by name using generic attribute access.
+
+        This is a generic approach to access any child resource of the component.
+        Following Pulumi best practices for component resource introspection.
+
+        Args:
+            resource_name: The attribute name of the resource (e.g., 'public_subnet', 'nat_gateway').
+
+        Returns:
+            The requested resource object or None if not found.
+
+        Example:
+            vcn = Vcn(name="my-vcn", compartment_id="...", stack_name="my-stack")
+            public_subnet = vcn.get_resource("public_subnet")
+            nat_gateway = vcn.get_resource("nat_gateway")
+        """
+        return getattr(self, resource_name, None)

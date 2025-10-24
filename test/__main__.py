@@ -16,22 +16,16 @@ oke_memory_in_gbs: float = float(config.require("oke_memory_in_gbs"))
 ssh_key: str = config.require("ssh_key")
 
 
-# Create VCN
+# Create VCN (does NOT create security lists or subnets yet)
 vcn_network: Vcn = Vcn(
     name="lab",
     compartment_id=compartment_id,
     stack_name=pulumi.get_stack()
 )
 
-# Export important values
-pulumi.export("vcn_id", vcn_network.id)
-pulumi.export("public_subnet_id", vcn_network.public_subnet.id)
-pulumi.export("private_subnet_id", vcn_network.private_subnet.id)
-pulumi.export("cidr_block", vcn_network.cidr_block)
-pulumi.export("public_subnet_cidr", vcn_network.public_subnet.cidr_block)
-pulumi.export("private_subnet_cidr", vcn_network.private_subnet.cidr_block)
-
 # Create OKE cluster
+# OKE will add its security rules and call vcn_network.finalize_network()
+# which creates the security lists and subnets
 oke: OkeCluster = OkeCluster(
     "okeinfra",
     compartment_id=compartment_id,
@@ -45,3 +39,11 @@ oke: OkeCluster = OkeCluster(
     ocpus=oke_ocpus,
     stack_name=pulumi.get_stack()
 )
+
+# Export important values (after OKE has finalized the network)
+pulumi.export("vcn_id", vcn_network.id)
+pulumi.export("public_subnet_id", vcn_network.public_subnet.id)
+pulumi.export("private_subnet_id", vcn_network.private_subnet.id)
+pulumi.export("cidr_block", vcn_network.cidr_block)
+pulumi.export("public_subnet_cidr", vcn_network.public_subnet.cidr_block)
+pulumi.export("private_subnet_cidr", vcn_network.private_subnet.cidr_block)
