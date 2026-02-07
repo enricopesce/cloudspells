@@ -1,0 +1,35 @@
+name: blocks-oke
+runtime:
+  name: python
+  options:
+    virtualenv: ../../.venv
+description: VCN + OKE cluster test program
+config:
+  vcn_cidr_block:
+    type: string
+    description: The network CIDR for the VCN
+    default: "10.0.0.0/16"
+  node_shape:
+    type: string
+    description: Shape type for OKE worker nodes
+    default: VM.Standard.A1.Flex
+  kubernetes_version:
+    type: string
+    description: Kubernetes version
+    default: "v1.32.1"
+  oke_min_nodes:
+    type: string
+    description: Starting number of worker nodes
+    default: "2"
+  node_image_id:
+    type: string
+    description: Image OCID for worker nodes
+    default: ""
+  oke_ocpus:
+    type: string
+    description: OCPUs per worker node
+    default: "2"
+  oke_memory_in_gbs:
+    type: string
+    description: Memory in GB per worker node
+    default: "12"

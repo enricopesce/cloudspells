@@ -6,4 +6,7 @@ notes.md
 kubeconfig
 Pulumi.dev.yaml
 oci-stack-statefile
+**/oci-stack-statefile
 dist
+.pulumi-passphrase
+*passphrase*

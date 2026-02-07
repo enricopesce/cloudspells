@@ -4,6 +4,14 @@ import pulumi
 from blocks.vcn.network import Vcn
 # from blocks.oke.cluster import OkeCluster  # Commented out - not using OKE cluster
 from blocks.compute.instance import ComputeInstance
+from blocks.autoscale import (
+    ScalableWorkload,
+    MetricScalingPolicy,
+    MetricThreshold,
+    ScalingMetric,
+    LoadBalancerConfig,
+    HealthCheckConfig,
+)
 
 config: pulumi.Config = pulumi.Config()
 compartment_id: str = config.require("compartment_ocid")
@@ -67,12 +75,85 @@ web_server: ComputeInstance = ComputeInstance(
     # block_volume_size_in_gbs=200,
 )
 
+# =============================================================================
+# ScalableWorkload Example - Horizontally-scalable compute with load balancer
+# =============================================================================
+# Creates a separate VCN with:
+# - Load Balancer (public subnet)
+# - Instance Pool with autoscaling (private subnet)
+# - Metric-based autoscaling policy
+
+# Create a separate VCN for the scalable workload
+scalable_vcn: Vcn = Vcn(
+    name="scalable",
+    compartment_id=compartment_id,
+    stack_name=pulumi.get_stack(),
+)
+
+# Create the ScalableWorkload with CPU-based autoscaling
+scalable_pool: ScalableWorkload = ScalableWorkload(
+    name="web-pool",
+    compartment_id=compartment_id,
+    vcn=scalable_vcn,
+    stack_name=pulumi.get_stack(),
+    ssh_public_key=ssh_key,  # Optional - auto-generates if None
+    # Instance configuration
+    shape="VM.Standard.E4.Flex",
+    ocpus=1,
+    memory_in_gbs=16,
+    # Pool sizing
+    min_instances=1,
+    max_instances=3,
+    initial_instances=1,
+    # Load balancer with health check
+    load_balancer_config=LoadBalancerConfig(
+        is_public=True,
+        minimum_bandwidth_in_mbps=10,
+        maximum_bandwidth_in_mbps=100,
+        health_check=HealthCheckConfig(
+            protocol="HTTP",
+            port=80,
+            url_path="/",
+        ),
+        backend_port=80,
+    ),
+    # Autoscaling policy - scale based on CPU utilization
+    scaling_policy=MetricScalingPolicy(
+        threshold=MetricThreshold(
+            metric=ScalingMetric.CPU_UTILIZATION,
+            scale_out_threshold=70,  # Add instance when CPU > 70%
+            scale_in_threshold=30,   # Remove instance when CPU < 30%
+            scale_out_value=1,       # Add 1 instance at a time
+            scale_in_value=-1,       # Remove 1 instance at a time
+        ),
+        cooldown_in_seconds=300,     # Wait 5 minutes between scaling actions
+    ),
+)
+
+# Export ScalableWorkload outputs
+pulumi.export("scalable_vcn_id", scalable_vcn.id)
+pulumi.export("scalable_lb_ip", scalable_pool.get_load_balancer_ip())
+pulumi.export("scalable_lb_id", scalable_pool.get_load_balancer_id())
+pulumi.export("scalable_pool_id", scalable_pool.get_instance_pool_id())
+
+# SSH Keys for scalable workload
+if scalable_pool.auto_generated_keys:
+    pulumi.export("scalable_ssh_private_key", pulumi.Output.secret(scalable_pool.get_ssh_private_key()))
+
+# =============================================================================
+# ComputeInstance Outputs
+# =============================================================================
+
 # Export important values (after ComputeInstance has finalized the network)
 # VCN outputs
 pulumi.export("vcn_id", vcn_network.id)
+pulumi.export("cidr_block", vcn_network.cidr_block)
+
+# Subnets are created after finalize_network() is called by ComputeInstance
+assert vcn_network.public_subnet is not None, "public_subnet should exist after finalization"
+assert vcn_network.private_subnet is not None, "private_subnet should exist after finalization"
 pulumi.export("public_subnet_id", vcn_network.public_subnet.id)
 pulumi.export("private_subnet_id", vcn_network.private_subnet.id)
-pulumi.export("cidr_block", vcn_network.cidr_block)
 pulumi.export("public_subnet_cidr", vcn_network.public_subnet.cidr_block)
 pulumi.export("private_subnet_cidr", vcn_network.private_subnet.cidr_block)
 

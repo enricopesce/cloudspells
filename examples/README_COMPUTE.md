@@ -173,7 +173,7 @@ db_server = ComputeInstance(
 
 1. Configure your Pulumi stack:
 ```bash
-cd test
+cd examples
 pulumi config set compartment_ocid <your-compartment-ocid>
 pulumi config set ssh_key "ssh-rsa AAAA..."
 ```

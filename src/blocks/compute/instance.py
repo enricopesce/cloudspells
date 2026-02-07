@@ -173,10 +173,10 @@ class ComputeInstance(BaseResource):
             # Get the latest Oracle Linux 8 image for the compartment
             # Filter for Oracle-Linux-8.x images
             images = oci.core.get_images(
-                compartment_id=compartment_id,
+                compartment_id=str(compartment_id),
                 operating_system="Oracle Linux",
                 operating_system_version="8",
-                shape=shape,
+                shape=str(shape),
                 sort_by="TIMECREATED",
                 sort_order="DESC",
             )
@@ -184,7 +184,7 @@ class ComputeInstance(BaseResource):
             self.image_id = images.images[0].id
 
         # Get availability domain (use first AD)
-        ads = oci.identity.get_availability_domains(compartment_id=compartment_id)
+        ads = oci.identity.get_availability_domains(compartment_id=str(compartment_id))
         availability_domain = ads.availability_domains[0].name
 
         # Create the compute instance
@@ -198,11 +198,11 @@ class ComputeInstance(BaseResource):
             source_details=oci.core.InstanceSourceDetailsArgs(
                 source_type="image",
                 source_id=self.image_id,
-                boot_volume_size_in_gbs=self.boot_volume_size_in_gbs,
+                boot_volume_size_in_gbs=str(self.boot_volume_size_in_gbs),
             ),
             create_vnic_details=oci.core.InstanceCreateVnicDetailsArgs(
                 subnet_id=self.vcn.private_subnet.id,
-                assign_public_ip=False,  # Private subnet - no public IP
+                assign_public_ip="false",  # Private subnet - no public IP
                 display_name=f"{instance_name}-vnic",
             ),
             metadata={
@@ -233,7 +233,7 @@ class ComputeInstance(BaseResource):
             availability_domain=availability_domain,
             compartment_id=self.compartment_id,
             display_name=volume_name,
-            size_in_gbs=self.block_volume_size_in_gbs,
+            size_in_gbs=str(self.block_volume_size_in_gbs),
             freeform_tags=self.create_freeform_tags(
                 volume_name,
                 "block-volume",
@@ -266,8 +266,8 @@ class ComputeInstance(BaseResource):
 
         # Add SSH keys to outputs if auto-generated
         if self.auto_generated_keys:
-            outputs["ssh_public_key"] = self.ssh_public_key
-            outputs["ssh_private_key"] = self.ssh_private_key
+            outputs["ssh_public_key"] = pulumi.Output.secret(self.ssh_public_key)
+            outputs["ssh_private_key"] = pulumi.Output.secret(self.ssh_private_key) if self.ssh_private_key else pulumi.Output.from_input("")
 
         self.register_outputs(outputs)
 
