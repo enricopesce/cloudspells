@@ -26,7 +26,6 @@ class TestComputeInstance(unittest.TestCase):
         self.vcn = Vcn(
             name="compute-test-vcn",
             compartment_id="ocid1.compartment.test",
-            stack_name="unittest",
         )
 
     @pulumi.runtime.test
@@ -36,7 +35,6 @@ class TestComputeInstance(unittest.TestCase):
             name="test-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -52,7 +50,6 @@ class TestComputeInstance(unittest.TestCase):
             name="test-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -68,7 +65,6 @@ class TestComputeInstance(unittest.TestCase):
             name="test-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -83,7 +79,6 @@ class TestComputeInstance(unittest.TestCase):
         vcn = Vcn(
             name="finalize-test-vcn",
             compartment_id="ocid1.compartment.test",
-            stack_name="unittest",
         )
 
         # Subnets should be None before ComputeInstance
@@ -94,7 +89,6 @@ class TestComputeInstance(unittest.TestCase):
             name="test-instance",
             compartment_id="ocid1.compartment.test",
             vcn=vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -108,7 +102,6 @@ class TestComputeInstance(unittest.TestCase):
             name="auto-key-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             # No ssh_public_key provided
         )
 
@@ -128,7 +121,6 @@ class TestComputeInstance(unittest.TestCase):
             name="provided-key-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key=provided_key,
         )
 
@@ -142,7 +134,6 @@ class TestComputeInstance(unittest.TestCase):
             name="empty-key-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="",  # Empty string
         )
 
@@ -155,7 +146,6 @@ class TestComputeInstance(unittest.TestCase):
             name="default-shape-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -167,7 +157,6 @@ class TestComputeInstance(unittest.TestCase):
             name="custom-shape-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             shape="VM.Standard.A1.Flex",
             ocpus=4,
@@ -184,7 +173,6 @@ class TestComputeInstance(unittest.TestCase):
             name="custom-volumes-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             boot_volume_size_in_gbs=100,
             block_volume_size_in_gbs=500,
@@ -199,7 +187,6 @@ class TestComputeInstance(unittest.TestCase):
             name="getter-test-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
