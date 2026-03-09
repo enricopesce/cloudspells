@@ -1,48 +1,74 @@
+"""Scalable Workload building block for OCIBlocks.
+
+Provides :class:`ScalableWorkload`, which creates a complete horizontally-scalable
+OCI compute tier with load balancing and autoscaling:
+
+* **OCI Load Balancer** (flexible shape) in the VCN's public subnet with HTTP
+  and optional HTTPS listeners.
+* **Instance Configuration** as a launch template for pool instances.
+* **Instance Pool** in the VCN's private subnet, spread across all
+  availability domains.
+* **Autoscaling Configuration** – metric-based (CPU/memory) or schedule-based
+  (cron expressions).
+
+Supporting configuration dataclasses
+-------------------------------------
+:class:`LoadBalancerConfig`
+    Customise LB port, health check path, bandwidth, and SSL.
+
+:class:`MetricScalingPolicy`
+    Scale in/out based on CPU or memory utilisation thresholds.
+
+:class:`ScheduleScalingPolicy`
+    Scale in/out on a Quartz cron schedule (e.g. business hours).
+
+:class:`ScheduleEntry`
+    A single cron-schedule scaling action.
+
+:class:`ScalingMetric`
+    Enum of available metric types.
+
+:class:`ScalingAction`
+    Enum of available scaling action types.
+"""
+
 from __future__ import annotations
 
 import pulumi
 import pulumi_oci as oci
 from core.base import BaseResource
-from blocks.vcn.network import Vcn
-from typing import Literal
+from blocks.vcn.network import Vcn, VcnRef
 from dataclasses import dataclass, field
 from enum import Enum
-import subprocess
-import os
-import tempfile
+from core.helper import Helper
+
+# Sentinel to distinguish "not provided" from explicitly passing None
+_UNSET: object = object()
 
 
 class ScalingMetric(Enum):
-    """Metrics available for autoscaling policies."""
+    """Metrics available for autoscaling policies.
+
+    Attributes:
+        CPU_UTILIZATION: Scale based on average CPU utilisation (%).
+        MEMORY_UTILIZATION: Scale based on average memory utilisation (%).
+    """
 
     CPU_UTILIZATION = "CPU_UTILIZATION"
     MEMORY_UTILIZATION = "MEMORY_UTILIZATION"
 
 
 class ScalingAction(Enum):
-    """Actions for scheduled scaling policies."""
+    """Action types for scheduled scaling policies.
+
+    Attributes:
+        CHANGE_COUNT_BY: Change the instance count by a relative delta
+            (e.g. ``+2`` or ``-1``).
+        CHANGE_COUNT_TO: Set the instance count to an absolute target value.
+    """
 
     CHANGE_COUNT_BY = "CHANGE_COUNT_BY"
     CHANGE_COUNT_TO = "CHANGE_COUNT_TO"
-
-
-@dataclass
-class MetricThreshold:
-    """Configuration for metric-based scaling thresholds.
-
-    Attributes:
-        metric: The metric to monitor (CPU or memory utilization).
-        scale_out_threshold: Percentage threshold to trigger scale out (add instances).
-        scale_in_threshold: Percentage threshold to trigger scale in (remove instances).
-        scale_out_value: Number of instances to add when scaling out.
-        scale_in_value: Number of instances to remove when scaling in (negative value).
-    """
-
-    metric: ScalingMetric = ScalingMetric.CPU_UTILIZATION
-    scale_out_threshold: int = 80
-    scale_in_threshold: int = 20
-    scale_out_value: int = 1
-    scale_in_value: int = -1
 
 
 @dataclass
@@ -50,12 +76,20 @@ class MetricScalingPolicy:
     """Metric-based autoscaling policy configuration.
 
     Attributes:
-        threshold: The metric threshold configuration.
+        scale_out_threshold: Percentage threshold to trigger scale out (add instances).
+        scale_in_threshold: Percentage threshold to trigger scale in (remove instances).
+        scale_out_value: Number of instances to add when scaling out.
+        scale_in_value: Number of instances to remove when scaling in (negative value).
         cooldown_in_seconds: Time to wait between scaling actions (300-3600 seconds).
+        metric: The metric to monitor (CPU or memory utilization).
     """
 
-    threshold: MetricThreshold = field(default_factory=MetricThreshold)
+    scale_out_threshold: int = 80
+    scale_in_threshold: int = 20
+    scale_out_value: int = 1
+    scale_in_value: int = -1
     cooldown_in_seconds: int = 300
+    metric: ScalingMetric = ScalingMetric.CPU_UTILIZATION
 
 
 @dataclass
@@ -87,67 +121,32 @@ class ScheduleScalingPolicy:
 
 
 @dataclass
-class HealthCheckConfig:
-    """Health check configuration for load balancer backend set.
-
-    Attributes:
-        protocol: Health check protocol (HTTP or TCP).
-        port: Port to use for health checks.
-        url_path: URL path for HTTP health checks.
-        interval_ms: Time between health checks in milliseconds.
-        timeout_in_millis: Timeout for health check response in milliseconds.
-        retries: Number of retries before marking unhealthy.
-    """
-
-    protocol: Literal["HTTP", "TCP"] = "HTTP"
-    port: int = 80
-    url_path: str = "/health"
-    interval_ms: int = 10000
-    timeout_in_millis: int = 3000
-    retries: int = 3
-
-
-@dataclass
-class ListenerConfig:
-    """Load balancer listener configuration.
-
-    Attributes:
-        port: Port the listener accepts connections on.
-        protocol: Protocol for the listener (HTTP or HTTPS).
-        ssl_certificate_name: Name of SSL certificate for HTTPS listeners.
-    """
-
-    port: int
-    protocol: Literal["HTTP", "HTTPS"] = "HTTP"
-    ssl_certificate_name: str | None = None
-
-
-@dataclass
 class LoadBalancerConfig:
     """Load balancer configuration.
 
     Attributes:
+        backend_port: Port on backend instances to receive traffic and health checks.
+        health_check_path: URL path for HTTP health checks.
         is_public: Whether the load balancer has a public IP.
-        minimum_bandwidth_in_mbps: Minimum bandwidth for flexible shape.
-        maximum_bandwidth_in_mbps: Maximum bandwidth for flexible shape.
-        listeners: List of listener configurations.
-        health_check: Health check configuration for backend set.
-        backend_port: Port on backend instances to forward traffic to.
+        min_bandwidth_mbps: Minimum bandwidth for flexible shape.
+        max_bandwidth_mbps: Maximum bandwidth for flexible shape.
+        ssl_certificate_name: SSL certificate name for HTTPS. If set, creates an
+            HTTPS listener on port 443 in addition to HTTP on port 80.
     """
 
-    is_public: bool = True
-    minimum_bandwidth_in_mbps: int = 10
-    maximum_bandwidth_in_mbps: int = 100
-    listeners: list[ListenerConfig] = field(default_factory=lambda: [ListenerConfig(port=80)])
-    health_check: HealthCheckConfig = field(default_factory=HealthCheckConfig)
     backend_port: int = 80
+    health_check_path: str = "/health"
+    is_public: bool = True
+    min_bandwidth_mbps: int = 10
+    max_bandwidth_mbps: int = 100
+    ssl_certificate_name: str | None = None
 
 
 class ScalableWorkload(BaseResource):
     """OCI Scalable Workload with load balancer, instance pool, and autoscaling.
 
     This block creates a complete horizontally-scalable compute architecture:
-    - OCI Load Balancer with configurable listeners and health checks
+    - OCI Load Balancer with HTTP (and optionally HTTPS) listeners
     - Instance Configuration as a template for pool instances
     - Instance Pool for managing multiple identical instances
     - Autoscaling Configuration with metric-based or schedule-based policies
@@ -160,44 +159,33 @@ class ScalableWorkload(BaseResource):
 
     Usage Patterns:
 
-    1. Simple web workload with CPU-based autoscaling:
+    1. Minimal web workload (all defaults):
         ```python
-        vcn = Vcn(name="app", compartment_id=comp_id, stack_name="prod")
+        vcn = Vcn(name="app", compartment_id=comp_id)
 
         pool = ScalableWorkload(
             name="web",
             compartment_id=comp_id,
             vcn=vcn,
-            stack_name="prod",
-            min_instances=2,
-            max_instances=10,
-            scaling_policy=MetricScalingPolicy(
-                threshold=MetricThreshold(scale_out_threshold=70)
-            ),
+            user_data=user_data_encoded,
         )
 
         pulumi.export("lb_ip", pool.get_load_balancer_ip())
         ```
 
-    2. Custom configuration with HTTPS:
+    2. Custom scaling and backend port:
         ```python
         pool = ScalableWorkload(
             name="api",
             compartment_id=comp_id,
             vcn=vcn,
-            stack_name="prod",
-            shape="VM.Standard.E4.Flex",
-            ocpus=2,
-            memory_in_gbs=32,
-            min_instances=3,
-            max_instances=20,
+            min_instances=2,
+            max_instances=10,
             load_balancer_config=LoadBalancerConfig(
-                listeners=[
-                    ListenerConfig(port=443, protocol="HTTPS", ssl_certificate_name="my-cert"),
-                ],
-                health_check=HealthCheckConfig(url_path="/api/health"),
                 backend_port=8080,
+                health_check_path="/api/health",
             ),
+            scaling_policy=MetricScalingPolicy(scale_out_threshold=60),
         )
         ```
 
@@ -207,7 +195,6 @@ class ScalableWorkload(BaseResource):
             name="batch",
             compartment_id=comp_id,
             vcn=vcn,
-            stack_name="prod",
             scaling_policy=ScheduleScalingPolicy(
                 schedules=[
                     ScheduleEntry(
@@ -228,7 +215,7 @@ class ScalableWorkload(BaseResource):
         ```
     """
 
-    vcn: Vcn
+    vcn: Vcn | VcnRef
     shape: pulumi.Input[str]
     ocpus: pulumi.Input[float]
     memory_in_gbs: pulumi.Input[float]
@@ -256,8 +243,8 @@ class ScalableWorkload(BaseResource):
         self,
         name: str,
         compartment_id: pulumi.Input[str],
-        vcn: Vcn,
-        stack_name: str,
+        vcn: Vcn | VcnRef,
+        stack_name: str | None = None,
         # Instance configuration
         shape: pulumi.Input[str] = "VM.Standard.E4.Flex",
         ocpus: pulumi.Input[float] = 1,
@@ -272,29 +259,48 @@ class ScalableWorkload(BaseResource):
         initial_instances: int | None = None,
         # Load balancer configuration
         load_balancer_config: LoadBalancerConfig | None = None,
-        # Scaling policy (metric OR schedule, not both)
-        scaling_policy: MetricScalingPolicy | ScheduleScalingPolicy | None = None,
+        # Scaling policy (metric OR schedule, not both); pass None to disable autoscaling
+        scaling_policy: MetricScalingPolicy | ScheduleScalingPolicy | None = _UNSET,  # type: ignore[assignment]
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
         """Create a scalable workload with load balancer, instance pool, and autoscaling.
 
-        :param str name: The name of the workload
-        :param pulumi.Input[str] compartment_id: The OCID of the compartment
-        :param Vcn vcn: The VCN instance to deploy into
-        :param str stack_name: Stack identifier for naming and tagging
-        :param pulumi.Input[str] shape: Compute shape (default: VM.Standard.E4.Flex)
-        :param pulumi.Input[float] ocpus: Number of OCPUs (default: 1)
-        :param pulumi.Input[float] memory_in_gbs: Memory in GB (default: 16)
-        :param pulumi.Input[str] image_id: Optional custom image OCID (defaults to Oracle Linux 8)
-        :param pulumi.Input[str] ssh_public_key: SSH public key (optional - auto-generates if not provided)
-        :param str user_data: Cloud-init user data script (base64 encoded)
-        :param pulumi.Input[int] boot_volume_size_in_gbs: Boot volume size (default: 50GB)
-        :param int min_instances: Minimum instances in pool (default: 1)
-        :param int max_instances: Maximum instances in pool (default: 5)
-        :param int initial_instances: Initial instance count (defaults to min_instances)
-        :param LoadBalancerConfig load_balancer_config: Load balancer configuration
-        :param MetricScalingPolicy | ScheduleScalingPolicy scaling_policy: Autoscaling policy
-        :param pulumi.ResourceOptions opts: Options for the resource
+        Args:
+            name: Logical name for the workload (e.g. ``"web"``).
+            compartment_id: OCID of the OCI compartment to deploy into.
+            vcn: :class:`~blocks.vcn.network.Vcn` instance that provides the
+                public and private subnets.
+            stack_name: Pulumi stack name.  Defaults to
+                ``pulumi.get_stack()`` when ``None``.
+            shape: OCI compute shape for instance pool VMs
+                (default: ``"VM.Standard.E4.Flex"``).
+            ocpus: Number of OCPUs per instance (default: ``1``).
+            memory_in_gbs: RAM in GiB per instance (default: ``16``).
+            image_id: Explicit boot image OCID.  When ``None``, the latest
+                Oracle Linux 8 image compatible with *shape* is resolved
+                automatically.
+            ssh_public_key: OpenSSH public key to install on instances.
+                When ``None`` or empty, a key pair is auto-generated and
+                exported as Pulumi secrets.
+            user_data: Cloud-init user data script, **base64-encoded**.
+                Passed to instances via OCI instance metadata.
+            boot_volume_size_in_gbs: Boot volume size in GiB (default:
+                ``50``).
+            min_instances: Minimum number of instances in the pool
+                (default: ``1``).
+            max_instances: Maximum number of instances the autoscaler may
+                create (default: ``5``).
+            initial_instances: Initial instance count when the pool is first
+                created.  Defaults to *min_instances*.
+            load_balancer_config: :class:`LoadBalancerConfig` dataclass.
+                Defaults to ``LoadBalancerConfig()`` (port 80, health check
+                ``/health``, 10-100 Mbps, public).
+            scaling_policy: Autoscaling policy.  Pass a
+                :class:`MetricScalingPolicy` (CPU/memory threshold),
+                a :class:`ScheduleScalingPolicy` (cron-based), or ``None``
+                to disable autoscaling entirely.  When omitted, defaults to
+                ``MetricScalingPolicy()`` (80 % CPU scale-out).
+            opts: Pulumi resource options forwarded to the component.
         """
         super().__init__("custom:compute:ScalableWorkload", name, compartment_id, stack_name, opts)
 
@@ -311,20 +317,12 @@ class ScalableWorkload(BaseResource):
         self.max_instances = max_instances
         self.initial_instances = initial_instances if initial_instances is not None else min_instances
         self.load_balancer_config = load_balancer_config or LoadBalancerConfig()
-        self.scaling_policy = scaling_policy
+        self.scaling_policy = MetricScalingPolicy() if scaling_policy is _UNSET else scaling_policy
         self.listeners = []
         self.autoscaling_configuration = None
 
         # Handle SSH key - either use provided or auto-generate
-        if ssh_public_key is None or (isinstance(ssh_public_key, str) and ssh_public_key.strip() == ""):
-            public_key, private_key = self._generate_ssh_key_pair()
-            self.ssh_public_key = public_key
-            self.ssh_private_key = private_key
-            self.auto_generated_keys = True
-        else:
-            self.ssh_public_key = str(ssh_public_key)
-            self.ssh_private_key = None
-            self.auto_generated_keys = False
+        self._setup_ssh_keys(ssh_public_key)
 
         # Add security rules for load balancer and instance pool
         self._add_scalable_workload_security_rules()
@@ -337,16 +335,8 @@ class ScalableWorkload(BaseResource):
         assert self.vcn.private_subnet is not None, "VCN private subnet must exist after finalization"
 
         # Get the latest Oracle Linux 8 image if no custom image specified
-        if image_id is None:
-            images = oci.core.get_images(
-                compartment_id=str(compartment_id),
-                operating_system="Oracle Linux",
-                operating_system_version="8",
-                shape=str(shape),
-                sort_by="TIMECREATED",
-                sort_order="DESC",
-            )
-            self.image_id = images.images[0].id
+        resolved_image_id = str(image_id) if image_id is not None else None
+        self.image_id = Helper().resolve_image_id(str(compartment_id), str(shape), resolved_image_id)
 
         # Get availability domains
         ads = oci.identity.get_availability_domains(compartment_id=str(compartment_id))
@@ -366,10 +356,7 @@ class ScalableWorkload(BaseResource):
             "load_balancer_id": self.load_balancer.id,
         }
 
-        if self.auto_generated_keys:
-            outputs["ssh_public_key"] = pulumi.Output.secret(self.ssh_public_key)
-            if self.ssh_private_key:
-                outputs["ssh_private_key"] = pulumi.Output.secret(self.ssh_private_key)
+        outputs.update(self._get_ssh_outputs())
 
         self.register_outputs(outputs)
 
@@ -384,14 +371,12 @@ class ScalableWorkload(BaseResource):
 
         Private Subnet (Instance Pool):
         - Ingress: Backend port from public subnet (load balancer)
-        - Ingress: Health check port from public subnet
         - Ingress: SSH (22) from public subnet (bastion access)
         - Egress: HTTPS (443) to OCI services (monitoring, telemetry)
         """
-        public_subnet_cidr = self.vcn.get_public_subnet_cidr()
-        private_subnet_cidr = self.vcn.get_private_subnet_cidr()
+        public_subnet_cidr: pulumi.Input[str] = self.vcn.get_public_subnet_cidr()
+        private_subnet_cidr: pulumi.Input[str] = self.vcn.get_private_subnet_cidr()
         backend_port = self.load_balancer_config.backend_port
-        health_port = self.load_balancer_config.health_check.port
 
         # Public subnet ingress rules (Load Balancer)
         public_ingress_rules: list[oci.core.SecurityListIngressSecurityRuleArgs] = [
@@ -431,21 +416,6 @@ class ScalableWorkload(BaseResource):
             ),
         ]
 
-        # Add health check port egress if different from backend port
-        if health_port != backend_port:
-            public_egress_rules.append(
-                oci.core.SecurityListEgressSecurityRuleArgs(
-                    description=f"Load balancer health checks to instances on port {health_port}",
-                    protocol="6",  # TCP
-                    destination=private_subnet_cidr,
-                    destination_type="CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                        min=health_port,
-                        max=health_port,
-                    ),
-                ),
-            )
-
         # Private subnet ingress rules (Instance Pool)
         private_ingress_rules: list[oci.core.SecurityListIngressSecurityRuleArgs] = [
             oci.core.SecurityListIngressSecurityRuleArgs(
@@ -469,21 +439,6 @@ class ScalableWorkload(BaseResource):
                 ),
             ),
         ]
-
-        # Add health check ingress if different from backend port
-        if health_port != backend_port:
-            private_ingress_rules.append(
-                oci.core.SecurityListIngressSecurityRuleArgs(
-                    description=f"Health check from load balancer on port {health_port}",
-                    protocol="6",  # TCP
-                    source=public_subnet_cidr,
-                    source_type="CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                        min=health_port,
-                        max=health_port,
-                    ),
-                ),
-            )
 
         # Private subnet egress rules (Instance Pool to OCI services)
         private_egress_rules: list[oci.core.SecurityListEgressSecurityRuleArgs] = [
@@ -523,59 +478,65 @@ class ScalableWorkload(BaseResource):
             display_name=lb_name,
             shape="flexible",
             shape_details=oci.loadbalancer.LoadBalancerShapeDetailsArgs(
-                minimum_bandwidth_in_mbps=lb_config.minimum_bandwidth_in_mbps,
-                maximum_bandwidth_in_mbps=lb_config.maximum_bandwidth_in_mbps,
+                minimum_bandwidth_in_mbps=lb_config.min_bandwidth_mbps,
+                maximum_bandwidth_in_mbps=lb_config.max_bandwidth_mbps,
             ),
             subnet_ids=[self.vcn.public_subnet.id],
             is_private=not lb_config.is_public,
-            freeform_tags=self.create_freeform_tags(
-                lb_name,
-                "load-balancer",
-                {
-                    "IsPublic": str(lb_config.is_public),
-                    "MinBandwidth": str(lb_config.minimum_bandwidth_in_mbps),
-                    "MaxBandwidth": str(lb_config.maximum_bandwidth_in_mbps),
-                },
-            ),
+            freeform_tags=self.create_freeform_tags(lb_name, "load-balancer"),
             opts=pulumi.ResourceOptions(parent=self),
         )
 
-        # Create backend set with health check
+        # Create backend set with health check on the backend port
         bs_name = self.create_resource_name("bs")
-        health_check = lb_config.health_check
         self.backend_set = oci.loadbalancer.BackendSet(
             bs_name,
             load_balancer_id=self.load_balancer.id,
             name=bs_name,
             policy="ROUND_ROBIN",
             health_checker=oci.loadbalancer.BackendSetHealthCheckerArgs(
-                protocol=health_check.protocol,
-                port=health_check.port,
-                url_path=health_check.url_path if health_check.protocol == "HTTP" else None,
-                interval_ms=health_check.interval_ms,
-                timeout_in_millis=health_check.timeout_in_millis,
-                retries=health_check.retries,
+                protocol="HTTP",
+                port=lb_config.backend_port,
+                url_path=lb_config.health_check_path,
+                interval_ms=10000,
+                timeout_in_millis=3000,
+                retries=3,
             ),
             opts=pulumi.ResourceOptions(parent=self),
         )
 
-        # Create listeners
-        for i, listener_config in enumerate(lb_config.listeners):
-            listener_name = self.create_resource_name(f"listener-{i}")
-            listener = oci.loadbalancer.Listener(
-                listener_name,
+        # Always create HTTP listener on port 80
+        http_listener_name = self.create_resource_name("listener-http")
+        self.listeners.append(
+            oci.loadbalancer.Listener(
+                http_listener_name,
                 load_balancer_id=self.load_balancer.id,
-                name=listener_name,
+                name=http_listener_name,
                 default_backend_set_name=self.backend_set.name,
-                port=listener_config.port,
-                protocol=listener_config.protocol,
-                ssl_configuration=oci.loadbalancer.ListenerSslConfigurationArgs(
-                    certificate_name=listener_config.ssl_certificate_name,
-                    verify_peer_certificate=False,
-                ) if listener_config.protocol == "HTTPS" and listener_config.ssl_certificate_name else None,
+                port=80,
+                protocol="HTTP",
                 opts=pulumi.ResourceOptions(parent=self),
             )
-            self.listeners.append(listener)
+        )
+
+        # Optionally create HTTPS listener on port 443
+        if lb_config.ssl_certificate_name:
+            https_listener_name = self.create_resource_name("listener-https")
+            self.listeners.append(
+                oci.loadbalancer.Listener(
+                    https_listener_name,
+                    load_balancer_id=self.load_balancer.id,
+                    name=https_listener_name,
+                    default_backend_set_name=self.backend_set.name,
+                    port=443,
+                    protocol="HTTPS",
+                    ssl_configuration=oci.loadbalancer.ListenerSslConfigurationArgs(
+                        certificate_name=lb_config.ssl_certificate_name,
+                        verify_peer_certificate=False,
+                    ),
+                    opts=pulumi.ResourceOptions(parent=self),
+                )
+            )
 
     def _create_instance_configuration(self) -> None:
         """Create the instance configuration as a template for the pool."""
@@ -616,15 +577,7 @@ class ScalableWorkload(BaseResource):
                     metadata=metadata,
                 ),
             ),
-            freeform_tags=self.create_freeform_tags(
-                ic_name,
-                "instance-configuration",
-                {
-                    "Shape": str(self.shape),
-                    "OCPUs": str(self.ocpus),
-                    "MemoryGB": str(self.memory_in_gbs),
-                },
-            ),
+            freeform_tags=self.create_freeform_tags(ic_name, "instance-configuration"),
             opts=pulumi.ResourceOptions(parent=self),
         )
 
@@ -659,15 +612,7 @@ class ScalableWorkload(BaseResource):
                     vnic_selection="PrimaryVnic",
                 ),
             ],
-            freeform_tags=self.create_freeform_tags(
-                pool_name,
-                "instance-pool",
-                {
-                    "MinInstances": str(self.min_instances),
-                    "MaxInstances": str(self.max_instances),
-                    "InitialInstances": str(self.initial_instances),
-                },
-            ),
+            freeform_tags=self.create_freeform_tags(pool_name, "instance-pool"),
             opts=pulumi.ResourceOptions(parent=self),
         )
 
@@ -687,7 +632,6 @@ class ScalableWorkload(BaseResource):
         """Create metric-based autoscaling configuration."""
         policy = self.scaling_policy
         assert isinstance(policy, MetricScalingPolicy)
-        threshold = policy.threshold
 
         self.autoscaling_configuration = oci.autoscaling.AutoScalingConfiguration(
             asc_name,
@@ -713,14 +657,14 @@ class ScalableWorkload(BaseResource):
                         oci.autoscaling.AutoScalingConfigurationPolicyRuleArgs(
                             action=oci.autoscaling.AutoScalingConfigurationPolicyRuleActionArgs(
                                 type="CHANGE_COUNT_BY",
-                                value=threshold.scale_out_value,
+                                value=policy.scale_out_value,
                             ),
                             display_name="Scale Out",
                             metric=oci.autoscaling.AutoScalingConfigurationPolicyRuleMetricArgs(
-                                metric_type=threshold.metric.value,
+                                metric_type=policy.metric.value,
                                 threshold=oci.autoscaling.AutoScalingConfigurationPolicyRuleMetricThresholdArgs(
                                     operator="GT",
-                                    value=threshold.scale_out_threshold,
+                                    value=policy.scale_out_threshold,
                                 ),
                             ),
                         ),
@@ -728,30 +672,21 @@ class ScalableWorkload(BaseResource):
                         oci.autoscaling.AutoScalingConfigurationPolicyRuleArgs(
                             action=oci.autoscaling.AutoScalingConfigurationPolicyRuleActionArgs(
                                 type="CHANGE_COUNT_BY",
-                                value=threshold.scale_in_value,
+                                value=policy.scale_in_value,
                             ),
                             display_name="Scale In",
                             metric=oci.autoscaling.AutoScalingConfigurationPolicyRuleMetricArgs(
-                                metric_type=threshold.metric.value,
+                                metric_type=policy.metric.value,
                                 threshold=oci.autoscaling.AutoScalingConfigurationPolicyRuleMetricThresholdArgs(
                                     operator="LT",
-                                    value=threshold.scale_in_threshold,
+                                    value=policy.scale_in_threshold,
                                 ),
                             ),
                         ),
                     ],
                 ),
             ],
-            freeform_tags=self.create_freeform_tags(
-                asc_name,
-                "autoscaling-configuration",
-                {
-                    "PolicyType": "metric",
-                    "Metric": threshold.metric.value,
-                    "ScaleOutThreshold": str(threshold.scale_out_threshold),
-                    "ScaleInThreshold": str(threshold.scale_in_threshold),
-                },
-            ),
+            freeform_tags=self.create_freeform_tags(asc_name, "autoscaling-configuration"),
             opts=pulumi.ResourceOptions(parent=self),
         )
 
@@ -760,19 +695,9 @@ class ScalableWorkload(BaseResource):
         policy = self.scaling_policy
         assert isinstance(policy, ScheduleScalingPolicy)
 
-        # Build execution schedules from schedule entries
-        execution_schedules = [
-            oci.autoscaling.AutoScalingConfigurationPolicyExecutionScheduleArgs(
-                expression=entry.cron_expression,
-                timezone="UTC",
-                type="cron",
-            )
-            for entry in policy.schedules
-        ]
-
         # For schedule-based policies, we create one policy per schedule entry
         policies = []
-        for i, entry in enumerate(policy.schedules):
+        for entry in policy.schedules:
             policies.append(
                 oci.autoscaling.AutoScalingConfigurationPolicyArgs(
                     display_name=entry.display_name,
@@ -804,90 +729,50 @@ class ScalableWorkload(BaseResource):
             ),
             is_enabled=True,
             policies=policies,
-            freeform_tags=self.create_freeform_tags(
-                asc_name,
-                "autoscaling-configuration",
-                {
-                    "PolicyType": "scheduled",
-                    "ScheduleCount": str(len(policy.schedules)),
-                },
-            ),
+            freeform_tags=self.create_freeform_tags(asc_name, "autoscaling-configuration"),
             opts=pulumi.ResourceOptions(parent=self),
         )
 
-    def _generate_ssh_key_pair(self) -> tuple[str, str]:
-        """Generate an SSH key pair for instances.
+    def export(self) -> None:
+        """Export standard scalable workload stack outputs.
 
-        Returns:
-            Tuple of (public_key, private_key) as strings.
+        Publishes load balancer IP, load balancer OCID, and instance pool
+        OCID under keys derived from the block's logical name.  The SSH
+        private key is exported as a Pulumi secret only when it was
+        auto-generated.
+
+        Example::
+
+            pool = ScalableWorkload(name="web-pool", ...)
+            pool.export()
+            # Exports: web_pool_lb_ip, web_pool_lb_id, web_pool_pool_id,
+            #          and conditionally web_pool_ssh_private_key (secret)
         """
-        with tempfile.TemporaryDirectory() as tmpdir:
-            key_path = os.path.join(tmpdir, "id_rsa")
-
-            subprocess.run(
-                [
-                    "ssh-keygen",
-                    "-t",
-                    "rsa",
-                    "-b",
-                    "4096",
-                    "-f",
-                    key_path,
-                    "-N",
-                    "",
-                    "-C",
-                    f"ociblocks-{self.stack_name}-{self.name}",
-                ],
-                check=True,
-                capture_output=True,
-            )
-
-            with open(f"{key_path}.pub", "r") as f:
-                public_key = f.read().strip()
-
-            with open(key_path, "r") as f:
-                private_key = f.read()
-
-        return public_key, private_key
+        prefix = self.name.replace("-", "_")
+        pulumi.export(f"{prefix}_lb_ip", self.get_load_balancer_ip())
+        pulumi.export(f"{prefix}_lb_id", self.get_load_balancer_id())
+        pulumi.export(f"{prefix}_pool_id", self.get_instance_pool_id())
+        if self.auto_generated_keys and self.ssh_private_key:
+            pulumi.export(f"{prefix}_ssh_private_key", pulumi.Output.secret(self.ssh_private_key))
 
     def get_load_balancer_ip(self) -> pulumi.Output[str]:
-        """Get the public IP address of the load balancer.
-
-        Returns:
-            The load balancer's public IP address as a Pulumi Output.
-        """
+        """Get the public IP address of the load balancer."""
         return self.load_balancer.ip_address_details.apply(
             lambda details: details[0].ip_address or "" if details else ""
         )
 
     def get_instance_pool_id(self) -> pulumi.Output[str]:
-        """Get the OCID of the instance pool.
-
-        Returns:
-            The instance pool OCID as a Pulumi Output.
-        """
+        """Get the OCID of the instance pool."""
         return self.instance_pool.id
 
     def get_load_balancer_id(self) -> pulumi.Output[str]:
-        """Get the OCID of the load balancer.
-
-        Returns:
-            The load balancer OCID as a Pulumi Output.
-        """
+        """Get the OCID of the load balancer."""
         return self.load_balancer.id
 
     def get_ssh_public_key(self) -> str:
-        """Get the SSH public key used for instances.
-
-        Returns:
-            The SSH public key as a string.
-        """
+        """Get the SSH public key used for instances."""
         return self.ssh_public_key
 
     def get_ssh_private_key(self) -> str | None:
-        """Get the SSH private key if auto-generated.
-
-        Returns:
-            The SSH private key as a string if auto-generated, None otherwise.
-        """
+        """Get the SSH private key if auto-generated, None otherwise."""
         return self.ssh_private_key

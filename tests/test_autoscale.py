@@ -18,14 +18,11 @@ from blocks.vcn.network import Vcn
 from blocks.autoscale.workload import (
     ScalableWorkload,
     MetricScalingPolicy,
-    MetricThreshold,
     ScheduleScalingPolicy,
     ScheduleEntry,
     ScalingAction,
     ScalingMetric,
     LoadBalancerConfig,
-    ListenerConfig,
-    HealthCheckConfig,
 )
 
 
@@ -37,7 +34,6 @@ class TestAutoscaleWorkload(unittest.TestCase):
         self.vcn = Vcn(
             name="autoscale-test-vcn",
             compartment_id="ocid1.compartment.test",
-            stack_name="unittest",
         )
 
     @pulumi.runtime.test
@@ -47,7 +43,6 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="test-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -63,7 +58,6 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="test-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -79,7 +73,6 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="test-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -95,7 +88,6 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="test-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -110,7 +102,6 @@ class TestAutoscaleWorkload(unittest.TestCase):
         vcn = Vcn(
             name="finalize-test-vcn",
             compartment_id="ocid1.compartment.test",
-            stack_name="unittest",
         )
 
         # Subnets should be None before ScalableWorkload
@@ -121,7 +112,6 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="test-workload",
             compartment_id="ocid1.compartment.test",
             vcn=vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -135,7 +125,6 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="auto-key-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             # No ssh_public_key provided
         )
 
@@ -155,7 +144,6 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="provided-key-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key=provided_key,
         )
 
@@ -169,7 +157,6 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="default-instances-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -183,7 +170,6 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="custom-instances-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             min_instances=2,
             max_instances=10,
@@ -200,7 +186,6 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="default-shape-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -212,7 +197,6 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="custom-shape-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             shape="VM.Standard.A1.Flex",
             ocpus=4,
@@ -223,16 +207,24 @@ class TestAutoscaleWorkload(unittest.TestCase):
         self.assertEqual(workload.ocpus, 4)
         self.assertEqual(workload.memory_in_gbs, 24)
 
+    def test_default_metric_scaling_policy(self):
+        """Test that ScalableWorkload uses MetricScalingPolicy by default."""
+        workload = ScalableWorkload(
+            name="default-policy-workload",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+        )
+
+        self.assertIsInstance(workload.scaling_policy, MetricScalingPolicy)
+        self.assertIsNotNone(workload.autoscaling_configuration, "Autoscaling config should be created by default")
+
     def test_with_metric_scaling_policy(self):
         """Test that ScalableWorkload accepts metric scaling policy."""
         policy = MetricScalingPolicy(
-            threshold=MetricThreshold(
-                metric=ScalingMetric.CPU_UTILIZATION,
-                scale_out_threshold=70,
-                scale_in_threshold=30,
-                scale_out_value=2,
-                scale_in_value=-1,
-            ),
+            scale_out_threshold=70,
+            scale_in_threshold=30,
+            scale_out_value=2,
             cooldown_in_seconds=600,
         )
 
@@ -240,7 +232,6 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="metric-scaling-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             scaling_policy=policy,
         )
@@ -271,7 +262,6 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="schedule-scaling-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             scaling_policy=policy,
         )
@@ -279,49 +269,39 @@ class TestAutoscaleWorkload(unittest.TestCase):
         self.assertIsNotNone(workload.autoscaling_configuration, "Autoscaling config should be created")
         self.assertIsInstance(workload.scaling_policy, ScheduleScalingPolicy)
 
-    def test_without_scaling_policy(self):
-        """Test that ScalableWorkload works without scaling policy."""
+    def test_disable_autoscaling(self):
+        """Test that passing scaling_policy=None disables autoscaling."""
         workload = ScalableWorkload(
             name="no-scaling-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
+            scaling_policy=None,
         )
 
-        self.assertIsNone(workload.autoscaling_configuration, "No autoscaling config when no policy")
+        self.assertIsNone(workload.autoscaling_configuration, "No autoscaling config when policy=None")
 
     def test_custom_load_balancer_config(self):
         """Test that ScalableWorkload accepts custom load balancer config."""
         lb_config = LoadBalancerConfig(
-            is_public=True,
-            minimum_bandwidth_in_mbps=50,
-            maximum_bandwidth_in_mbps=200,
-            listeners=[
-                ListenerConfig(port=443, protocol="HTTPS", ssl_certificate_name="my-cert"),
-                ListenerConfig(port=80, protocol="HTTP"),
-            ],
-            health_check=HealthCheckConfig(
-                protocol="HTTP",
-                port=8080,
-                url_path="/api/health",
-            ),
             backend_port=8080,
+            health_check_path="/api/health",
+            min_bandwidth_mbps=50,
+            max_bandwidth_mbps=200,
         )
 
         workload = ScalableWorkload(
             name="custom-lb-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             load_balancer_config=lb_config,
         )
 
-        self.assertEqual(workload.load_balancer_config.minimum_bandwidth_in_mbps, 50)
-        self.assertEqual(workload.load_balancer_config.maximum_bandwidth_in_mbps, 200)
-        self.assertEqual(len(workload.load_balancer_config.listeners), 2)
         self.assertEqual(workload.load_balancer_config.backend_port, 8080)
+        self.assertEqual(workload.load_balancer_config.health_check_path, "/api/health")
+        self.assertEqual(workload.load_balancer_config.min_bandwidth_mbps, 50)
+        self.assertEqual(workload.load_balancer_config.max_bandwidth_mbps, 200)
 
     def test_getter_methods(self):
         """Test ScalableWorkload getter methods."""
@@ -329,7 +309,6 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="getter-test-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -343,52 +322,45 @@ class TestAutoscaleWorkload(unittest.TestCase):
 class TestDataclasses(unittest.TestCase):
     """Test configuration dataclasses."""
 
-    def test_metric_threshold_defaults(self):
-        """Test MetricThreshold default values."""
-        threshold = MetricThreshold()
-
-        self.assertEqual(threshold.metric, ScalingMetric.CPU_UTILIZATION)
-        self.assertEqual(threshold.scale_out_threshold, 80)
-        self.assertEqual(threshold.scale_in_threshold, 20)
-        self.assertEqual(threshold.scale_out_value, 1)
-        self.assertEqual(threshold.scale_in_value, -1)
-
     def test_metric_scaling_policy_defaults(self):
         """Test MetricScalingPolicy default values."""
         policy = MetricScalingPolicy()
 
-        self.assertIsInstance(policy.threshold, MetricThreshold)
+        self.assertEqual(policy.metric, ScalingMetric.CPU_UTILIZATION)
+        self.assertEqual(policy.scale_out_threshold, 80)
+        self.assertEqual(policy.scale_in_threshold, 20)
+        self.assertEqual(policy.scale_out_value, 1)
+        self.assertEqual(policy.scale_in_value, -1)
         self.assertEqual(policy.cooldown_in_seconds, 300)
 
-    def test_health_check_config_defaults(self):
-        """Test HealthCheckConfig default values."""
-        config = HealthCheckConfig()
+    def test_metric_scaling_policy_custom(self):
+        """Test MetricScalingPolicy with custom values."""
+        policy = MetricScalingPolicy(
+            scale_out_threshold=70,
+            scale_in_threshold=30,
+            metric=ScalingMetric.MEMORY_UTILIZATION,
+        )
 
-        self.assertEqual(config.protocol, "HTTP")
-        self.assertEqual(config.port, 80)
-        self.assertEqual(config.url_path, "/health")
-        self.assertEqual(config.interval_ms, 10000)
-        self.assertEqual(config.timeout_in_millis, 3000)
-        self.assertEqual(config.retries, 3)
-
-    def test_listener_config_defaults(self):
-        """Test ListenerConfig default values."""
-        config = ListenerConfig(port=443)
-
-        self.assertEqual(config.port, 443)
-        self.assertEqual(config.protocol, "HTTP")
-        self.assertIsNone(config.ssl_certificate_name)
+        self.assertEqual(policy.scale_out_threshold, 70)
+        self.assertEqual(policy.scale_in_threshold, 30)
+        self.assertEqual(policy.metric, ScalingMetric.MEMORY_UTILIZATION)
 
     def test_load_balancer_config_defaults(self):
         """Test LoadBalancerConfig default values."""
         config = LoadBalancerConfig()
 
         self.assertTrue(config.is_public)
-        self.assertEqual(config.minimum_bandwidth_in_mbps, 10)
-        self.assertEqual(config.maximum_bandwidth_in_mbps, 100)
-        self.assertEqual(len(config.listeners), 1)
-        self.assertEqual(config.listeners[0].port, 80)
         self.assertEqual(config.backend_port, 80)
+        self.assertEqual(config.health_check_path, "/health")
+        self.assertEqual(config.min_bandwidth_mbps, 10)
+        self.assertEqual(config.max_bandwidth_mbps, 100)
+        self.assertIsNone(config.ssl_certificate_name)
+
+    def test_load_balancer_config_https(self):
+        """Test LoadBalancerConfig HTTPS configuration."""
+        config = LoadBalancerConfig(ssl_certificate_name="my-cert")
+
+        self.assertEqual(config.ssl_certificate_name, "my-cert")
 
     def test_schedule_entry(self):
         """Test ScheduleEntry creation."""

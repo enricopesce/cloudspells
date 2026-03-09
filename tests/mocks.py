@@ -31,6 +31,9 @@ class OCIMocks(pulumi.runtime.Mocks):
                 {"ipAddress": "10.0.0.100", "isPublic": True},
             ]
 
+        if args.typ == "oci:Bastion/bastion:Bastion":
+            outputs["privateEndpointIpAddress"] = "10.0.128.5"
+
         return (f"{args.name}-id", outputs)
 
     def call(self, args: pulumi.runtime.MockCallArgs) -> tuple[dict[Any, Any], list[tuple[str, str]]]:
@@ -76,4 +79,4 @@ class OCIMocks(pulumi.runtime.Mocks):
 
 def set_mocks():
     """Set up Pulumi mocks for testing."""
-    pulumi.runtime.set_mocks(OCIMocks(), preview=False)
+    pulumi.runtime.set_mocks(OCIMocks(), project="unittest", stack="unittest", preview=False)

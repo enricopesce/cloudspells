@@ -1,74 +1,64 @@
-"""VCN + ScalableWorkload test — deploys an autoscaling instance pool with load balancer."""
+"""VCN + ScalableWorkload example — autoscaling instance pool with load balancer."""
 
 import pulumi
+import base64
 from blocks.vcn.network import Vcn
-from blocks.autoscale import (
-    ScalableWorkload,
-    MetricScalingPolicy,
-    MetricThreshold,
-    ScalingMetric,
-    LoadBalancerConfig,
-    HealthCheckConfig,
-)
+from blocks.autoscale import ScalableWorkload
 
 config: pulumi.Config = pulumi.Config()
 compartment_id: str = config.require("compartment_ocid")
 
-ssh_key: str | None = config.get("ssh_key")
-if ssh_key == "":
-    ssh_key = None
+ssh_key: str | None = config.get("ssh_key") or None
+
+# Cloud-init script to install and start nginx
+user_data_script = """#!/bin/bash
+set -e
+
+# Install and enable nginx
+yum install -y --disablerepo='*' --enablerepo='ol8_appstream,ol8_baseos_latest' nginx
+systemctl enable nginx
+systemctl start nginx
+
+# Open port 80 through firewalld (required on Oracle Linux)
+firewall-cmd --permanent --add-service=http
+firewall-cmd --reload
+
+# Create health check endpoint for load balancer
+echo "OK" > /usr/share/nginx/html/health
+
+# Create a simple index page (hostname evaluated at boot time)
+INSTANCE_HOSTNAME=$(hostname)
+cat > /usr/share/nginx/html/index.html <<EOF
+<!DOCTYPE html>
+<html>
+<head><title>OCI Autoscale Demo</title></head>
+<body>
+<h1>Instance: ${INSTANCE_HOSTNAME}</h1>
+<p>This instance is part of an autoscaling pool.</p>
+</body>
+</html>
+EOF
+"""
+
+user_data_encoded = base64.b64encode(user_data_script.encode()).decode()
 
 # Create VCN
 vcn: Vcn = Vcn(
     name="scalable",
     compartment_id=compartment_id,
-    stack_name=pulumi.get_stack(),
 )
 
-# ScalableWorkload adds security rules and calls finalize_network()
+# ScalableWorkload: minimal configuration with sensible defaults.
+# Defaults: VM.Standard.E4.Flex (1 OCPU / 16GB), 1-5 instances,
+# HTTP load balancer on port 80, CPU-based autoscaling (scale out >80%, scale in <20%).
 scalable_pool: ScalableWorkload = ScalableWorkload(
     name="web-pool",
     compartment_id=compartment_id,
     vcn=vcn,
-    stack_name=pulumi.get_stack(),
     ssh_public_key=ssh_key,
-    shape="VM.Standard.E4.Flex",
-    ocpus=1,
-    memory_in_gbs=16,
-    min_instances=1,
+    user_data=user_data_encoded,
     max_instances=3,
-    initial_instances=1,
-    load_balancer_config=LoadBalancerConfig(
-        is_public=True,
-        minimum_bandwidth_in_mbps=10,
-        maximum_bandwidth_in_mbps=100,
-        health_check=HealthCheckConfig(
-            protocol="HTTP",
-            port=80,
-            url_path="/",
-        ),
-        backend_port=80,
-    ),
-    scaling_policy=MetricScalingPolicy(
-        threshold=MetricThreshold(
-            metric=ScalingMetric.CPU_UTILIZATION,
-            scale_out_threshold=70,
-            scale_in_threshold=30,
-            scale_out_value=1,
-            scale_in_value=-1,
-        ),
-        cooldown_in_seconds=300,
-    ),
 )
 
-# VCN outputs
-pulumi.export("vcn_id", vcn.id)
-pulumi.export("cidr_block", vcn.cidr_block)
-
-# ScalableWorkload outputs
-pulumi.export("lb_ip", scalable_pool.get_load_balancer_ip())
-pulumi.export("lb_id", scalable_pool.get_load_balancer_id())
-pulumi.export("pool_id", scalable_pool.get_instance_pool_id())
-
-if scalable_pool.auto_generated_keys:
-    pulumi.export("ssh_private_key", pulumi.Output.secret(scalable_pool.get_ssh_private_key()))
+vcn.export()
+scalable_pool.export()
