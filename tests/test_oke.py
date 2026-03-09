@@ -26,7 +26,6 @@ class TestOkeCluster(unittest.TestCase):
         self.vcn = Vcn(
             name="oke-test-vcn",
             compartment_id="ocid1.compartment.test",
-            stack_name="unittest",
         )
 
     @pulumi.runtime.test
@@ -36,7 +35,6 @@ class TestOkeCluster(unittest.TestCase):
             name="test-cluster",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             kubernetes_version="v1.28.2",
             shape="VM.Standard.A1.Flex",
             image="ocid1.image.test",
@@ -58,7 +56,6 @@ class TestOkeCluster(unittest.TestCase):
             name="test-cluster",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             kubernetes_version="v1.28.2",
             shape="VM.Standard.A1.Flex",
             image="ocid1.image.test",
@@ -79,7 +76,6 @@ class TestOkeCluster(unittest.TestCase):
         vcn = Vcn(
             name="oke-finalize-test-vcn",
             compartment_id="ocid1.compartment.test",
-            stack_name="unittest",
         )
 
         # Subnets should be None before OkeCluster
@@ -90,7 +86,6 @@ class TestOkeCluster(unittest.TestCase):
             name="test-cluster",
             compartment_id="ocid1.compartment.test",
             vcn=vcn,
-            stack_name="unittest",
             kubernetes_version="v1.28.2",
             shape="VM.Standard.A1.Flex",
             image="ocid1.image.test",
@@ -110,7 +105,6 @@ class TestOkeCluster(unittest.TestCase):
             name="test-cluster",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             kubernetes_version="v1.28.2",
             shape="VM.Standard.A1.Flex",
             image="ocid1.image.test",
@@ -128,7 +122,6 @@ class TestOkeCluster(unittest.TestCase):
             name="test-cluster",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             kubernetes_version="v1.28.2",
             shape="VM.Standard.A1.Flex",
             image="ocid1.image.test",
@@ -146,7 +139,6 @@ class TestOkeCluster(unittest.TestCase):
             name="test-cluster",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             kubernetes_version="v1.28.2",
             shape="VM.Standard.A1.Flex",
             image="ocid1.image.test",
@@ -165,7 +157,6 @@ class TestOkeCluster(unittest.TestCase):
             name="test-cluster",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             kubernetes_version="v1.28.2",
             shape="VM.Standard.A1.Flex",
             image="ocid1.image.test",
@@ -186,7 +177,6 @@ class TestOkeCluster(unittest.TestCase):
             name="test-cluster",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             kubernetes_version="v1.28.2",
             shape="VM.Standard.A1.Flex",
             image="ocid1.image.test",
@@ -214,7 +204,6 @@ class TestOkeCluster(unittest.TestCase):
             name="test-cluster",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             kubernetes_version="v1.28.2",
             shape="VM.Standard.A1.Flex",
             image="ocid1.image.test",
@@ -236,7 +225,6 @@ class TestOkeCluster(unittest.TestCase):
             name="test-cluster",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            stack_name="unittest",
             kubernetes_version="v1.28.2",
             shape="VM.Standard.A1.Flex",
             image="ocid1.image.test",

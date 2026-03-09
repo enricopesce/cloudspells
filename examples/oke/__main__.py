@@ -17,7 +17,6 @@ oke_memory_in_gbs: float = float(config.require("oke_memory_in_gbs"))
 vcn: Vcn = Vcn(
     name="lab",
     compartment_id=compartment_id,
-    stack_name=pulumi.get_stack(),
 )
 
 # OkeCluster adds security rules and calls finalize_network()
@@ -32,17 +31,7 @@ oke: OkeCluster = OkeCluster(
     memory_in_gbs=oke_memory_in_gbs,
     min_nodes=oke_min_nodes,
     ocpus=oke_ocpus,
-    stack_name=pulumi.get_stack(),
 )
 
-# VCN outputs
-pulumi.export("vcn_id", vcn.id)
-pulumi.export("cidr_block", vcn.cidr_block)
-
-assert vcn.public_subnet is not None
-assert vcn.private_subnet is not None
-pulumi.export("public_subnet_id", vcn.public_subnet.id)
-pulumi.export("private_subnet_id", vcn.private_subnet.id)
-
-# OKE outputs
-pulumi.export("cluster_id", oke.id)
+vcn.export()
+oke.export()
