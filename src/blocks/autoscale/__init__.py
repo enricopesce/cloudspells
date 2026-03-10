@@ -38,7 +38,7 @@ Typical usage::
         MetricScalingPolicy,
     )
 
-    vcn = Vcn(name="app", compartment_id=compartment_id, stack_name="prod")
+    vcn = Vcn(name="app", compartment_id=compartment_id, cidr_block="10.0.0.0/16")
 
     pool = ScalableWorkload(
         name="web",

@@ -17,6 +17,15 @@ Key behaviours
 * Session access is controlled at the Bastion level via
   ``client_cidr_block_allow_list``; the security-list rule allows all sources
   because OCI Bastion uses dynamically-assigned managed IPs.
+
+Sessions are ephemeral (max 3 h TTL) and are not managed by this block.
+Create them on demand via the OCI CLI::
+
+    oci bastion session create-managed-ssh \\
+        --bastion-id <bastion_id> \\
+        --target-resource-id <instance_id> \\
+        --target-os-username opc \\
+        --ssh-public-key-file ~/.ssh/id_rsa.pub
 """
 
 from __future__ import annotations
@@ -24,7 +33,7 @@ from __future__ import annotations
 import pulumi
 import pulumi_oci as oci
 from core.base import BaseResource
-from blocks.vcn.network import Vcn
+from blocks.vcn import Vcn
 
 
 class Bastion(BaseResource):

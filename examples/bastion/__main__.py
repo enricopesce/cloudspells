@@ -1,16 +1,12 @@
 """VCN + private ComputeInstance + Bastion — secure SSH access to a private instance."""
 
 import pulumi
-from blocks.vcn.network import Vcn
+from blocks.vcn import Vcn, SUBNET_PRIVATE
 from blocks.compute.instance import ComputeInstance
 from blocks.compute.bastion import Bastion
 
 config: pulumi.Config = pulumi.Config()
 compartment_id: str = config.require("compartment_ocid")
-
-ssh_key: str | None = config.get("ssh_key")
-if ssh_key == "":
-    ssh_key = None
 
 # ── 1. VCN ───────────────────────────────────────────────────────────────────
 vcn: Vcn = Vcn(
@@ -19,16 +15,15 @@ vcn: Vcn = Vcn(
 )
 
 # ── 2. Compute instance (deployed to private subnet) ─────────────────────────
-# Adds SSH ingress from public subnet → private subnet (port 22)
-# Calls vcn.finalize_network() — creates subnets and security lists
 instance: ComputeInstance = ComputeInstance(
-    name="app-server",
+    name="web-server",
     compartment_id=compartment_id,
     vcn=vcn,
-    ssh_public_key=ssh_key,
-    shape="VM.Standard.E4.Flex",
+    ssh_public_key=config.get("ssh_key"),
     ocpus=1,
-    memory_in_gbs=16,
+    memory_in_gbs=4,
+    os_name="ubuntu",
+    subnet=SUBNET_PRIVATE
 )
 
 # ── 3. Bastion (OCI managed service, attached to private subnet) ──────────────
@@ -45,3 +40,11 @@ bastion: Bastion = Bastion(
 vcn.export()
 instance.export()
 bastion.export()
+
+# Sessions are ephemeral (max 3 h TTL) and created on demand via the OCI CLI:
+#
+#   oci bastion session create-managed-ssh \
+#       --bastion-id $(pulumi stack output mgmt_bastion_id) \
+#       --target-resource-id $(pulumi stack output web_server_id) \
+#       --target-os-username ubuntu \
+#       --ssh-public-key-file ~/.ssh/id_rsa.pub

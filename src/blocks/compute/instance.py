@@ -21,7 +21,7 @@ from __future__ import annotations
 import pulumi
 import pulumi_oci as oci
 from core.base import BaseResource
-from blocks.vcn.network import Vcn, VcnRef, SUBNET_PUBLIC, SUBNET_PRIVATE, SUBNET_SECURE, SUBNET_MANAGEMENT, SubnetTier
+from blocks.vcn import Vcn, VcnRef, SUBNET_PUBLIC, SUBNET_PRIVATE, SUBNET_SECURE, SUBNET_MANAGEMENT, SubnetTier
 from core.helper import Helper
 
 

@@ -7,10 +7,9 @@ from blocks.autoscale import ScalableWorkload
 
 config: pulumi.Config = pulumi.Config()
 compartment_id: str = config.require("compartment_ocid")
+vcn_cidr_block: str = config.get("vcn_cidr_block") or "10.0.0.0/16"
 
-ssh_key: str | None = config.get("ssh_key") or None
-
-# Cloud-init script to install and start nginx
+# Cloud-init script to install and start nginx (Oracle Linux 8)
 user_data_script = """#!/bin/bash
 set -e
 
@@ -46,6 +45,7 @@ user_data_encoded = base64.b64encode(user_data_script.encode()).decode()
 vcn: Vcn = Vcn(
     name="scalable",
     compartment_id=compartment_id,
+    cidr_block=vcn_cidr_block,
 )
 
 # ScalableWorkload: minimal configuration with sensible defaults.
@@ -55,7 +55,7 @@ scalable_pool: ScalableWorkload = ScalableWorkload(
     name="web-pool",
     compartment_id=compartment_id,
     vcn=vcn,
-    ssh_public_key=ssh_key,
+    ssh_public_key=config.get("ssh_key"),
     user_data=user_data_encoded,
     max_instances=3,
 )

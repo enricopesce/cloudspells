@@ -1,15 +1,13 @@
 """VCN + ComputeInstance test — deploys a single compute instance in a VCN."""
 
 import pulumi
-from blocks.vcn.network import Vcn, SUBNET_PRIVATE
+from blocks.vcn import Vcn, SUBNET_PUBLIC
 from blocks.compute.instance import ComputeInstance
 
 config: pulumi.Config = pulumi.Config()
 compartment_id: str = config.require("compartment_ocid")
-
 ssh_key: str | None = config.get("ssh_key")
-if ssh_key == "":
-    ssh_key = None
+
 
 # Create VCN
 vcn: Vcn = Vcn(
@@ -26,7 +24,7 @@ web_server: ComputeInstance = ComputeInstance(
     ocpus=1,
     memory_in_gbs=4,
     os_name="ubuntu",
-    subnet=SUBNET_PRIVATE,
+    subnet=SUBNET_PUBLIC
 )
 
 vcn.export()

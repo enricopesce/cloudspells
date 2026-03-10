@@ -37,7 +37,7 @@ from __future__ import annotations
 import pulumi
 import pulumi_oci as oci
 from core.base import BaseResource
-from blocks.vcn.network import Vcn, VcnRef
+from blocks.vcn import Vcn, VcnRef
 from dataclasses import dataclass, field
 from enum import Enum
 from core.helper import Helper
@@ -161,7 +161,7 @@ class ScalableWorkload(BaseResource):
 
     1. Minimal web workload (all defaults):
         ```python
-        vcn = Vcn(name="app", compartment_id=comp_id)
+        vcn = Vcn(name="app", compartment_id=comp_id, cidr_block="10.0.0.0/16")
 
         pool = ScalableWorkload(
             name="web",
@@ -175,6 +175,8 @@ class ScalableWorkload(BaseResource):
 
     2. Custom scaling and backend port:
         ```python
+        vcn = Vcn(name="app", compartment_id=comp_id, cidr_block="10.0.0.0/16")
+
         pool = ScalableWorkload(
             name="api",
             compartment_id=comp_id,
@@ -191,6 +193,8 @@ class ScalableWorkload(BaseResource):
 
     3. Schedule-based scaling for predictable load:
         ```python
+        vcn = Vcn(name="app", compartment_id=comp_id, cidr_block="10.0.0.0/16")
+
         pool = ScalableWorkload(
             name="batch",
             compartment_id=comp_id,
@@ -268,8 +272,9 @@ class ScalableWorkload(BaseResource):
         Args:
             name: Logical name for the workload (e.g. ``"web"``).
             compartment_id: OCID of the OCI compartment to deploy into.
-            vcn: :class:`~blocks.vcn.network.Vcn` instance that provides the
-                public and private subnets.
+            vcn: :class:`~blocks.vcn.Vcn` or :class:`~blocks.vcn.VcnRef`
+                providing the 4-tier network.  The load balancer is placed in
+                the public subnet and the instance pool in the private subnet.
             stack_name: Pulumi stack name.  Defaults to
                 ``pulumi.get_stack()`` when ``None``.
             shape: OCI compute shape for instance pool VMs
@@ -371,8 +376,11 @@ class ScalableWorkload(BaseResource):
 
         Private Subnet (Instance Pool):
         - Ingress: Backend port from public subnet (load balancer)
-        - Ingress: SSH (22) from public subnet (bastion access)
         - Egress: HTTPS (443) to OCI services (monitoring, telemetry)
+
+        SSH access to pool instances is not managed here; deploy a
+        :class:`~blocks.compute.bastion.Bastion` block alongside this
+        workload to enable time-limited SSH via the management subnet.
         """
         public_subnet_cidr: pulumi.Input[str] = self.vcn.get_public_subnet_cidr()
         private_subnet_cidr: pulumi.Input[str] = self.vcn.get_private_subnet_cidr()
@@ -428,16 +436,6 @@ class ScalableWorkload(BaseResource):
                     max=backend_port,
                 ),
             ),
-            oci.core.SecurityListIngressSecurityRuleArgs(
-                description="SSH access from public subnet for bastion host access",
-                protocol="6",  # TCP
-                source=public_subnet_cidr,
-                source_type="CIDR_BLOCK",
-                tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                    min=22,
-                    max=22,
-                ),
-            ),
         ]
 
         # Private subnet egress rules (Instance Pool to OCI services)
@@ -466,9 +464,7 @@ class ScalableWorkload(BaseResource):
         """Create the load balancer, backend set, and listeners."""
         lb_config = self.load_balancer_config
 
-        # Subnets are guaranteed to exist after finalize_network()
         assert self.vcn.public_subnet is not None
-        assert self.vcn.private_subnet is not None
 
         # Create load balancer
         lb_name = self.create_resource_name("lb")
