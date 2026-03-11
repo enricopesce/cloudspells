@@ -3,6 +3,7 @@ runtime:
   name: python
   options:
     virtualenv: ../../.venv
+    pythonpath: ../../src
 description: Import an existing VCN from another Pulumi project stack
 config:
   vcn_stack:

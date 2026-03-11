@@ -1,5 +1,9 @@
 """VCN + ComputeInstance test — deploys a single compute instance in a VCN."""
 
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
+
 import pulumi
 from blocks.vcn import Vcn, SUBNET_PUBLIC
 from blocks.compute.instance import ComputeInstance
@@ -21,10 +25,7 @@ web_server: ComputeInstance = ComputeInstance(
     compartment_id=compartment_id,
     vcn=vcn,
     ssh_public_key=ssh_key,
-    ocpus=1,
-    memory_in_gbs=4,
-    os_name="ubuntu",
-    subnet=SUBNET_PUBLIC
+    subnet=SUBNET_PUBLIC,
 )
 
 vcn.export()

@@ -1,5 +1,9 @@
 """VCN + private ComputeInstance + Bastion — secure SSH access to a private instance."""
 
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
+
 import pulumi
 from blocks.vcn import Vcn, SUBNET_PRIVATE
 from blocks.compute.instance import ComputeInstance

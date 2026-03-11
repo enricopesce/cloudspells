@@ -42,6 +42,10 @@ Stack reference format
 - Local file backend: ``"<project>/<stack>"``
 """
 
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
+
 import pulumi
 from blocks.vcn.network import VcnRef
 from blocks.compute.instance import ComputeInstance

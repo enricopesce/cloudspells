@@ -4,6 +4,10 @@ All outputs are consumed by ``examples/import-vcn`` via
 ``VcnRef.from_stack_reference()``.
 """
 
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
+
 import pulumi
 from blocks.vcn.network import Vcn
 

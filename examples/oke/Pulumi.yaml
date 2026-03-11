@@ -3,6 +3,7 @@ runtime:
   name: python
   options:
     virtualenv: ../../.venv
+    pythonpath: ../../src
 description: VCN + OKE cluster test program
 config:
   vcn_cidr_block:

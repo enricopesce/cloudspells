@@ -1,5 +1,9 @@
 """VCN + ScalableWorkload example — autoscaling instance pool with load balancer."""
 
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
+
 import pulumi
 import base64
 from blocks.vcn.network import Vcn
