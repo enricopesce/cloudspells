@@ -13,6 +13,38 @@ topology using a *lazy initialisation* (builder) pattern:
 
 This approach keeps the OCI security-list-per-subnet count at 1, leaving
 the remaining 4 slots free for future services.
+
+**Subnet layout**
+
+The VCN CIDR is split into four contiguous, CIDR-aligned tiers using binary
+subdivision.  The same formula applies regardless of the prefix length you
+choose (``/16``, ``/20``, ``/24``, …):
+
+.. code-block:: text
+
+    VCN  (prefix/N)
+    ├── Private     prefix/(N+1)  — 50 %  of VCN  — NAT + Service GW
+    ├── Secure      prefix/(N+2)  — 25 %  of VCN  — Service GW only
+    ├── Public      prefix/(N+3)  — 12.5% of VCN  — Internet GW
+    └── Management  prefix/(N+3)  — 12.5% of VCN  — Service GW only
+
+Examples for common prefix lengths:
+
++--------+------------------+------------------+------------------+------------------+
+| VCN    | Private (/N+1)   | Secure (/N+2)    | Public (/N+3)    | Management (/N+3)|
++========+==================+==================+==================+==================+
+| /16    | /17  (32 766 h)  | /18  (16 382 h)  | /19   (8 190 h)  | /19   (8 190 h)  |
++--------+------------------+------------------+------------------+------------------+
+| /20    | /21   (2 046 h)  | /22   (1 022 h)  | /23     (510 h)  | /23     (510 h)  |
++--------+------------------+------------------+------------------+------------------+
+| /24    | /25     (126 h)  | /26      (62 h)  | /27      (30 h)  | /27      (30 h)  |
++--------+------------------+------------------+------------------+------------------+
+
+*(h = usable host IPs after subtracting the OCI-reserved 5 addresses per subnet)*
+
+All four blocks together exactly cover the VCN CIDR — no gaps, no overlaps.
+CIDR validation (canonical form, prefix length sanity) is delegated to OCI;
+the Pulumi provider will reject malformed values at plan time.
 """
 
 from __future__ import annotations
@@ -33,29 +65,6 @@ SUBNET_PRIVATE: Literal["private"] = "private"
 SUBNET_SECURE: Literal["secure"] = "secure"
 SUBNET_MANAGEMENT: Literal["management"] = "management"
 
-
-# ---------------------------------------------------------------------------
-# VCN design rules (enforced at construction time for plain-string CIDRs)
-# ---------------------------------------------------------------------------
-#
-# Rule 1 – RFC 1918 only: VCN CIDRs must be drawn from private address space.
-# Rule 2 – Prefix length /16–/20: tiers are sized proportionally, not equally.
-#           Private gets 50 % (prefix+1), Secure 25 % (prefix+2), Public and
-#           Reserved 12.5 % each (prefix+3).  At /20 the private tier is /21
-#           (2 046 usable IPs) — sufficient for OKE with VCN-native pod
-#           networking (~100 nodes × 15 pods).  At /16 private is /17 (32 768
-#           IPs).  Prefix > /20 makes the private tier too small for OKE.
-#
-# Rule 3 – No host bits: the CIDR must be in network-canonical form
-#           (e.g. "10.0.1.0/16" is rejected; use "10.0.0.0/16").
-#
-_RFC1918_RANGES: list[ipaddress.IPv4Network] = [
-    ipaddress.IPv4Network("10.0.0.0/8"),
-    ipaddress.IPv4Network("172.16.0.0/12"),
-    ipaddress.IPv4Network("192.168.0.0/16"),
-]
-_MIN_VCN_PREFIX: int = 16  # /16 → private /17 (32 768 IPs), public /19 (8 192 IPs)
-_MAX_VCN_PREFIX: int = 20  # /20 → private /21 (2 046 IPs), public /23 (510 IPs)
 
 
 class _SubnetRef:
@@ -100,10 +109,13 @@ class Vcn(BaseResource):
 
     * One VCN with a configurable CIDR block (default ``"10.0.0.0/18"``).
     * Internet Gateway, NAT Gateway, and Service Gateway.
-    * Public and private route tables wired to the appropriate gateways.
-    * Public, private, and secure security lists, populated via the builder pattern.
-    * Public, private, secure, and management subnets — all four CIDRs
-      auto-calculated by splitting the VCN CIDR proportionally.
+    * Four route tables — one per subnet tier — wired to the appropriate
+      gateways (see module docstring for routing policy per tier).
+    * Four security lists populated via the builder pattern.
+    * Four contiguous, CIDR-aligned subnets auto-calculated by binary
+      subdivision of the VCN CIDR (private 50 %, secure 25 %, public 12.5 %,
+      management 12.5 %).  Any valid prefix length works — ``/16``, ``/20``,
+      ``/24``, etc.  See the module docstring for a worked example table.
 
     .. important::
 
@@ -198,16 +210,18 @@ class Vcn(BaseResource):
             stack_name: Pulumi stack name.  Defaults to
                 ``pulumi.get_stack()`` when ``None``.
             opts: Pulumi resource options forwarded to the component.
-            cidr_block: IPv4 CIDR for the VCN.  Defaults to
-                ``"10.0.0.0/18"`` (16 384 IPs).  The three active tier
-                subnets are carved proportionally: private 50 % (/19,
-                8 190 usable), secure 25 % (/20), public 12.5 % (/21).
+            cidr_block: IPv4 CIDR for the VCN in canonical form
+                (no host bits set, e.g. ``"10.0.0.0/16"`` not
+                ``"10.0.1.0/16"``).  Defaults to ``"10.0.0.0/18"``.
+                Any prefix length is accepted; the four tier subnets are
+                derived automatically by binary subdivision — private gets
+                50 % (prefix+1), secure 25 % (prefix+2), public and
+                management 12.5 % each (prefix+3).  See the module
+                docstring for a full example table across common prefix
+                lengths.
         """
         super().__init__("custom:network:Vcn", name, compartment_id, stack_name, opts)
         self.cidr_block = cidr_block or "10.0.0.0/18"
-
-        if isinstance(self.cidr_block, str):
-            self._validate_cidr(self.cidr_block)
 
         # Initialize the subnet properties
         self.public_subnet = None
@@ -237,83 +251,37 @@ class Vcn(BaseResource):
         self._create_gateways()
         self._create_route_tables()
 
-    # ------------------------------------------------------------------
-    # Validation
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _validate_cidr(cidr: str) -> None:
-        """Enforce VCN design rules on a CIDR string.
-
-        Only called when the caller supplies a plain ``str``; ``pulumi.Output``
-        values cannot be validated synchronously and are accepted as-is.
-
-        Args:
-            cidr: The IPv4 CIDR string to validate.
-
-        Raises:
-            ValueError: If *cidr* violates any of the three VCN design rules:
-
-                * **No host bits** – must be in network-canonical form.
-                * **RFC 1918** – must be a private address range.
-                * **Prefix /16–/24** – must be large enough for meaningful
-                  subnets but not so large it wastes routing space.
-        """
-        try:
-            parsed = ipaddress.ip_network(cidr, strict=True)
-        except ValueError:
-            raise ValueError(
-                f"VCN CIDR {cidr!r} is invalid. "
-                "Supply a canonical CIDR with no host bits set "
-                "(e.g. '10.0.0.0/16', not '10.0.1.0/16')."
-            )
-
-        if not isinstance(parsed, ipaddress.IPv4Network):
-            raise ValueError(
-                f"VCN CIDR {cidr!r} is an IPv6 range. Only IPv4 CIDRs are supported."
-            )
-        network: ipaddress.IPv4Network = parsed
-
-        if not any(network.subnet_of(rfc) for rfc in _RFC1918_RANGES):
-            raise ValueError(
-                f"VCN CIDR {cidr!r} is not in RFC 1918 private address space. "
-                "Use a range from 10.0.0.0/8, 172.16.0.0/12, or 192.168.0.0/16."
-            )
-
-        if not (_MIN_VCN_PREFIX <= network.prefixlen <= _MAX_VCN_PREFIX):
-            raise ValueError(
-                f"VCN CIDR {cidr!r} has prefix length /{network.prefixlen}. "
-                f"Allowed range is /{_MIN_VCN_PREFIX}–/{_MAX_VCN_PREFIX}. "
-                f"The private tier takes 50 % of the VCN (prefix+1); "
-                f"at /{_MAX_VCN_PREFIX} it becomes /{_MAX_VCN_PREFIX + 1} "
-                f"(2 046 usable IPs — minimum for OKE with VCN-native pod networking)."
-            )
-
     @staticmethod
     def _split_tiers(cidr: str) -> list[str]:
-        """Split a VCN CIDR into four proportional tier blocks.
+        """Split a VCN CIDR into four contiguous, CIDR-aligned tier blocks.
 
-        Tiers are sized to reflect realistic workload IP demand — in
-        particular the private tier must be large enough to hold OKE pod IPs
-        when ``OCI_VCN_IP_NATIVE`` CNI is used (one IP per pod):
+        Uses binary subdivision — each tier takes exactly half of the
+        remaining address space:
 
-        * **Private** (50 % — prefix+1): K8s nodes + pods, instance pools,
-          app servers.  Gets the largest block because VCN-native pod
-          networking allocates one subnet IP per running pod.
-        * **Secure** (25 % — prefix+2): Databases, secrets managers.
-          Needs far fewer IPs; generous allocation leaves room for replicas.
-        * **Public** (12.5 % — prefix+3): Load balancers (2 IPs each) and
-          bastion hosts.  Even a large deployment rarely needs more than
-          ~50 IPs here.
-        * **Management** (12.5 % — prefix+3): Monitoring agents, bastion
-          service, VPN/FastConnect endpoints, internal tooling.  Routes via
-          Service Gateway only — same isolation policy as the secure tier.
+        .. code-block:: text
 
-        All four blocks are CIDR-aligned — the private block is placed first
-        so it occupies the naturally aligned half-network boundary.
+            VCN (prefix/N)  ──────────────────────────────────────── 100 %
+            ├── Private  (prefix/N+1) ─────────────────────────────   50 %
+            └── remainder (prefix/N+1)
+                ├── Secure  (prefix/N+2) ──────────────────────────   25 %
+                └── remainder (prefix/N+2)
+                    ├── Public      (prefix/N+3) ───────────────────  12.5 %
+                    └── Management  (prefix/N+3) ───────────────────  12.5 %
+
+        The four blocks are placed in ascending address order so private
+        occupies the naturally aligned lower half (guaranteed CIDR alignment).
+        All four blocks together exactly reconstruct the original VCN CIDR —
+        no gaps, no overlaps.
+
+        The same formula applies for any prefix length:
+
+        * ``/16`` → private ``/17``, secure ``/18``, public ``/19``, mgmt ``/19``
+        * ``/20`` → private ``/21``, secure ``/22``, public ``/23``, mgmt ``/23``
+        * ``/24`` → private ``/25``, secure ``/26``, public ``/27``, mgmt ``/27``
 
         Args:
-            cidr: Canonical VCN CIDR string (e.g. ``"10.0.0.0/16"``).
+            cidr: Canonical VCN CIDR string with no host bits set
+                (e.g. ``"10.0.0.0/16"``).
 
         Returns:
             ``[public_cidr, private_cidr, secure_cidr, management_cidr]``
@@ -324,6 +292,10 @@ class Vcn(BaseResource):
             Vcn._split_tiers("10.0.0.0/16")
             # → ["10.0.192.0/19", "10.0.0.0/17", "10.0.128.0/18", "10.0.224.0/19"]
             #     public           private          secure           management
+
+            Vcn._split_tiers("172.16.0.0/20")
+            # → ["172.16.12.0/23", "172.16.0.0/21", "172.16.8.0/22", "172.16.14.0/23"]
+            #     public            private           secure           management
         """
         net = ipaddress.ip_network(cidr, strict=True)
         halves = list(net.subnets(prefixlen_diff=1))
