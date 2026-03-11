@@ -14,6 +14,10 @@ Available blocks
     accumulated by other blocks and the network is materialised only once via
     :meth:`~blocks.vcn.network.Vcn.finalize_network`.
 
+:class:`VcnRef`
+    Read-only proxy for a VCN that lives in a separate Pulumi stack.
+    All OCIBlocks service blocks accept either ``Vcn`` or ``VcnRef``.
+
 :class:`OkeCluster`
     Oracle Kubernetes Engine cluster with a node pool, VCN-native pod
     networking, and all required security rules.
@@ -22,9 +26,19 @@ Available blocks
     Single OCI compute instance (Oracle Linux 8 by default) with an attached
     block volume and optional auto-generated SSH keys.
 
+:class:`Bastion`
+    OCI Bastion Service endpoint for time-limited SSH sessions into
+    private-subnet resources.
+
 :class:`ScalableWorkload`
     Horizontally-scalable compute tier consisting of an OCI Load Balancer,
     Instance Configuration, Instance Pool, and Autoscaling Configuration.
+
+Configuration helpers
+---------------------
+:class:`LoadBalancerConfig`, :class:`MetricScalingPolicy`,
+:class:`ScheduleScalingPolicy`, :class:`ScheduleEntry`,
+:class:`ScalingMetric`, :class:`ScalingAction`
 
 Quick-start example::
 
@@ -48,14 +62,23 @@ Quick-start example::
     pulumi.export("lb_ip", pool.get_load_balancer_ip())
 """
 
-from .vcn.network import Vcn
+from .vcn.network import Vcn, VcnRef
 from .oke.cluster import OkeCluster
 from .compute.instance import ComputeInstance
-from .autoscale.workload import ScalableWorkload
+from .compute.bastion import Bastion
+from .autoscale.workload import ScalableWorkload, LoadBalancerConfig, MetricScalingPolicy, ScheduleScalingPolicy, ScheduleEntry, ScalingMetric, ScalingAction
 
 __all__ = [
     "Vcn",
+    "VcnRef",
     "OkeCluster",
     "ComputeInstance",
+    "Bastion",
     "ScalableWorkload",
+    "LoadBalancerConfig",
+    "MetricScalingPolicy",
+    "ScheduleScalingPolicy",
+    "ScheduleEntry",
+    "ScalingMetric",
+    "ScalingAction",
 ]

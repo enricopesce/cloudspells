@@ -145,78 +145,67 @@ class LoadBalancerConfig:
 class ScalableWorkload(BaseResource):
     """OCI Scalable Workload with load balancer, instance pool, and autoscaling.
 
-    This block creates a complete horizontally-scalable compute architecture:
-    - OCI Load Balancer with HTTP (and optionally HTTPS) listeners
-    - Instance Configuration as a template for pool instances
-    - Instance Pool for managing multiple identical instances
-    - Autoscaling Configuration with metric-based or schedule-based policies
+    Creates a complete horizontally-scalable compute tier following OCI best
+    practices:
 
-    The architecture follows OCI best practices:
-    - Load balancer deployed to public subnet (internet-facing)
-    - Instance pool deployed to private subnet (not directly exposed)
-    - Automatic health checking and traffic distribution
-    - Automatic scaling based on metrics or schedule
+    * OCI Load Balancer (flexible shape) in the VCN **public** subnet —
+      internet-facing, with HTTP and optional HTTPS listeners.
+    * Instance Configuration as the launch template for pool VMs.
+    * Instance Pool in the VCN **private** subnet, spread across all
+      availability domains.
+    * Autoscaling Configuration — metric-based (CPU/memory thresholds) or
+      schedule-based (Quartz cron).  Pass ``None`` to disable autoscaling.
 
-    Usage Patterns:
+    Security rules are added automatically to the VCN via
+    :meth:`~blocks.vcn.network.Vcn.add_security_list_rules` before
+    :meth:`~blocks.vcn.network.Vcn.finalize_network` is called.
 
-    1. Minimal web workload (all defaults):
-        ```python
+    Attributes:
+        vcn: The :class:`~blocks.vcn.network.Vcn` or
+            :class:`~blocks.vcn.network.VcnRef` this workload is deployed into.
+        shape: Compute shape for instance pool VMs
+            (e.g. ``"VM.Standard.E4.Flex"``).
+        ocpus: Number of OCPUs per instance.
+        memory_in_gbs: RAM in GiB per instance.
+        ssh_public_key: OpenSSH public key installed on instances.
+        ssh_private_key: Corresponding private key, or ``None`` when the caller
+            supplied their own public key.
+        image_id: OCID of the boot image resolved for the pool instances.
+        user_data: Base64-encoded cloud-init user data string, or ``None``.
+        min_instances: Minimum (floor) number of instances for autoscaling.
+        max_instances: Maximum (ceiling) number of instances for autoscaling.
+        initial_instances: Instance count when the pool is first created.
+        load_balancer_config: :class:`LoadBalancerConfig` in use.
+        scaling_policy: :class:`MetricScalingPolicy`,
+            :class:`ScheduleScalingPolicy`, or ``None``.
+        auto_generated_keys: ``True`` when SSH keys were auto-generated.
+        load_balancer: The ``oci.loadbalancer.LoadBalancer`` resource.
+        backend_set: The ``oci.loadbalancer.BackendSet`` resource.
+        listeners: List of ``oci.loadbalancer.Listener`` resources (HTTP,
+            and optionally HTTPS).
+        instance_configuration: The ``oci.core.InstanceConfiguration``
+            resource used as the pool launch template.
+        instance_pool: The ``oci.core.InstancePool`` resource.
+        autoscaling_configuration: The
+            ``oci.autoscaling.AutoScalingConfiguration`` resource, or
+            ``None`` when autoscaling is disabled.
+        id: ``pulumi.Output[str]`` of the instance pool OCID.
+
+    Example::
+
         vcn = Vcn(name="app", compartment_id=comp_id, cidr_block="10.0.0.0/16")
 
         pool = ScalableWorkload(
             name="web",
             compartment_id=comp_id,
             vcn=vcn,
-            user_data=user_data_encoded,
+            min_instances=2,
+            max_instances=10,
+            load_balancer_config=LoadBalancerConfig(backend_port=8080),
+            scaling_policy=MetricScalingPolicy(scale_out_threshold=70),
         )
 
         pulumi.export("lb_ip", pool.get_load_balancer_ip())
-        ```
-
-    2. Custom scaling and backend port:
-        ```python
-        vcn = Vcn(name="app", compartment_id=comp_id, cidr_block="10.0.0.0/16")
-
-        pool = ScalableWorkload(
-            name="api",
-            compartment_id=comp_id,
-            vcn=vcn,
-            min_instances=2,
-            max_instances=10,
-            load_balancer_config=LoadBalancerConfig(
-                backend_port=8080,
-                health_check_path="/api/health",
-            ),
-            scaling_policy=MetricScalingPolicy(scale_out_threshold=60),
-        )
-        ```
-
-    3. Schedule-based scaling for predictable load:
-        ```python
-        vcn = Vcn(name="app", compartment_id=comp_id, cidr_block="10.0.0.0/16")
-
-        pool = ScalableWorkload(
-            name="batch",
-            compartment_id=comp_id,
-            vcn=vcn,
-            scaling_policy=ScheduleScalingPolicy(
-                schedules=[
-                    ScheduleEntry(
-                        cron_expression="0 0 8 ? * MON-FRI *",
-                        action=ScalingAction.CHANGE_COUNT_TO,
-                        value=10,
-                        display_name="Scale up for business hours",
-                    ),
-                    ScheduleEntry(
-                        cron_expression="0 0 18 ? * MON-FRI *",
-                        action=ScalingAction.CHANGE_COUNT_TO,
-                        value=2,
-                        display_name="Scale down after hours",
-                    ),
-                ],
-            ),
-        )
-        ```
     """
 
     vcn: Vcn | VcnRef
@@ -368,19 +357,27 @@ class ScalableWorkload(BaseResource):
     def _add_scalable_workload_security_rules(self) -> None:
         """Add security rules for load balancer and instance pool communication.
 
-        Security Rules Added:
-        ---------------------
-        Public Subnet (Load Balancer):
-        - Ingress: HTTP (80) and HTTPS (443) from internet
-        - Egress: Backend port to private subnet
+        Calls :meth:`~blocks.vcn.network.Vcn.add_security_list_rules` with:
 
-        Private Subnet (Instance Pool):
-        - Ingress: Backend port from public subnet (load balancer)
-        - Egress: HTTPS (443) to OCI services (monitoring, telemetry)
+        *Public subnet (Load Balancer)*:
 
-        SSH access to pool instances is not managed here; deploy a
-        :class:`~blocks.compute.bastion.Bastion` block alongside this
-        workload to enable time-limited SSH via the management subnet.
+        * Ingress: HTTP (80) and HTTPS (443) from internet (``0.0.0.0/0``).
+        * Egress: Backend port (``LoadBalancerConfig.backend_port``) to
+          private subnet CIDR.
+
+        *Private subnet (Instance Pool)*:
+
+        * Ingress: Backend port from public subnet CIDR (load balancer
+          health checks and forwarded traffic).
+        * Egress: HTTPS (443) to OCI service CIDR block (monitoring,
+          telemetry, software updates).
+
+        Note:
+            SSH access to pool instances is not managed here.  Deploy a
+            :class:`~blocks.compute.bastion.Bastion` block alongside this
+            workload to enable time-limited SSH via the OCI Bastion Service.
+
+            Must be called before :meth:`~blocks.vcn.network.Vcn.finalize_network`.
         """
         public_subnet_cidr: pulumi.Input[str] = self.vcn.get_public_subnet_cidr()
         private_subnet_cidr: pulumi.Input[str] = self.vcn.get_private_subnet_cidr()
@@ -461,7 +458,15 @@ class ScalableWorkload(BaseResource):
         )
 
     def _create_load_balancer(self) -> None:
-        """Create the load balancer, backend set, and listeners."""
+        """Create the OCI Load Balancer, backend set, and HTTP/HTTPS listeners.
+
+        Always creates an HTTP listener on port 80.  When
+        :attr:`LoadBalancerConfig.ssl_certificate_name` is set, an additional
+        HTTPS listener on port 443 is created using that certificate.
+
+        Sets ``self.load_balancer``, ``self.backend_set``, and
+        ``self.listeners`` on the instance.
+        """
         lb_config = self.load_balancer_config
 
         assert self.vcn.public_subnet is not None
@@ -535,7 +540,14 @@ class ScalableWorkload(BaseResource):
             )
 
     def _create_instance_configuration(self) -> None:
-        """Create the instance configuration as a template for the pool."""
+        """Create the OCI Instance Configuration as a launch template for the pool.
+
+        The configuration captures the shape, image, SSH key, cloud-init user
+        data, and private-subnet placement so that the instance pool can
+        provision identical VMs automatically.
+
+        Sets ``self.instance_configuration`` on the instance.
+        """
         ic_name = self.create_resource_name("ic")
 
         # Subnets are guaranteed to exist after finalize_network()
@@ -578,7 +590,15 @@ class ScalableWorkload(BaseResource):
         )
 
     def _create_instance_pool(self) -> None:
-        """Create the instance pool with load balancer attachment."""
+        """Create the OCI Instance Pool and attach it to the load balancer backend set.
+
+        Spreads instances across all availability domains in the region.  The
+        pool size starts at :attr:`initial_instances` and is managed by the
+        autoscaling configuration between :attr:`min_instances` and
+        :attr:`max_instances`.
+
+        Sets ``self.instance_pool`` on the instance.
+        """
         pool_name = self.create_resource_name("pool")
 
         # Subnets are guaranteed to exist after finalize_network()
@@ -613,7 +633,15 @@ class ScalableWorkload(BaseResource):
         )
 
     def _create_autoscaling_configuration(self) -> None:
-        """Create autoscaling configuration based on the scaling policy."""
+        """Dispatch to the appropriate autoscaling factory based on *scaling_policy*.
+
+        Delegates to :meth:`_create_metric_autoscaling` or
+        :meth:`_create_schedule_autoscaling`.  Does nothing when
+        :attr:`scaling_policy` is ``None``.
+
+        Sets ``self.autoscaling_configuration`` on the instance (or leaves it
+        ``None`` if autoscaling is disabled).
+        """
         if self.scaling_policy is None:
             return
 
@@ -625,7 +653,23 @@ class ScalableWorkload(BaseResource):
             self._create_schedule_autoscaling(asc_name)
 
     def _create_metric_autoscaling(self, asc_name: str) -> None:
-        """Create metric-based autoscaling configuration."""
+        """Create a threshold-based autoscaling configuration for the instance pool.
+
+        Configures two rules against the metric specified in
+        :attr:`MetricScalingPolicy.metric`:
+
+        * **Scale out**: fires when the metric exceeds
+          :attr:`~MetricScalingPolicy.scale_out_threshold` (``GT`` operator)
+          and adds :attr:`~MetricScalingPolicy.scale_out_value` instances.
+        * **Scale in**: fires when the metric falls below
+          :attr:`~MetricScalingPolicy.scale_in_threshold` (``LT`` operator)
+          and removes ``abs(scale_in_value)`` instances.
+
+        Args:
+            asc_name: Fully-qualified OCI resource name for the autoscaling
+                configuration (created by
+                :meth:`~core.base.BaseResource.create_resource_name`).
+        """
         policy = self.scaling_policy
         assert isinstance(policy, MetricScalingPolicy)
 
@@ -687,7 +731,19 @@ class ScalableWorkload(BaseResource):
         )
 
     def _create_schedule_autoscaling(self, asc_name: str) -> None:
-        """Create schedule-based autoscaling configuration."""
+        """Create a cron-schedule-based autoscaling configuration for the instance pool.
+
+        One OCI autoscaling policy is created per :class:`ScheduleEntry` in
+        :attr:`ScheduleScalingPolicy.schedules`.  Each policy uses a Quartz
+        cron expression in UTC and performs a
+        :attr:`~ScheduleEntry.action` of either ``CHANGE_COUNT_BY`` or
+        ``CHANGE_COUNT_TO``.
+
+        Args:
+            asc_name: Fully-qualified OCI resource name for the autoscaling
+                configuration (created by
+                :meth:`~core.base.BaseResource.create_resource_name`).
+        """
         policy = self.scaling_policy
         assert isinstance(policy, ScheduleScalingPolicy)
 
@@ -752,23 +808,49 @@ class ScalableWorkload(BaseResource):
             pulumi.export(f"{prefix}_ssh_private_key", pulumi.Output.secret(self.ssh_private_key))
 
     def get_load_balancer_ip(self) -> pulumi.Output[str]:
-        """Get the public IP address of the load balancer."""
+        """Return the public IP address of the load balancer.
+
+        Resolves the first entry in the load balancer's ``ip_address_details``
+        list, which is the public VIP when :attr:`LoadBalancerConfig.is_public`
+        is ``True``.
+
+        Returns:
+            ``pulumi.Output[str]`` resolving to the IP address string, or an
+            empty string if the load balancer has no IP details yet.
+        """
         return self.load_balancer.ip_address_details.apply(
             lambda details: details[0].ip_address or "" if details else ""
         )
 
     def get_instance_pool_id(self) -> pulumi.Output[str]:
-        """Get the OCID of the instance pool."""
+        """Return the OCID of the instance pool.
+
+        Returns:
+            ``pulumi.Output[str]`` resolving to the instance pool OCID.
+        """
         return self.instance_pool.id
 
     def get_load_balancer_id(self) -> pulumi.Output[str]:
-        """Get the OCID of the load balancer."""
+        """Return the OCID of the load balancer.
+
+        Returns:
+            ``pulumi.Output[str]`` resolving to the load balancer OCID.
+        """
         return self.load_balancer.id
 
     def get_ssh_public_key(self) -> str:
-        """Get the SSH public key used for instances."""
+        """Return the SSH public key installed on pool instances.
+
+        Returns:
+            OpenSSH public key string (auto-generated or caller-supplied).
+        """
         return self.ssh_public_key
 
     def get_ssh_private_key(self) -> str | None:
-        """Get the SSH private key if auto-generated, None otherwise."""
+        """Return the SSH private key if it was auto-generated.
+
+        Returns:
+            PEM-encoded private key string when keys were auto-generated,
+            or ``None`` when the caller supplied their own public key.
+        """
         return self.ssh_private_key
