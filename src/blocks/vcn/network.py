@@ -171,6 +171,11 @@ class Vcn(BaseResource):
             # vcn.public_subnet and vcn.private_subnet are now available
     """
 
+    SUBNET_PUBLIC: Literal["public"] = "public"
+    SUBNET_PRIVATE: Literal["private"] = "private"
+    SUBNET_SECURE: Literal["secure"] = "secure"
+    SUBNET_MANAGEMENT: Literal["management"] = "management"
+
     cidr_block: pulumi.Input[str]
     vcn: oci.core.Vcn
     internet_gateway: oci.core.InternetGateway

@@ -1,158 +1,321 @@
-"""Unit tests for ComputeInstance block."""
+"""Unit tests for ComputeInstance block and VolumeSpec dataclass."""
 
 import unittest
 import sys
 import os
 
-# Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import pulumi
 
-# Set up mocks BEFORE importing infrastructure
 from tests.mocks import set_mocks
 set_mocks()
 
-# Import AFTER mocks are set
 from blocks.vcn.network import Vcn
 from blocks.compute.instance import ComputeInstance
+from blocks.compute.volume import VolumeSpec
+
+
+class TestVolumeSpec(unittest.TestCase):
+    """Tests for VolumeSpec validation and defaults."""
+
+    def test_default_fields(self):
+        """VolumeSpec defaults are correct."""
+        spec = VolumeSpec(size_in_gbs=100)
+        self.assertEqual(spec.label, "data")
+        self.assertEqual(spec.vpus_per_gb, VolumeSpec.PERF_BALANCED)
+        self.assertFalse(spec.is_read_only)
+
+    def test_performance_constants(self):
+        """Class-level performance constants have expected values."""
+        self.assertEqual(VolumeSpec.PERF_LOW, 0)
+        self.assertEqual(VolumeSpec.PERF_BALANCED, 10)
+        self.assertEqual(VolumeSpec.PERF_HIGH, 20)
+        self.assertEqual(VolumeSpec.PERF_ULTRA, 120)
+
+    def test_valid_custom_spec(self):
+        """A fully-specified VolumeSpec is accepted."""
+        spec = VolumeSpec(
+            size_in_gbs=500,
+            label="db",
+            vpus_per_gb=VolumeSpec.PERF_HIGH,
+            is_read_only=True,
+        )
+        self.assertEqual(spec.size_in_gbs, 500)
+        self.assertEqual(spec.label, "db")
+        self.assertEqual(spec.vpus_per_gb, 20)
+        self.assertTrue(spec.is_read_only)
+
+    def test_rejects_size_below_minimum(self):
+        """size_in_gbs < 50 raises ValueError."""
+        with self.assertRaises(ValueError, msg="size_in_gbs < 50 should raise"):
+            VolumeSpec(size_in_gbs=49)
+
+    def test_rejects_invalid_vpus(self):
+        """vpus_per_gb not in {0,10,20,120} raises ValueError."""
+        with self.assertRaises(ValueError):
+            VolumeSpec(size_in_gbs=100, vpus_per_gb=5)
+
+    def test_rejects_invalid_label_uppercase(self):
+        """Label with uppercase letters raises ValueError."""
+        with self.assertRaises(ValueError):
+            VolumeSpec(size_in_gbs=100, label="Data")
+
+    def test_rejects_invalid_label_starts_digit(self):
+        """Label starting with a digit raises ValueError."""
+        with self.assertRaises(ValueError):
+            VolumeSpec(size_in_gbs=100, label="1data")
+
+    def test_rejects_empty_label(self):
+        """Empty label raises ValueError."""
+        with self.assertRaises(ValueError):
+            VolumeSpec(size_in_gbs=100, label="")
+
+    def test_accepts_label_with_hyphen(self):
+        """Label with hyphens is accepted."""
+        spec = VolumeSpec(size_in_gbs=100, label="my-data")
+        self.assertEqual(spec.label, "my-data")
+
+    def test_accepts_exact_minimum_size(self):
+        """size_in_gbs == 50 is accepted."""
+        spec = VolumeSpec(size_in_gbs=50)
+        self.assertEqual(spec.size_in_gbs, 50)
 
 
 class TestComputeInstance(unittest.TestCase):
-    """Test cases for ComputeInstance block."""
+    """Tests for ComputeInstance block."""
 
     def setUp(self):
-        """Set up VCN for compute tests."""
-        self.vcn = Vcn(
-            name="compute-test-vcn",
-            compartment_id="ocid1.compartment.test",
-        )
+        self.vcn = Vcn(name="compute-test-vcn", compartment_id="ocid1.compartment.test")
+
+    # ------ resource creation -----------------------------------------
 
     @pulumi.runtime.test
-    def test_compute_creates_instance(self):
-        """Test that ComputeInstance creates an instance."""
+    def test_creates_instance(self):
+        """ComputeInstance creates an oci.core.Instance."""
         instance = ComputeInstance(
             name="test-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
-
-        def check_instance(instance_id):
-            self.assertIsNotNone(instance_id, "Instance must be created")
-
-        return instance.instance.id.apply(check_instance)
+        return instance.instance.id.apply(
+            lambda iid: self.assertIsNotNone(iid)
+        )
 
     @pulumi.runtime.test
-    def test_compute_creates_block_volume(self):
-        """Test that ComputeInstance creates a block volume."""
+    def test_default_creates_one_volume(self):
+        """Default ComputeInstance creates exactly one block volume."""
         instance = ComputeInstance(
             name="test-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
-
-        def check_volume(volume_id):
-            self.assertIsNotNone(volume_id, "Block volume must be created")
-
-        return instance.block_volume.id.apply(check_volume)
+        self.assertEqual(len(instance.block_volumes), 1)
+        self.assertEqual(len(instance.volume_attachments), 1)
+        return instance.block_volumes[0].id.apply(
+            lambda vid: self.assertIsNotNone(vid)
+        )
 
     @pulumi.runtime.test
-    def test_compute_creates_volume_attachment(self):
-        """Test that ComputeInstance creates a volume attachment."""
+    def test_multiple_volumes_created(self):
+        """ComputeInstance creates all volumes in the list."""
+        instance = ComputeInstance(
+            name="multi-vol-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+            volumes=[
+                VolumeSpec(size_in_gbs=100, label="data"),
+                VolumeSpec(size_in_gbs=200, label="logs"),
+                VolumeSpec(size_in_gbs=500, label="db", vpus_per_gb=VolumeSpec.PERF_HIGH),
+            ],
+        )
+        self.assertEqual(len(instance.block_volumes), 3)
+        self.assertEqual(len(instance.volume_attachments), 3)
+        self.assertEqual(len(instance.volumes_spec), 3)
+
+    @pulumi.runtime.test
+    def test_creates_volume_attachment(self):
+        """ComputeInstance creates a volume attachment."""
         instance = ComputeInstance(
             name="test-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
-
-        def check_attachment(attachment_id):
-            self.assertIsNotNone(attachment_id, "Volume attachment must be created")
-
-        return instance.volume_attachment.id.apply(check_attachment)
-
-    @pulumi.runtime.test
-    def test_compute_finalizes_vcn(self):
-        """Test that ComputeInstance calls finalize_network() on VCN."""
-        vcn = Vcn(
-            name="finalize-test-vcn",
-            compartment_id="ocid1.compartment.test",
+        return instance.volume_attachments[0].id.apply(
+            lambda aid: self.assertIsNotNone(aid)
         )
 
-        # Subnets should be None before ComputeInstance
+    @pulumi.runtime.test
+    def test_finalizes_vcn(self):
+        """ComputeInstance calls finalize_network() on the VCN."""
+        vcn = Vcn(name="finalize-test-vcn", compartment_id="ocid1.compartment.test")
         self.assertIsNone(vcn.public_subnet)
         self.assertIsNone(vcn.private_subnet)
-
-        instance = ComputeInstance(
+        ComputeInstance(
             name="test-instance",
             compartment_id="ocid1.compartment.test",
             vcn=vcn,
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
+        self.assertIsNotNone(vcn.public_subnet)
+        self.assertIsNotNone(vcn.private_subnet)
+        public_subnet = vcn.public_subnet
+        assert public_subnet is not None
+        return public_subnet.id.apply(lambda _: None)
 
-        # After ComputeInstance, subnets should exist
-        self.assertIsNotNone(vcn.public_subnet, "VCN should be finalized by ComputeInstance")
-        self.assertIsNotNone(vcn.private_subnet, "VCN should be finalized by ComputeInstance")
+    # ------ backward-compat properties --------------------------------
 
-    def test_compute_auto_generates_ssh_key(self):
-        """Test that ComputeInstance auto-generates SSH keys when not provided."""
+    @pulumi.runtime.test
+    def test_block_volume_property_returns_first_volume(self):
+        """block_volume property returns block_volumes[0]."""
+        instance = ComputeInstance(
+            name="compat-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+        )
+        self.assertIs(instance.block_volume, instance.block_volumes[0])
+        return instance.block_volume.id.apply(lambda vid: self.assertIsNotNone(vid))
+
+    @pulumi.runtime.test
+    def test_volume_attachment_property_returns_first_attachment(self):
+        """volume_attachment property returns volume_attachments[0]."""
+        instance = ComputeInstance(
+            name="compat-attach-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+        )
+        self.assertIs(instance.volume_attachment, instance.volume_attachments[0])
+        return instance.volume_attachment.id.apply(lambda aid: self.assertIsNotNone(aid))
+
+    # ------ accessor methods ------------------------------------------
+
+    @pulumi.runtime.test
+    def test_get_volume_id_by_label(self):
+        """get_volume_id returns the OCID for the named volume."""
+        instance = ComputeInstance(
+            name="label-lookup-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+            volumes=[
+                VolumeSpec(size_in_gbs=100, label="data"),
+                VolumeSpec(size_in_gbs=200, label="logs"),
+            ],
+        )
+        return instance.get_volume_id("logs").apply(
+            lambda vid: self.assertIsNotNone(vid)
+        )
+
+    def test_get_volume_id_unknown_label_raises(self):
+        """get_volume_id raises KeyError for an unknown label."""
+        instance = ComputeInstance(
+            name="keyerror-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+        )
+        with self.assertRaises(KeyError):
+            instance.get_volume_id("nonexistent")
+
+    def test_get_all_volume_ids_length(self):
+        """get_all_volume_ids returns one Output per volume."""
+        instance = ComputeInstance(
+            name="all-ids-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+            volumes=[
+                VolumeSpec(size_in_gbs=100, label="a"),
+                VolumeSpec(size_in_gbs=100, label="b"),
+                VolumeSpec(size_in_gbs=100, label="c"),
+            ],
+        )
+        self.assertEqual(len(instance.get_all_volume_ids()), 3)
+
+    # ------ validation ------------------------------------------------
+
+    def test_duplicate_labels_raises(self):
+        """Duplicate VolumeSpec labels raise ValueError."""
+        with self.assertRaises(ValueError, msg="Duplicate labels must raise"):
+            ComputeInstance(
+                name="dup-label-instance",
+                compartment_id="ocid1.compartment.test",
+                vcn=self.vcn,
+                ssh_public_key="ssh-rsa AAAAB3... test-key",
+                volumes=[
+                    VolumeSpec(size_in_gbs=100, label="data"),
+                    VolumeSpec(size_in_gbs=200, label="data"),
+                ],
+            )
+
+    def test_empty_volumes_list_raises(self):
+        """Empty volumes list raises ValueError."""
+        with self.assertRaises(ValueError):
+            ComputeInstance(
+                name="empty-vols-instance",
+                compartment_id="ocid1.compartment.test",
+                vcn=self.vcn,
+                ssh_public_key="ssh-rsa AAAAB3... test-key",
+                volumes=[],
+            )
+
+    # ------ SSH keys --------------------------------------------------
+
+    def test_auto_generates_ssh_key(self):
+        """ComputeInstance auto-generates SSH keys when not provided."""
         instance = ComputeInstance(
             name="auto-key-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            # No ssh_public_key provided
         )
+        self.assertTrue(instance.auto_generated_keys)
+        self.assertIsNotNone(instance.ssh_public_key)
+        self.assertIsNotNone(instance.ssh_private_key)
+        self.assertTrue(instance.ssh_public_key.startswith("ssh-rsa"))
 
-        self.assertTrue(instance.auto_generated_keys, "Keys should be auto-generated")
-        self.assertIsNotNone(instance.ssh_public_key, "Public key should be generated")
-        self.assertIsNotNone(instance.ssh_private_key, "Private key should be generated")
-        self.assertTrue(
-            instance.ssh_public_key.startswith("ssh-rsa"),
-            "Public key should be RSA format"
-        )
-
-    def test_compute_uses_provided_ssh_key(self):
-        """Test that ComputeInstance uses provided SSH key."""
+    def test_uses_provided_ssh_key(self):
+        """ComputeInstance uses a caller-supplied SSH key."""
         provided_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAA... user@host"
-
         instance = ComputeInstance(
             name="provided-key-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
             ssh_public_key=provided_key,
         )
+        self.assertFalse(instance.auto_generated_keys)
+        self.assertEqual(instance.ssh_public_key, provided_key)
+        self.assertIsNone(instance.ssh_private_key)
 
-        self.assertFalse(instance.auto_generated_keys, "Keys should not be auto-generated")
-        self.assertEqual(instance.ssh_public_key, provided_key, "Should use provided key")
-        self.assertIsNone(instance.ssh_private_key, "Private key should be None when provided")
-
-    def test_compute_treats_empty_key_as_none(self):
-        """Test that empty SSH key string triggers auto-generation."""
+    def test_empty_key_triggers_auto_generation(self):
+        """Empty SSH key string triggers auto-generation."""
         instance = ComputeInstance(
             name="empty-key-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            ssh_public_key="",  # Empty string
+            ssh_public_key="",
         )
+        self.assertTrue(instance.auto_generated_keys)
 
-        self.assertTrue(instance.auto_generated_keys, "Empty key should trigger auto-generation")
-        self.assertIsNotNone(instance.ssh_public_key)
+    # ------ shape / config --------------------------------------------
 
-    def test_compute_default_shape(self):
-        """Test that ComputeInstance uses default shape."""
+    def test_default_shape(self):
+        """Default shape is VM.Standard.E4.Flex."""
         instance = ComputeInstance(
             name="default-shape-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
+        self.assertEqual(instance.shape, "VM.Standard.E4.Flex")
 
-        self.assertEqual(instance.shape, "VM.Standard.E4.Flex", "Default shape should be E4.Flex")
-
-    def test_compute_custom_shape(self):
-        """Test that ComputeInstance accepts custom shape."""
+    def test_custom_shape(self):
+        """Custom shape, ocpus, and memory_in_gbs are stored."""
         instance = ComputeInstance(
             name="custom-shape-instance",
             compartment_id="ocid1.compartment.test",
@@ -162,39 +325,40 @@ class TestComputeInstance(unittest.TestCase):
             ocpus=4,
             memory_in_gbs=24,
         )
-
         self.assertEqual(instance.shape, "VM.Standard.A1.Flex")
         self.assertEqual(instance.ocpus, 4)
         self.assertEqual(instance.memory_in_gbs, 24)
 
-    def test_compute_custom_volume_sizes(self):
-        """Test that ComputeInstance accepts custom volume sizes."""
+    def test_volumes_spec_stored(self):
+        """volumes_spec attribute reflects the provided list."""
+        specs = [
+            VolumeSpec(size_in_gbs=100, label="data"),
+            VolumeSpec(size_in_gbs=500, label="db", vpus_per_gb=VolumeSpec.PERF_HIGH),
+        ]
         instance = ComputeInstance(
-            name="custom-volumes-instance",
+            name="spec-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
             ssh_public_key="ssh-rsa AAAAB3... test-key",
-            boot_volume_size_in_gbs=100,
-            block_volume_size_in_gbs=500,
+            volumes=specs,
         )
+        self.assertEqual(instance.volumes_spec, specs)
 
-        self.assertEqual(instance.boot_volume_size_in_gbs, 100)
-        self.assertEqual(instance.block_volume_size_in_gbs, 500)
+    # ------ getter methods --------------------------------------------
 
-    def test_compute_getter_methods(self):
-        """Test ComputeInstance getter methods."""
+    def test_getter_methods_return_outputs(self):
+        """Standard getter methods return non-None values."""
         instance = ComputeInstance(
             name="getter-test-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
-
-        # Verify getter methods return Output types
         self.assertIsNotNone(instance.get_private_ip())
         self.assertIsNotNone(instance.get_instance_id())
         self.assertIsNotNone(instance.get_block_volume_id())
         self.assertIsNotNone(instance.get_ssh_public_key())
+        self.assertEqual(len(instance.get_all_volume_ids()), 1)
 
 
 if __name__ == "__main__":

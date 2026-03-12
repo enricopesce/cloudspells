@@ -23,8 +23,8 @@ Available blocks
     networking, and all required security rules.
 
 :class:`ComputeInstance`
-    Single OCI compute instance (Oracle Linux 8 by default) with an attached
-    block volume and optional auto-generated SSH keys.
+    Single OCI compute instance with one or more attached block volumes, each
+    described by a :class:`VolumeSpec`, and optional auto-generated SSH keys.
 
 :class:`Bastion`
     OCI Bastion Service endpoint for time-limited SSH sessions into
@@ -36,6 +36,8 @@ Available blocks
 
 Configuration helpers
 ---------------------
+:class:`VolumeSpec`
+
 :class:`LoadBalancerConfig`, :class:`MetricScalingPolicy`,
 :class:`ScheduleScalingPolicy`, :class:`ScheduleEntry`,
 :class:`ScalingMetric`, :class:`ScalingAction`
@@ -65,6 +67,7 @@ Quick-start example::
 from .vcn.network import Vcn, VcnRef
 from .oke.cluster import OkeCluster
 from .compute.instance import ComputeInstance
+from .compute.volume import VolumeSpec as VolumeSpec
 from .compute.bastion import Bastion
 from .autoscale.workload import ScalableWorkload, LoadBalancerConfig, MetricScalingPolicy, ScheduleScalingPolicy, ScheduleEntry, ScalingMetric, ScalingAction
 
@@ -73,6 +76,7 @@ __all__ = [
     "VcnRef",
     "OkeCluster",
     "ComputeInstance",
+    "VolumeSpec",
     "Bastion",
     "ScalableWorkload",
     "LoadBalancerConfig",
