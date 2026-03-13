@@ -1,0 +1,16 @@
+name: wen-db
+runtime:
+  name: python
+  options:
+    virtualenv: ../../.venv
+    pythonpath: ../../src
+description: VCN + ScalableWorkload test program
+config:
+  vcn_cidr_block:
+    type: string
+    description: The network CIDR for the VCN
+    default: "10.0.0.0/16"
+  ssh_key:
+    type: string
+    description: SSH public key (leave empty to auto-generate)
+    default: ""
