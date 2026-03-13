@@ -1,17 +1,15 @@
-"""Utility helpers for OCIBlocks resource management.
+"""Cloud-neutral utility helpers for OCIBlocks resource management.
 
 Provides :class:`Helper`, a stateless utility class whose methods cover
-three areas:
+two cloud-neutral areas:
 
-* **Subnet CIDR calculation** – splitting a VCN supernet into *n* equal
+* **Subnet CIDR calculation** – splitting a supernet CIDR into *n* equal
   sub-networks.
 * **SSH key generation** – creating RSA 4096-bit key pairs on the fly
   using the system ``ssh-keygen`` binary.
-* **Image resolution** – looking up the latest Oracle Linux 8 image for a
-  given compute shape when no explicit image OCID is supplied.
-* **Availability domain mapping** – converting the OCI SDK representation
-  of availability domains into the placement configuration format expected
-  by the OKE node pool API.
+
+OCI-specific helpers (image resolution and availability-domain mapping)
+live in :mod:`providers.oci.helper`.
 """
 
 from random_word import RandomWords
@@ -19,7 +17,7 @@ import ipaddress
 import os
 import subprocess
 import tempfile
-from typing import List, Dict, Any, Union
+from typing import List, Union
 
 
 class Helper:
@@ -40,34 +38,6 @@ class Helper:
         """
         r = RandomWords()
         return r.get_random_word()
-
-    def get_ads(self, ads: List[Dict[str, Any]], net: str) -> List[Dict[str, str]]:
-        """Convert availability domain data into placement configuration dicts.
-
-        Transforms the raw list returned by
-        ``oci.identity.get_availability_domains()`` into the format expected
-        by the OKE node pool ``placement_configs`` argument.
-
-        Args:
-            ads: List of availability domain dictionaries, each containing at
-                least a ``"name"`` key (e.g. ``[{"name": "AD-1"}, ...]``).
-            net: Subnet OCID to assign to every placement configuration entry.
-
-        Returns:
-            List of ``{"availability_domain": str, "subnet_id": str}`` dicts,
-            one entry per availability domain.
-
-        Example:
-            >>> h = Helper()
-            >>> ads = [{"name": "Uocm:PHX-AD-1"}, {"name": "Uocm:PHX-AD-2"}]
-            >>> h.get_ads(ads, "ocid1.subnet.oc1...")
-            [{'availability_domain': 'Uocm:PHX-AD-1', 'subnet_id': 'ocid1.subnet.oc1...'},
-             {'availability_domain': 'Uocm:PHX-AD-2', 'subnet_id': 'ocid1.subnet.oc1...'}]
-        """
-        result: List[Dict[str, str]] = []
-        for ad in ads:
-            result.append({"availability_domain": str(ad["name"]), "subnet_id": net})
-        return result
 
     def generate_ssh_key_pair(self, stack_name: str, resource_name: str) -> tuple[str, str]:
         """Generate an RSA 4096-bit SSH key pair using ``ssh-keygen``.
@@ -109,62 +79,6 @@ class Helper:
             with open(key_path, "r") as f:
                 private_key = f.read()
         return public_key, private_key
-
-    # Maps friendly OS names to (operating_system, operating_system_version)
-    # as expected by the OCI images API.
-    _OS_MAP: dict[str, tuple[str, str]] = {
-        "oracle": ("Oracle Linux", "8"),
-        "ubuntu": ("Canonical Ubuntu", "22.04"),
-        "windows": ("Windows", "Server 2022 Standard"),
-    }
-
-    def resolve_image_id(
-        self,
-        compartment_id: str,
-        shape: str,
-        image_id: str | None = None,
-        os_name: str = "oracle",
-    ) -> str:
-        """Resolve the compute image OCID to use for an instance.
-
-        When *image_id* is provided it is returned immediately.  Otherwise
-        the method queries the OCI API for the most recently created image
-        matching *os_name* that is compatible with *shape*.
-
-        Args:
-            compartment_id: OCID of the compartment to search for images.
-            shape: Compute shape name used to filter compatible images
-                (e.g. ``"VM.Standard.E4.Flex"``).
-            image_id: Optional explicit image OCID.  When provided, the OCI
-                API is not queried and this value is returned as-is.
-            os_name: Friendly OS identifier.  Supported values:
-
-                * ``"oracle"`` – Oracle Linux 8 (default)
-                * ``"ubuntu"`` – Canonical Ubuntu 22.04
-                * ``"windows"`` – Windows Server 2022 Standard
-
-        Returns:
-            The image OCID string to use for instance creation.
-
-        Raises:
-            ValueError: If *os_name* is not one of the supported values.
-        """
-        if image_id is not None:
-            return image_id
-        if os_name not in self._OS_MAP:
-            supported = ", ".join(f'"{k}"' for k in self._OS_MAP)
-            raise ValueError(f"Unsupported os_name {os_name!r}. Supported values: {supported}")
-        operating_system, operating_system_version = self._OS_MAP[os_name]
-        import pulumi_oci as oci
-        images = oci.core.get_images(
-            compartment_id=compartment_id,
-            operating_system=operating_system,
-            operating_system_version=operating_system_version,
-            shape=shape,
-            sort_by="TIMECREATED",
-            sort_order="DESC",
-        )
-        return images.images[0].id
 
     def calculate_subnets(self, cidr: str, num_subnets: int) -> List[str]:
         """Split a supernet CIDR into *n* equal sub-networks.

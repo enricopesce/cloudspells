@@ -5,8 +5,9 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
 import pulumi
-from blocks.vcn import Vcn
-from blocks.compute import ComputeInstance, VolumeSpec
+from providers.oci.network import Vcn
+from providers.oci.compute import ComputeInstance
+from providers.oci.volume import VolumeSpec
 
 config: pulumi.Config = pulumi.Config()
 compartment_id: str = config.require("compartment_ocid")
@@ -25,7 +26,7 @@ web_server: ComputeInstance = ComputeInstance(
     compartment_id=compartment_id,
     vcn=vcn,
     ssh_public_key=ssh_key,
-    subnet=Vcn.SUBNET_PRIVATE,
+    subnet=Vcn.SUBNET_PUBLIC,
     volumes=[
         VolumeSpec(size_in_gbs=100, label="data"),
         VolumeSpec(size_in_gbs=200, label="logs", vpus_per_gb=VolumeSpec.PERF_LOW),

@@ -47,8 +47,8 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
 import pulumi
-from blocks.vcn.network import VcnRef
-from blocks.compute.instance import ComputeInstance
+from providers.oci.network import VcnRef
+from providers.oci.compute import ComputeInstance
 
 config: pulumi.Config = pulumi.Config()
 compartment_id: str = config.require("compartment_ocid")

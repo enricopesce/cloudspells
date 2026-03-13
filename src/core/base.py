@@ -32,7 +32,10 @@ class BaseResource(pulumi.ComponentResource):
     class and call ``super().__init__()`` as their first step.
 
     Attributes:
-        compartment_id: OCID of the OCI compartment that owns child resources.
+        project_ref: Cloud-neutral provider project reference (OCI compartment
+            OCID, AWS account ID, GCP project ID, etc.).
+        compartment_id: OCI-specific alias for :attr:`project_ref`.  Kept for
+            backward compatibility with all OCI blocks.
         stack_name: Resolved Pulumi stack name used in all resource names and
             tags.
         name: Logical resource name supplied by the caller.
@@ -42,7 +45,8 @@ class BaseResource(pulumi.ComponentResource):
             resource.
     """
 
-    compartment_id: pulumi.Input[str]
+    project_ref: pulumi.Input[str] | None
+    compartment_id: pulumi.Input[str] | None
     stack_name: str
     name: str
     display_name: str
@@ -53,9 +57,11 @@ class BaseResource(pulumi.ComponentResource):
         self,
         resource_type: str,
         name: str,
-        compartment_id: pulumi.Input[str],
+        compartment_id: pulumi.Input[str] | None = None,
         stack_name: str | None = None,
         opts: pulumi.ResourceOptions | None = None,
+        *,
+        project_ref: pulumi.Input[str] | None = None,
     ) -> None:
         """Initialise a named, tagged Pulumi component resource.
 
@@ -66,17 +72,27 @@ class BaseResource(pulumi.ComponentResource):
                 *stack_name* to form the Pulumi resource URN
                 ``"{stack_name}-{name}"``.
             compartment_id: OCID of the OCI compartment that will own the
-                child resources created by this component.
+                child resources created by this component.  For non-OCI
+                providers use *project_ref* instead.  At least one of
+                *compartment_id* or *project_ref* must be provided.
             stack_name: Pulumi stack name.  Defaults to
                 ``pulumi.get_stack()`` when ``None``; override in tests to
                 avoid a live Pulumi context.
             opts: Standard Pulumi resource options forwarded to the component
                 base class (e.g. ``protect``, ``depends_on``).
+            project_ref: Cloud-neutral alias for *compartment_id*.  When both
+                are provided *compartment_id* takes precedence.  Use this
+                parameter for non-OCI providers (AWS account ID, GCP project
+                ID, etc.) to keep :class:`BaseResource` cloud-neutral.
         """
         resolved_stack = stack_name if stack_name is not None else pulumi.get_stack()
         super().__init__(resource_type, f"{resolved_stack}-{name}", {}, opts)
 
-        self.compartment_id = compartment_id
+        # Resolve the provider-specific project reference from either alias.
+        # compartment_id is kept for backward compatibility with all OCI blocks.
+        resolved_ref = compartment_id if compartment_id is not None else project_ref
+        self.project_ref = resolved_ref
+        self.compartment_id = resolved_ref
         self.stack_name = resolved_stack
         self.name = name
         self.display_name = f"{resolved_stack}-{name}"

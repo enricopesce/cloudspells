@@ -5,9 +5,10 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
 import pulumi
-from blocks.vcn import Vcn, SUBNET_PRIVATE
-from blocks.compute.instance import ComputeInstance
-from blocks.compute.bastion import Bastion
+from providers.oci.network import Vcn
+from providers.oci.compute import ComputeInstance
+from providers.oci.bastion import Bastion
+from providers.oci import SUBNET_PRIVATE
 
 config: pulumi.Config = pulumi.Config()
 compartment_id: str = config.require("compartment_ocid")

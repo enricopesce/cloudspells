@@ -5,8 +5,8 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
 import pulumi
-from blocks.vcn.network import Vcn
-from blocks.oke.cluster import OkeCluster
+from providers.oci.network import Vcn
+from providers.oci.kubernetes import OkeCluster
 
 config: pulumi.Config = pulumi.Config()
 compartment_id: str = config.require("compartment_ocid")

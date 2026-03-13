@@ -6,8 +6,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
 import pulumi
 import base64
-from blocks.vcn.network import Vcn
-from blocks.autoscale import ScalableWorkload
+from providers.oci.network import Vcn
+from providers.oci.autoscale import ScalableWorkload
 
 config: pulumi.Config = pulumi.Config()
 compartment_id: str = config.require("compartment_ocid")
