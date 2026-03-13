@@ -11,3 +11,4 @@ dist
 .pulumi-passphrase
 *passphrase*
 .vscode
+**/.pulumi/
