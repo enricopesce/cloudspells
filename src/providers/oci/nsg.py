@@ -16,7 +16,7 @@ Typical usage
 .. code-block:: python
 
     from providers.oci.nsg import (
-        Nsg, TCP, ALL, SVC_CIDR,
+        Nsg, TCP, ALL, SVC_CIDR, INTERNET,
         HTTP, HTTPS, SSH, POSTGRES,
         tcp_port, icmp_opts,
     )
@@ -26,9 +26,9 @@ Typical usage
     web_nsg = Nsg("web-backend",   vcn=vcn, compartment_id=compartment_id)
     db_nsg  = Nsg("database",      vcn=vcn, compartment_id=compartment_id)
 
-    # Internet edge — use convenience helpers
-    lb_nsg.allow_from_internet("https-in", HTTPS)
-    lb_nsg.allow_from_internet("http-in",  HTTP)
+    # Internet edge — INTERNET constant replaces hard-coded "0.0.0.0/0"
+    lb_nsg.allow_from_cidr("https-in", HTTPS, INTERNET)
+    lb_nsg.allow_from_cidr("http-in",  HTTP,  INTERNET)
     lb_nsg.allow_icmp_path_mtu_in("icmp-in")
     lb_nsg.allow_to_nsg("app-out", web_nsg, 8080)
     lb_nsg.allow_icmp_path_mtu_out("icmp-out")
@@ -37,7 +37,7 @@ Typical usage
     web_nsg.allow_from_nsg("ssh-in", lb_nsg, SSH)
     web_nsg.allow_to_nsg("db-out",   db_nsg, POSTGRES)
     web_nsg.allow_to_services("svc-out")
-    web_nsg.allow_to_internet("inet-out")
+    web_nsg.allow_to_cidr("inet-out", INTERNET)
 
     db_nsg.allow_from_nsg("db-in",  web_nsg, POSTGRES)
     db_nsg.allow_from_nsg("ssh-in", web_nsg, SSH)
@@ -84,6 +84,10 @@ ALL: str = "all"
 
 SVC_CIDR: str = oci.core.get_services().services[0].cidr_block
 """OCI All-Services CIDR block used for Service Gateway egress rules."""
+
+INTERNET: str = "0.0.0.0/0"
+"""CIDR representing the public internet.  Use with :meth:`Nsg.allow_from_cidr`
+and :meth:`Nsg.allow_to_cidr` for edge-facing rules."""
 
 # ── Well-known port constants ─────────────────────────────────────────────────
 # Web / access
@@ -427,43 +431,6 @@ class Nsg(BaseResource):
     # Convenience helpers — encode idiomatic OCI patterns
     # ------------------------------------------------------------------
 
-    def allow_from_internet(
-        self,
-        label: str,
-        port: int,
-        description: str = "",
-    ) -> oci.core.NetworkSecurityGroupSecurityRule:
-        """Add an INGRESS TCP rule allowing traffic from the public internet.
-
-        Shorthand for an INGRESS rule with ``source="0.0.0.0/0"`` and
-        ``source_type="CIDR_BLOCK"``.  Use this for edge-facing ports on
-        load balancers or public-subnet hosts.
-
-        Args:
-            label: Unique label for this rule within the NSG.
-            port: Destination TCP port (e.g. ``HTTPS``, ``HTTP``, ``SSH``).
-            description: Optional human-readable description.  Defaults to
-                ``"TCP {port} from internet"``.
-
-        Returns:
-            The ``oci.core.NetworkSecurityGroupSecurityRule`` resource.
-
-        Example::
-
-            lb_nsg.allow_from_internet("https-in", HTTPS)
-            lb_nsg.allow_from_internet("http-in",  HTTP)
-            lb_nsg.allow_from_internet("ssh-in",   SSH)
-        """
-        return self.add_rule(
-            label,
-            direction="INGRESS",
-            protocol=TCP,
-            source="0.0.0.0/0",
-            source_type="CIDR_BLOCK",
-            tcp_options=tcp_port(port),
-            description=description or f"TCP {port} from internet",
-        )
-
     def allow_from_cidr(
         self,
         label: str,
@@ -471,17 +438,17 @@ class Nsg(BaseResource):
         cidr: str,
         description: str = "",
     ) -> oci.core.NetworkSecurityGroupSecurityRule:
-        """Add an INGRESS TCP rule allowing traffic from a specific CIDR.
+        """Add an INGRESS TCP rule allowing traffic from a CIDR block.
 
-        Use this for restricted sources such as an office IP, VPN range, or
-        peered VCN CIDR.  For unrestricted internet access use
-        :meth:`allow_from_internet` instead.
+        Use :data:`INTERNET` (``"0.0.0.0/0"``) for unrestricted internet
+        access, or pass a specific CIDR for restricted sources such as an
+        office IP, VPN range, or peered VCN CIDR.
 
         Args:
             label: Unique label for this rule within the NSG.
             port: Destination TCP port.
-            cidr: Source CIDR block (e.g. ``"203.0.113.0/24"`` or
-                ``"10.1.0.0/16"``).
+            cidr: Source CIDR block.  Use :data:`INTERNET` for
+                ``"0.0.0.0/0"``.
             description: Optional human-readable description.  Defaults to
                 ``"TCP {port} from {cidr}"``.
 
@@ -490,9 +457,9 @@ class Nsg(BaseResource):
 
         Example::
 
-            lb_nsg.allow_from_cidr("ssh-office", SSH,     "203.0.113.42/32")
-            lb_nsg.allow_from_cidr("ssh-vpn",    SSH,     "10.8.0.0/16")
-            db_nsg.allow_from_cidr("db-peered",  POSTGRES, "172.16.0.0/12")
+            lb_nsg.allow_from_cidr("https-in",   HTTPS,    INTERNET)
+            lb_nsg.allow_from_cidr("ssh-office",  SSH,      "203.0.113.42/32")
+            db_nsg.allow_from_cidr("db-peered",   POSTGRES, "172.16.0.0/12")
         """
         return self.add_rule(
             label,
@@ -613,35 +580,39 @@ class Nsg(BaseResource):
             description=description or "All traffic to Oracle Services",
         )
 
-    def allow_to_internet(
+    def allow_to_cidr(
         self,
         label: str,
+        cidr: str,
         description: str = "",
     ) -> oci.core.NetworkSecurityGroupSecurityRule:
-        """Add an EGRESS rule allowing all traffic to the public internet.
+        """Add an EGRESS all-protocol rule allowing traffic to a CIDR block.
 
-        Routes via the VCN's NAT Gateway for private-subnet instances.  Only
-        applicable to instances in subnets with a NAT Gateway route.
+        Use :data:`INTERNET` (``"0.0.0.0/0"``) for unrestricted outbound via
+        the NAT Gateway, or pass a specific CIDR for targeted egress.
 
         Args:
             label: Unique label for this rule within the NSG.
+            cidr: Destination CIDR block.  Use :data:`INTERNET` for
+                ``"0.0.0.0/0"``.
             description: Optional human-readable description.  Defaults to
-                ``"All traffic to internet"``.
+                ``"All traffic to {cidr}"``.
 
         Returns:
             The ``oci.core.NetworkSecurityGroupSecurityRule`` resource.
 
         Example::
 
-            web_nsg.allow_to_internet("inet-out")
+            web_nsg.allow_to_cidr("inet-out",    INTERNET)
+            web_nsg.allow_to_cidr("peered-out",  "10.1.0.0/16")
         """
         return self.add_rule(
             label,
             direction="EGRESS",
             protocol=ALL,
-            destination="0.0.0.0/0",
+            destination=cidr,
             destination_type="CIDR_BLOCK",
-            description=description or "All traffic to internet",
+            description=description or f"All traffic to {cidr}",
         )
 
     def allow_icmp_path_mtu_in(
@@ -711,7 +682,7 @@ class Nsg(BaseResource):
 
 __all__ = [
     "Nsg",
-    "TCP", "UDP", "ICMP", "ALL", "SVC_CIDR",
+    "TCP", "UDP", "ICMP", "ALL", "SVC_CIDR", "INTERNET",
     # Web / access
     "HTTP", "HTTPS", "HTTP_ALT", "HTTPS_ALT", "SSH", "RDP",
     # Databases

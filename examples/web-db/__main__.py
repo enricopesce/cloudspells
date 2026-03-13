@@ -75,11 +75,15 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
 import pulumi
-import pulumi_oci as oci
 from providers.oci.network import Vcn, SUBNET_PUBLIC, SUBNET_PRIVATE, SUBNET_SECURE
 from providers.oci.compute import ComputeInstance
-from providers.oci.nsg import Nsg, HTTP, HTTPS, SSH
+from providers.oci.nsg import Nsg, INTERNET, HTTP, HTTPS, SSH
 from providers.oci.volume import VolumeSpec
+from core.abstractions.network import (
+    SecurityRules, CLOUD_SERVICES,
+    tcp_ingress, icmp_path_mtu_ingress,
+    all_egress, icmp_path_mtu_egress,
+)
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -115,9 +119,9 @@ db_nsg:  Nsg = Nsg("database",      vcn=vcn, compartment_id=compartment_id)
 
 # ── lb-nsg ────────────────────────────────────────────────────────────────────
 
-lb_nsg.allow_from_internet("https-in", HTTPS)
-lb_nsg.allow_from_internet("http-in",  HTTP)
-lb_nsg.allow_from_internet("ssh-in",   SSH)
+lb_nsg.allow_from_cidr("https-in", HTTPS, INTERNET)
+lb_nsg.allow_from_cidr("http-in",  HTTP,  INTERNET)
+lb_nsg.allow_from_cidr("ssh-in",   SSH,   INTERNET)
 lb_nsg.allow_icmp_path_mtu_in("icmp-in")
 lb_nsg.allow_to_nsg("app-out", web_nsg, app_port)
 lb_nsg.allow_icmp_path_mtu_out("icmp-out")
@@ -130,7 +134,7 @@ web_nsg.allow_icmp_path_mtu_in("icmp-in")
 web_nsg.allow_to_nsg("db-out",     db_nsg, db_port)
 web_nsg.allow_to_nsg("ssh-db-out", db_nsg, SSH)
 web_nsg.allow_to_services("svc-out")
-web_nsg.allow_to_internet("inet-out")
+web_nsg.allow_to_cidr("inet-out", INTERNET)
 
 # ── db-nsg ────────────────────────────────────────────────────────────────────
 
@@ -143,60 +147,28 @@ db_nsg.allow_to_services("svc-out")
 # OCI enforces both the Security List (subnet level) and the NSG (VNIC level).
 # The Security List is the outer boundary; the NSG is the inner enforcement.
 
-vcn.add_security_list_rules(
+vcn.add_security_rules(SecurityRules(
     public_ingress=[
-        oci.core.SecurityListIngressSecurityRuleArgs(
-            description="HTTP/HTTPS/SSH from internet",
-            protocol="6", source="0.0.0.0/0", source_type="CIDR_BLOCK",
-            tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                min=22, max=22),
-        ),
-        oci.core.SecurityListIngressSecurityRuleArgs(
-            description="HTTP from internet",
-            protocol="6", source="0.0.0.0/0", source_type="CIDR_BLOCK",
-            tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                min=80, max=80),
-        ),
-        oci.core.SecurityListIngressSecurityRuleArgs(
-            description="HTTPS from internet",
-            protocol="6", source="0.0.0.0/0", source_type="CIDR_BLOCK",
-            tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                min=443, max=443),
-        ),
+        tcp_ingress(HTTPS, INTERNET),
+        tcp_ingress(HTTP,  INTERNET),
+        tcp_ingress(SSH,   INTERNET),
+        icmp_path_mtu_ingress(),
     ],
+    public_egress=[icmp_path_mtu_egress()],
     private_ingress=[
-        oci.core.SecurityListIngressSecurityRuleArgs(
-            description=f"TCP {app_port} from public subnet",
-            protocol="6", source=vcn.get_public_subnet_cidr(),
-            source_type="CIDR_BLOCK",
-            tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                min=app_port, max=app_port),
-        ),
-        oci.core.SecurityListIngressSecurityRuleArgs(
-            description="SSH from public subnet",
-            protocol="6", source=vcn.get_public_subnet_cidr(),
-            source_type="CIDR_BLOCK",
-            tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                min=22, max=22),
-        ),
+        tcp_ingress(app_port, vcn.get_public_subnet_cidr()),
+        tcp_ingress(SSH,      vcn.get_public_subnet_cidr()),
+    ],
+    private_egress=[
+        all_egress(CLOUD_SERVICES),
+        all_egress(INTERNET),
     ],
     secure_ingress=[
-        oci.core.SecurityListIngressSecurityRuleArgs(
-            description=f"TCP {db_port} from private subnet",
-            protocol="6", source=vcn.get_private_subnet_cidr(),
-            source_type="CIDR_BLOCK",
-            tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                min=db_port, max=db_port),
-        ),
-        oci.core.SecurityListIngressSecurityRuleArgs(
-            description="SSH from private subnet",
-            protocol="6", source=vcn.get_private_subnet_cidr(),
-            source_type="CIDR_BLOCK",
-            tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                min=22, max=22),
-        ),
+        tcp_ingress(db_port, vcn.get_private_subnet_cidr()),
+        tcp_ingress(SSH,     vcn.get_private_subnet_cidr()),
     ],
-)
+    secure_egress=[all_egress(CLOUD_SERVICES)],
+))
 
 vcn.finalize_network()
 
