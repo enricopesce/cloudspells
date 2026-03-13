@@ -4,24 +4,24 @@ Re-exports from :mod:`providers.oci.network`.  Existing imports such as
 ``from blocks.vcn import Vcn`` continue to work unchanged.
 """
 
-from providers.oci.network import (  # noqa: F401
+from providers.oci.network import (
+    SUBNET_MANAGEMENT,
+    SUBNET_PRIVATE,
+    SUBNET_PUBLIC,
+    SUBNET_SECURE,
+    SubnetTier,
     Vcn,
     VcnRef,
     get_resources_by_tag,
-    SUBNET_PUBLIC,
-    SUBNET_PRIVATE,
-    SUBNET_SECURE,
-    SUBNET_MANAGEMENT,
-    SubnetTier,
 )
 
 __all__ = [
+    "SUBNET_MANAGEMENT",
+    "SUBNET_PRIVATE",
+    "SUBNET_PUBLIC",
+    "SUBNET_SECURE",
+    "SubnetTier",
     "Vcn",
     "VcnRef",
     "get_resources_by_tag",
-    "SUBNET_PUBLIC",
-    "SUBNET_PRIVATE",
-    "SUBNET_SECURE",
-    "SUBNET_MANAGEMENT",
-    "SubnetTier",
 ]

@@ -42,6 +42,7 @@ SUBNET_MANAGEMENT: SubnetTier = "management"
 # DiskSpec
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DiskSpec:
     """Cloud-neutral block-disk descriptor.
@@ -88,6 +89,7 @@ class DiskSpec:
 # ---------------------------------------------------------------------------
 # AbstractCompute
 # ---------------------------------------------------------------------------
+
 
 class AbstractCompute(ABC):
     """Interface for a single cloud VM with attached block disks.
@@ -173,11 +175,11 @@ class AbstractCompute(ABC):
 
 
 __all__ = [
+    "SUBNET_MANAGEMENT",
+    "SUBNET_PRIVATE",
+    "SUBNET_PUBLIC",
+    "SUBNET_SECURE",
+    "AbstractCompute",
     "DiskSpec",
     "SubnetTier",
-    "SUBNET_PUBLIC",
-    "SUBNET_PRIVATE",
-    "SUBNET_SECURE",
-    "SUBNET_MANAGEMENT",
-    "AbstractCompute",
 ]

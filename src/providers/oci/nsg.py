@@ -65,6 +65,7 @@ from __future__ import annotations
 
 import pulumi
 import pulumi_oci as oci
+
 from core.base import BaseResource
 from providers.oci.network import Vcn
 
@@ -178,6 +179,7 @@ DNS: int = 53
 
 # ── Rule-options helpers ──────────────────────────────────────────────────────
 
+
 def tcp_port(port: int) -> oci.core.NetworkSecurityGroupSecurityRuleTcpOptionsArgs:
     """Return TCP options restricting traffic to a single destination port.
 
@@ -200,9 +202,7 @@ def tcp_port(port: int) -> oci.core.NetworkSecurityGroupSecurityRuleTcpOptionsAr
     )
 
 
-def tcp_port_range(
-    min_port: int, max_port: int
-) -> oci.core.NetworkSecurityGroupSecurityRuleTcpOptionsArgs:
+def tcp_port_range(min_port: int, max_port: int) -> oci.core.NetworkSecurityGroupSecurityRuleTcpOptionsArgs:
     """Return TCP options restricting traffic to a destination port range.
 
     Args:
@@ -225,9 +225,7 @@ def tcp_port_range(
     )
 
 
-def icmp_opts(
-    icmp_type: int, icmp_code: int
-) -> oci.core.NetworkSecurityGroupSecurityRuleIcmpOptionsArgs:
+def icmp_opts(icmp_type: int, icmp_code: int) -> oci.core.NetworkSecurityGroupSecurityRuleIcmpOptionsArgs:
     """Return ICMP options for a specific type/code pair.
 
     Args:
@@ -248,6 +246,7 @@ def icmp_opts(
 
 
 # ── Nsg ───────────────────────────────────────────────────────────────────────
+
 
 class Nsg(BaseResource):
     """A single named Network Security Group with caller-defined rules.
@@ -682,20 +681,44 @@ class Nsg(BaseResource):
 
 __all__ = [
     "Nsg",
-    "TCP", "UDP", "ICMP", "ALL", "SVC_CIDR", "INTERNET",
+    "TCP",
+    "UDP",
+    "ICMP",
+    "ALL",
+    "SVC_CIDR",
+    "INTERNET",
     # Web / access
-    "HTTP", "HTTPS", "HTTP_ALT", "HTTPS_ALT", "SSH", "RDP",
+    "HTTP",
+    "HTTPS",
+    "HTTP_ALT",
+    "HTTPS_ALT",
+    "SSH",
+    "RDP",
     # Databases
-    "MYSQL", "POSTGRES", "ORACLE_DB", "MSSQL", "CASSANDRA", "MONGODB",
+    "MYSQL",
+    "POSTGRES",
+    "ORACLE_DB",
+    "MSSQL",
+    "CASSANDRA",
+    "MONGODB",
     # Caching / messaging
-    "REDIS", "MEMCACHED", "RABBITMQ", "KAFKA",
+    "REDIS",
+    "MEMCACHED",
+    "RABBITMQ",
+    "KAFKA",
     # File / directory
-    "NFS", "SMB", "LDAP", "LDAPS",
+    "NFS",
+    "SMB",
+    "LDAP",
+    "LDAPS",
     # Search / observability
     "ELASTICSEARCH",
     # Mail
-    "SMTP", "SMTPS",
+    "SMTP",
+    "SMTPS",
     # DNS
     "DNS",
-    "tcp_port", "tcp_port_range", "icmp_opts",
+    "tcp_port",
+    "tcp_port_range",
+    "icmp_opts",
 ]

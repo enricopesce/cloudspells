@@ -26,7 +26,19 @@ pip install -r requirements.txt
 # Type checking
 pyright
 
-# Run all tests
+# Lint (ruff — reports errors)
+ruff check src/ tests/
+
+# Lint with auto-fix
+ruff check src/ tests/ --fix
+
+# Format (ruff)
+ruff format src/ tests/
+
+# Format check only (no changes)
+ruff format --check src/ tests/
+
+# Run all tests with coverage
 pytest
 
 # Run a single test file
@@ -34,6 +46,12 @@ pytest tests/test_vcn.py
 
 # Run a single test case
 pytest tests/test_vcn.py::TestVcn::test_vcn_creates_base_resources
+
+# Dead code detection
+vulture src/ --min-confidence 80
+
+# Full quality gate (run before committing)
+ruff check src/ tests/ && ruff format --check src/ tests/ && pyright && pytest
 
 # Preview infrastructure changes (run from an example directory)
 cd examples/autoscale && pulumi preview

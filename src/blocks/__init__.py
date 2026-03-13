@@ -7,35 +7,37 @@ For new code, import directly from :mod:`providers.oci` or from
 :mod:`core.abstractions` to write cloud-neutral typed functions.
 """
 
-from providers.oci.network import Vcn, VcnRef  # noqa: F401
-from providers.oci.kubernetes import OkeCluster  # noqa: F401
-from providers.oci.compute import ComputeInstance  # noqa: F401
-from providers.oci.volume import VolumeSpec  # noqa: F401
-from providers.oci.bastion import Bastion  # noqa: F401
-from providers.oci.autoscale import (  # noqa: F401
-    ScalableWorkload,
-    OciLoadBalancerConfig as LoadBalancerConfig,
-    OciLoadBalancerConfig,
+from providers.oci.autoscale import (
     MetricScalingPolicy,
-    ScheduleScalingPolicy,
-    ScheduleEntry,
-    ScalingMetric,
+    OciLoadBalancerConfig,
+    ScalableWorkload,
     ScalingAction,
+    ScalingMetric,
+    ScheduleEntry,
+    ScheduleScalingPolicy,
 )
+from providers.oci.autoscale import (
+    OciLoadBalancerConfig as LoadBalancerConfig,
+)
+from providers.oci.bastion import Bastion
+from providers.oci.compute import ComputeInstance
+from providers.oci.kubernetes import OkeCluster
+from providers.oci.network import Vcn, VcnRef
+from providers.oci.volume import VolumeSpec
 
 __all__ = [
+    "Bastion",
+    "ComputeInstance",
+    "LoadBalancerConfig",
+    "MetricScalingPolicy",
+    "OciLoadBalancerConfig",
+    "OkeCluster",
+    "ScalableWorkload",
+    "ScalingAction",
+    "ScalingMetric",
+    "ScheduleEntry",
+    "ScheduleScalingPolicy",
     "Vcn",
     "VcnRef",
-    "OkeCluster",
-    "ComputeInstance",
     "VolumeSpec",
-    "Bastion",
-    "ScalableWorkload",
-    "LoadBalancerConfig",
-    "OciLoadBalancerConfig",
-    "MetricScalingPolicy",
-    "ScheduleScalingPolicy",
-    "ScheduleEntry",
-    "ScalingMetric",
-    "ScalingAction",
 ]

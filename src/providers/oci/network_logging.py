@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import pulumi
 import pulumi_oci as oci
+
 from core.base import BaseResource
 from providers.oci.network import Vcn
 
@@ -123,8 +124,7 @@ class VcnFlowLogs(BaseResource):
             compartment_id=self.compartment_id,
             display_name=lg_name,
             description=(
-                "Network audit log group for VCN flow logs. "
-                "Captures accepted and rejected traffic on all subnet tiers."
+                "Network audit log group for VCN flow logs. Captures accepted and rejected traffic on all subnet tiers."
             ),
             freeform_tags=self.create_freeform_tags(
                 lg_name,
@@ -178,15 +178,9 @@ class VcnFlowLogs(BaseResource):
         Requires all four subnet attributes on *vcn* to be non-``None``,
         which is guaranteed after :meth:`~Vcn.finalize_network` runs.
         """
-        assert self._vcn.public_subnet is not None, (
-            "VcnFlowLogs requires vcn.finalize_network() to be called first."
-        )
-        assert self._vcn.private_subnet is not None, (
-            "VcnFlowLogs requires vcn.finalize_network() to be called first."
-        )
-        assert self._vcn.secure_subnet is not None, (
-            "VcnFlowLogs requires vcn.finalize_network() to be called first."
-        )
+        assert self._vcn.public_subnet is not None, "VcnFlowLogs requires vcn.finalize_network() to be called first."
+        assert self._vcn.private_subnet is not None, "VcnFlowLogs requires vcn.finalize_network() to be called first."
+        assert self._vcn.secure_subnet is not None, "VcnFlowLogs requires vcn.finalize_network() to be called first."
         assert self._vcn.management_subnet is not None, (
             "VcnFlowLogs requires vcn.finalize_network() to be called first."
         )

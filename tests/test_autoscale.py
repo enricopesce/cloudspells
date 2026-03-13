@@ -1,8 +1,8 @@
 """Unit tests for AutoScale workload block."""
 
-import unittest
-import sys
 import os
+import sys
+import unittest
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -11,19 +11,20 @@ import pulumi
 
 # Set up mocks BEFORE importing infrastructure
 from tests.mocks import set_mocks
+
 set_mocks()
 
 # Import AFTER mocks are set
-from blocks.vcn.network import Vcn
 from blocks.autoscale.workload import (
-    ScalableWorkload,
+    LoadBalancerConfig,
     MetricScalingPolicy,
-    ScheduleScalingPolicy,
-    ScheduleEntry,
+    ScalableWorkload,
     ScalingAction,
     ScalingMetric,
-    LoadBalancerConfig,
+    ScheduleEntry,
+    ScheduleScalingPolicy,
 )
+from blocks.vcn.network import Vcn
 
 
 class TestAutoscaleWorkload(unittest.TestCase):
@@ -131,10 +132,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
         self.assertTrue(workload.auto_generated_keys, "Keys should be auto-generated")
         self.assertIsNotNone(workload.ssh_public_key, "Public key should be generated")
         self.assertIsNotNone(workload.ssh_private_key, "Private key should be generated")
-        self.assertTrue(
-            workload.ssh_public_key.startswith("ssh-rsa"),
-            "Public key should be RSA format"
-        )
+        self.assertTrue(workload.ssh_public_key.startswith("ssh-rsa"), "Public key should be RSA format")
 
     def test_uses_provided_ssh_key(self):
         """Test that ScalableWorkload uses provided SSH key."""

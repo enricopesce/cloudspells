@@ -3,6 +3,6 @@
 Re-exports from :mod:`providers.oci.compute`.
 """
 
-from providers.oci.compute import ComputeInstance  # noqa: F401
+from providers.oci.compute import ComputeInstance
 
 __all__ = ["ComputeInstance"]

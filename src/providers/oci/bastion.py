@@ -1,4 +1,4 @@
-"""Bastion Service building block for OCIBlocks.
+r"""Bastion Service building block for OCIBlocks.
 
 Provides :class:`Bastion`, which creates an OCI Bastion Service endpoint
 attached to the VCN's private subnet.  The Bastion enables time-limited SSH
@@ -32,8 +32,9 @@ from __future__ import annotations
 
 import pulumi
 import pulumi_oci as oci
-from core.base import BaseResource
+
 from core.abstractions.bastion import AbstractBastion
+from core.base import BaseResource
 from providers.oci.network import Vcn
 
 
@@ -149,10 +150,12 @@ class Bastion(BaseResource, AbstractBastion):
 
         self.bastion_id = self.bastion.id
 
-        self.register_outputs({
-            "bastion_id": self.bastion.id,
-            "bastion_endpoint": self.bastion.private_endpoint_ip_address,
-        })
+        self.register_outputs(
+            {
+                "bastion_id": self.bastion.id,
+                "bastion_endpoint": self.bastion.private_endpoint_ip_address,
+            }
+        )
 
     def _add_bastion_security_rules(self) -> None:
         """Add SSH ingress rule to the VCN private security list.

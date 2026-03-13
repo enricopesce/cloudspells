@@ -12,12 +12,13 @@ OCI-specific helpers (image resolution and availability-domain mapping)
 live in :mod:`providers.oci.helper`.
 """
 
-from random_word import RandomWords
 import ipaddress
 import os
 import subprocess
 import tempfile
 from typing import List, Union
+
+from random_word import RandomWords
 
 
 class Helper:
@@ -65,18 +66,23 @@ class Helper:
             subprocess.run(
                 [
                     "ssh-keygen",
-                    "-t", "rsa",
-                    "-b", "4096",
-                    "-f", key_path,
-                    "-N", "",
-                    "-C", f"ociblocks-{stack_name}-{resource_name}",
+                    "-t",
+                    "rsa",
+                    "-b",
+                    "4096",
+                    "-f",
+                    key_path,
+                    "-N",
+                    "",
+                    "-C",
+                    f"ociblocks-{stack_name}-{resource_name}",
                 ],
                 check=True,
                 capture_output=True,
             )
-            with open(f"{key_path}.pub", "r") as f:
+            with open(f"{key_path}.pub") as f:
                 public_key = f.read().strip()
-            with open(key_path, "r") as f:
+            with open(key_path) as f:
                 private_key = f.read()
         return public_key, private_key
 

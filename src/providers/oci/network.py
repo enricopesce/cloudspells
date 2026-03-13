@@ -52,26 +52,27 @@ the Pulumi provider will reject malformed values at plan time.
 from __future__ import annotations
 
 import ipaddress
+from dataclasses import dataclass
+from typing import Any, Literal
 
-from core.base import BaseResource
+import pulumi
+import pulumi_oci as oci
+
 from core.abstractions.network import (
     AbstractNetwork,
     AbstractNetworkRef,
-    SecurityRules,
-    IngressRule,
     EgressRule,
+    IngressRule,
+    SecurityRules,
 )
-import pulumi
-import pulumi_oci as oci
-from typing import Any, Literal
-from dataclasses import dataclass
+from core.base import BaseResource
 
 # Maps cloud-neutral protocol names to OCI protocol numbers.
 _PROTOCOL_MAP: dict[str, str] = {
-    "tcp":  "6",
-    "udp":  "17",
+    "tcp": "6",
+    "udp": "17",
     "icmp": "1",
-    "all":  "all",
+    "all": "all",
 }
 
 # Subnet tier identifiers — use these constants instead of bare strings.
@@ -81,7 +82,6 @@ SUBNET_PUBLIC: Literal["public"] = "public"
 SUBNET_PRIVATE: Literal["private"] = "private"
 SUBNET_SECURE: Literal["secure"] = "secure"
 SUBNET_MANAGEMENT: Literal["management"] = "management"
-
 
 
 class _SubnetRef:
@@ -321,14 +321,14 @@ class Vcn(BaseResource, AbstractNetwork):
         """
         net = ipaddress.ip_network(cidr, strict=True)
         halves = list(net.subnets(prefixlen_diff=1))
-        private = halves[0]                                        # 50 %
+        private = halves[0]  # 50 %
 
         quarters = list(halves[1].subnets(prefixlen_diff=1))
-        secure = quarters[0]                                       # 25 %
+        secure = quarters[0]  # 25 %
 
         eighths = list(quarters[1].subnets(prefixlen_diff=1))
-        public = eighths[0]                                        # 12.5 %
-        management = eighths[1]                                    # 12.5 %
+        public = eighths[0]  # 12.5 %
+        management = eighths[1]  # 12.5 %
 
         return [str(public), str(private), str(secure), str(management)]
 
@@ -567,7 +567,10 @@ class Vcn(BaseResource, AbstractNetwork):
                 indices 0/1/2/3 map to public/private/secure/management.
         """
         public_cidr, private_cidr, secure_cidr, management_cidr = (
-            subnet_cidrs[0], subnet_cidrs[1], subnet_cidrs[2], subnet_cidrs[3]
+            subnet_cidrs[0],
+            subnet_cidrs[1],
+            subnet_cidrs[2],
+            subnet_cidrs[3],
         )
 
         subnet_configs: dict[tuple[str, str], SubnetConfig] = {
@@ -732,14 +735,10 @@ class Vcn(BaseResource, AbstractNetwork):
                 "source_type": source_type,
                 "description": rule.description,
             }
-            if rule.protocol == "tcp" and (
-                rule.port_min is not None or rule.port_max is not None
-            ):
-                kwargs["tcp_options"] = (
-                    oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                        min=rule.port_min or 1,
-                        max=rule.port_max or 65535,
-                    )
+            if rule.protocol == "tcp" and (rule.port_min is not None or rule.port_max is not None):
+                kwargs["tcp_options"] = oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
+                    min=rule.port_min or 1,
+                    max=rule.port_max or 65535,
                 )
             if rule.protocol == "icmp":
                 icmp_kwargs: dict[str, int] = {}
@@ -747,11 +746,7 @@ class Vcn(BaseResource, AbstractNetwork):
                     icmp_kwargs["type"] = rule.icmp_type
                 if rule.icmp_code is not None:
                     icmp_kwargs["code"] = rule.icmp_code
-                kwargs["icmp_options"] = (
-                    oci.core.SecurityListIngressSecurityRuleIcmpOptionsArgs(
-                        **icmp_kwargs
-                    )
-                )
+                kwargs["icmp_options"] = oci.core.SecurityListIngressSecurityRuleIcmpOptionsArgs(**icmp_kwargs)
             return oci.core.SecurityListIngressSecurityRuleArgs(**kwargs)
 
         def _translate_egress(
@@ -771,14 +766,10 @@ class Vcn(BaseResource, AbstractNetwork):
                 "destination_type": dest_type,
                 "description": rule.description,
             }
-            if rule.protocol == "tcp" and (
-                rule.port_min is not None or rule.port_max is not None
-            ):
-                kwargs["tcp_options"] = (
-                    oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                        min=rule.port_min or 1,
-                        max=rule.port_max or 65535,
-                    )
+            if rule.protocol == "tcp" and (rule.port_min is not None or rule.port_max is not None):
+                kwargs["tcp_options"] = oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
+                    min=rule.port_min or 1,
+                    max=rule.port_max or 65535,
                 )
             if rule.protocol == "icmp":
                 icmp_kwargs: dict[str, int] = {}
@@ -786,11 +777,7 @@ class Vcn(BaseResource, AbstractNetwork):
                     icmp_kwargs["type"] = rule.icmp_type
                 if rule.icmp_code is not None:
                     icmp_kwargs["code"] = rule.icmp_code
-                kwargs["icmp_options"] = (
-                    oci.core.SecurityListEgressSecurityRuleIcmpOptionsArgs(
-                        **icmp_kwargs
-                    )
-                )
+                kwargs["icmp_options"] = oci.core.SecurityListEgressSecurityRuleIcmpOptionsArgs(**icmp_kwargs)
             return oci.core.SecurityListEgressSecurityRuleArgs(**kwargs)
 
         self.add_security_list_rules(
@@ -992,6 +979,17 @@ class VcnRef(AbstractNetworkRef):
                 Required when using
                 :meth:`~blocks.oke.cluster.OkeCluster.get_public_security_list_ids`.
             private_security_list_id: OCID of the private security list.
+            secure_subnet_id: OCID of the existing secure subnet, if present.
+            secure_subnet_cidr: IPv4 CIDR of the secure subnet
+                (e.g. ``"10.0.192.0/18"``). Required when ``secure_subnet_id``
+                is provided.
+            secure_security_list_id: OCID of the secure security list.
+            management_subnet_id: OCID of the existing management subnet,
+                if present.
+            management_subnet_cidr: IPv4 CIDR of the management subnet
+                (e.g. ``"10.0.224.0/18"``). Required when
+                ``management_subnet_id`` is provided.
+            management_security_list_id: OCID of the management security list.
         """
         self.id = pulumi.Output.from_input(vcn_id)
         self.cidr_block = pulumi.Output.from_input(cidr_block) if cidr_block else self.id
@@ -999,17 +997,11 @@ class VcnRef(AbstractNetworkRef):
         self.private_subnet = _SubnetRef(private_subnet_id)
         self._public_subnet_cidr: pulumi.Input[str] = public_subnet_cidr
         self._private_subnet_cidr: pulumi.Input[str] = private_subnet_cidr
-        self.public_security_list = (
-            _SecurityListRef(public_security_list_id) if public_security_list_id else None
-        )
-        self.private_security_list = (
-            _SecurityListRef(private_security_list_id) if private_security_list_id else None
-        )
+        self.public_security_list = _SecurityListRef(public_security_list_id) if public_security_list_id else None
+        self.private_security_list = _SecurityListRef(private_security_list_id) if private_security_list_id else None
         self.secure_subnet = _SubnetRef(secure_subnet_id) if secure_subnet_id else None
         self._secure_subnet_cidr: pulumi.Input[str] = secure_subnet_cidr or ""
-        self.secure_security_list = (
-            _SecurityListRef(secure_security_list_id) if secure_security_list_id else None
-        )
+        self.secure_security_list = _SecurityListRef(secure_security_list_id) if secure_security_list_id else None
         self.management_subnet = _SubnetRef(management_subnet_id) if management_subnet_id else None
         self._management_subnet_cidr: pulumi.Input[str] = management_subnet_cidr or ""
         self.management_security_list = (
@@ -1017,7 +1009,7 @@ class VcnRef(AbstractNetworkRef):
         )
 
     @classmethod
-    def from_stack_reference(cls, stack_name: str) -> "VcnRef":
+    def from_stack_reference(cls, stack_name: str) -> VcnRef:
         """Create a :class:`VcnRef` from outputs published by another Pulumi stack.
 
         Args:
@@ -1079,7 +1071,16 @@ class VcnRef(AbstractNetworkRef):
             management_ingress: Ignored.
             management_egress: Ignored.
         """
-        _ = (public_ingress, public_egress, private_ingress, private_egress, secure_ingress, secure_egress, management_ingress, management_egress)
+        _ = (
+            public_ingress,
+            public_egress,
+            private_ingress,
+            private_egress,
+            secure_ingress,
+            secure_egress,
+            management_ingress,
+            management_egress,
+        )
         pulumi.log.warn(
             "VcnRef: security rules requested by this block are not applied to the "
             "imported VCN. Add the required rules to the source stack first."
@@ -1146,13 +1147,13 @@ def get_resources_by_tag(vcn_instance: Vcn, tag_key: str, tag_value: str) -> lis
 
 
 __all__ = [
-    "Vcn",
-    "VcnRef",
+    "SUBNET_MANAGEMENT",
+    "SUBNET_PRIVATE",
+    "SUBNET_PUBLIC",
+    "SUBNET_SECURE",
     "SubnetConfig",
     "SubnetTier",
-    "SUBNET_PUBLIC",
-    "SUBNET_PRIVATE",
-    "SUBNET_SECURE",
-    "SUBNET_MANAGEMENT",
+    "Vcn",
+    "VcnRef",
     "get_resources_by_tag",
 ]

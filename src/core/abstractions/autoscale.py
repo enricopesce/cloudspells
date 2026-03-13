@@ -240,11 +240,11 @@ class AbstractScalableWorkload(ABC):
 
 
 __all__ = [
-    "ScalingMetric",
-    "ScalingAction",
+    "AbstractScalableWorkload",
+    "LoadBalancerConfig",
     "MetricScalingPolicy",
+    "ScalingAction",
+    "ScalingMetric",
     "ScheduleEntry",
     "ScheduleScalingPolicy",
-    "LoadBalancerConfig",
-    "AbstractScalableWorkload",
 ]

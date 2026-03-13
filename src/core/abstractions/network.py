@@ -198,14 +198,14 @@ class SecurityRules:
         vcn.add_security_rules(rules)
     """
 
-    public_ingress:     list[IngressRule] = field(default_factory=list)
-    public_egress:      list[EgressRule]  = field(default_factory=list)
-    private_ingress:    list[IngressRule] = field(default_factory=list)
-    private_egress:     list[EgressRule]  = field(default_factory=list)
-    secure_ingress:     list[IngressRule] = field(default_factory=list)
-    secure_egress:      list[EgressRule]  = field(default_factory=list)
+    public_ingress: list[IngressRule] = field(default_factory=list)
+    public_egress: list[EgressRule] = field(default_factory=list)
+    private_ingress: list[IngressRule] = field(default_factory=list)
+    private_egress: list[EgressRule] = field(default_factory=list)
+    secure_ingress: list[IngressRule] = field(default_factory=list)
+    secure_egress: list[EgressRule] = field(default_factory=list)
     management_ingress: list[IngressRule] = field(default_factory=list)
-    management_egress:  list[EgressRule]  = field(default_factory=list)
+    management_egress: list[EgressRule] = field(default_factory=list)
 
 
 # ── Source / destination constants ────────────────────────────────────────────
@@ -222,6 +222,7 @@ or the equivalent managed-prefix on other clouds.
 """
 
 # ── Security-rule factory helpers ─────────────────────────────────────────────
+
 
 def tcp_ingress(
     port: int,
@@ -486,19 +487,19 @@ class AbstractNetworkRef(ABC):
         cluster = OkeCluster(name="app", vcn=vcn_ref, ...)
     """
 
-    def add_security_rules(self, rules: SecurityRules) -> None:  # noqa: ARG002
+    def add_security_rules(self, rules: SecurityRules) -> None:  # noqa: B027
         """No-op — cross-stack refs do not mutate the source network.
 
         Args:
             rules: Ignored.
         """
 
-    def finalize_network(self) -> None:
+    def finalize_network(self) -> None:  # noqa: B027
         """No-op — cross-stack refs do not mutate the source network."""
 
     @classmethod
     @abstractmethod
-    def from_stack_reference(cls, stack_name: str) -> "AbstractNetworkRef":
+    def from_stack_reference(cls, stack_name: str) -> AbstractNetworkRef:
         """Construct a read-only network reference from a stack name.
 
         Args:
@@ -511,16 +512,16 @@ class AbstractNetworkRef(ABC):
 
 
 __all__ = [
-    "INTERNET",
     "CLOUD_SERVICES",
-    "IngressRule",
-    "EgressRule",
-    "SecurityRules",
+    "INTERNET",
     "AbstractNetwork",
     "AbstractNetworkRef",
-    "tcp_ingress",
-    "icmp_path_mtu_ingress",
-    "tcp_egress",
+    "EgressRule",
+    "IngressRule",
+    "SecurityRules",
     "all_egress",
     "icmp_path_mtu_egress",
+    "icmp_path_mtu_ingress",
+    "tcp_egress",
+    "tcp_ingress",
 ]

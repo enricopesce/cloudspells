@@ -29,19 +29,19 @@ from typing import Sequence
 import pulumi
 import pulumi_oci as oci
 
-from core.base import BaseResource
 from core.abstractions.compute import AbstractCompute
+from core.base import BaseResource
+from providers.oci.helper import OciHelper
 from providers.oci.network import (
+    SUBNET_MANAGEMENT,
+    SUBNET_PRIVATE,
+    SUBNET_PUBLIC,
+    SUBNET_SECURE,
+    SubnetTier,
     Vcn,
     VcnRef,
-    SUBNET_PUBLIC,
-    SUBNET_PRIVATE,
-    SUBNET_SECURE,
-    SUBNET_MANAGEMENT,
-    SubnetTier,
 )
 from providers.oci.volume import VolumeSpec
-from providers.oci.helper import OciHelper
 
 
 class ComputeInstance(BaseResource, AbstractCompute):
@@ -133,7 +133,6 @@ class ComputeInstance(BaseResource, AbstractCompute):
     id: pulumi.Output[str]
     auto_generated_keys: bool
 
-
     def __init__(
         self,
         name: str,
@@ -183,9 +182,10 @@ class ComputeInstance(BaseResource, AbstractCompute):
             volumes: Ordered list of :class:`~blocks.compute.volume.VolumeSpec`
                 objects describing the block volumes to attach.  Each entry
                 must have a **unique** ``label``; the label is used to derive
-                the resource name suffix.  Defaults to ``None`` — no extra
-                block volumes are created; the boot volume is sufficient for
-                most single-purpose VMs.
+                the resource name suffix.  Defaults to ``None``, which creates
+                a single 100 GiB balanced-performance data volume
+                (``VolumeSpec(size_in_gbs=100)``).  Pass an explicit list to
+                override; an empty list raises ``ValueError``.
             nsg_ids: List of Network Security Group OCIDs to attach to the
                 instance VNIC.  When ``None``, no NSGs are attached and
                 security is enforced by the subnet security list alone.
@@ -199,9 +199,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
                 any two :class:`~blocks.compute.volume.VolumeSpec` entries
                 share the same ``label``.
         """
-        super().__init__(
-            "custom:compute:Instance", name, compartment_id, stack_name, opts
-        )
+        super().__init__("custom:compute:Instance", name, compartment_id, stack_name, opts)
 
         self.name = name
         self.vcn = vcn
@@ -214,14 +212,23 @@ class ComputeInstance(BaseResource, AbstractCompute):
         self.image_id = image_id
         self.boot_volume_size_in_gbs = boot_volume_size_in_gbs
 
-        # Resolve volumes list — None or [] both mean boot volume only.
-        self.volumes_spec = list(volumes) if volumes else []
+        # Resolve volumes list.
+        # None  → one default 100 GiB balanced-performance data volume.
+        # []    → caller error; an explicitly empty list has no valid meaning.
+        if volumes is None:
+            self.volumes_spec = [VolumeSpec(size_in_gbs=100)]
+        elif len(volumes) == 0:
+            raise ValueError(
+                "volumes must not be empty; pass volumes=None to use the default "
+                "100 GiB data volume, or provide at least one VolumeSpec."
+            )
+        else:
+            self.volumes_spec = list(volumes)
         labels = [spec.label for spec in self.volumes_spec]
         duplicates = {lbl for lbl in labels if labels.count(lbl) > 1}
         if duplicates:
             raise ValueError(
-                f"VolumeSpec labels must be unique within the list; "
-                f"duplicates found: {sorted(duplicates)}"
+                f"VolumeSpec labels must be unique within the list; duplicates found: {sorted(duplicates)}"
             )
 
         self.nsg_ids = nsg_ids or []
@@ -245,13 +252,9 @@ class ComputeInstance(BaseResource, AbstractCompute):
 
         # Resolve boot image
         resolved_image_id = str(image_id) if image_id is not None else None
-        self.image_id = OciHelper().resolve_image_id(
-            str(compartment_id), str(shape), resolved_image_id, os_name
-        )
+        self.image_id = OciHelper().resolve_image_id(str(compartment_id), str(shape), resolved_image_id, os_name)
 
-        ads = oci.identity.get_availability_domains(
-            compartment_id=str(compartment_id)
-        )
+        ads = oci.identity.get_availability_domains(compartment_id=str(compartment_id))
         availability_domain = ads.availability_domains[0].name
 
         # ---- Compute instance ------------------------------------------
@@ -400,9 +403,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         ssh_rule = oci.core.SecurityListIngressSecurityRuleArgs(
             protocol="6",
             source_type="CIDR_BLOCK",
-            tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                min=22, max=22
-            ),
+            tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(min=22, max=22),
             description=(
                 "SSH access from private subnet"
                 if self.subnet in (SUBNET_SECURE, SUBNET_MANAGEMENT)
@@ -519,10 +520,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         for spec, vol in zip(self.volumes_spec, self.block_volumes):
             if spec.label == label:
                 return vol.id
-        raise KeyError(
-            f"No volume with label {label!r}. "
-            f"Available labels: {[s.label for s in self.volumes_spec]}"
-        )
+        raise KeyError(f"No volume with label {label!r}. Available labels: {[s.label for s in self.volumes_spec]}")
 
     def get_disk_id(self, label: str) -> pulumi.Output[str]:
         """Return the OCID of the block volume with the given label.
@@ -558,10 +556,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         for spec, vol in zip(self.volumes_spec, self.block_volumes):
             if spec.label == label:
                 return vol
-        raise KeyError(
-            f"No volume with label {label!r}. "
-            f"Available labels: {[s.label for s in self.volumes_spec]}"
-        )
+        raise KeyError(f"No volume with label {label!r}. Available labels: {[s.label for s in self.volumes_spec]}")
 
     def get_volume_attachment(self, label: str) -> oci.core.VolumeAttachment:
         """Return the ``oci.core.VolumeAttachment`` resource with the given label.
@@ -580,8 +575,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
             if spec.label == label:
                 return att
         raise KeyError(
-            f"No volume attachment with label {label!r}. "
-            f"Available labels: {[s.label for s in self.volumes_spec]}"
+            f"No volume attachment with label {label!r}. Available labels: {[s.label for s in self.volumes_spec]}"
         )
 
     def get_all_volume_ids(self) -> list[pulumi.Output[str]]:

@@ -3,8 +3,8 @@
 Re-exports from :mod:`providers.oci`.
 """
 
-from providers.oci.compute import ComputeInstance  # noqa: F401
-from providers.oci.bastion import Bastion  # noqa: F401
-from providers.oci.volume import VolumeSpec  # noqa: F401
+from providers.oci.bastion import Bastion
+from providers.oci.compute import ComputeInstance
+from providers.oci.volume import VolumeSpec
 
-__all__ = ["ComputeInstance", "Bastion", "VolumeSpec"]
+__all__ = ["Bastion", "ComputeInstance", "VolumeSpec"]

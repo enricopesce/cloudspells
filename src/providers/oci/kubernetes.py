@@ -55,13 +55,14 @@ Rules added by this block
 from __future__ import annotations
 
 from typing import Any
+
 import pulumi
 import pulumi_oci as oci
-from core.base import BaseResource
+
 from core.abstractions.kubernetes import AbstractKubernetes
-from core.helper import Helper
-from providers.oci.network import Vcn, VcnRef
+from core.base import BaseResource
 from providers.oci.helper import OciHelper
+from providers.oci.network import Vcn, VcnRef
 
 
 class OkeCluster(BaseResource, AbstractKubernetes):
@@ -235,7 +236,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 placement_configs=ads.apply(lambda ads_list: h.get_ads(ads_list, self.vcn.private_subnet.id)),  # type: ignore[arg-type, union-attr, return-value]
                 size=min_nodes,
                 node_pool_pod_network_option_details=oci.containerengine.NodePoolNodeConfigDetailsNodePoolPodNetworkOptionDetailsArgs(
-                    cni_type="OCI_VCN_IP_NATIVE", pod_subnet_ids=[self.vcn.private_subnet.id]  # type: ignore[union-attr]
+                    cni_type="OCI_VCN_IP_NATIVE",
+                    pod_subnet_ids=[self.vcn.private_subnet.id],  # type: ignore[union-attr]
                 ),
             ),
             node_shape=shape,
@@ -279,7 +281,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         HTTPS (443) to internet (image pulls and pod external API calls);
         ICMP to internet.
         """
-
         # ═══════════════════════════════════════════════════════════════
         # PUBLIC SUBNET – API Endpoint + Load Balancer
         # ═══════════════════════════════════════════════════════════════
@@ -293,22 +294,24 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         public_ingress_rules: list[oci.core.SecurityListIngressSecurityRuleArgs] = [
             # Workers + pods → API server
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Workers and pods communicate with Kubernetes API server for cluster operations and service discovery",
+                description="Workers and pods communicate with Kubernetes API server for cluster operations and service discovery",  # noqa: E501
                 protocol="6",  # TCP
                 source=private_subnet_cidr,
                 source_type="CIDR_BLOCK",
                 tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                    min=6443, max=6443,
+                    min=6443,
+                    max=6443,
                 ),
             ),
             # Workers + pods → control plane internal port
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Workers and pods communicate with Kubernetes control plane for internal cluster operations",
+                description="Workers and pods communicate with Kubernetes control plane for internal cluster operations",  # noqa: E501
                 protocol="6",  # TCP
                 source=private_subnet_cidr,
                 source_type="CIDR_BLOCK",
                 tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                    min=12250, max=12250,
+                    min=12250,
+                    max=12250,
                 ),
             ),
             # ICMP path-MTU from private subnet
@@ -318,7 +321,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 source=private_subnet_cidr,
                 source_type="CIDR_BLOCK",
                 icmp_options=oci.core.SecurityListIngressSecurityRuleIcmpOptionsArgs(
-                    type=3, code=4,
+                    type=3,
+                    code=4,
                 ),
             ),
             # External clients (kubectl) → API server
@@ -328,7 +332,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 source="0.0.0.0/0",
                 source_type="CIDR_BLOCK",
                 tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                    min=6443, max=6443,
+                    min=6443,
+                    max=6443,
                 ),
             ),
             # Internet → Load Balancer HTTPS
@@ -338,17 +343,19 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 source="0.0.0.0/0",
                 source_type="CIDR_BLOCK",
                 tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                    min=443, max=443,
+                    min=443,
+                    max=443,
                 ),
             ),
             # Internet → Load Balancer HTTP
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Load Balancer receives HTTP traffic from internet for public applications (consider HTTPS redirect)",
+                description="Load Balancer receives HTTP traffic from internet for public applications (consider HTTPS redirect)",  # noqa: E501
                 protocol="6",  # TCP
                 source="0.0.0.0/0",
                 source_type="CIDR_BLOCK",
                 tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                    min=80, max=80,
+                    min=80,
+                    max=80,
                 ),
             ),
         ]
@@ -371,7 +378,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 destination=oci.core.get_services().services[0].cidr_block,
                 destination_type="SERVICE_CIDR_BLOCK",
                 icmp_options=oci.core.SecurityListEgressSecurityRuleIcmpOptionsArgs(
-                    type=3, code=4,
+                    type=3,
+                    code=4,
                 ),
             ),
             # Control plane → kubelet API on worker nodes
@@ -381,7 +389,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 destination=private_subnet_cidr,
                 destination_type="CIDR_BLOCK",
                 tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                    min=10250, max=10250,
+                    min=10250,
+                    max=10250,
                 ),
             ),
             # ICMP path-MTU to private subnet
@@ -391,33 +400,36 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 destination=private_subnet_cidr,
                 destination_type="CIDR_BLOCK",
                 icmp_options=oci.core.SecurityListEgressSecurityRuleIcmpOptionsArgs(
-                    type=3, code=4,
+                    type=3,
+                    code=4,
                 ),
             ),
             # LB → NodePort range on worker nodes
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Load Balancer forwards traffic to worker nodes via NodePort for Kubernetes service routing",
+                description="Load Balancer forwards traffic to worker nodes via NodePort for Kubernetes service routing",  # noqa: E501
                 protocol="6",  # TCP
                 destination=private_subnet_cidr,
                 destination_type="CIDR_BLOCK",
                 tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                    min=30000, max=32767,
+                    min=30000,
+                    max=32767,
                 ),
             ),
             # LB → kube-proxy health check
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Load Balancer checks worker node health via kube-proxy to ensure traffic routing availability",
+                description="Load Balancer checks worker node health via kube-proxy to ensure traffic routing availability",  # noqa: E501
                 protocol="6",  # TCP
                 destination=private_subnet_cidr,
                 destination_type="CIDR_BLOCK",
                 tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                    min=10256, max=10256,
+                    min=10256,
+                    max=10256,
                 ),
             ),
             # Control plane → pods (webhooks, admission controllers, metrics)
             # Admission controller webhook ports are arbitrary; allow all protocols.
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Control plane reaches pods on arbitrary ports for webhooks, admission controllers, and metrics",
+                description="Control plane reaches pods on arbitrary ports for webhooks, admission controllers, and metrics",  # noqa: E501
                 protocol="all",
                 destination=private_subnet_cidr,
                 destination_type="CIDR_BLOCK",
@@ -434,12 +446,13 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         private_ingress_rules: list[oci.core.SecurityListIngressSecurityRuleArgs] = [
             # Control plane → kubelet API
             oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Control plane manages pods on worker nodes via kubelet for commands, logs, and health monitoring",
+                description="Control plane manages pods on worker nodes via kubelet for commands, logs, and health monitoring",  # noqa: E501
                 protocol="6",  # TCP
                 source=public_subnet_cidr,
                 source_type="CIDR_BLOCK",
                 tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                    min=10250, max=10250,
+                    min=10250,
+                    max=10250,
                 ),
             ),
             # LB → NodePort range
@@ -449,7 +462,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 source=public_subnet_cidr,
                 source_type="CIDR_BLOCK",
                 tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                    min=30000, max=32767,
+                    min=30000,
+                    max=32767,
                 ),
             ),
             # LB → kube-proxy health check
@@ -459,7 +473,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 source=public_subnet_cidr,
                 source_type="CIDR_BLOCK",
                 tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                    min=10256, max=10256,
+                    min=10256,
+                    max=10256,
                 ),
             ),
             # Control plane → pods (webhooks, admission controllers)
@@ -477,7 +492,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 source="0.0.0.0/0",
                 source_type="CIDR_BLOCK",
                 icmp_options=oci.core.SecurityListIngressSecurityRuleIcmpOptionsArgs(
-                    type=3, code=4,
+                    type=3,
+                    code=4,
                 ),
             ),
         ]
@@ -488,19 +504,20 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         private_egress_rules: list[oci.core.SecurityListEgressSecurityRuleArgs] = [
             # Workers + pods → OCI services (OCIR, monitoring, logging)
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Workers and pods communicate with OCI services for container images, logging, and monitoring",
+                description="Workers and pods communicate with OCI services for container images, logging, and monitoring",  # noqa: E501
                 protocol="6",  # TCP
                 destination=oci.core.get_services().services[0].cidr_block,
                 destination_type="SERVICE_CIDR_BLOCK",
             ),
             # Workers + pods → Kubernetes API server
             oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Workers and pods communicate with Kubernetes API to register, report status, and access resources",
+                description="Workers and pods communicate with Kubernetes API to register, report status, and access resources",  # noqa: E501
                 protocol="6",  # TCP
                 destination=public_subnet_cidr,
                 destination_type="CIDR_BLOCK",
                 tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                    min=6443, max=6443,
+                    min=6443,
+                    max=6443,
                 ),
             ),
             # Workers + pods → control plane internal port
@@ -510,7 +527,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 destination=public_subnet_cidr,
                 destination_type="CIDR_BLOCK",
                 tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                    min=12250, max=12250,
+                    min=12250,
+                    max=12250,
                 ),
             ),
             # Workers + pods → internet via HTTPS (image pulls, external APIs)
@@ -520,7 +538,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 destination="0.0.0.0/0",
                 destination_type="CIDR_BLOCK",
                 tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                    min=443, max=443,
+                    min=443,
+                    max=443,
                 ),
             ),
             # ICMP path-MTU to internet
@@ -530,7 +549,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 destination="0.0.0.0/0",
                 destination_type="CIDR_BLOCK",
                 icmp_options=oci.core.SecurityListEgressSecurityRuleIcmpOptionsArgs(
-                    type=3, code=4,
+                    type=3,
+                    code=4,
                 ),
             ),
         ]
@@ -598,7 +618,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         cluster_kube_config = self.cluster.id.apply(
             lambda cid: oci.containerengine.get_cluster_kube_config(cluster_id=cid)
         )
-        cluster_kube_config.content.apply(lambda cc: open(filename, "w+").write(cc))  # type: ignore[union-attr]
+        cluster_kube_config.content.apply(lambda cc: open(filename, "w+").write(cc))  # type: ignore[union-attr]  # noqa: SIM115
 
 
 __all__ = ["OkeCluster"]

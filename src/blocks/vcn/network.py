@@ -6,27 +6,27 @@ without modification.  New code should import directly from
 """
 
 from providers.oci.network import (  # noqa: F401
-    Vcn,
-    VcnRef,
+    SUBNET_MANAGEMENT,
+    SUBNET_PRIVATE,
+    SUBNET_PUBLIC,
+    SUBNET_SECURE,
     SubnetConfig,
     SubnetTier,
-    SUBNET_PUBLIC,
-    SUBNET_PRIVATE,
-    SUBNET_SECURE,
-    SUBNET_MANAGEMENT,
-    get_resources_by_tag,
-    _SubnetRef,
+    Vcn,
+    VcnRef,
     _SecurityListRef,
+    _SubnetRef,
+    get_resources_by_tag,
 )
 
 __all__ = [
-    "Vcn",
-    "VcnRef",
+    "SUBNET_MANAGEMENT",
+    "SUBNET_PRIVATE",
+    "SUBNET_PUBLIC",
+    "SUBNET_SECURE",
     "SubnetConfig",
     "SubnetTier",
-    "SUBNET_PUBLIC",
-    "SUBNET_PRIVATE",
-    "SUBNET_SECURE",
-    "SUBNET_MANAGEMENT",
+    "Vcn",
+    "VcnRef",
     "get_resources_by_tag",
 ]

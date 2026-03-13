@@ -3,6 +3,6 @@
 Re-exports from :mod:`providers.oci.kubernetes`.
 """
 
-from providers.oci.kubernetes import OkeCluster  # noqa: F401
+from providers.oci.kubernetes import OkeCluster
 
 __all__ = ["OkeCluster"]

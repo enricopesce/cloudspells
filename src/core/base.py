@@ -17,11 +17,13 @@ All OCIBlocks resource classes (:class:`~blocks.vcn.network.Vcn`,
   subclasses never import those helpers directly.
 """
 
+from typing import Any
+
 import pulumi
-from typing import Any, Optional
+
+from .helper import Helper
 from .naming import ResourceNamer
 from .tagging import ResourceTagger
-from .helper import Helper
 
 
 class BaseResource(pulumi.ComponentResource):

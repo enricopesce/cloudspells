@@ -1,6 +1,7 @@
 """Shared Pulumi mocks for OCI resources."""
 
 from typing import Any
+
 import pulumi
 
 
@@ -41,38 +42,47 @@ class OCIMocks(pulumi.runtime.Mocks):
 
         # Mock get_services (for Service Gateway)
         if args.token == "oci:Core/getServices:getServices":
-            return ({
-                "services": [
-                    {
-                        "id": "mock-all-services-id",
-                        "name": "All FRA Services In Oracle Services Network",
-                        "cidrBlock": "all-fra-services-in-oracle-services-network",
-                    }
-                ]
-            }, [])
+            return (
+                {
+                    "services": [
+                        {
+                            "id": "mock-all-services-id",
+                            "name": "All FRA Services In Oracle Services Network",
+                            "cidrBlock": "all-fra-services-in-oracle-services-network",
+                        }
+                    ]
+                },
+                [],
+            )
 
         # Mock get_images (for Compute Instance)
         if args.token == "oci:Core/getImages:getImages":
-            return ({
-                "images": [
-                    {
-                        "id": "mock-oracle-linux-8-image-id",
-                        "displayName": "Oracle-Linux-8.9-2024.01.26-0",
-                        "operatingSystem": "Oracle Linux",
-                        "operatingSystemVersion": "8",
-                    }
-                ]
-            }, [])
+            return (
+                {
+                    "images": [
+                        {
+                            "id": "mock-oracle-linux-8-image-id",
+                            "displayName": "Oracle-Linux-8.9-2024.01.26-0",
+                            "operatingSystem": "Oracle Linux",
+                            "operatingSystemVersion": "8",
+                        }
+                    ]
+                },
+                [],
+            )
 
         # Mock get_availability_domains
         if args.token == "oci:Identity/getAvailabilityDomains:getAvailabilityDomains":
-            return ({
-                "availabilityDomains": [
-                    {"name": "AD-1", "id": "mock-ad-1-id"},
-                    {"name": "AD-2", "id": "mock-ad-2-id"},
-                    {"name": "AD-3", "id": "mock-ad-3-id"},
-                ]
-            }, [])
+            return (
+                {
+                    "availabilityDomains": [
+                        {"name": "AD-1", "id": "mock-ad-1-id"},
+                        {"name": "AD-2", "id": "mock-ad-2-id"},
+                        {"name": "AD-3", "id": "mock-ad-3-id"},
+                    ]
+                },
+                [],
+            )
 
         return ({}, [])
 

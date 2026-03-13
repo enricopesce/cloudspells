@@ -5,6 +5,9 @@ pulumi-oci==3.16.0
 # Development tools
 pyright==1.1.408
 pytest==8.3.5
+pytest-cov==6.1.0
+ruff==0.9.10
+vulture==2.14
 
 # Runtime utilities
 PyYAML==6.0.3

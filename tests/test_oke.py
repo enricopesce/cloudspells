@@ -1,8 +1,8 @@
 """Unit tests for OKE Cluster block."""
 
-import unittest
-import sys
 import os
+import sys
+import unittest
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -11,11 +11,12 @@ import pulumi
 
 # Set up mocks BEFORE importing infrastructure
 from tests.mocks import set_mocks
+
 set_mocks()
 
 # Import AFTER mocks are set
-from blocks.vcn.network import Vcn
 from blocks.oke.cluster import OkeCluster
+from blocks.vcn.network import Vcn
 
 
 class TestOkeCluster(unittest.TestCase):
@@ -82,7 +83,7 @@ class TestOkeCluster(unittest.TestCase):
         self.assertIsNone(vcn.public_subnet)
         self.assertIsNone(vcn.private_subnet)
 
-        oke = OkeCluster(
+        OkeCluster(
             name="test-cluster",
             compartment_id="ocid1.compartment.test",
             vcn=vcn,

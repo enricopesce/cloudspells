@@ -1,0 +1,42 @@
+[tool.ruff]
+line-length = 120
+target-version = "py38"
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "D",        # pydocstyle (Google-style docstrings)
+    "B",        # flake8-bugbear
+    "UP",       # pyupgrade
+    "SIM",      # flake8-simplify
+    "RUF",      # ruff-specific rules
+]
+ignore = [
+    "D105",    # missing docstring in magic method
+    "D107",    # missing docstring in __init__ (covered by class docstring)
+    "RUF002",  # EN dash in docstrings — intentional typographic style
+    "RUF003",  # EN dash in comments — intentional typographic style
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D", "E402"]  # no docstring enforcement; E402 because set_mocks() must precede imports
+# __all__ lists below use deliberate semantic groupings with comments — alphabetical sort would destroy the grouping
+"src/core/abstractions/__init__.py" = ["RUF022"]
+"src/providers/oci/__init__.py" = ["RUF022"]
+"src/providers/oci/nsg.py" = ["RUF022"]
+
+[tool.pytest.ini_options]
+addopts = "--cov=src --cov-report=term-missing"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/__init__.py"]
+
+[tool.coverage.report]
+show_missing = true

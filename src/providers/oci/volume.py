@@ -88,9 +88,7 @@ class VolumeSpec:
             ValueError: If any field violates its constraint.
         """
         if self.size_in_gbs < 50:
-            raise ValueError(
-                f"size_in_gbs must be >= 50; got {self.size_in_gbs}"
-            )
+            raise ValueError(f"size_in_gbs must be >= 50; got {self.size_in_gbs}")
         if self.vpus_per_gb not in self._VALID_VPUS:
             raise ValueError(
                 f"vpus_per_gb must be one of {sorted(self._VALID_VPUS)} "

@@ -1,19 +1,20 @@
 """Unit tests for ComputeInstance block and VolumeSpec dataclass."""
 
-import unittest
-import sys
 import os
+import sys
+import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import pulumi
 
 from tests.mocks import set_mocks
+
 set_mocks()
 
-from blocks.vcn.network import Vcn
 from blocks.compute.instance import ComputeInstance
 from blocks.compute.volume import VolumeSpec
+from blocks.vcn.network import Vcn
 
 
 class TestVolumeSpec(unittest.TestCase):
@@ -99,9 +100,7 @@ class TestComputeInstance(unittest.TestCase):
             vcn=self.vcn,
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
-        return instance.instance.id.apply(
-            lambda iid: self.assertIsNotNone(iid)
-        )
+        return instance.instance.id.apply(lambda iid: self.assertIsNotNone(iid))
 
     @pulumi.runtime.test
     def test_default_creates_one_volume(self):
@@ -114,9 +113,7 @@ class TestComputeInstance(unittest.TestCase):
         )
         self.assertEqual(len(instance.block_volumes), 1)
         self.assertEqual(len(instance.volume_attachments), 1)
-        return instance.block_volumes[0].id.apply(
-            lambda vid: self.assertIsNotNone(vid)
-        )
+        return instance.block_volumes[0].id.apply(lambda vid: self.assertIsNotNone(vid))
 
     @pulumi.runtime.test
     def test_multiple_volumes_created(self):
@@ -145,9 +142,7 @@ class TestComputeInstance(unittest.TestCase):
             vcn=self.vcn,
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
-        return instance.volume_attachments[0].id.apply(
-            lambda aid: self.assertIsNotNone(aid)
-        )
+        return instance.volume_attachments[0].id.apply(lambda aid: self.assertIsNotNone(aid))
 
     @pulumi.runtime.test
     def test_finalizes_vcn(self):
@@ -208,9 +203,7 @@ class TestComputeInstance(unittest.TestCase):
                 VolumeSpec(size_in_gbs=200, label="logs"),
             ],
         )
-        return instance.get_volume_id("logs").apply(
-            lambda vid: self.assertIsNotNone(vid)
-        )
+        return instance.get_volume_id("logs").apply(lambda vid: self.assertIsNotNone(vid))
 
     def test_get_volume_id_unknown_label_raises(self):
         """get_volume_id raises KeyError for an unknown label."""

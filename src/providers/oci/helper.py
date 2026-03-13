@@ -11,7 +11,7 @@ Exports:
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 
 class OciHelper:
@@ -23,10 +23,10 @@ class OciHelper:
 
     # Maps friendly OS names to (operating_system, operating_system_version)
     # tuples as expected by the OCI images API.
-    _OS_MAP: dict[str, tuple[str, str]] = {
-        "oracle":  ("Oracle Linux",     "8"),
-        "ubuntu":  ("Canonical Ubuntu", "22.04"),
-        "windows": ("Windows",          "Server 2022 Standard"),
+    _OS_MAP: ClassVar[dict[str, tuple[str, str]]] = {
+        "oracle": ("Oracle Linux", "8"),
+        "ubuntu": ("Canonical Ubuntu", "22.04"),
+        "windows": ("Windows", "Server 2022 Standard"),
     }
 
     def resolve_image_id(
@@ -72,11 +72,10 @@ class OciHelper:
             return image_id
         if os_name not in self._OS_MAP:
             supported = ", ".join(f'"{k}"' for k in self._OS_MAP)
-            raise ValueError(
-                f"Unsupported os_name {os_name!r}. Supported values: {supported}"
-            )
+            raise ValueError(f"Unsupported os_name {os_name!r}. Supported values: {supported}")
         operating_system, operating_system_version = self._OS_MAP[os_name]
         import pulumi_oci as oci
+
         images = oci.core.get_images(
             compartment_id=compartment_id,
             operating_system=operating_system,
@@ -118,10 +117,7 @@ class OciHelper:
             #  {'availability_domain': 'Uocm:PHX-AD-2',
             #   'subnet_id': 'ocid1.subnet.oc1...'}]
         """
-        return [
-            {"availability_domain": str(ad["name"]), "subnet_id": subnet_id}
-            for ad in ads
-        ]
+        return [{"availability_domain": str(ad["name"]), "subnet_id": subnet_id} for ad in ads]
 
 
 __all__ = ["OciHelper"]
