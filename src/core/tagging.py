@@ -1,7 +1,7 @@
-"""Resource tagging utilities for OCIBlocks.
+"""Resource tagging utilities for CloudBlocks.
 
 Provides `ResourceTagger`, which generates consistent OCI freeform tag
-dictionaries.  Every resource created by an OCIBlocks component receives at
+dictionaries.  Every resource created by an CloudBlocks component receives at
 minimum these baseline tags, enabling cost reporting, governance queries, and
 resource discovery:
 
@@ -55,7 +55,7 @@ class ResourceTagger:
         - `ResourceType` — resource_type (e.g. `"vcn"`, `"subnet"`).
         - `Environment` — the Pulumi stack name.
         - `CreatedBy`   — `"{stack_name}-{resource_name}"` string
-          identifying the OCIBlocks component that created the resource.
+          identifying the CloudBlocks component that created the resource.
 
         Args:
             resource_name: Display name for the `Name` tag (usually the

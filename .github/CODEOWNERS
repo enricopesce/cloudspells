@@ -1,0 +1,11 @@
+# Global owners — required review on every PR
+* @enricopesce
+
+# OCI provider — changes here affect live cloud deployments
+src/providers/oci/ @enricopesce
+
+# Core abstractions — changes here affect all future cloud providers
+src/core/abstractions/ @enricopesce
+
+# Tests
+tests/ @enricopesce

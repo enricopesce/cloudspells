@@ -1,4 +1,4 @@
-"""Network Security Group (NSG) building block for OCIBlocks.
+"""Network Security Group (NSG) building block for CloudBlocks.
 
 Provides `Nsg`, a single named Network Security Group with
 caller-defined rules.  NSGs are **role-based policies** — one NSG represents

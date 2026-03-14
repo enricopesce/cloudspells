@@ -1,12 +1,14 @@
 """VCN + OKE test — deploys an Oracle Kubernetes Engine cluster in a VCN."""
 
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
 import pulumi
-from providers.oci.network import Vcn
+
 from providers.oci.kubernetes import OkeCluster
+from providers.oci.network import Vcn
 
 config: pulumi.Config = pulumi.Config()
 compartment_id: str = config.require("compartment_ocid")

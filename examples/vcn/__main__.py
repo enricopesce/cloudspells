@@ -4,11 +4,13 @@ All outputs are consumed by ``examples/import-vcn`` via
 ``VcnRef.from_stack_reference()``.
 """
 
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
 import pulumi
+
 from providers.oci.network import Vcn
 
 config: pulumi.Config = pulumi.Config()
@@ -19,6 +21,4 @@ vcn: Vcn = Vcn(
     compartment_id=compartment_id,
 )
 
-# No service block to trigger finalize, so call it manually
-vcn.finalize_network()
 vcn.export()

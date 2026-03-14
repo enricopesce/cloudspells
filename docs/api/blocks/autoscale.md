@@ -1,0 +1,3 @@
+# Autoscale
+
+::: providers.oci.autoscale

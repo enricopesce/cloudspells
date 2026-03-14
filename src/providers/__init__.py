@@ -1,4 +1,4 @@
-"""Cloud provider implementations for OCIBlocks.
+"""Cloud provider implementations for CloudBlocks.
 
 Each sub-package contains a complete implementation of the abstractions
 defined in :mod:`core.abstractions` for a specific cloud provider.

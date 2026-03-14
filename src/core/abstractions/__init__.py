@@ -1,4 +1,4 @@
-"""Cloud-neutral abstractions for OCIBlocks multi-cloud support.
+"""Cloud-neutral abstractions for CloudBlocks multi-cloud support.
 
 Defines the contracts (abstract base classes and data classes) that every
 cloud provider must implement.  Blocks typed against these interfaces work

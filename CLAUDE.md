@@ -4,18 +4,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Important Rules
 
-- **Minimal user input**: blocks must require only essential identifiers (name, compartment, VCN). Every value that can be derived, computed, or defaulted securely must be. Exposing unnecessary parameters is a design defect.
+- **High-level constructs, not low-level wrappers**: CloudBlocks encodes fixed, opinionated reference architectures. It is not a Terraform replacement or a thin cloud-API layer — it is the opposite. Architecture decisions (topology, routing, security posture) are baked in, not left to the caller.
+- **Minimal user input**: blocks must require only essential identifiers (name, compartment/project, network). Every value that can be derived, computed, or defaulted securely must be. Exposing unnecessary parameters — especially ones that just pass through underlying provider options — is a design defect.
 - **Full documentation required**: every public class, method, and module must have a Google-style docstring with `Args:`, `Returns:`, `Raises:`, `Attributes:`, and `Example:` as applicable. No undocumented public API is acceptable.
 
 ## Design Philosophy
 
-**Blocks must require minimal user input.** A block encapsulates a complete, well-architected design based on certified OCI reference architectures. The user supplies only the essential identifiers (compartment, VCN, name) and the block handles all internal wiring: security rules, routing, subnet placement, gateway configuration, and resource relationships. Sensible, secure defaults are never left to the caller.
+### What CloudBlocks is — and is not
+
+**CloudBlocks is not a Terraform replacement or a low-level cloud-API wrapper.** It is the opposite: a collection of opinionated, high-level constructs that encode proven reference architectures as immutable, bulletproof building blocks.
+
+CloudBlocks started with OCI support and is designed from the ground up to be multi-cloud. The `src/core/abstractions/` layer defines cloud-neutral interfaces; `src/providers/<cloud>/` contains provider-specific implementations. Adding a new provider means implementing those interfaces — not changing the user-facing API.
+
+- Terraform (and raw Pulumi provider resources) give you every knob and let you wire everything yourself. That freedom is also the source of every misconfigured security rule, missing route, and open subnet.
+- CloudBlocks makes the architecture the product. Network topology, subnet tiers, routing policy, gateway placement, and security posture are fixed by design — derived from cloud provider best practices — and are not negotiable at call time.
+
+**The user's job is to name things and pick a location. The block's job is everything else.**
+
+### Guiding rules
+
+**Blocks must require minimal user input.** A block encapsulates a complete, well-architected design. The user supplies only essential identifiers (name, compartment/project, network) and the block handles all internal wiring. Sensible, secure defaults are never left to the caller.
 
 When adding or modifying a block, ask: *can the user deploy this correctly with fewer parameters?* If a value can be derived, computed, or defaulted securely, it must be. Exposing unnecessary knobs is a design defect.
 
+**Never expose a parameter just because the underlying provider resource accepts it.** Parameters that exist only to pass through a low-level option belong in raw Pulumi/Terraform, not here.
+
 ## Project Overview
 
-OCIBlocks is a Python-based infrastructure-as-code framework built on Pulumi that provides high-level building blocks for Oracle Cloud Infrastructure (OCI). It extends Pulumi's `ComponentResource` model to create modular, reusable abstractions that encapsulate multiple OCI resources into simplified interfaces.
+CloudBlocks is a Python-based infrastructure-as-code framework built on Pulumi that provides high-level, opinionated building blocks for cloud infrastructure. It is multi-cloud by design: a cloud-neutral abstraction layer sits above provider-specific implementations, starting with OCI. It extends Pulumi's `ComponentResource` model to encapsulate entire reference architectures behind minimal interfaces.
 
 ## Commands
 
@@ -67,72 +83,55 @@ Always activate the virtualenv before running tests or pyright: `source .venv/bi
 
 ## Architecture
 
-### Core Framework (`src/core/`)
-
-- **`base.py`**: `BaseResource` class extends `pulumi.ComponentResource`. All building blocks inherit from this. Provides standardized naming, tagging, and resource management.
-- **`naming.py`**: `ResourceNamer` creates standardized resource names (`{stack-name}-{resource-name}-{suffix}`) and DNS labels.
-- **`tagging.py`**: `ResourceTagger` creates freeform tags with consistent metadata.
-- **`helper.py`**: Utility functions for subnet CIDR calculation, random word generation, and availability domain mapping.
-
-### Building Blocks (`src/blocks/`)
-
-- **VCN (`vcn/network.py`)**: Virtual Cloud Network with Internet/NAT/Service Gateways and a 4-tier subnet architecture:
-  - **Public tier**: Load balancers and bastion hosts. Route: Internet Gateway.
-  - **Private tier**: App servers, K8s nodes, instance pools. Route: NAT Gateway + Service Gateway (internet-capable outbound).
-  - **Secure tier**: Databases, secrets, audit stores. Route: Service Gateway **only** — no internet path at all, not even outbound NAT.
-  - **Management tier**: Monitoring agents, bastion service, VPN/FastConnect endpoints, internal tooling. Route: Service Gateway only — same isolation as secure.
-  - VCN CIDR is split proportionally: private=50% (prefix+1), secure=25% (prefix+2), public=12.5% (prefix+3), management=12.5% (prefix+3). Index order: [public, private, secure, management].
-- **VcnRef (`vcn/network.py`)**: Read-only wrapper around a VCN deployed in another Pulumi stack. Use `VcnRef.from_stack_reference(stack_name)` to construct. It is a no-op for `add_security_list_rules`/`finalize_network`. All service blocks (OKE, Compute, ScalableWorkload) accept `Vcn | VcnRef`.
-- **OKE (`oke/cluster.py`)**: Oracle Kubernetes Engine cluster with node pools and security integration.
-- **Compute (`compute/instance.py`)**: Compute instances with automated SSH key generation and block volumes. Supports public, private, secure, and management subnet tiers.
-- **Bastion (`compute/bastion.py`)**: OCI Bastion service resource for secure shell access to private resources.
-- **ScalableWorkload (`autoscale/workload.py`)**: Horizontally-scalable compute with OCI Load Balancer, Instance Configuration, Instance Pool, and metric/schedule-based Autoscaling Configuration. Load balancer goes to the public subnet; instance pool to the private subnet.
-
-### Key Pattern: Lazy Initialization
-
-VCN uses lazy initialization for network finalization:
-
-```python
-# 1. Create VCN (no security lists or subnets yet)
-vcn = Vcn(name="lab", compartment_id=compartment_id, stack_name=stack_name)
-
-# 2. Services add their security rules
-compute_instance = ComputeInstance(name="web", vcn=vcn, ...)  # Calls vcn.add_security_list_rules()
-
-# 3. finalize_network() is called automatically by the service
-# This creates security lists and subnets with all accumulated rules
-```
-
-Services (OKE, Compute, ScalableWorkload) call `vcn.add_security_list_rules()` to add rules, then call `vcn.finalize_network()` which creates the actual security lists and subnets. `finalize_network()` is idempotent — only the first call has effect.
-
-Subnet CIDR accessors (`get_public_subnet_cidr()`, `get_private_subnet_cidr()`, `get_secure_subnet_cidr()`, `get_management_subnet_cidr()`) return `pulumi.Input[str]` — not plain `str` — so they work for both `Vcn` and `VcnRef`.
-
-### Inheritance Hierarchy
+### Three-layer structure
 
 ```
-pulumi.ComponentResource
-└── BaseResource (src/core/base.py)
-    ├── Vcn (src/blocks/vcn/network.py)
-    ├── OkeCluster (src/blocks/oke/cluster.py)
-    ├── ComputeInstance (src/blocks/compute/instance.py)
-    ├── Bastion (src/blocks/compute/bastion.py)
-    └── ScalableWorkload (src/blocks/autoscale/workload.py)
+src/core/abstractions/     — cloud-neutral interfaces (AbstractNetwork, AbstractScalableWorkload, …)
+src/providers/<cloud>/     — provider implementations (oci/ today; future: aws/, gcp/, …)
+src/blocks/                — backward-compat re-export shims only (do not add logic here)
 ```
+
+New provider = implement the abstractions under a new `src/providers/<cloud>/` directory. No changes to core or blocks needed.
+
+**New code imports from `providers.oci` directly.** `src/blocks/` exists only so old imports keep working.
+
+### Core (`src/core/`)
+
+- **`base.py`**: `BaseResource` — all blocks inherit this. Standardised naming, tagging, SSH key management.
+- **`naming.py`**: `ResourceNamer` — names follow `{stack}-{resource}-{suffix}`.
+- **`abstractions/`**: Cloud-neutral dataclasses and ABCs (`LoadBalancerConfig`, `MetricScalingPolicy`, `AbstractScalableWorkload`, …). Write provider-agnostic typed functions against these.
+
+### OCI blocks (`src/providers/oci/`)
+
+- **`network.py`** — `Vcn`: 4-tier subnet architecture, all gateways, fixed routing per tier.
+  - Public (12.5%) → Internet GW. Private (50%) → NAT + Service GW. Secure (25%) → Service GW only. Management (12.5%) → Service GW only.
+  - CIDR split: private=prefix+1, secure=prefix+2, public=prefix+3, management=prefix+3.
+  - `VcnRef`: read-only handle to a VCN owned by another stack. All service blocks accept `Vcn | VcnRef`.
+- **`kubernetes.py`** — `OkeCluster`: BASIC_CLUSTER, OCI_VCN_IP_NATIVE CNI, fixed pod/service CIDRs, nodes spread across all ADs.
+- **`compute.py`** — `ComputeInstance`: single instance, auto SSH keys, block volumes, any subnet tier.
+- **`bastion.py`** — `Bastion`: OCI Bastion service in the private subnet.
+- **`autoscale.py`** — `ScalableWorkload`: LB in public subnet, instance pool in private, CPU autoscaling by default.
+- **`nsg.py`** — `Nsg` + port constants (`SSH`, `HTTP`, `HTTPS`, …) for NSG-based security.
+- **`roles.py`** — Semantic role constants (`APP_SERVER`, `DATABASE`, `INTERNET_EDGE`, …).
+
+### Key pattern: VCN lazy initialisation
+
+Services call `vcn.add_security_list_rules()` to accumulate rules, then `vcn.finalize_network()` to materialise security lists and subnets. `finalize_network()` is idempotent — only the first call has effect; service blocks call it automatically.
+
+Subnet CIDR accessors return `pulumi.Input[str]` (not `str`) so they work for both `Vcn` and `VcnRef`.
 
 ### Testing
 
-Tests use Pulumi's mock framework. **Critical ordering requirement**: `set_mocks()` must be called before importing any infrastructure modules. All test files follow this pattern:
+`set_mocks()` **must** be called before importing any infrastructure module:
 
 ```python
 from tests.mocks import set_mocks
-set_mocks()  # Must come before infrastructure imports
+set_mocks()
 
-from blocks.vcn.network import Vcn  # Import after mocks
+from providers.oci.network import Vcn  # import after mocks
 ```
 
-The mock in `tests/mocks.py` intercepts OCI provider calls (`get_services`, `get_images`, `get_availability_domains`) and resource creation. Tests that use `@pulumi.runtime.test` are async and return a `pulumi.Output`; tests without the decorator run synchronously.
-
-The `src/` directory is added to `sys.path` at the top of each test file so modules resolve correctly without a package install.
+`tests/mocks.py` intercepts OCI provider calls (`get_services`, `get_images`, `get_availability_domains`). `src/` is on `sys.path` in every test file.
 
 ### Documentation Conventions
 
@@ -184,4 +183,4 @@ Infrastructure configuration is managed through Pulumi config (`Pulumi.<stack>.y
 - `compartment_ocid`: OCI compartment OCID
 - `vcn_cidr_block`: CIDR block for the VCN
 
-Example usage is demonstrated in `examples/__main__.py`.
+Example usage is demonstrated in `examples/` (one directory per block).

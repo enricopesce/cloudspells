@@ -1,4 +1,4 @@
-"""Cloud-neutral network abstractions for OCIBlocks multi-cloud support.
+"""Cloud-neutral network abstractions for CloudBlocks multi-cloud support.
 
 Defines the security-rule dataclasses, factory helpers, and network
 interfaces that decouple service blocks (Compute, OKE, ScalableWorkload)
@@ -386,7 +386,7 @@ class AbstractNetwork(ABC):
     All provider network implementations (OCI `Vcn`,
     AWS `AwsVpc`, GCP `GcpVpc`) inherit from this class.
 
-    The four tiers follow the OCIBlocks reference architecture:
+    The four tiers follow the CloudBlocks reference architecture:
 
     - **Public** — load balancers, bastion hosts; route to internet gateway.
     - **Private** — app servers, Kubernetes nodes; route via NAT + service

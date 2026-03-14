@@ -1,0 +1,3 @@
+# Bastion
+
+::: providers.oci.bastion

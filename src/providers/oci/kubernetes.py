@@ -1,4 +1,4 @@
-"""OKE (Oracle Kubernetes Engine) cluster building block for OCIBlocks.
+"""OKE (Oracle Kubernetes Engine) cluster building block for CloudBlocks.
 
 Provides `OkeCluster`, a high-level Pulumi component that creates a complete
 OKE cluster with a node pool and all required OCI security list rules.

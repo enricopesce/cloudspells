@@ -1,0 +1,3 @@
+# Compute
+
+::: providers.oci.compute

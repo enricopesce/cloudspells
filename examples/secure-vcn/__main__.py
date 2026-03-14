@@ -2,7 +2,7 @@
 
 Architecture
 ============
-This example deploys the complete OCIBlocks secure-network stack:
+This example deploys the complete CloudBlocks secure-network stack:
 
 .. code-block:: text
 
@@ -13,32 +13,39 @@ This example deploys the complete OCIBlocks secure-network stack:
     │  │ Public /19      │  │ Private /17                          │  │
     │  │ (LB tier)       │  │ (App tier)                           │  │
     │  │ IGW route       │  │ NAT GW + Service GW routes           │  │
-    │  │ public-nsg ──────┼──► private-nsg                         │  │
+    │  │ lb-nsg ──────────┼──► app-nsg                             │  │
     │  └─────────────────┘  └──────────────────┬───────────────────┘  │
-    │                                          │ TCP 1521             │
+    │                                          │ TCP {db_port}        │
     │  ┌────────────────────────────────────────▼───────────────────┐  │
     │  │ Secure /18 (DB tier)                                       │  │
     │  │ Service GW route only — NO internet path                   │  │
-    │  │ secure-nsg                                                 │  │
+    │  │ db-nsg                                                     │  │
     │  └────────────────────────────────────────────────────────────┘  │
     │                                                                 │
     │  ┌────────────────────────────────────────────────────────────┐  │
     │  │ Management /19                                             │  │
     │  │ Service GW route only                                      │  │
-    │  │ management-nsg ──► SSH to private + secure tiers           │  │
+    │  │ mgmt-nsg ──► SSH to LB + app + DB tiers                   │  │
     │  └────────────────────────────────────────────────────────────┘  │
     └─────────────────────────────────────────────────────────────────┘
 
-Security layers
----------------
-1. **Subnet Security Lists** (OCI default): broad subnet-boundary controls
-   managed by the ``Vcn`` block.
-2. **NSGs** (resource-level): explicit-allow / implicit-deny-all rules per
-   tier, managed by ``VcnNsgPolicy``.  Attach the relevant NSG OCID to each
-   VNIC so only authorised traffic flows between tiers.
-3. **VCN Flow Logs**: all-traffic capture per subnet, written to the
-   ``{stack}-lab-network-audit`` Log Group for incident response and
-   compliance.
+Security model
+--------------
+Each NSG is assigned a **role** that declares its security posture.  The
+role auto-generates:
+
+* Ambient NSG rules (ICMP path-MTU, service / internet egress) for the VNIC.
+* The matching subnet Security List rules so OCI's two enforcement layers
+  align — no manual ``add_rule`` boilerplate needed.
+
+``lb_nsg.serves(app_nsg, port=app_port)`` generates four rules in one line:
+
+* lb-nsg  → EGRESS  → app-nsg on {app_port}  (NSG-to-NSG)
+* app-nsg ← INGRESS ← lb-nsg  on {app_port}  (NSG-to-NSG)
+* lb-nsg  → EGRESS  → app-nsg on 22 (SSH management)
+* app-nsg ← INGRESS ← lb-nsg  on 22 (SSH management)
+
+… plus the corresponding cross-subnet Security List rules.
 
 Zero Trust tagging
 ------------------
@@ -68,6 +75,8 @@ Optional:
         (default: ``0.0.0.0/0`` — **restrict before go-live**).
     ``app_port``
         TCP port the app-tier listens on (default: ``8080``).
+    ``db_port``
+        Database TCP port (default: ``1521``).
     ``log_retention_days``
         Flow-log retention in days: 30/60/90/120/150/180 (default: ``90``).
 
@@ -78,24 +87,22 @@ Stack outputs
 ``private_subnet_id``         Private (App) subnet OCID
 ``secure_subnet_id``          Secure (DB) subnet OCID
 ``management_subnet_id``      Management subnet OCID
-``public_nsg_id``             Public NSG OCID — attach to LB VNICs
-``private_nsg_id``            Private NSG OCID — attach to App VNICs
-``secure_nsg_id``             Secure NSG OCID — attach to DB VNICs
-``management_nsg_id``         Management NSG OCID — attach to Ops VNICs
 ``network_audit_log_group_id`` Log Group OCID for network audit logs
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
 import pulumi
-from providers.oci.network import Vcn
-from providers.oci.nsg import Nsg, TCP, ALL, SVC_CIDR, tcp_port, icmp_opts
-from providers.oci.network_logging import VcnFlowLogs
 
-# ── Configuration ────────────────────────────────────────────────────────────
+from providers.oci.network import Vcn
+from providers.oci.network_logging import VcnFlowLogs
+from providers.oci.nsg import HTTP, HTTPS, SSH, Nsg
+from providers.oci.roles import APP_SERVER, DATABASE, INTERNET_EDGE, MANAGEMENT
+
+# ── Configuration ─────────────────────────────────────────────────────────────
 
 config: pulumi.Config = pulumi.Config()
 
@@ -106,7 +113,7 @@ app_port: int = config.get_int("app_port") or 8080
 db_port: int = config.get_int("db_port") or 1521
 log_retention_days: int = config.get_int("log_retention_days") or 90
 
-# ── Step 1 — VCN with gateways and route tables ──────────────────────────────
+# ── Step 1 — VCN ──────────────────────────────────────────────────────────────
 #
 # Vcn() creates the VCN, Internet GW, NAT GW, Service GW, and four route
 # tables immediately.  Security lists and subnets are deferred until
@@ -118,102 +125,40 @@ vcn: Vcn = Vcn(
     cidr_block=vcn_cidr,
 )
 
-# ── Step 2 — NSGs (one per service role) ─────────────────────────────────────
+# ── Step 2 — NSG roles ────────────────────────────────────────────────────────
 #
-# Each Nsg is a named policy for a class of resource — attach the right one
-# to each VM's VNIC via nsg_ids.  All rules are explicit; no defaults.
+# Each NSG declares what it IS (its role / security posture).  Ambient rules
+# are generated automatically — no add_rule() boilerplate needed.
 #
-# ⚠  Restrict management_ingress_cidr to your actual management network
-#    before promoting to production.
+#   INTERNET_EDGE  → public subnet, accepts HTTP/HTTPS from 0.0.0.0/0
+#   APP_SERVER     → private subnet, egresses to services + internet (NAT)
+#   DATABASE       → secure subnet, egresses to Oracle Services only
+#   MANAGEMENT     → management subnet, egresses to Oracle Services only
 
-lb_nsg:   Nsg = Nsg("load-balancer", vcn=vcn, compartment_id=compartment_id)
-app_nsg:  Nsg = Nsg("app-server",    vcn=vcn, compartment_id=compartment_id)
-db_nsg:   Nsg = Nsg("database",      vcn=vcn, compartment_id=compartment_id)
-mgmt_nsg: Nsg = Nsg("management",    vcn=vcn, compartment_id=compartment_id)
+lb_nsg: Nsg = Nsg("load-balancer", role=INTERNET_EDGE, ports=[HTTP, HTTPS], vcn=vcn, compartment_id=compartment_id)
+app_nsg: Nsg = Nsg("app-server", role=APP_SERVER, vcn=vcn, compartment_id=compartment_id)
+db_nsg: Nsg = Nsg("database", role=DATABASE, vcn=vcn, compartment_id=compartment_id)
+mgmt_nsg: Nsg = Nsg("management", role=MANAGEMENT, vcn=vcn, compartment_id=compartment_id)
 
-# load-balancer NSG
-lb_nsg.add_rule("https-in", direction="INGRESS", protocol=TCP,
-                source="0.0.0.0/0", source_type="CIDR_BLOCK",
-                tcp_options=tcp_port(443), description="HTTPS from internet")
-lb_nsg.add_rule("http-in", direction="INGRESS", protocol=TCP,
-                source="0.0.0.0/0", source_type="CIDR_BLOCK",
-                tcp_options=tcp_port(80), description="HTTP from internet")
-lb_nsg.add_rule("icmp-in", direction="INGRESS", protocol="1",
-                source="0.0.0.0/0", source_type="CIDR_BLOCK",
-                icmp_options=icmp_opts(3, 4), description="ICMP Path-MTU inbound")
-lb_nsg.add_rule("ssh-mgmt-in", direction="INGRESS", protocol=TCP,
-                source=mgmt_nsg.id, source_type="NETWORK_SECURITY_GROUP",
-                tcp_options=tcp_port(22), description="SSH from management NSG")
-lb_nsg.add_rule("app-out", direction="EGRESS", protocol=TCP,
-                destination=app_nsg.id, destination_type="NETWORK_SECURITY_GROUP",
-                tcp_options=tcp_port(app_port),
-                description=f"TCP {app_port} to app-server NSG")
-lb_nsg.add_rule("icmp-out", direction="EGRESS", protocol="1",
-                destination="0.0.0.0/0", destination_type="CIDR_BLOCK",
-                icmp_options=icmp_opts(3, 4), description="ICMP Path-MTU outbound")
+# Management tier accepts SSH from the ops network.
+# ⚠ Restrict management_ingress_cidr to your actual management CIDR before go-live.
+mgmt_nsg.allow_from_cidr("ssh-in", SSH, management_ingress_cidr, description="SSH from ops network ⚠ restrict in prod")
 
-# app-server NSG
-app_nsg.add_rule("app-in", direction="INGRESS", protocol=TCP,
-                 source=lb_nsg.id, source_type="NETWORK_SECURITY_GROUP",
-                 tcp_options=tcp_port(app_port),
-                 description=f"TCP {app_port} from load-balancer NSG")
-app_nsg.add_rule("ssh-mgmt-in", direction="INGRESS", protocol=TCP,
-                 source=mgmt_nsg.id, source_type="NETWORK_SECURITY_GROUP",
-                 tcp_options=tcp_port(22), description="SSH from management NSG")
-app_nsg.add_rule("icmp-in", direction="INGRESS", protocol="1",
-                 source="0.0.0.0/0", source_type="CIDR_BLOCK",
-                 icmp_options=icmp_opts(3, 4), description="ICMP Path-MTU inbound")
-app_nsg.add_rule("svc-out", direction="EGRESS", protocol=ALL,
-                 destination=SVC_CIDR, destination_type="SERVICE_CIDR_BLOCK",
-                 description="Oracle Services (Service GW)")
-app_nsg.add_rule("inet-out", direction="EGRESS", protocol=ALL,
-                 destination="0.0.0.0/0", destination_type="CIDR_BLOCK",
-                 description="Internet egress via NAT GW")
-app_nsg.add_rule("db-out", direction="EGRESS", protocol=TCP,
-                 destination=db_nsg.id, destination_type="NETWORK_SECURITY_GROUP",
-                 tcp_options=tcp_port(db_port),
-                 description=f"DB port {db_port} to database NSG")
-
-# database NSG
-db_nsg.add_rule("db-in", direction="INGRESS", protocol=TCP,
-                source=app_nsg.id, source_type="NETWORK_SECURITY_GROUP",
-                tcp_options=tcp_port(db_port),
-                description=f"DB port {db_port} from app-server NSG")
-db_nsg.add_rule("ssh-mgmt-in", direction="INGRESS", protocol=TCP,
-                source=mgmt_nsg.id, source_type="NETWORK_SECURITY_GROUP",
-                tcp_options=tcp_port(22), description="SSH from management NSG")
-db_nsg.add_rule("svc-out", direction="EGRESS", protocol=ALL,
-                destination=SVC_CIDR, destination_type="SERVICE_CIDR_BLOCK",
-                description="Oracle Services only — no internet")
-
-# management NSG
-mgmt_nsg.add_rule("ssh-in", direction="INGRESS", protocol=TCP,
-                  source=management_ingress_cidr, source_type="CIDR_BLOCK",
-                  tcp_options=tcp_port(22),
-                  description="SSH from ops network ⚠ restrict in prod")
-mgmt_nsg.add_rule("ssh-app-out", direction="EGRESS", protocol=TCP,
-                  destination=app_nsg.id, destination_type="NETWORK_SECURITY_GROUP",
-                  tcp_options=tcp_port(22), description="SSH to app-server NSG")
-mgmt_nsg.add_rule("ssh-db-out", direction="EGRESS", protocol=TCP,
-                  destination=db_nsg.id, destination_type="NETWORK_SECURITY_GROUP",
-                  tcp_options=tcp_port(22), description="SSH to database NSG")
-mgmt_nsg.add_rule("svc-out", direction="EGRESS", protocol=ALL,
-                  destination=SVC_CIDR, destination_type="SERVICE_CIDR_BLOCK",
-                  description="Oracle Services for OCI API calls")
-
-# ── Step 3 — Finalize subnets and security lists ─────────────────────────────
+# ── Step 3 — Traffic relationships ────────────────────────────────────────────
 #
-# This is the only manual call required when no other service block (OKE,
-# ComputeInstance, ScalableWorkload) is used.  It creates the four security
-# lists and four subnets from the accumulated rules.  Subsequent calls are
-# no-ops.
+# One call per hop.  Each generates bilateral NSG rules (app port + SSH
+# management channel) and the matching cross-subnet Security List rules.
 
-vcn.finalize_network()
+lb_nsg.serves(app_nsg, port=app_port)  # LB → app: app port + SSH mgmt
+app_nsg.serves(db_nsg, port=db_port)  # app → DB: db port + SSH mgmt
 
-# ── Step 4 — VCN Flow Logs (observability) ───────────────────────────────────
-#
-# VcnFlowLogs must come after finalize_network() because it needs the subnet
-# OCIDs that are created by that call.
+# Management tier manages all other tiers directly over SSH.
+# with_ssh=False because the declared port IS SSH — no extra channel needed.
+mgmt_nsg.serves(lb_nsg, port=SSH, with_ssh=False)  # mgmt → LB: SSH only
+mgmt_nsg.serves(app_nsg, port=SSH, with_ssh=False)  # mgmt → app: SSH only
+mgmt_nsg.serves(db_nsg, port=SSH, with_ssh=False)  # mgmt → DB: SSH only
+
+# ── Step 4 — VCN Flow Logs (observability) ────────────────────────────────────
 
 flow_logs: VcnFlowLogs = VcnFlowLogs(
     name="lab",
@@ -221,15 +166,7 @@ flow_logs: VcnFlowLogs = VcnFlowLogs(
     retention_duration=log_retention_days,
 )
 
-# ── Stack outputs ─────────────────────────────────────────────────────────────
+# ── Stack outputs ──────────────────────────────────────────────────────────────
 #
-# All relevant OCIDs are exported so downstream stacks can consume them via
-# VcnRef.from_stack_reference() or pulumi.StackReference().
-
-vcn.export()  # publishes the 14 canonical VCN outputs expected by VcnRef
-
-pulumi.export("lb_nsg_id",   lb_nsg.id)
-pulumi.export("app_nsg_id",  app_nsg.id)
-pulumi.export("db_nsg_id",   db_nsg.id)
-pulumi.export("mgmt_nsg_id", mgmt_nsg.id)
+vcn.export()
 pulumi.export("network_audit_log_group_id", flow_logs.log_group_id)

@@ -1,0 +1,3 @@
+# Resource Tagging
+
+::: core.tagging

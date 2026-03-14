@@ -1,4 +1,4 @@
-"""VCN Flow Log observability block for the OCIBlocks framework.
+"""VCN Flow Log observability block for the CloudBlocks framework.
 
 Provides `VcnFlowLogs`, which provisions an OCI Logging Log Group
 dedicated to network audit traffic and one VCN Flow Log per subnet tier.

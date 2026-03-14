@@ -1,4 +1,4 @@
-"""Scalable Workload building block for OCIBlocks.
+"""Scalable Workload building block for CloudBlocks.
 
 Provides `ScalableWorkload`, which creates a complete horizontally-scalable
 OCI compute tier with load balancing and autoscaling:

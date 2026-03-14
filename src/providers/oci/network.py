@@ -118,7 +118,7 @@ class Vcn(BaseResource, AbstractNetwork):
     """OCI Virtual Cloud Network with subnets, gateways, and security lists.
 
     Creates the complete OCI network foundation required by all other
-    OCIBlocks components:
+    CloudBlocks components:
 
     - One VCN with a configurable CIDR block (default `"10.0.0.0/18"`).
     - Internet Gateway, NAT Gateway, and Service Gateway.
@@ -177,7 +177,7 @@ class Vcn(BaseResource, AbstractNetwork):
         # vcn.public_subnet and vcn.private_subnet are now available
         ```
 
-    2. **With other OCIBlocks components** (automatic finalisation):
+    2. **With other CloudBlocks components** (automatic finalisation):
 
         ```python
         vcn = Vcn(name="lab", compartment_id=comp_id, stack_name="prod")
@@ -893,7 +893,7 @@ class Vcn(BaseResource, AbstractNetwork):
 
         This method is **idempotent** — only the first call has any effect;
         subsequent calls return immediately.  It is invoked automatically by
-        other OCIBlocks components (OKE, Compute, ScalableWorkload) at the
+        other CloudBlocks components (OKE, Compute, ScalableWorkload) at the
         end of their `__init__` methods.  Call it explicitly only when
         using `Vcn` in standalone mode (without other blocks).
 
@@ -937,7 +937,7 @@ class Vcn(BaseResource, AbstractNetwork):
 class VcnRef(AbstractNetworkRef):
     """Read-only reference to a VCN managed by another Pulumi stack.
 
-    Lets you deploy OCIBlocks services (OKE, Compute, ScalableWorkload) into a
+    Lets you deploy CloudBlocks services (OKE, Compute, ScalableWorkload) into a
     VCN that was created by a separate Pulumi stack, without recreating or
     modifying any network resources.
 
@@ -1015,7 +1015,7 @@ class VcnRef(AbstractNetworkRef):
         management_subnet_cidr: pulumi.Input[str] | None = None,
         management_security_list_id: pulumi.Input[str] | None = None,
     ) -> None:
-        """Wrap existing VCN resource IDs in an OCIBlocks-compatible interface.
+        """Wrap existing VCN resource IDs in an CloudBlocks-compatible interface.
 
         Args:
             vcn_id: OCID of the existing VCN.

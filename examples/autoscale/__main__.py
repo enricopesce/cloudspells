@@ -1,13 +1,16 @@
 """VCN + ScalableWorkload example — autoscaling instance pool with load balancer."""
 
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
-import pulumi
 import base64
-from providers.oci.network import Vcn
+
+import pulumi
+
 from providers.oci.autoscale import ScalableWorkload
+from providers.oci.network import Vcn
 
 config: pulumi.Config = pulumi.Config()
 compartment_id: str = config.require("compartment_ocid")

@@ -1,0 +1,3 @@
+# Resource Naming
+
+::: core.naming

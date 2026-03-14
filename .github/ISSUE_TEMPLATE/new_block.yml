@@ -1,0 +1,72 @@
+name: New Block Proposal
+description: Propose a new high-level infrastructure building block
+labels: ["new-block", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A new block should encapsulate a complete, opinionated reference architecture — not just wrap an API.
+        Read [CONTRIBUTING.md](../CONTRIBUTING.md) before proposing.
+
+  - type: input
+    id: block-name
+    attributes:
+      label: Block name
+      placeholder: "e.g. ObjectStorageBucket, LoadBalancer, MysqlDatabase"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Cloud provider
+      options:
+        - OCI
+        - AWS (future)
+        - GCP (future)
+        - Azure (future)
+        - Multi-cloud
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this block solve?
+      description: What painful infrastructure pattern does it encode as a safe default?
+    validations:
+      required: true
+
+  - type: textarea
+    id: encapsulates
+    attributes:
+      label: What does it encapsulate?
+      description: Which cloud resources would this block manage internally?
+    validations:
+      required: true
+
+  - type: textarea
+    id: api
+    attributes:
+      label: Proposed minimal API
+      description: Show the constructor signature and a usage example
+      render: python
+    validations:
+      required: true
+
+  - type: input
+    id: reference
+    attributes:
+      label: Reference architecture or docs link
+      placeholder: "https://docs.oracle.com/..."
+
+  - type: dropdown
+    id: willing-to-implement
+    attributes:
+      label: Are you willing to implement this?
+      options:
+        - "Yes — I will open a PR"
+        - "Maybe — with guidance"
+        - "No — just proposing"
+    validations:
+      required: true

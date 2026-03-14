@@ -1,4 +1,4 @@
-"""Compute Instance building block for OCIBlocks.
+"""Compute Instance building block for CloudBlocks.
 
 Provides `ComputeInstance`, which deploys a single OCI VM into a chosen VCN
 subnet and attaches one or more block volumes for persistent storage.

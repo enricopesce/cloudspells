@@ -42,13 +42,15 @@ Stack reference format
 - Local file backend: ``"<project>/<stack>"``
 """
 
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
 import pulumi
-from providers.oci.network import VcnRef
+
 from providers.oci.compute import ComputeInstance
+from providers.oci.network import VcnRef
 
 config: pulumi.Config = pulumi.Config()
 compartment_id: str = config.require("compartment_ocid")
