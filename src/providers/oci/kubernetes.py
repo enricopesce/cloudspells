@@ -1,55 +1,54 @@
 """OKE (Oracle Kubernetes Engine) cluster building block for OCIBlocks.
 
-Provides :class:`OkeCluster`, a high-level Pulumi component that creates a
-complete OKE cluster with a node pool and all required OCI security list rules.
+Provides `OkeCluster`, a high-level Pulumi component that creates a complete
+OKE cluster with a node pool and all required OCI security list rules.
 
-Subnet mapping
---------------
+Subnet mapping:
+
 OKE resources are placed across two of the four VCN tiers:
 
-* **Public subnet** — API endpoint (public IP for kubectl) + OCI Load Balancers
-  created by ``LoadBalancer`` services.
-* **Private subnet** — Worker node VNICs *and* pod IPs (``OCI_VCN_IP_NATIVE``).
+- **Public subnet** — API endpoint (public IP for kubectl) + OCI Load Balancers
+  created by `LoadBalancer` services.
+- **Private subnet** — Worker node VNICs and pod IPs (`OCI_VCN_IP_NATIVE`).
   Both workers and pods share this subnet so pods can reach the internet via
   NAT Gateway, which is required for calling external services and APIs.
-  Pod-to-pod security is enforced by Kubernetes ``NetworkPolicy``, not by
+  Pod-to-pod security is enforced by Kubernetes `NetworkPolicy`, not by
   subnet routing — security lists cannot distinguish worker IPs from pod IPs
   within the same CIDR, and intra-subnet traffic bypasses security list rules
   entirely.
-* **Secure subnet** — Not used by OKE; reserved for databases and secrets
+- **Secure subnet** — Not used by OKE; reserved for databases and secrets
   managers that must not initiate any internet connection.
-* **Management subnet** — Not used by OKE directly; reserved for bastion hosts,
+- **Management subnet** — Not used by OKE directly; reserved for bastion hosts,
   monitoring agents, and VPN/FastConnect endpoints.
 
-Security list strategy
-----------------------
+Security list strategy:
+
 Rather than creating separate OKE security lists (which would consume the
-OCI-imposed 5-list-per-subnet quota), :class:`OkeCluster` adds its rules
-directly to the VCN's shared security lists via
-:meth:`~blocks.vcn.network.Vcn.add_security_list_rules`.  This uses only
-1 list per subnet, leaving 4 slots free for additional services.
+OCI-imposed 5-list-per-subnet quota), `OkeCluster` adds its rules directly to
+the VCN's shared security lists via `Vcn.add_security_list_rules`.  This uses
+only 1 list per subnet, leaving 4 slots free for additional services.
 
-Rules added by this block
-~~~~~~~~~~~~~~~~~~~~~~~~~
-*Public subnet (API endpoint + Load Balancer)*:
+Rules added by this block:
 
-* Ingress: Kubernetes API (6443) and control-plane port (12250) from private.
-* Ingress: ICMP path-MTU discovery from private subnet.
-* Ingress: HTTPS (443) and HTTP (80) from internet (Load Balancer).
-* Ingress: Kubernetes API (6443) from internet (kubectl).
-* Egress: OCI services (cluster management and telemetry).
-* Egress: Kubelet (10250), NodePort (30000–32767), kube-proxy (10256) to private.
-* Egress: All traffic to private subnet (webhooks, admission controllers).
+Public subnet (API endpoint + Load Balancer):
 
-*Private subnet (Worker nodes + Pods)*:
+- Ingress: Kubernetes API (6443) and control-plane port (12250) from private.
+- Ingress: ICMP path-MTU discovery from private subnet.
+- Ingress: HTTPS (443) and HTTP (80) from internet (Load Balancer).
+- Ingress: Kubernetes API (6443) from internet (kubectl).
+- Egress: OCI services (cluster management and telemetry).
+- Egress: Kubelet (10250), NodePort (30000-32767), kube-proxy (10256) to private.
+- Egress: All traffic to private subnet (webhooks, admission controllers).
 
-* Ingress: Kubelet (10250), NodePort (30000–32767), kube-proxy (10256) from public.
-* Ingress: All traffic from public subnet (control plane → pods: webhooks).
-* Ingress: ICMP path-MTU discovery from anywhere.
-* Egress: OCI services (OCIR image pulls, monitoring, logging).
-* Egress: Kubernetes API (6443) and control-plane port (12250) to public subnet.
-* Egress: HTTPS (443) to internet (image pulls + pod external API calls).
-* Egress: ICMP to internet (path-MTU discovery).
+Private subnet (Worker nodes + Pods):
+
+- Ingress: Kubelet (10250), NodePort (30000-32767), kube-proxy (10256) from public.
+- Ingress: All traffic from public subnet (control plane to pods: webhooks).
+- Ingress: ICMP path-MTU discovery from anywhere.
+- Egress: OCI services (OCIR image pulls, monitoring, logging).
+- Egress: Kubernetes API (6443) and control-plane port (12250) to public subnet.
+- Egress: HTTPS (443) to internet (image pulls + pod external API calls).
+- Egress: ICMP to internet (path-MTU discovery).
 """
 
 from __future__ import annotations
@@ -68,13 +67,13 @@ from providers.oci.network import Vcn, VcnRef
 class OkeCluster(BaseResource, AbstractKubernetes):
     """Oracle Kubernetes Engine cluster with node pool and security configuration.
 
-    Deploys a ``BASIC_CLUSTER`` OKE cluster with OCI VCN-native pod networking
-    (``OCI_VCN_IP_NATIVE`` CNI) and a node pool spread across all availability
+    Deploys a `BASIC_CLUSTER` OKE cluster with OCI VCN-native pod networking
+    (`OCI_VCN_IP_NATIVE` CNI) and a node pool spread across all availability
     domains in the region.
 
     Attributes:
-        vcn: The :class:`~blocks.vcn.network.Vcn` this cluster is deployed into.
-        kubernetes_version: Kubernetes version string (e.g. ``"v1.30.1"``).
+        vcn: The `Vcn` this cluster is deployed into.
+        kubernetes_version: Kubernetes version string (e.g. `"v1.30.1"`).
         display_name: Human-readable cluster display name.
         shape: Compute shape for the node pool VMs.
         min_nodes: Minimum (and initial) number of worker nodes.
@@ -86,12 +85,12 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             (populated with OKE rules after initialisation).
         oke_private_security_list: Alias for the VCN's private security list
             (populated with OKE rules after initialisation).
-        cluster: The underlying ``oci.containerengine.Cluster`` resource.
-        node_pool: The ``oci.containerengine.NodePool`` resource.
-        id: ``pulumi.Output[str]`` of the cluster OCID.
+        cluster: The underlying `oci.containerengine.Cluster` resource.
+        node_pool: The `oci.containerengine.NodePool` resource.
+        id: `pulumi.Output[str]` of the cluster OCID.
 
-    Usage::
-
+    Example:
+        ```python
         vcn = Vcn(name="lab", compartment_id=comp_id, stack_name="prod")
 
         cluster = OkeCluster(
@@ -107,6 +106,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         )
 
         cluster.create_kubeconfig("/tmp/kubeconfig")
+        ```
     """
 
     vcn: Vcn | VcnRef
@@ -147,14 +147,13 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         and then creates the Kubernetes control plane and node pool.
 
         Args:
-            name: Logical name for the cluster resource (e.g. ``"k8s"``).
+            name: Logical name for the cluster resource (e.g. `"k8s"`).
             compartment_id: OCID of the OCI compartment to deploy into.
-            vcn: :class:`~blocks.vcn.network.Vcn` instance that provides the
-                public and private subnets.
+            vcn: `Vcn` instance that provides the public and private subnets.
             kubernetes_version: Kubernetes version string
-                (e.g. ``"v1.30.1"``).
+                (e.g. `"v1.30.1"`).
             shape: Compute shape for worker node VMs
-                (e.g. ``"VM.Standard.E4.Flex"``).
+                (e.g. `"VM.Standard.E4.Flex"`).
             min_nodes: Number of worker nodes in the node pool.  The pool
                 is spread evenly across all availability domains.
             ocpus: Number of OCPUs per worker node.
@@ -162,12 +161,12 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             display_name: Human-readable name used for the cluster and node
                 pool OCI resources.
             stack_name: Pulumi stack name.  Defaults to
-                ``pulumi.get_stack()`` when ``None``.
+                `pulumi.get_stack()` when `None`.
             ssh_public_key: Optional SSH public key to install on worker
                 nodes (enables direct SSH for debugging).
             opts: Pulumi resource options forwarded to the component.
             image: Optional explicit boot image OCID for worker nodes.  When
-                ``None``, no image is pre-selected and OKE uses its default.
+                `None`, no image is pre-selected and OKE uses its default.
         """
         super().__init__("custom:oke:Cluster", name, compartment_id, stack_name, opts)
 
@@ -254,29 +253,28 @@ class OkeCluster(BaseResource, AbstractKubernetes):
     def _add_oke_security_lists_rules(self) -> None:
         """Add all OKE-required security rules to the VCN security lists.
 
-        Calls :meth:`~blocks.vcn.network.Vcn.add_security_list_rules` once
-        with the complete set of ingress and egress rules for the public
-        (API endpoint + Load Balancer) and private (worker nodes + pods)
-        subnets.
+        Calls `Vcn.add_security_list_rules` once with the complete set of
+        ingress and egress rules for the public (API endpoint + Load Balancer)
+        and private (worker nodes + pods) subnets.
 
-        Must be called before :meth:`~blocks.vcn.network.Vcn.finalize_network`.
+        Must be called before `Vcn.finalize_network`.
 
-        Rules added
-        -----------
-        *Public subnet ingress*: Kubernetes API (6443) and control-plane port
+        Rules added:
+
+        Public subnet ingress: Kubernetes API (6443) and control-plane port
         (12250) from private subnet (workers + pods); ICMP path-MTU from
         private; HTTPS (443) and HTTP (80) from internet (Load Balancer);
         Kubernetes API (6443) from internet (kubectl).
 
-        *Public subnet egress*: OCI services (telemetry, management); kubelet
-        (10250), ICMP, NodePort (30000–32767), and kube-proxy (10256) to
+        Public subnet egress: OCI services (telemetry, management); kubelet
+        (10250), ICMP, NodePort (30000-32767), and kube-proxy (10256) to
         private; all traffic to private (webhooks, admission controllers).
 
-        *Private subnet ingress*: kubelet (10250), NodePort (30000–32767), and
+        Private subnet ingress: kubelet (10250), NodePort (30000-32767), and
         kube-proxy (10256) from public; all traffic from public (control plane
         to pods for webhooks); ICMP from anywhere.
 
-        *Private subnet egress*: OCI services (OCIR, monitoring, logging);
+        Private subnet egress: OCI services (OCIR, monitoring, logging);
         Kubernetes API (6443) and control-plane port (12250) to public;
         HTTPS (443) to internet (image pulls and pod external API calls);
         ICMP to internet.
@@ -571,13 +569,14 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         """Export standard OKE cluster stack outputs.
 
         Publishes the cluster OCID under a key derived from the block's
-        logical name (e.g. ``okeinfra_cluster_id`` for name ``"okeinfra"``).
+        logical name (e.g. `okeinfra_cluster_id` for name `"okeinfra"`).
 
-        Example::
-
+        Example:
+            ```python
             oke = OkeCluster(name="okeinfra", ...)
             oke.export()
             # Exports: okeinfra_cluster_id
+            ```
         """
         prefix = self.name.replace("-", "_")
         pulumi.export(f"{prefix}_cluster_id", self.id)
@@ -587,8 +586,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
 
         Returns:
             Single-element list containing the VCN public security list OCID
-            as a ``pulumi.Output[str]``, or an empty list when using
-            :class:`~blocks.vcn.network.VcnRef` without a security list export.
+            as a `pulumi.Output[str]`, or an empty list when using `VcnRef`
+            without a security list export.
         """
         sl = self.vcn.public_security_list
         return [sl.id] if sl is not None else []
@@ -598,8 +597,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
 
         Returns:
             Single-element list containing the VCN private security list OCID
-            as a ``pulumi.Output[str]``, or an empty list when using
-            :class:`~blocks.vcn.network.VcnRef` without a security list export.
+            as a `pulumi.Output[str]`, or an empty list when using `VcnRef`
+            without a security list export.
         """
         sl = self.vcn.private_security_list
         return [sl.id] if sl is not None else []
@@ -608,12 +607,12 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         """Write a kubeconfig file for this OKE cluster.
 
         Fetches the cluster's kubeconfig content from the OCI API and writes
-        it to *filename*.  The file is created or overwritten if it already
+        it to `filename`.  The file is created or overwritten if it already
         exists.
 
         Args:
             filename: Absolute or relative path where the kubeconfig file
-                should be written (e.g. ``"/tmp/kubeconfig"``).
+                should be written (e.g. `"/tmp/kubeconfig"`).
         """
         cluster_kube_config = self.cluster.id.apply(
             lambda cid: oci.containerengine.get_cluster_kube_config(cluster_id=cid)

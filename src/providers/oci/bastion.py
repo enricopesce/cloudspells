@@ -1,31 +1,31 @@
 r"""Bastion Service building block for OCIBlocks.
 
-Provides :class:`Bastion`, which creates an OCI Bastion Service endpoint
-attached to the VCN's private subnet.  The Bastion enables time-limited SSH
-sessions to private-subnet resources without requiring a public-facing jump
-host.
+Provides `Bastion`, which creates an OCI Bastion Service endpoint attached to
+the VCN's private subnet.  The Bastion enables time-limited SSH sessions to
+private-subnet resources without requiring a public-facing jump host.
 
-Key behaviours
---------------
-* Creates one ``oci.bastion.Bastion`` of type ``STANDARD``.
-* Adds a TCP port-22 ingress rule to the VCN private security list when the
+Key behaviours:
+
+- Creates one `oci.bastion.Bastion` of type `STANDARD`.
+- Adds a TCP port-22 ingress rule to the VCN private security list when the
   network has not yet been finalised.
-* If the network is already finalised (e.g. because a
-  :class:`~blocks.compute.instance.ComputeInstance` or
-  :class:`~blocks.autoscale.workload.ScalableWorkload` was constructed first),
-  the existing SSH rule is reused and no duplicate rule is added.
-* Session access is controlled at the Bastion level via
-  ``client_cidr_block_allow_list``; the security-list rule allows all sources
+- If the network is already finalised (e.g. because a `ComputeInstance` or
+  `ScalableWorkload` was constructed first), the existing SSH rule is reused
+  and no duplicate rule is added.
+- Session access is controlled at the Bastion level via
+  `client_cidr_block_allow_list`; the security-list rule allows all sources
   because OCI Bastion uses dynamically-assigned managed IPs.
 
 Sessions are ephemeral (max 3 h TTL) and are not managed by this block.
-Create them on demand via the OCI CLI::
+Create them on demand via the OCI CLI:
 
-    oci bastion session create-managed-ssh \\
-        --bastion-id <bastion_id> \\
-        --target-resource-id <instance_id> \\
-        --target-os-username opc \\
-        --ssh-public-key-file ~/.ssh/id_rsa.pub
+```text
+oci bastion session create-managed-ssh \\
+    --bastion-id <bastion_id> \\
+    --target-resource-id <instance_id> \\
+    --target-os-username opc \\
+    --ssh-public-key-file ~/.ssh/id_rsa.pub
+```
 """
 
 from __future__ import annotations
@@ -47,24 +47,24 @@ class Bastion(BaseResource, AbstractBastion):
 
     Resources created:
 
-    * One ``oci.bastion.Bastion`` of type ``STANDARD``.
+    - One `oci.bastion.Bastion` of type `STANDARD`.
 
     Security rules added to the VCN (only when the network is not yet
     finalised):
 
-    * Private subnet ingress: TCP port 22 from ``0.0.0.0/0``.  OCI Bastion
+    - Private subnet ingress: TCP port 22 from `0.0.0.0/0`.  OCI Bastion
       uses managed, randomly-assigned source IPs; restrict client access via
-      *client_cidr_block_allow_list* instead.
+      `client_cidr_block_allow_list` instead.
 
     Attributes:
-        vcn: The :class:`~blocks.vcn.network.Vcn` this Bastion is attached to.
-        bastion: The underlying ``oci.bastion.Bastion`` resource.
-        bastion_id: ``pulumi.Output[str]`` of the Bastion OCID.
-        bastion_endpoint: ``pulumi.Output[str]`` of the Bastion's private
+        vcn: The `Vcn` this Bastion is attached to.
+        bastion: The underlying `oci.bastion.Bastion` resource.
+        bastion_id: `pulumi.Output[str]` of the Bastion OCID.
+        bastion_endpoint: `pulumi.Output[str]` of the Bastion's private
             endpoint IP address (used as a ProxyJump target in SSH config).
 
-    Usage::
-
+    Example:
+        ```python
         vcn = Vcn(name="lab", compartment_id=comp_id, stack_name="prod")
 
         instance = ComputeInstance(
@@ -81,6 +81,7 @@ class Bastion(BaseResource, AbstractBastion):
         )
 
         pulumi.export("bastion_endpoint", bastion.get_bastion_endpoint())
+        ```
     """
 
     vcn: Vcn
@@ -101,18 +102,18 @@ class Bastion(BaseResource, AbstractBastion):
         """Create an OCI Bastion Service endpoint.
 
         Args:
-            name: Logical name for the Bastion (e.g. ``"mgmt"``).
+            name: Logical name for the Bastion (e.g. `"mgmt"`).
             compartment_id: OCID of the OCI compartment to deploy into.
-            vcn: :class:`~blocks.vcn.network.Vcn` instance whose private
-                subnet the Bastion will be attached to.
+            vcn: `Vcn` instance whose private subnet the Bastion will be
+                attached to.
             stack_name: Pulumi stack name.  Defaults to
-                ``pulumi.get_stack()`` when ``None``.
+                `pulumi.get_stack()` when `None`.
             max_session_ttl_in_seconds: Maximum lifetime of a single Bastion
-                session in seconds.  Minimum ``1800`` (30 min), maximum
-                ``10800`` (3 h).  Default: ``10800``.
+                session in seconds.  Minimum `1800` (30 min), maximum
+                `10800` (3 h).  Default: `10800`.
             client_cidr_block_allow_list: List of IPv4 CIDR blocks from which
                 Bastion session creation is permitted.  Defaults to
-                ``["0.0.0.0/0"]`` (unrestricted – restrict in production).
+                `["0.0.0.0/0"]` (unrestricted — restrict in production).
             opts: Pulumi resource options forwarded to the component.
         """
         super().__init__("custom:compute:Bastion", name, compartment_id, stack_name, opts)
@@ -161,13 +162,12 @@ class Bastion(BaseResource, AbstractBastion):
         """Add SSH ingress rule to the VCN private security list.
 
         OCI Bastion sessions originate from managed, randomly-assigned source
-        IPs, so the rule must allow ``0.0.0.0/0`` on port 22.  Client access
-        is restricted at the Bastion level via ``client_cidr_block_allow_list``.
+        IPs, so the rule must allow `0.0.0.0/0` on port 22.  Client access
+        is restricted at the Bastion level via `client_cidr_block_allow_list`.
 
-        Must be called *before* :meth:`~blocks.vcn.network.Vcn.finalize_network`.
-        Constructing :class:`Bastion` before any block that triggers finalisation
-        (e.g. :class:`~blocks.compute.instance.ComputeInstance`) ensures the
-        correct ordering.
+        Must be called before `Vcn.finalize_network`.  Constructing `Bastion`
+        before any block that triggers finalisation (e.g. `ComputeInstance`)
+        ensures the correct ordering.
         """
         self.vcn.add_security_list_rules(
             private_ingress=[
@@ -194,11 +194,12 @@ class Bastion(BaseResource, AbstractBastion):
         Publishes the Bastion OCID and private endpoint IP under keys
         derived from the block's logical name.
 
-        Example::
-
+        Example:
+            ```python
             bastion = Bastion(name="mgmt", ...)
             bastion.export()
             # Exports: mgmt_bastion_id, mgmt_bastion_endpoint
+            ```
         """
         prefix = self.name.replace("-", "_")
         pulumi.export(f"{prefix}_bastion_id", self.get_bastion_id())
@@ -208,18 +209,18 @@ class Bastion(BaseResource, AbstractBastion):
         """Return the OCID of the Bastion resource.
 
         Returns:
-            ``pulumi.Output[str]`` resolving to the Bastion OCID.
+            `pulumi.Output[str]` resolving to the Bastion OCID.
         """
         return self.bastion.id
 
     def get_bastion_endpoint(self) -> pulumi.Output[str]:
         """Return the private endpoint IP of the Bastion.
 
-        Use this address as a ``ProxyJump`` target in your SSH client
+        Use this address as a `ProxyJump` target in your SSH client
         configuration to tunnel SSH connections to private-subnet instances.
 
         Returns:
-            ``pulumi.Output[str]`` resolving to the Bastion private endpoint
+            `pulumi.Output[str]` resolving to the Bastion private endpoint
             IP address.
         """
         return self.bastion.private_endpoint_ip_address
@@ -227,11 +228,11 @@ class Bastion(BaseResource, AbstractBastion):
     def get_access_endpoint(self) -> pulumi.Output[str]:
         """Return the access endpoint for SSH proxy sessions.
 
-        Satisfies :meth:`~core.abstractions.bastion.AbstractBastion.get_access_endpoint`.
-        Delegates to :meth:`get_bastion_endpoint`.
+        Satisfies `AbstractBastion.get_access_endpoint`.
+        Delegates to `get_bastion_endpoint`.
 
         Returns:
-            ``pulumi.Output[str]`` resolving to the Bastion private endpoint
+            `pulumi.Output[str]` resolving to the Bastion private endpoint
             IP address.
         """
         return self.get_bastion_endpoint()

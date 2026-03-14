@@ -47,37 +47,36 @@ SUBNET_MANAGEMENT: SubnetTier = "management"
 class DiskSpec:
     """Cloud-neutral block-disk descriptor.
 
-    Maps to OCI :class:`~providers.oci.volume.VolumeSpec` (``vpus_per_gb``),
-    AWS ``EbsBlockDevice`` (``volume_type`` + IOPS), or GCP
-    ``AttachedDiskInitializeParams`` (``disk_type``).
+    Maps to OCI `VolumeSpec` (`vpus_per_gb`),
+    AWS `EbsBlockDevice` (`volume_type` + IOPS), or GCP
+    `AttachedDiskInitializeParams` (`disk_type`).
 
     Performance tiers map as follows:
 
-    +-------------+------------------+--------------------------+------------------+
-    | Tier        | OCI              | AWS                      | GCP              |
-    +=============+==================+==========================+==================+
-    | ``"low"``   | 0 VPUs/GB        | gp3 3 000 IOPS           | pd-standard      |
-    | ``"balanced"``| 10 VPUs/GB    | gp3 3 000 IOPS           | pd-balanced      |
-    | ``"high"``  | 20 VPUs/GB       | io2 32 000 IOPS          | pd-ssd           |
-    | ``"ultra"`` | 120 VPUs/GB      | io2 64 000 IOPS          | pd-extreme       |
-    +-------------+------------------+--------------------------+------------------+
+    | Tier         | OCI          | AWS               | GCP         |
+    |--------------|--------------|-------------------|-------------|
+    | `"low"`      | 0 VPUs/GB    | gp3 3 000 IOPS    | pd-standard |
+    | `"balanced"` | 10 VPUs/GB   | gp3 3 000 IOPS    | pd-balanced |
+    | `"high"`     | 20 VPUs/GB   | io2 32 000 IOPS   | pd-ssd      |
+    | `"ultra"`    | 120 VPUs/GB  | io2 64 000 IOPS   | pd-extreme  |
 
     Attributes:
         size_in_gbs: Disk capacity in GiB.
         label: Logical slug used to derive the resource name suffix and to
-            address the disk via :meth:`AbstractCompute.get_disk_id`.  Must
+            address the disk via `AbstractCompute.get_disk_id`.  Must
             be unique within the instance's disk list.
-        performance_tier: Workload-tier hint.  Accepted values: ``"low"``,
-            ``"balanced"`` (default), ``"high"``, ``"ultra"``.
-        is_read_only: Mount the disk read-only.  Defaults to ``False``.
+        performance_tier: Workload-tier hint.  Accepted values: `"low"`,
+            `"balanced"` (default), `"high"`, `"ultra"`.
+        is_read_only: Mount the disk read-only.  Defaults to `False`.
 
-    Example::
-
+    Example:
+        ```python
         from core.abstractions.compute import DiskSpec
 
         data_disk = DiskSpec(size_in_gbs=200, label="data",
                              performance_tier="high")
         log_disk  = DiskSpec(size_in_gbs=50, label="logs")
+        ```
     """
 
     size_in_gbs: int
@@ -94,27 +93,27 @@ class DiskSpec:
 class AbstractCompute(ABC):
     """Interface for a single cloud VM with attached block disks.
 
-    All provider compute implementations (OCI
-    :class:`~providers.oci.compute.ComputeInstance`, AWS ``AwsInstance``,
-    GCP ``GcpInstance``) satisfy this interface, allowing cross-cloud
+    All provider compute implementations (OCI `ComputeInstance`, AWS `AwsInstance`,
+    GCP `GcpInstance`) satisfy this interface, allowing cross-cloud
     helpers and typed function signatures.
 
     Attributes:
         id: Provider resource ID of the instance.
         ssh_public_key: OpenSSH public key installed in
-            ``~/.ssh/authorized_keys``.
-        ssh_private_key: Corresponding PEM private key, or ``None`` when
+            `~/.ssh/authorized_keys`.
+        ssh_private_key: Corresponding PEM private key, or `None` when
             the caller supplied their own public key.
-        auto_generated_keys: ``True`` when the SSH key pair was auto-generated.
+        auto_generated_keys: `True` when the SSH key pair was auto-generated.
 
-    Example::
-
+    Example:
+        ```python
         def show_ips(vm: AbstractCompute, label: str) -> None:
             pulumi.export(f"{label}_private_ip", vm.get_private_ip())
             pulumi.export(f"{label}_id", vm.get_instance_id())
 
         show_ips(oci_vm,  "oci_app")
         show_ips(aws_vm,  "aws_app")
+        ```
     """
 
     id: pulumi.Output[str]
@@ -127,7 +126,7 @@ class AbstractCompute(ABC):
         """Return the private IP address of the instance.
 
         Returns:
-            ``pulumi.Output[str]`` resolving to the private IP.
+            `pulumi.Output[str]` resolving to the private IP.
         """
 
     @abstractmethod
@@ -135,18 +134,18 @@ class AbstractCompute(ABC):
         """Return the provider resource ID of the instance.
 
         Returns:
-            ``pulumi.Output[str]`` resolving to the instance ID / OCID.
+            `pulumi.Output[str]` resolving to the instance ID / OCID.
         """
 
     @abstractmethod
     def get_disk_id(self, label: str) -> pulumi.Output[str]:
-        """Return the provider resource ID of the disk with *label*.
+        """Return the provider resource ID of the disk with the given label.
 
         Args:
-            label: The ``label`` value of the target :class:`DiskSpec`.
+            label: The `label` value of the target `DiskSpec`.
 
         Returns:
-            ``pulumi.Output[str]`` resolving to the disk resource ID.
+            `pulumi.Output[str]` resolving to the disk resource ID.
 
         Raises:
             KeyError: If no disk with the given label exists.
@@ -162,10 +161,10 @@ class AbstractCompute(ABC):
 
     @abstractmethod
     def get_ssh_private_key(self) -> str | None:
-        """Return the auto-generated SSH private key, or ``None``.
+        """Return the auto-generated SSH private key, or `None`.
 
         Returns:
-            PEM-encoded private key when auto-generated, ``None``
+            PEM-encoded private key when auto-generated, `None`
             when the caller supplied their own public key.
         """
 

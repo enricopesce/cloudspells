@@ -1,15 +1,15 @@
 """Cloud-neutral utility helpers for OCIBlocks resource management.
 
-Provides :class:`Helper`, a stateless utility class whose methods cover
+Provides `Helper`, a stateless utility class whose methods cover
 two cloud-neutral areas:
 
-* **Subnet CIDR calculation** – splitting a supernet CIDR into *n* equal
+- **Subnet CIDR calculation** — splitting a supernet CIDR into n equal
   sub-networks.
-* **SSH key generation** – creating RSA 4096-bit key pairs on the fly
-  using the system ``ssh-keygen`` binary.
+- **SSH key generation** — creating RSA 4096-bit key pairs on the fly
+  using the system `ssh-keygen` binary.
 
 OCI-specific helpers (image resolution and availability-domain mapping)
-live in :mod:`providers.oci.helper`.
+live in `providers.oci.helper`.
 """
 
 import ipaddress
@@ -25,27 +25,27 @@ class Helper:
     """Stateless utility methods used by OCIBlocks building blocks.
 
     All methods are safe to call multiple times and have no side-effects
-    on instance state.  Instantiate with ``Helper()`` wherever needed.
+    on instance state.  Instantiate with `Helper()` wherever needed.
     """
 
     def get_random_word(self) -> str:
         """Return a single random English word.
 
-        Uses the ``random-word`` library internally.  Useful for generating
+        Uses the `random-word` library internally.  Useful for generating
         unique name suffixes during testing or prototyping.
 
         Returns:
-            A random lower-case word string (e.g. ``"banana"``).
+            A random lower-case word string (e.g. `"banana"`).
         """
         r = RandomWords()
         return r.get_random_word()
 
     def generate_ssh_key_pair(self, stack_name: str, resource_name: str) -> tuple[str, str]:
-        """Generate an RSA 4096-bit SSH key pair using ``ssh-keygen``.
+        """Generate an RSA 4096-bit SSH key pair using `ssh-keygen`.
 
         The key pair is created in a temporary directory that is
         automatically cleaned up after the keys have been read.  The key
-        comment is set to ``"ociblocks-{stack_name}-{resource_name}"`` for
+        comment is set to `"ociblocks-{stack_name}-{resource_name}"` for
         traceability.
 
         Args:
@@ -53,12 +53,12 @@ class Helper:
             resource_name: Resource name embedded in the key comment.
 
         Returns:
-            A ``(public_key, private_key)`` tuple where both elements are
-            plain strings.  *public_key* is the single-line OpenSSH public
-            key; *private_key* is the full PEM-encoded private key.
+            A `(public_key, private_key)` tuple where both elements are
+            plain strings.  public_key is the single-line OpenSSH public
+            key; private_key is the full PEM-encoded private key.
 
         Raises:
-            subprocess.CalledProcessError: If ``ssh-keygen`` exits with a
+            subprocess.CalledProcessError: If `ssh-keygen` exits with a
                 non-zero status.
         """
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -87,20 +87,20 @@ class Helper:
         return public_key, private_key
 
     def calculate_subnets(self, cidr: str, num_subnets: int) -> List[str]:
-        """Split a supernet CIDR into *n* equal sub-networks.
+        """Split a supernet CIDR into n equal sub-networks.
 
-        The method increases the prefix length of *cidr* by the minimum
-        number of bits required to accommodate at least *num_subnets* subnets,
-        then returns the first *num_subnets* of them.
+        The method increases the prefix length of cidr by the minimum
+        number of bits required to accommodate at least num_subnets subnets,
+        then returns the first num_subnets of them.
 
         Args:
-            cidr: The supernet CIDR block string (e.g. ``"10.0.0.0/16"``).
+            cidr: The supernet CIDR block string (e.g. `"10.0.0.0/16"`).
             num_subnets: The number of subnets to return.
 
         Returns:
-            List of *num_subnets* CIDR block strings in address order
-            (e.g. ``["10.0.0.0/17", "10.0.128.0/17"]`` for
-            ``calculate_subnets("10.0.0.0/16", 2)``).
+            List of num_subnets CIDR block strings in address order
+            (e.g. `["10.0.0.0/17", "10.0.128.0/17"]` for
+            `calculate_subnets("10.0.0.0/16", 2)`).
 
         Example:
             >>> h = Helper()

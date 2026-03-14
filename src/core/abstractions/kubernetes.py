@@ -14,18 +14,19 @@ import pulumi
 class AbstractKubernetes(ABC):
     """Interface for a managed Kubernetes cluster.
 
-    Provider implementations (OCI :class:`~providers.oci.kubernetes.OkeCluster`,
-    AWS ``EksCluster``, GCP ``GkeCluster``) satisfy this interface.
+    Provider implementations (OCI `OkeCluster`,
+    AWS `EksCluster`, GCP `GkeCluster`) satisfy this interface.
 
     Attributes:
         id: Provider resource ID of the cluster.
 
-    Example::
-
+    Example:
+        ```python
         def export_cluster(cluster: AbstractKubernetes, label: str) -> None:
             pulumi.export(f"{label}_cluster_id", cluster.id)
 
         export_cluster(oke_cluster, "oci_k8s")
+        ```
     """
 
     id: pulumi.Output[str]
@@ -40,7 +41,7 @@ class AbstractKubernetes(ABC):
 
         Args:
             filename: Absolute or relative path where the kubeconfig file
-                should be written (e.g. ``"/tmp/kubeconfig"``).
+                should be written (e.g. `"/tmp/kubeconfig"`).
         """
 
 

@@ -1,17 +1,17 @@
 """OCI VCN (Virtual Cloud Network) provider implementation.
 
 This module is the canonical implementation of
-:class:`~core.abstractions.network.AbstractNetwork` for Oracle Cloud
-Infrastructure.  It provides :class:`Vcn`, which creates a complete OCI
-network topology using a *lazy initialisation* (builder) pattern:
+`AbstractNetwork` for Oracle Cloud
+Infrastructure.  It provides `Vcn`, which creates a complete OCI
+network topology using a lazy initialisation (builder) pattern:
 
-1. Construct the ``Vcn`` object – the VCN, gateways, and route tables are
+1. Construct the `Vcn` object — the VCN, gateways, and route tables are
    created immediately.
 2. Other blocks (OKE, Compute, ScalableWorkload) call
-   :meth:`Vcn.add_security_list_rules` to accumulate their required rules.
-3. The *first* block to finish calls :meth:`Vcn.finalize_network`, which
-   creates the security lists with *all* accumulated rules and then creates
-   the subnets.  Subsequent calls to ``finalize_network`` are no-ops.
+   `Vcn.add_security_list_rules` to accumulate their required rules.
+3. The first block to finish calls `Vcn.finalize_network`, which
+   creates the security lists with all accumulated rules and then creates
+   the subnets.  Subsequent calls to `finalize_network` are no-ops.
 
 This approach keeps the OCI security-list-per-subnet count at 1, leaving
 the remaining 4 slots free for future services.
@@ -20,29 +20,25 @@ the remaining 4 slots free for future services.
 
 The VCN CIDR is split into four contiguous, CIDR-aligned tiers using binary
 subdivision.  The same formula applies regardless of the prefix length you
-choose (``/16``, ``/20``, ``/24``, …):
+choose (`/16`, `/20`, `/24`, ...):
 
-.. code-block:: text
-
-    VCN  (prefix/N)
-    ├── Private     prefix/(N+1)  — 50 %  of VCN  — NAT + Service GW
-    ├── Secure      prefix/(N+2)  — 25 %  of VCN  — Service GW only
-    ├── Public      prefix/(N+3)  — 12.5% of VCN  — Internet GW
-    └── Management  prefix/(N+3)  — 12.5% of VCN  — Service GW only
+```text
+VCN  (prefix/N)
+├── Private     prefix/(N+1)  — 50 %  of VCN  — NAT + Service GW
+├── Secure      prefix/(N+2)  — 25 %  of VCN  — Service GW only
+├── Public      prefix/(N+3)  — 12.5% of VCN  — Internet GW
+└── Management  prefix/(N+3)  — 12.5% of VCN  — Service GW only
+```
 
 Examples for common prefix lengths:
 
-+--------+------------------+------------------+------------------+------------------+
-| VCN    | Private (/N+1)   | Secure (/N+2)    | Public (/N+3)    | Management (/N+3)|
-+========+==================+==================+==================+==================+
-| /16    | /17  (32 766 h)  | /18  (16 382 h)  | /19   (8 190 h)  | /19   (8 190 h)  |
-+--------+------------------+------------------+------------------+------------------+
-| /20    | /21   (2 046 h)  | /22   (1 022 h)  | /23     (510 h)  | /23     (510 h)  |
-+--------+------------------+------------------+------------------+------------------+
-| /24    | /25     (126 h)  | /26      (62 h)  | /27      (30 h)  | /27      (30 h)  |
-+--------+------------------+------------------+------------------+------------------+
+| VCN  | Private (/N+1)  | Secure (/N+2)   | Public (/N+3)   | Management (/N+3) |
+|------|-----------------|-----------------|-----------------|-------------------|
+| /16  | /17 (32 766 h)  | /18 (16 382 h)  | /19  (8 190 h)  | /19  (8 190 h)    |
+| /20  | /21  (2 046 h)  | /22  (1 022 h)  | /23    (510 h)  | /23    (510 h)    |
+| /24  | /25    (126 h)  | /26     (62 h)  | /27     (30 h)  | /27     (30 h)    |
 
-*(h = usable host IPs after subtracting the OCI-reserved 5 addresses per subnet)*
+(h = usable host IPs after subtracting the OCI-reserved 5 addresses per subnet)
 
 All four blocks together exactly cover the VCN CIDR — no gaps, no overlaps.
 CIDR validation (canonical form, prefix length sanity) is delegated to OCI;
@@ -85,14 +81,14 @@ SUBNET_MANAGEMENT: Literal["management"] = "management"
 
 
 class _SubnetRef:
-    """Thin wrapper exposing only the ``id`` of an externally-managed subnet."""
+    """Thin wrapper exposing only the `id` of an externally-managed subnet."""
 
     def __init__(self, subnet_id: pulumi.Input[str]) -> None:
         self.id: pulumi.Output[str] = pulumi.Output.from_input(subnet_id)
 
 
 class _SecurityListRef:
-    """Thin wrapper exposing only the ``id`` of an externally-managed security list."""
+    """Thin wrapper exposing only the `id` of an externally-managed security list."""
 
     def __init__(self, security_list_id: pulumi.Input[str]) -> None:
         self.id: pulumi.Output[str] = pulumi.Output.from_input(security_list_id)
@@ -102,15 +98,15 @@ class _SecurityListRef:
 class SubnetConfig:
     """Internal configuration record for a single subnet.
 
-    Used by :meth:`Vcn._create_subnets` to hold the per-subnet parameters
-    resolved during :meth:`Vcn.finalize_network`.
+    Used by `Vcn._create_subnets` to hold the per-subnet parameters
+    resolved during `Vcn.finalize_network`.
 
     Attributes:
-        cidr: IPv4 CIDR block assigned to the subnet (e.g. ``"10.0.0.0/17"``).
-        is_public: ``True`` for a public subnet (instances may receive public
-            IPs); ``False`` for a private subnet.
+        cidr: IPv4 CIDR block assigned to the subnet (e.g. `"10.0.0.0/17"`).
+        is_public: `True` for a public subnet (instances may receive public
+            IPs); `False` for a private subnet.
         dns_label: Short DNS label prefix passed to
-            :meth:`~core.base.BaseResource.create_dns_label`.
+            `BaseResource.create_dns_label`.
     """
 
     cidr: str
@@ -124,68 +120,70 @@ class Vcn(BaseResource, AbstractNetwork):
     Creates the complete OCI network foundation required by all other
     OCIBlocks components:
 
-    * One VCN with a configurable CIDR block (default ``"10.0.0.0/18"``).
-    * Internet Gateway, NAT Gateway, and Service Gateway.
-    * Four route tables — one per subnet tier — wired to the appropriate
+    - One VCN with a configurable CIDR block (default `"10.0.0.0/18"`).
+    - Internet Gateway, NAT Gateway, and Service Gateway.
+    - Four route tables — one per subnet tier — wired to the appropriate
       gateways (see module docstring for routing policy per tier).
-    * Four security lists populated via the builder pattern.
-    * Four contiguous, CIDR-aligned subnets auto-calculated by binary
+    - Four security lists populated via the builder pattern.
+    - Four contiguous, CIDR-aligned subnets auto-calculated by binary
       subdivision of the VCN CIDR (private 50 %, secure 25 %, public 12.5 %,
-      management 12.5 %).  Any valid prefix length works — ``/16``, ``/20``,
-      ``/24``, etc.  See the module docstring for a worked example table.
+      management 12.5 %).  Any valid prefix length works — `/16`, `/20`,
+      `/24`, etc.  See the module docstring for a worked example table.
 
-    .. important::
-
-        Security lists and subnets are **not** created in ``__init__``.  They
-        are created only when :meth:`finalize_network` is called.  Other
-        blocks add their rules via :meth:`add_security_list_rules` **before**
-        that call.
+    Security lists and subnets are **not** created in `__init__`.  They
+    are created only when `finalize_network` is called.  Other
+    blocks add their rules via `add_security_list_rules` **before**
+    that call.
 
     Attributes:
         cidr_block: IPv4 CIDR block for the VCN.
-        vcn: The underlying ``oci.core.Vcn`` resource.
+        vcn: The underlying `oci.core.Vcn` resource.
         internet_gateway: Internet Gateway resource.
         nat_gateway: NAT Gateway resource.
         service_gateway: Service Gateway resource.
         public_security_list: Public-subnet security list (available after
-            :meth:`finalize_network`).
+            `finalize_network`).
         private_security_list: Private-subnet security list (available after
-            :meth:`finalize_network`).
+            `finalize_network`).
         public_route_table: Route table for the public subnet.
         private_route_table: Route table for the private subnet.
-        public_subnet: Public subnet resource, or ``None`` before
-            :meth:`finalize_network`.
-        private_subnet: Private subnet resource, or ``None`` before
-            :meth:`finalize_network`.
-        secure_subnet: Secure (data) subnet resource, or ``None`` before
-            :meth:`finalize_network`.  No internet path — Service Gateway only.
+        public_subnet: Public subnet resource, or `None` before
+            `finalize_network`.
+        private_subnet: Private subnet resource, or `None` before
+            `finalize_network`.
+        secure_subnet: Secure (data) subnet resource, or `None` before
+            `finalize_network`.  No internet path — Service Gateway only.
         secure_security_list: Secure-subnet security list (available after
-            :meth:`finalize_network`).
+            `finalize_network`).
         secure_route_table: Route table for the secure subnet (Service Gateway
             only — no default route, no NAT).
-        management_subnet: Management subnet resource, or ``None`` before
-            :meth:`finalize_network`.  No internet path — Service Gateway
+        management_subnet: Management subnet resource, or `None` before
+            `finalize_network`.  No internet path — Service Gateway
             only.  For monitoring agents, bastion service, VPN endpoints,
             and internal tooling.
         management_security_list: Management-subnet security list (available
-            after :meth:`finalize_network`).
+            after `finalize_network`).
         management_route_table: Route table for the management subnet
             (Service Gateway only — same isolation policy as secure).
-        id: ``pulumi.Output[str]`` of the VCN OCID.
+        id: `pulumi.Output[str]` of the VCN OCID.
 
     Usage patterns:
 
-    1. **Standalone VCN** (manual finalisation required)::
+    1. **Standalone VCN** (manual finalisation required):
 
-            vcn = Vcn(name="lab", compartment_id=comp_id, stack_name="prod")
-            vcn.finalize_network()
-            # vcn.public_subnet and vcn.private_subnet are now available
+        ```python
+        vcn = Vcn(name="lab", compartment_id=comp_id, stack_name="prod")
+        vcn.finalize_network()
+        # vcn.public_subnet and vcn.private_subnet are now available
+        ```
 
-    2. **With other OCIBlocks components** (automatic finalisation)::
+    2. **With other OCIBlocks components** (automatic finalisation):
 
-            vcn = Vcn(name="lab", compartment_id=comp_id, stack_name="prod")
-            cluster = OkeCluster(vcn=vcn, ...)   # calls finalize_network internally
-            # vcn.public_subnet and vcn.private_subnet are now available
+        ```python
+        vcn = Vcn(name="lab", compartment_id=comp_id, stack_name="prod")
+        cluster = OkeCluster(vcn=vcn, ...)   # calls finalize_network internally
+        # vcn.public_subnet and vcn.private_subnet are now available
+        ```
     """
 
     SUBNET_PUBLIC: Literal["public"] = "public"
@@ -222,19 +220,19 @@ class Vcn(BaseResource, AbstractNetwork):
     ) -> None:
         """Create a VCN with gateways and route tables.
 
-        Security lists and subnets are *not* created here; call
-        :meth:`finalize_network` (directly or indirectly via another block)
+        Security lists and subnets are not created here; call
+        `finalize_network` (directly or indirectly via another block)
         once all security rules have been accumulated.
 
         Args:
-            name: Logical name for this VCN (e.g. ``"lab"``).
+            name: Logical name for this VCN (e.g. `"lab"`).
             compartment_id: OCID of the OCI compartment to deploy into.
             stack_name: Pulumi stack name.  Defaults to
-                ``pulumi.get_stack()`` when ``None``.
+                `pulumi.get_stack()` when `None`.
             opts: Pulumi resource options forwarded to the component.
             cidr_block: IPv4 CIDR for the VCN in canonical form
-                (no host bits set, e.g. ``"10.0.0.0/16"`` not
-                ``"10.0.1.0/16"``).  Defaults to ``"10.0.0.0/18"``.
+                (no host bits set, e.g. `"10.0.0.0/16"` not
+                `"10.0.1.0/16"`).  Defaults to `"10.0.0.0/18"`.
                 Any prefix length is accepted; the four tier subnets are
                 derived automatically by binary subdivision — private gets
                 50 % (prefix+1), secure 25 % (prefix+2), public and
@@ -265,6 +263,12 @@ class Vcn(BaseResource, AbstractNetwork):
         # Flag to track whether finalize_network() has been called.
         self._security_lists_finalized: bool = False
 
+        # Fingerprints of ambient security-list rules already added via
+        # _add_unique_security_list_rules().  Prevents duplicate rules when
+        # multiple NSGs of the same role are created (e.g. five APP_SERVER
+        # NSGs should not add the services-egress rule five times).
+        self._applied_ambient_rule_fingerprints: set[str] = set()
+
         cidr_str: str = str(self.cidr_block) if not isinstance(self.cidr_block, str) else self.cidr_block
         self._subnet_cidrs: list[str] = self._split_tiers(cidr_str)
 
@@ -280,15 +284,15 @@ class Vcn(BaseResource, AbstractNetwork):
         Uses binary subdivision — each tier takes exactly half of the
         remaining address space:
 
-        .. code-block:: text
-
-            VCN (prefix/N)  ──────────────────────────────────────── 100 %
-            ├── Private  (prefix/N+1) ─────────────────────────────   50 %
-            └── remainder (prefix/N+1)
-                ├── Secure  (prefix/N+2) ──────────────────────────   25 %
-                └── remainder (prefix/N+2)
-                    ├── Public      (prefix/N+3) ───────────────────  12.5 %
-                    └── Management  (prefix/N+3) ───────────────────  12.5 %
+        ```text
+        VCN (prefix/N)  ──────────────────────────────────────── 100 %
+        ├── Private  (prefix/N+1) ─────────────────────────────   50 %
+        └── remainder (prefix/N+1)
+            ├── Secure  (prefix/N+2) ──────────────────────────   25 %
+            └── remainder (prefix/N+2)
+                ├── Public      (prefix/N+3) ───────────────────  12.5 %
+                └── Management  (prefix/N+3) ───────────────────  12.5 %
+        ```
 
         The four blocks are placed in ascending address order so private
         occupies the naturally aligned lower half (guaranteed CIDR alignment).
@@ -297,20 +301,20 @@ class Vcn(BaseResource, AbstractNetwork):
 
         The same formula applies for any prefix length:
 
-        * ``/16`` → private ``/17``, secure ``/18``, public ``/19``, mgmt ``/19``
-        * ``/20`` → private ``/21``, secure ``/22``, public ``/23``, mgmt ``/23``
-        * ``/24`` → private ``/25``, secure ``/26``, public ``/27``, mgmt ``/27``
+        - `/16` → private `/17`, secure `/18`, public `/19`, mgmt `/19`
+        - `/20` → private `/21`, secure `/22`, public `/23`, mgmt `/23`
+        - `/24` → private `/25`, secure `/26`, public `/27`, mgmt `/27`
 
         Args:
             cidr: Canonical VCN CIDR string with no host bits set
-                (e.g. ``"10.0.0.0/16"``).
+                (e.g. `"10.0.0.0/16"`).
 
         Returns:
-            ``[public_cidr, private_cidr, secure_cidr, management_cidr]``
+            `[public_cidr, private_cidr, secure_cidr, management_cidr]`
             matching the index convention used elsewhere in this class.
 
-        Example::
-
+        Example:
+            ```python
             Vcn._split_tiers("10.0.0.0/16")
             # → ["10.0.192.0/19", "10.0.0.0/17", "10.0.128.0/18", "10.0.224.0/19"]
             #     public           private          secure           management
@@ -318,6 +322,7 @@ class Vcn(BaseResource, AbstractNetwork):
             Vcn._split_tiers("172.16.0.0/20")
             # → ["172.16.12.0/23", "172.16.0.0/21", "172.16.8.0/22", "172.16.14.0/23"]
             #     public            private           secure           management
+            ```
         """
         net = ipaddress.ip_network(cidr, strict=True)
         halves = list(net.subnets(prefixlen_diff=1))
@@ -337,7 +342,7 @@ class Vcn(BaseResource, AbstractNetwork):
     # ------------------------------------------------------------------
 
     def _create_vcn(self) -> None:
-        """Create the ``oci.core.Vcn`` resource and store its OCID as ``self.id``."""
+        """Create the `oci.core.Vcn` resource and store its OCID as `self.id`."""
         resource_name = self.create_resource_name("vcn")
         self.vcn = oci.core.Vcn(
             resource_name,
@@ -390,13 +395,13 @@ class Vcn(BaseResource, AbstractNetwork):
     def _create_security_lists(self) -> None:
         """Create public and private security lists with all accumulated rules.
 
-        Called exactly once by :meth:`finalize_network`.  The security lists
-        are built from the rules stored in the four ``_*_rules`` lists, which
-        were populated by :meth:`add_security_list_rules` calls from other
+        Called exactly once by `finalize_network`.  The security lists
+        are built from the rules stored in the four `_*_rules` lists, which
+        were populated by `add_security_list_rules` calls from other
         blocks.
 
-        After this method returns, ``self.public_security_list`` and
-        ``self.private_security_list`` are set.
+        After this method returns, `self.public_security_list` and
+        `self.private_security_list` are set.
         """
         security_lists_config: dict[str, dict[str, Any]] = {
             "public": {
@@ -452,14 +457,14 @@ class Vcn(BaseResource, AbstractNetwork):
     def _create_route_tables(self) -> None:
         """Create public and private route tables wired to the correct gateways.
 
-        * Public route table: default route (``0.0.0.0/0``) via the Internet
+        - Public route table: default route (`0.0.0.0/0`) via the Internet
           Gateway.
-        * Private route table: default route via the NAT Gateway; OCI service
+        - Private route table: default route via the NAT Gateway; OCI service
           CIDR via the Service Gateway.
-        * Secure route table: OCI service CIDR via the Service Gateway **only**.
+        - Secure route table: OCI service CIDR via the Service Gateway only.
           No default route — instances in the secure tier have no internet path.
-        * Management route table: OCI service CIDR via the Service Gateway
-          **only**.  Same isolation policy as the secure route table.
+        - Management route table: OCI service CIDR via the Service Gateway
+          only.  Same isolation policy as the secure route table.
         """
         private_route_rules = [
             oci.core.RouteTableRouteRuleArgs(
@@ -532,13 +537,13 @@ class Vcn(BaseResource, AbstractNetwork):
 
         Args:
             subnet_name: Fully-qualified OCI resource name for the subnet.
-            config: :class:`SubnetConfig` carrying CIDR, visibility, and DNS
+            config: `SubnetConfig` carrying CIDR, visibility, and DNS
                 label for this subnet.
             security_list: Security list to attach to the subnet.
             route_table: Route table to attach to the subnet.
 
         Returns:
-            The newly created ``oci.core.Subnet`` resource.
+            The newly created `oci.core.Subnet` resource.
         """
         network_type: str = "public" if config.is_public else "private"
         subnet_group: str = f"{network_type}-{'a' if 'a' in config.dns_label else 'b'}"
@@ -563,7 +568,7 @@ class Vcn(BaseResource, AbstractNetwork):
         """Create public, private, secure, and management subnets.
 
         Args:
-            subnet_cidrs: Four CIDR strings from :meth:`_split_tiers`;
+            subnet_cidrs: Four CIDR strings from `_split_tiers`;
                 indices 0/1/2/3 map to public/private/secure/management.
         """
         public_cidr, private_cidr, secure_cidr, management_cidr = (
@@ -591,26 +596,76 @@ class Vcn(BaseResource, AbstractNetwork):
     # Public API
     # ------------------------------------------------------------------
 
+    def _add_unique_security_list_rules(
+        self,
+        fingerprint: str,
+        public_ingress: list[oci.core.SecurityListIngressSecurityRuleArgs] | None = None,
+        public_egress: list[oci.core.SecurityListEgressSecurityRuleArgs] | None = None,
+        private_ingress: list[oci.core.SecurityListIngressSecurityRuleArgs] | None = None,
+        private_egress: list[oci.core.SecurityListEgressSecurityRuleArgs] | None = None,
+        secure_ingress: list[oci.core.SecurityListIngressSecurityRuleArgs] | None = None,
+        secure_egress: list[oci.core.SecurityListEgressSecurityRuleArgs] | None = None,
+        management_ingress: list[oci.core.SecurityListIngressSecurityRuleArgs] | None = None,
+        management_egress: list[oci.core.SecurityListEgressSecurityRuleArgs] | None = None,
+    ) -> None:
+        """Add security list rules only if fingerprint has not been seen before.
+
+        Prevents duplicate rules when multiple NSGs of the same role are created
+        (e.g. five `APP_SERVER` NSGs should not write the services-egress rule
+        five times to the private security list).  Each unique ambient rule is
+        identified by a short string fingerprint chosen by the caller.
+
+        This is an internal helper — callers are `Nsg`
+        role and relationship methods.  External code should use
+        `add_security_list_rules` directly.
+
+        Args:
+            fingerprint: Unique string identifying this rule (e.g.
+                `"private-egress-all-services"`).  Subsequent calls with the
+                same fingerprint are silently ignored.
+            public_ingress: Ingress rules to add to the public security list.
+            public_egress: Egress rules to add to the public security list.
+            private_ingress: Ingress rules to add to the private security list.
+            private_egress: Egress rules to add to the private security list.
+            secure_ingress: Ingress rules to add to the secure security list.
+            secure_egress: Egress rules to add to the secure security list.
+            management_ingress: Ingress rules to add to the management list.
+            management_egress: Egress rules to add to the management list.
+
+        Raises:
+            RuntimeError: If called after `finalize_network`.
+        """
+        if fingerprint in self._applied_ambient_rule_fingerprints:
+            return
+        self._applied_ambient_rule_fingerprints.add(fingerprint)
+        self.add_security_list_rules(
+            public_ingress=public_ingress,
+            public_egress=public_egress,
+            private_ingress=private_ingress,
+            private_egress=private_egress,
+            secure_ingress=secure_ingress,
+            secure_egress=secure_egress,
+            management_ingress=management_ingress,
+            management_egress=management_egress,
+        )
+
     def export(self) -> None:
         """Export the canonical VCN stack outputs for cross-stack consumption.
 
-        Publishes the fourteen keys that :meth:`VcnRef.from_stack_reference`
-        expects, so any stack using a standalone ``Vcn`` can be referenced by
+        Publishes the fourteen keys that `VcnRef.from_stack_reference`
+        expects, so any stack using a standalone `Vcn` can be referenced by
         another stack without additional configuration.
 
-        Must be called **after** :meth:`finalize_network`.
+        Calls `finalize_network` automatically if it has not been called
+        yet, so no explicit call is needed before `export()`.
 
-        Raises:
-            RuntimeError: If called before :meth:`finalize_network`.
-
-        Example::
-
+        Example:
+            ```python
             vcn = Vcn(name="lab", compartment_id=comp_id)
-            vcn.finalize_network()
-            vcn.export()
+            vcn.export()  # finalize_network() is called automatically
+            ```
         """
-        if not self._security_lists_finalized:
-            raise RuntimeError("Call finalize_network() before export().")
+        self.finalize_network()
         assert self.public_subnet is not None
         assert self.private_subnet is not None
         assert self.secure_subnet is not None
@@ -643,14 +698,12 @@ class Vcn(BaseResource, AbstractNetwork):
     ) -> None:
         """Accumulate security list rules before the network is finalised.
 
-        Uses the *builder* pattern: rules contributed by different blocks are
-        collected here and applied together when :meth:`finalize_network` is
+        Uses the builder pattern: rules contributed by different blocks are
+        collected here and applied together when `finalize_network` is
         called.  This ensures only a single security list per subnet is
         created, leaving the remaining OCI slots free for future services.
 
-        .. important::
-
-            This method **must** be called *before* :meth:`finalize_network`.
+        This method **must** be called **before** `finalize_network`.
 
         Args:
             public_ingress: Ingress rules to add to the public security list.
@@ -663,11 +716,11 @@ class Vcn(BaseResource, AbstractNetwork):
             management_egress: Egress rules to add to the management security list.
 
         Raises:
-            RuntimeError: If called after :meth:`finalize_network` has already
+            RuntimeError: If called after `finalize_network` has already
                 been called.
 
-        Example::
-
+        Example:
+            ```python
             vcn = Vcn(name="lab", compartment_id=comp_id, stack_name="prod")
 
             vcn.add_security_list_rules(
@@ -676,6 +729,7 @@ class Vcn(BaseResource, AbstractNetwork):
             )
 
             vcn.finalize_network()
+            ```
         """
         if self._security_lists_finalized:
             raise RuntimeError(
@@ -703,23 +757,22 @@ class Vcn(BaseResource, AbstractNetwork):
     def add_security_rules(self, rules: SecurityRules) -> None:
         """Accumulate cloud-neutral security rules by translating them to OCI args.
 
-        Converts each :class:`~core.abstractions.network.IngressRule` /
-        :class:`~core.abstractions.network.EgressRule` into the corresponding
-        ``oci.core.SecurityList*Args`` and delegates to
-        :meth:`add_security_list_rules`.
+        Converts each `IngressRule` / `EgressRule` into the corresponding
+        `oci.core.SecurityList*Args` and delegates to
+        `add_security_list_rules`.
 
         Symbolic source / destination values are resolved as follows:
 
-        * ``"internet"``       → ``"0.0.0.0/0"`` with type ``CIDR_BLOCK``.
-        * ``"cloud-services"`` → OCI Service Gateway CIDR block with type
-          ``SERVICE_CIDR_BLOCK``.
+        - `"internet"`       → `"0.0.0.0/0"` with type `CIDR_BLOCK`.
+        - `"cloud-services"` → OCI Service Gateway CIDR block with type
+          `SERVICE_CIDR_BLOCK`.
 
         Args:
             rules: Cloud-neutral rule descriptors to merge into this
                 VCN's pending security list rule set.
 
         Raises:
-            RuntimeError: If called after :meth:`finalize_network` has
+            RuntimeError: If called after `finalize_network` has
                 already been called.
         """
 
@@ -795,11 +848,11 @@ class Vcn(BaseResource, AbstractNetwork):
         """Return the public subnet CIDR block.
 
         Available immediately after construction (before
-        :meth:`finalize_network`), so other blocks can use it when building
+        `finalize_network`), so other blocks can use it when building
         their security rules.
 
         Returns:
-            Public subnet CIDR (e.g. ``"10.0.0.0/17"``).
+            Public subnet CIDR (e.g. `"10.0.0.0/17"`).
         """
         return self._subnet_cidrs[0]
 
@@ -807,11 +860,11 @@ class Vcn(BaseResource, AbstractNetwork):
         """Return the private subnet CIDR block.
 
         Available immediately after construction (before
-        :meth:`finalize_network`), so other blocks can use it when building
+        `finalize_network`), so other blocks can use it when building
         their security rules.
 
         Returns:
-            Private subnet CIDR (e.g. ``"10.0.128.0/17"``).
+            Private subnet CIDR (e.g. `"10.0.128.0/17"`).
         """
         return self._subnet_cidrs[1]
 
@@ -819,11 +872,11 @@ class Vcn(BaseResource, AbstractNetwork):
         """Return the secure subnet CIDR block.
 
         Available immediately after construction (before
-        :meth:`finalize_network`), so other blocks can use it when building
+        `finalize_network`), so other blocks can use it when building
         their security rules.
 
         Returns:
-            Secure subnet CIDR (e.g. ``"10.0.128.0/18"``).
+            Secure subnet CIDR (e.g. `"10.0.128.0/18"`).
         """
         return self._subnet_cidrs[2]
 
@@ -831,35 +884,36 @@ class Vcn(BaseResource, AbstractNetwork):
         """Return the management subnet CIDR block.
 
         Returns:
-            Management subnet CIDR (e.g. ``"10.0.56.0/21"``).
+            Management subnet CIDR (e.g. `"10.0.56.0/21"`).
         """
         return self._subnet_cidrs[3]
 
     def finalize_network(self) -> None:
         """Create security lists and subnets with all accumulated rules.
 
-        This method is **idempotent** – only the first call has any effect;
+        This method is **idempotent** — only the first call has any effect;
         subsequent calls return immediately.  It is invoked automatically by
         other OCIBlocks components (OKE, Compute, ScalableWorkload) at the
-        end of their ``__init__`` methods.  Call it explicitly only when
-        using ``Vcn`` in standalone mode (without other blocks).
+        end of their `__init__` methods.  Call it explicitly only when
+        using `Vcn` in standalone mode (without other blocks).
 
         After this method returns:
 
-        * ``self.public_security_list`` is set.
-        * ``self.private_security_list`` is set.
-        * ``self.secure_security_list`` is set.
-        * ``self.management_security_list`` is set.
-        * ``self.public_subnet`` is set.
-        * ``self.private_subnet`` is set.
-        * ``self.secure_subnet`` is set.
-        * ``self.management_subnet`` is set.
+        - `self.public_security_list` is set.
+        - `self.private_security_list` is set.
+        - `self.secure_security_list` is set.
+        - `self.management_security_list` is set.
+        - `self.public_subnet` is set.
+        - `self.private_subnet` is set.
+        - `self.secure_subnet` is set.
+        - `self.management_subnet` is set.
 
-        Example::
-
+        Example:
+            ```python
             vcn = Vcn(name="lab", compartment_id=comp_id, stack_name="prod")
             vcn.finalize_network()
             # vcn.public_subnet is now available
+            ```
         """
         if self._security_lists_finalized:
             return
@@ -884,54 +938,53 @@ class VcnRef(AbstractNetworkRef):
     """Read-only reference to a VCN managed by another Pulumi stack.
 
     Lets you deploy OCIBlocks services (OKE, Compute, ScalableWorkload) into a
-    VCN that was created by a *separate* Pulumi stack, without recreating or
+    VCN that was created by a separate Pulumi stack, without recreating or
     modifying any network resources.
 
-    .. warning::
-
-        :meth:`add_security_list_rules` and :meth:`finalize_network` are
-        **no-ops** for ``VcnRef``.  Any security rules required by the services
-        you deploy here must already exist in the source VCN stack.
+    `add_security_list_rules` and `finalize_network` are **no-ops** for
+    `VcnRef`.  Any security rules required by the services you deploy here
+    must already exist in the source VCN stack.
 
     The source stack must export the following keys (all exported by the
-    ``examples/vcn`` stack out of the box):
+    `examples/vcn` stack out of the box):
 
-    - ``vcn_id``
-    - ``cidr_block``
-    - ``public_subnet_id``
-    - ``private_subnet_id``
-    - ``secure_subnet_id``
-    - ``public_subnet_cidr``
-    - ``private_subnet_cidr``
-    - ``secure_subnet_cidr``
-    - ``public_security_list_id``
-    - ``private_security_list_id``
-    - ``secure_security_list_id``
-    - ``management_subnet_id``
-    - ``management_subnet_cidr``
-    - ``management_security_list_id``
+    - `vcn_id`
+    - `cidr_block`
+    - `public_subnet_id`
+    - `private_subnet_id`
+    - `secure_subnet_id`
+    - `public_subnet_cidr`
+    - `private_subnet_cidr`
+    - `secure_subnet_cidr`
+    - `public_security_list_id`
+    - `private_security_list_id`
+    - `secure_security_list_id`
+    - `management_subnet_id`
+    - `management_subnet_cidr`
+    - `management_security_list_id`
 
     Attributes:
-        id: ``pulumi.Output[str]`` OCID of the referenced VCN.
-        cidr_block: ``pulumi.Output[str]`` CIDR of the referenced VCN.
-        public_subnet: Stub whose ``.id`` is the public subnet OCID.
-        private_subnet: Stub whose ``.id`` is the private subnet OCID.
-        public_security_list: Stub whose ``.id`` is the public security list
-            OCID, or ``None`` if not exported by the source stack.
-        private_security_list: Stub whose ``.id`` is the private security list
-            OCID, or ``None`` if not exported by the source stack.
-        secure_subnet: Stub whose ``.id`` is the secure subnet OCID.
-        secure_security_list: Stub whose ``.id`` is the secure security list
-            OCID, or ``None`` if not exported by the source stack.
-        management_subnet: Stub whose ``.id`` is the management subnet OCID,
-            or ``None`` if not exported by the source stack.
-        management_security_list: Stub whose ``.id`` is the management
-            security list OCID, or ``None`` if not exported by the source stack.
+        id: `pulumi.Output[str]` OCID of the referenced VCN.
+        cidr_block: `pulumi.Output[str]` CIDR of the referenced VCN.
+        public_subnet: Stub whose `.id` is the public subnet OCID.
+        private_subnet: Stub whose `.id` is the private subnet OCID.
+        public_security_list: Stub whose `.id` is the public security list
+            OCID, or `None` if not exported by the source stack.
+        private_security_list: Stub whose `.id` is the private security list
+            OCID, or `None` if not exported by the source stack.
+        secure_subnet: Stub whose `.id` is the secure subnet OCID.
+        secure_security_list: Stub whose `.id` is the secure security list
+            OCID, or `None` if not exported by the source stack.
+        management_subnet: Stub whose `.id` is the management subnet OCID,
+            or `None` if not exported by the source stack.
+        management_security_list: Stub whose `.id` is the management
+            security list OCID, or `None` if not exported by the source stack.
 
-    Example::
-
+    Example:
+        ```python
         vcn = VcnRef.from_stack_reference("acme/networking/prod")
         cluster = OkeCluster(name="app", vcn=vcn, compartment_id=comp_id, ...)
+        ```
     """
 
     id: pulumi.Output[str]
@@ -969,26 +1022,25 @@ class VcnRef(AbstractNetworkRef):
             public_subnet_id: OCID of the existing public subnet.
             private_subnet_id: OCID of the existing private subnet.
             public_subnet_cidr: IPv4 CIDR of the public subnet
-                (e.g. ``"10.0.0.0/17"``).  Used by blocks when building
+                (e.g. `"10.0.0.0/17"`).  Used by blocks when building
                 security rules — must match the actual subnet CIDR.
             private_subnet_cidr: IPv4 CIDR of the private subnet
-                (e.g. ``"10.0.128.0/17"``).
+                (e.g. `"10.0.128.0/17"`).
             cidr_block: IPv4 CIDR of the VCN itself.  Optional; only used for
                 informational exports.
             public_security_list_id: OCID of the public security list.
-                Required when using
-                :meth:`~blocks.oke.cluster.OkeCluster.get_public_security_list_ids`.
+                Required when using `OkeCluster.get_public_security_list_ids`.
             private_security_list_id: OCID of the private security list.
             secure_subnet_id: OCID of the existing secure subnet, if present.
             secure_subnet_cidr: IPv4 CIDR of the secure subnet
-                (e.g. ``"10.0.192.0/18"``). Required when ``secure_subnet_id``
+                (e.g. `"10.0.192.0/18"`). Required when `secure_subnet_id`
                 is provided.
             secure_security_list_id: OCID of the secure security list.
             management_subnet_id: OCID of the existing management subnet,
                 if present.
             management_subnet_cidr: IPv4 CIDR of the management subnet
-                (e.g. ``"10.0.224.0/18"``). Required when
-                ``management_subnet_id`` is provided.
+                (e.g. `"10.0.224.0/18"`). Required when
+                `management_subnet_id` is provided.
             management_security_list_id: OCID of the management security list.
         """
         self.id = pulumi.Output.from_input(vcn_id)
@@ -1010,20 +1062,21 @@ class VcnRef(AbstractNetworkRef):
 
     @classmethod
     def from_stack_reference(cls, stack_name: str) -> VcnRef:
-        """Create a :class:`VcnRef` from outputs published by another Pulumi stack.
+        """Create a `VcnRef` from outputs published by another Pulumi stack.
 
         Args:
             stack_name: Pulumi stack reference string.
 
-                - Pulumi Cloud: ``"<organization>/<project>/<stack>"``
-                - Local backend: ``"<project>/<stack>"``
+                - Pulumi Cloud: `"<organization>/<project>/<stack>"`
+                - Local backend: `"<project>/<stack>"`
 
         Returns:
-            A :class:`VcnRef` populated from the referenced stack's outputs.
+            A `VcnRef` populated from the referenced stack's outputs.
 
-        Example::
-
+        Example:
+            ```python
             vcn = VcnRef.from_stack_reference("acme/networking/prod")
+            ```
         """
         ref = pulumi.StackReference(stack_name)
         return cls(
@@ -1090,7 +1143,7 @@ class VcnRef(AbstractNetworkRef):
         """Return the public subnet CIDR.
 
         Returns:
-            Public subnet CIDR as a ``pulumi.Input[str]``.
+            Public subnet CIDR as a `pulumi.Input[str]`.
         """
         return self._public_subnet_cidr
 
@@ -1098,7 +1151,7 @@ class VcnRef(AbstractNetworkRef):
         """Return the private subnet CIDR.
 
         Returns:
-            Private subnet CIDR as a ``pulumi.Input[str]``.
+            Private subnet CIDR as a `pulumi.Input[str]`.
         """
         return self._private_subnet_cidr
 
@@ -1106,7 +1159,7 @@ class VcnRef(AbstractNetworkRef):
         """Return the secure subnet CIDR.
 
         Returns:
-            Secure subnet CIDR as a ``pulumi.Input[str]``.
+            Secure subnet CIDR as a `pulumi.Input[str]`.
         """
         return self._secure_subnet_cidr
 
@@ -1114,7 +1167,7 @@ class VcnRef(AbstractNetworkRef):
         """Return the management subnet CIDR.
 
         Returns:
-            Management subnet CIDR as a ``pulumi.Input[str]``.
+            Management subnet CIDR as a `pulumi.Input[str]`.
         """
         return self._management_subnet_cidr
 
@@ -1125,16 +1178,16 @@ class VcnRef(AbstractNetworkRef):
 def get_resources_by_tag(vcn_instance: Vcn, tag_key: str, tag_value: str) -> list[Any]:
     """Return all child resources of a VCN that match a specific freeform tag.
 
-    Iterates over every attribute of *vcn_instance* that exposes a
-    ``freeform_tags`` property and returns those whose tag value matches.
+    Iterates over every attribute of vcn_instance that exposes a
+    `freeform_tags` property and returns those whose tag value matches.
 
     Args:
-        vcn_instance: The :class:`Vcn` instance to inspect.
-        tag_key: The freeform tag key to filter on (e.g. ``"NetworkType"``).
-        tag_value: The expected tag value (e.g. ``"public"``).
+        vcn_instance: The `Vcn` instance to inspect.
+        tag_key: The freeform tag key to filter on (e.g. `"NetworkType"`).
+        tag_value: The expected tag value (e.g. `"public"`).
 
     Returns:
-        List of resource objects whose ``freeform_tags[tag_key] == tag_value``.
+        List of resource objects whose `freeform_tags[tag_key] == tag_value`.
         May be empty if no resources match.
     """
     resources: list[Any] = []

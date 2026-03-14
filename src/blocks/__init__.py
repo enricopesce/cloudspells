@@ -1,10 +1,10 @@
 """OCIBlocks — backward-compatibility shim.
 
-All existing imports (``from blocks import Vcn``, etc.) continue to work.
-The canonical source for each symbol is now :mod:`providers.oci`.
+All existing imports (`from blocks import Vcn`, etc.) continue to work.
+The canonical source for each symbol is now `providers.oci`.
 
-For new code, import directly from :mod:`providers.oci` or from
-:mod:`core.abstractions` to write cloud-neutral typed functions.
+For new code, import directly from `providers.oci` or from
+`core.abstractions` to write cloud-neutral typed functions.
 """
 
 from providers.oci.autoscale import (

@@ -1,14 +1,14 @@
 """Resource tagging utilities for OCIBlocks.
 
-Provides :class:`ResourceTagger`, which generates consistent OCI *freeform tag*
+Provides `ResourceTagger`, which generates consistent OCI freeform tag
 dictionaries.  Every resource created by an OCIBlocks component receives at
 minimum these baseline tags, enabling cost reporting, governance queries, and
 resource discovery:
 
-* ``Name``        – human-readable resource identifier.
-* ``ResourceType`` – category of the resource (e.g. ``"vcn"``, ``"subnet"``).
-* ``Environment`` – the Pulumi stack name.
-* ``CreatedBy``   – ``"{stack_name}-{resource_name}"`` identifying the block.
+- `Name`        — human-readable resource identifier.
+- `ResourceType` — category of the resource (e.g. `"vcn"`, `"subnet"`).
+- `Environment` — the Pulumi stack name.
+- `CreatedBy`   — `"{stack_name}-{resource_name}"` identifying the block.
 
 Specialised helpers add extra keys for network and gateway resources.
 """
@@ -19,12 +19,12 @@ from typing import Any, Dict, Optional
 class ResourceTagger:
     """Generate standardised OCI freeform tag dictionaries.
 
-    Every :class:`~core.base.BaseResource` owns a ``ResourceTagger`` instance
-    and delegates tag creation to it via the ``create_*_tags`` methods.
+    Every `BaseResource` owns a `ResourceTagger` instance
+    and delegates tag creation to it via the `create_*_tags` methods.
 
     Attributes:
-        stack_name: Pulumi stack name (e.g. ``"prod"``).
-        resource_name: Logical name of the building block (e.g. ``"lab"``).
+        stack_name: Pulumi stack name (e.g. `"prod"`).
+        resource_name: Logical name of the building block (e.g. `"lab"`).
     """
 
     stack_name: str
@@ -34,9 +34,9 @@ class ResourceTagger:
         """Initialise a tagger for a specific resource.
 
         Args:
-            stack_name: Pulumi stack name used as the ``Environment`` tag value.
+            stack_name: Pulumi stack name used as the `Environment` tag value.
             resource_name: Logical name of the resource block, used in the
-                ``CreatedBy`` tag.
+                `CreatedBy` tag.
         """
         self.stack_name = stack_name
         self.resource_name = resource_name
@@ -51,22 +51,22 @@ class ResourceTagger:
 
         Every resource receives these baseline tags:
 
-        * ``Name``        – *resource_name* (the display name of the resource).
-        * ``ResourceType`` – *resource_type* (e.g. ``"vcn"``, ``"subnet"``).
-        * ``Environment`` – the Pulumi stack name.
-        * ``CreatedBy``   – ``"{stack_name}-{resource_name}"`` string
+        - `Name`        — resource_name (the display name of the resource).
+        - `ResourceType` — resource_type (e.g. `"vcn"`, `"subnet"`).
+        - `Environment` — the Pulumi stack name.
+        - `CreatedBy`   — `"{stack_name}-{resource_name}"` string
           identifying the OCIBlocks component that created the resource.
 
         Args:
-            resource_name: Display name for the ``Name`` tag (usually the
-                fully-qualified OCI resource name, e.g. ``"prod-lab-vcn"``).
-            resource_type: Resource category for the ``ResourceType`` tag.
+            resource_name: Display name for the `Name` tag (usually the
+                fully-qualified OCI resource name, e.g. `"prod-lab-vcn"`).
+            resource_type: Resource category for the `ResourceType` tag.
             additional_tags: Optional extra key/value pairs merged into the
-                returned dict.  Values are cast to ``str``; conflicting keys
+                returned dict.  Values are cast to `str`; conflicting keys
                 override the baseline defaults.
 
         Returns:
-            Flat ``dict[str, str]`` suitable for the ``freeform_tags=``
+            Flat `dict[str, str]` suitable for the `freeform_tags=`
             argument on any OCI resource.
 
         Example:
@@ -96,22 +96,22 @@ class ResourceTagger:
     ) -> Dict[str, str]:
         """Create freeform tags enriched with networking metadata.
 
-        Extends the baseline tags from :meth:`create_freeform_tags` with:
+        Extends the baseline tags from `create_freeform_tags` with:
 
-        * ``NetworkType``  – ``"public"`` or ``"private"``.
-        * ``SubnetGroup``  – optional logical sub-group (e.g. ``"public-a"``).
+        - `NetworkType`  — `"public"` or `"private"`.
+        - `SubnetGroup`  — optional logical sub-group (e.g. `"public-a"`).
 
         Args:
-            resource_name: Display name for the ``Name`` tag.
-            resource_type: Resource category (e.g. ``"subnet"``,
-                ``"security-list"``, ``"route-table"``).
-            network_type: Network tier – typically ``"public"`` or
-                ``"private"``.
+            resource_name: Display name for the `Name` tag.
+            resource_type: Resource category (e.g. `"subnet"`,
+                `"security-list"`, `"route-table"`).
+            network_type: Network tier — typically `"public"` or
+                `"private"`.
             subnet_group: Optional sub-grouping label within the network tier.
             additional_tags: Optional extra key/value pairs to merge.
 
         Returns:
-            Flat ``dict[str, str]`` with all baseline and networking tags.
+            Flat `dict[str, str]` with all baseline and networking tags.
         """
         extra: Dict[str, Any] = {"NetworkType": network_type}
 
@@ -131,18 +131,18 @@ class ResourceTagger:
     ) -> Dict[str, str]:
         """Create freeform tags for an OCI gateway resource.
 
-        Extends the baseline tags from :meth:`create_freeform_tags` with:
+        Extends the baseline tags from `create_freeform_tags` with:
 
-        * ``GatewayType`` – e.g. ``"internet"``, ``"nat"``, ``"service"``.
+        - `GatewayType` — e.g. `"internet"`, `"nat"`, `"service"`.
 
         Args:
-            resource_name: Display name for the ``Name`` tag.
-            gateway_type: Gateway category string (e.g. ``"internet"``).
+            resource_name: Display name for the `Name` tag.
+            gateway_type: Gateway category string (e.g. `"internet"`).
             additional_tags: Optional extra key/value pairs to merge.
 
         Returns:
-            Flat ``dict[str, str]`` with all baseline tags and
-            ``GatewayType`` included.
+            Flat `dict[str, str]` with all baseline tags and
+            `GatewayType` included.
         """
         extra: Dict[str, Any] = {"GatewayType": gateway_type}
 

@@ -1,7 +1,7 @@
 """VCN building block — backward-compatibility shim.
 
-Re-exports from :mod:`providers.oci.network`.  Existing imports such as
-``from blocks.vcn import Vcn`` continue to work unchanged.
+Re-exports from `providers.oci.network`. Existing imports such as
+`from blocks.vcn import Vcn` continue to work unchanged.
 """
 
 from providers.oci.network import (

@@ -142,6 +142,34 @@ The `src/` directory is added to `sys.path` at the top of each test file so modu
 - Class docstrings include `Attributes:` section for IDE hover support
 - Private helpers have docstrings describing what they do and when to call them
 
+#### Docstring markup — one format for VS Code and mkdocstrings
+
+Use **pure Markdown** inside every docstring. This is the only syntax that renders correctly in both VS Code (Pylance hover) and mkdocstrings without any translation layer.
+
+| Use | Avoid |
+|-----|-------|
+| `` `value` `` — inline code | ` ``value`` ` — RST double-backtick |
+| ` ```\nblock\n``` ` — fenced code block | `pattern::` + indented block — RST code block |
+| plain prose | `*italic*` for emphasis — RST italic renders as literal asterisks |
+
+```python
+# Correct
+def create_resource_name(self, suffix: str) -> str:
+    """Build a name following the pattern `{stack}-{resource}-{suffix}`.
+
+    Args:
+        suffix: Resource type suffix (e.g. `"vcn"`, `"igw"`).
+
+    Returns:
+        Fully-qualified resource name string.
+
+    Example:
+        >>> namer = ResourceNamer("prod", "lab")
+        >>> namer.create_resource_name("vcn")
+        'prod-lab-vcn'
+    """
+```
+
 ## Dependencies
 
 - **Pulumi**: 3.204.0

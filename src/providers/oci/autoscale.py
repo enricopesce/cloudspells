@@ -1,35 +1,24 @@
 """Scalable Workload building block for OCIBlocks.
 
-Provides :class:`ScalableWorkload`, which creates a complete horizontally-scalable
+Provides `ScalableWorkload`, which creates a complete horizontally-scalable
 OCI compute tier with load balancing and autoscaling:
 
-* **OCI Load Balancer** (flexible shape) in the VCN's public subnet with HTTP
+- **OCI Load Balancer** (flexible shape) in the VCN's public subnet with HTTP
   and optional HTTPS listeners.
-* **Instance Configuration** as a launch template for pool instances.
-* **Instance Pool** in the VCN's private subnet, spread across all
+- **Instance Configuration** as a launch template for pool instances.
+- **Instance Pool** in the VCN's private subnet, spread across all
   availability domains.
-* **Autoscaling Configuration** – metric-based (CPU/memory) or schedule-based
+- **Autoscaling Configuration** — metric-based (CPU/memory) or schedule-based
   (cron expressions).
 
-Supporting configuration dataclasses
--------------------------------------
-:class:`LoadBalancerConfig`
-    Customise LB port, health check path, bandwidth, and SSL.
+Supporting configuration dataclasses:
 
-:class:`MetricScalingPolicy`
-    Scale in/out based on CPU or memory utilisation thresholds.
-
-:class:`ScheduleScalingPolicy`
-    Scale in/out on a Quartz cron schedule (e.g. business hours).
-
-:class:`ScheduleEntry`
-    A single cron-schedule scaling action.
-
-:class:`ScalingMetric`
-    Enum of available metric types.
-
-:class:`ScalingAction`
-    Enum of available scaling action types.
+- `LoadBalancerConfig`: Customise LB port, health check path, bandwidth, and SSL.
+- `MetricScalingPolicy`: Scale in/out based on CPU or memory utilisation thresholds.
+- `ScheduleScalingPolicy`: Scale in/out on a Quartz cron schedule (e.g. business hours).
+- `ScheduleEntry`: A single cron-schedule scaling action.
+- `ScalingMetric`: Enum of available metric types.
+- `ScalingAction`: Enum of available scaling action types.
 """
 
 from __future__ import annotations
@@ -63,16 +52,16 @@ class OciLoadBalancerConfig(_BaseLoadBalancerConfig):
     """OCI-specific load balancer configuration extending the cloud-neutral base.
 
     Adds OCI flexible-shape bandwidth parameters to the base
-    :class:`~core.abstractions.autoscale.LoadBalancerConfig`.
+    `LoadBalancerConfig`.
 
     Attributes:
         backend_port: Port on backend instances to receive traffic and health checks.
         health_check_path: URL path for HTTP health checks.
         is_public: Whether the load balancer has a public IP.
         min_bandwidth_mbps: Minimum bandwidth for the OCI flexible LB shape.
-            Default: ``10``.
+            Default: `10`.
         max_bandwidth_mbps: Maximum bandwidth for the OCI flexible LB shape.
-            Default: ``100``.
+            Default: `100`.
         ssl_certificate_name: SSL certificate name for HTTPS.  If set, creates
             an HTTPS listener on port 443 in addition to HTTP on port 80.
     """
@@ -81,7 +70,7 @@ class OciLoadBalancerConfig(_BaseLoadBalancerConfig):
     max_bandwidth_mbps: int = 100
 
 
-# Alias so existing callers using ``LoadBalancerConfig(min_bandwidth_mbps=...)``
+# Alias so existing callers using `LoadBalancerConfig(min_bandwidth_mbps=...)`
 # continue to work without modification.
 LoadBalancerConfig = OciLoadBalancerConfig
 
@@ -92,51 +81,48 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
     Creates a complete horizontally-scalable compute tier following OCI best
     practices:
 
-    * OCI Load Balancer (flexible shape) in the VCN **public** subnet —
+    - OCI Load Balancer (flexible shape) in the VCN public subnet —
       internet-facing, with HTTP and optional HTTPS listeners.
-    * Instance Configuration as the launch template for pool VMs.
-    * Instance Pool in the VCN **private** subnet, spread across all
+    - Instance Configuration as the launch template for pool VMs.
+    - Instance Pool in the VCN private subnet, spread across all
       availability domains.
-    * Autoscaling Configuration — metric-based (CPU/memory thresholds) or
-      schedule-based (Quartz cron).  Pass ``None`` to disable autoscaling.
+    - Autoscaling Configuration — metric-based (CPU/memory thresholds) or
+      schedule-based (Quartz cron).  Pass `None` to disable autoscaling.
 
     Security rules are added automatically to the VCN via
-    :meth:`~blocks.vcn.network.Vcn.add_security_list_rules` before
-    :meth:`~blocks.vcn.network.Vcn.finalize_network` is called.
+    `Vcn.add_security_list_rules` before `Vcn.finalize_network` is called.
 
     Attributes:
-        vcn: The :class:`~blocks.vcn.network.Vcn` or
-            :class:`~blocks.vcn.network.VcnRef` this workload is deployed into.
+        vcn: The `Vcn` or `VcnRef` this workload is deployed into.
         shape: Compute shape for instance pool VMs
-            (e.g. ``"VM.Standard.E4.Flex"``).
+            (e.g. `"VM.Standard.E4.Flex"`).
         ocpus: Number of OCPUs per instance.
         memory_in_gbs: RAM in GiB per instance.
         ssh_public_key: OpenSSH public key installed on instances.
-        ssh_private_key: Corresponding private key, or ``None`` when the caller
+        ssh_private_key: Corresponding private key, or `None` when the caller
             supplied their own public key.
         image_id: OCID of the boot image resolved for the pool instances.
-        user_data: Base64-encoded cloud-init user data string, or ``None``.
+        user_data: Base64-encoded cloud-init user data string, or `None`.
         min_instances: Minimum (floor) number of instances for autoscaling.
         max_instances: Maximum (ceiling) number of instances for autoscaling.
         initial_instances: Instance count when the pool is first created.
-        load_balancer_config: :class:`LoadBalancerConfig` in use.
-        scaling_policy: :class:`MetricScalingPolicy`,
-            :class:`ScheduleScalingPolicy`, or ``None``.
-        auto_generated_keys: ``True`` when SSH keys were auto-generated.
-        load_balancer: The ``oci.loadbalancer.LoadBalancer`` resource.
-        backend_set: The ``oci.loadbalancer.BackendSet`` resource.
-        listeners: List of ``oci.loadbalancer.Listener`` resources (HTTP,
+        load_balancer_config: `LoadBalancerConfig` in use.
+        scaling_policy: `MetricScalingPolicy`, `ScheduleScalingPolicy`, or `None`.
+        auto_generated_keys: `True` when SSH keys were auto-generated.
+        load_balancer: The `oci.loadbalancer.LoadBalancer` resource.
+        backend_set: The `oci.loadbalancer.BackendSet` resource.
+        listeners: List of `oci.loadbalancer.Listener` resources (HTTP,
             and optionally HTTPS).
-        instance_configuration: The ``oci.core.InstanceConfiguration``
+        instance_configuration: The `oci.core.InstanceConfiguration`
             resource used as the pool launch template.
-        instance_pool: The ``oci.core.InstancePool`` resource.
+        instance_pool: The `oci.core.InstancePool` resource.
         autoscaling_configuration: The
-            ``oci.autoscaling.AutoScalingConfiguration`` resource, or
-            ``None`` when autoscaling is disabled.
-        id: ``pulumi.Output[str]`` of the instance pool OCID.
+            `oci.autoscaling.AutoScalingConfiguration` resource, or `None`
+            when autoscaling is disabled.
+        id: `pulumi.Output[str]` of the instance pool OCID.
 
-    Example::
-
+    Example:
+        ```python
         vcn = Vcn(name="app", compartment_id=comp_id, cidr_block="10.0.0.0/16")
 
         pool = ScalableWorkload(
@@ -150,6 +136,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         )
 
         pulumi.export("lb_ip", pool.get_load_balancer_ip())
+        ```
     """
 
     vcn: Vcn | VcnRef
@@ -203,41 +190,41 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         """Create a scalable workload with load balancer, instance pool, and autoscaling.
 
         Args:
-            name: Logical name for the workload (e.g. ``"web"``).
+            name: Logical name for the workload (e.g. `"web"`).
             compartment_id: OCID of the OCI compartment to deploy into.
-            vcn: :class:`~blocks.vcn.Vcn` or :class:`~blocks.vcn.VcnRef`
-                providing the 4-tier network.  The load balancer is placed in
-                the public subnet and the instance pool in the private subnet.
+            vcn: `Vcn` or `VcnRef` providing the 4-tier network.  The load
+                balancer is placed in the public subnet and the instance pool
+                in the private subnet.
             stack_name: Pulumi stack name.  Defaults to
-                ``pulumi.get_stack()`` when ``None``.
+                `pulumi.get_stack()` when `None`.
             shape: OCI compute shape for instance pool VMs
-                (default: ``"VM.Standard.E4.Flex"``).
-            ocpus: Number of OCPUs per instance (default: ``1``).
-            memory_in_gbs: RAM in GiB per instance (default: ``16``).
-            image_id: Explicit boot image OCID.  When ``None``, the latest
-                Oracle Linux 8 image compatible with *shape* is resolved
+                (default: `"VM.Standard.E4.Flex"`).
+            ocpus: Number of OCPUs per instance (default: `1`).
+            memory_in_gbs: RAM in GiB per instance (default: `16`).
+            image_id: Explicit boot image OCID.  When `None`, the latest
+                Oracle Linux 8 image compatible with `shape` is resolved
                 automatically.
             ssh_public_key: OpenSSH public key to install on instances.
-                When ``None`` or empty, a key pair is auto-generated and
+                When `None` or empty, a key pair is auto-generated and
                 exported as Pulumi secrets.
-            user_data: Cloud-init user data script, **base64-encoded**.
+            user_data: Cloud-init user data script, base64-encoded.
                 Passed to instances via OCI instance metadata.
             boot_volume_size_in_gbs: Boot volume size in GiB (default:
-                ``50``).
+                `50`).
             min_instances: Minimum number of instances in the pool
-                (default: ``1``).
+                (default: `1`).
             max_instances: Maximum number of instances the autoscaler may
-                create (default: ``5``).
+                create (default: `5`).
             initial_instances: Initial instance count when the pool is first
-                created.  Defaults to *min_instances*.
-            load_balancer_config: :class:`LoadBalancerConfig` dataclass.
-                Defaults to ``LoadBalancerConfig()`` (port 80, health check
-                ``/health``, 10-100 Mbps, public).
-            scaling_policy: Autoscaling policy.  Pass a
-                :class:`MetricScalingPolicy` (CPU/memory threshold),
-                a :class:`ScheduleScalingPolicy` (cron-based), or ``None``
-                to disable autoscaling entirely.  When omitted, defaults to
-                ``MetricScalingPolicy()`` (80 % CPU scale-out).
+                created.  Defaults to `min_instances`.
+            load_balancer_config: `LoadBalancerConfig` dataclass.  Defaults
+                to `LoadBalancerConfig()` (port 80, health check `/health`,
+                10-100 Mbps, public).
+            scaling_policy: Autoscaling policy.  Pass a `MetricScalingPolicy`
+                (CPU/memory threshold), a `ScheduleScalingPolicy`
+                (cron-based), or `None` to disable autoscaling entirely.
+                When omitted, defaults to `MetricScalingPolicy()`
+                (80% CPU scale-out).
             opts: Pulumi resource options forwarded to the component.
         """
         super().__init__("custom:compute:ScalableWorkload", name, compartment_id, stack_name, opts)
@@ -301,27 +288,27 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
     def _add_scalable_workload_security_rules(self) -> None:
         """Add security rules for load balancer and instance pool communication.
 
-        Calls :meth:`~blocks.vcn.network.Vcn.add_security_list_rules` with:
+        Calls `Vcn.add_security_list_rules` with:
 
-        *Public subnet (Load Balancer)*:
+        Public subnet (Load Balancer):
 
-        * Ingress: HTTP (80) and HTTPS (443) from internet (``0.0.0.0/0``).
-        * Egress: Backend port (``LoadBalancerConfig.backend_port``) to
+        - Ingress: HTTP (80) and HTTPS (443) from internet (`0.0.0.0/0`).
+        - Egress: Backend port (`LoadBalancerConfig.backend_port`) to
           private subnet CIDR.
 
-        *Private subnet (Instance Pool)*:
+        Private subnet (Instance Pool):
 
-        * Ingress: Backend port from public subnet CIDR (load balancer
+        - Ingress: Backend port from public subnet CIDR (load balancer
           health checks and forwarded traffic).
-        * Egress: HTTPS (443) to OCI service CIDR block (monitoring,
+        - Egress: HTTPS (443) to OCI service CIDR block (monitoring,
           telemetry, software updates).
 
         Note:
             SSH access to pool instances is not managed here.  Deploy a
-            :class:`~blocks.compute.bastion.Bastion` block alongside this
-            workload to enable time-limited SSH via the OCI Bastion Service.
+            `Bastion` block alongside this workload to enable time-limited
+            SSH via the OCI Bastion Service.
 
-            Must be called before :meth:`~blocks.vcn.network.Vcn.finalize_network`.
+            Must be called before `Vcn.finalize_network`.
         """
         public_subnet_cidr: pulumi.Input[str] = self.vcn.get_public_subnet_cidr()
         private_subnet_cidr: pulumi.Input[str] = self.vcn.get_private_subnet_cidr()
@@ -405,11 +392,11 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         """Create the OCI Load Balancer, backend set, and HTTP/HTTPS listeners.
 
         Always creates an HTTP listener on port 80.  When
-        :attr:`LoadBalancerConfig.ssl_certificate_name` is set, an additional
-        HTTPS listener on port 443 is created using that certificate.
+        `LoadBalancerConfig.ssl_certificate_name` is set, an additional HTTPS
+        listener on port 443 is created using that certificate.
 
-        Sets ``self.load_balancer``, ``self.backend_set``, and
-        ``self.listeners`` on the instance.
+        Sets `self.load_balancer`, `self.backend_set`, and `self.listeners`
+        on the instance.
         """
         lb_config = self.load_balancer_config
 
@@ -490,7 +477,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         data, and private-subnet placement so that the instance pool can
         provision identical VMs automatically.
 
-        Sets ``self.instance_configuration`` on the instance.
+        Sets `self.instance_configuration` on the instance.
         """
         ic_name = self.create_resource_name("ic")
 
@@ -537,11 +524,10 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         """Create the OCI Instance Pool and attach it to the load balancer backend set.
 
         Spreads instances across all availability domains in the region.  The
-        pool size starts at :attr:`initial_instances` and is managed by the
-        autoscaling configuration between :attr:`min_instances` and
-        :attr:`max_instances`.
+        pool size starts at `initial_instances` and is managed by the
+        autoscaling configuration between `min_instances` and `max_instances`.
 
-        Sets ``self.instance_pool`` on the instance.
+        Sets `self.instance_pool` on the instance.
         """
         pool_name = self.create_resource_name("pool")
 
@@ -579,12 +565,12 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
     def _create_autoscaling_configuration(self) -> None:
         """Dispatch to the appropriate autoscaling factory based on *scaling_policy*.
 
-        Delegates to :meth:`_create_metric_autoscaling` or
-        :meth:`_create_schedule_autoscaling`.  Does nothing when
-        :attr:`scaling_policy` is ``None``.
+        Delegates to `_create_metric_autoscaling` or
+        `_create_schedule_autoscaling`.  Does nothing when `scaling_policy`
+        is `None`.
 
-        Sets ``self.autoscaling_configuration`` on the instance (or leaves it
-        ``None`` if autoscaling is disabled).
+        Sets `self.autoscaling_configuration` on the instance (or leaves it
+        `None` if autoscaling is disabled).
         """
         if self.scaling_policy is None:
             return
@@ -600,19 +586,18 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         """Create a threshold-based autoscaling configuration for the instance pool.
 
         Configures two rules against the metric specified in
-        :attr:`MetricScalingPolicy.metric`:
+        `MetricScalingPolicy.metric`:
 
-        * **Scale out**: fires when the metric exceeds
-          :attr:`~MetricScalingPolicy.scale_out_threshold` (``GT`` operator)
-          and adds :attr:`~MetricScalingPolicy.scale_out_value` instances.
-        * **Scale in**: fires when the metric falls below
-          :attr:`~MetricScalingPolicy.scale_in_threshold` (``LT`` operator)
-          and removes ``abs(scale_in_value)`` instances.
+        - **Scale out**: fires when the metric exceeds
+          `MetricScalingPolicy.scale_out_threshold` (`GT` operator)
+          and adds `MetricScalingPolicy.scale_out_value` instances.
+        - **Scale in**: fires when the metric falls below
+          `MetricScalingPolicy.scale_in_threshold` (`LT` operator)
+          and removes `abs(scale_in_value)` instances.
 
         Args:
             asc_name: Fully-qualified OCI resource name for the autoscaling
-                configuration (created by
-                :meth:`~core.base.BaseResource.create_resource_name`).
+                configuration (created by `BaseResource.create_resource_name`).
         """
         policy = self.scaling_policy
         assert isinstance(policy, MetricScalingPolicy)
@@ -677,16 +662,14 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
     def _create_schedule_autoscaling(self, asc_name: str) -> None:
         """Create a cron-schedule-based autoscaling configuration for the instance pool.
 
-        One OCI autoscaling policy is created per :class:`ScheduleEntry` in
-        :attr:`ScheduleScalingPolicy.schedules`.  Each policy uses a Quartz
-        cron expression in UTC and performs a
-        :attr:`~ScheduleEntry.action` of either ``CHANGE_COUNT_BY`` or
-        ``CHANGE_COUNT_TO``.
+        One OCI autoscaling policy is created per `ScheduleEntry` in
+        `ScheduleScalingPolicy.schedules`.  Each policy uses a Quartz cron
+        expression in UTC and performs a `ScheduleEntry.action` of either
+        `CHANGE_COUNT_BY` or `CHANGE_COUNT_TO`.
 
         Args:
             asc_name: Fully-qualified OCI resource name for the autoscaling
-                configuration (created by
-                :meth:`~core.base.BaseResource.create_resource_name`).
+                configuration (created by `BaseResource.create_resource_name`).
         """
         policy = self.scaling_policy
         assert isinstance(policy, ScheduleScalingPolicy)
@@ -737,12 +720,13 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         private key is exported as a Pulumi secret only when it was
         auto-generated.
 
-        Example::
-
+        Example:
+            ```python
             pool = ScalableWorkload(name="web-pool", ...)
             pool.export()
             # Exports: web_pool_lb_ip, web_pool_lb_id, web_pool_pool_id,
             #          and conditionally web_pool_ssh_private_key (secret)
+            ```
         """
         prefix = self.name.replace("-", "_")
         pulumi.export(f"{prefix}_lb_ip", self.get_load_balancer_ip())
@@ -754,12 +738,12 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
     def get_load_balancer_ip(self) -> pulumi.Output[str]:
         """Return the public IP address of the load balancer.
 
-        Resolves the first entry in the load balancer's ``ip_address_details``
-        list, which is the public VIP when :attr:`LoadBalancerConfig.is_public`
-        is ``True``.
+        Resolves the first entry in the load balancer's `ip_address_details`
+        list, which is the public VIP when `LoadBalancerConfig.is_public`
+        is `True`.
 
         Returns:
-            ``pulumi.Output[str]`` resolving to the IP address string, or an
+            `pulumi.Output[str]` resolving to the IP address string, or an
             empty string if the load balancer has no IP details yet.
         """
         return self.load_balancer.ip_address_details.apply(
@@ -770,7 +754,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         """Return the OCID of the instance pool.
 
         Returns:
-            ``pulumi.Output[str]`` resolving to the instance pool OCID.
+            `pulumi.Output[str]` resolving to the instance pool OCID.
         """
         return self.instance_pool.id
 
@@ -778,7 +762,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         """Return the OCID of the load balancer.
 
         Returns:
-            ``pulumi.Output[str]`` resolving to the load balancer OCID.
+            `pulumi.Output[str]` resolving to the load balancer OCID.
         """
         return self.load_balancer.id
 
@@ -795,7 +779,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
 
         Returns:
             PEM-encoded private key string when keys were auto-generated,
-            or ``None`` when the caller supplied their own public key.
+            or `None` when the caller supplied their own public key.
         """
         return self.ssh_private_key
 

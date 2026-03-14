@@ -1,22 +1,20 @@
 """Compute Instance building block for OCIBlocks.
 
-Provides :class:`ComputeInstance`, which deploys a single OCI VM into a
-chosen VCN subnet and attaches one or more block volumes for persistent
-storage.
+Provides `ComputeInstance`, which deploys a single OCI VM into a chosen VCN
+subnet and attaches one or more block volumes for persistent storage.
 
-Key behaviours
---------------
-* Defaults to Oracle Linux 8 (latest image for the chosen shape).
-* Deploys to the VCN's **private** subnet by default (not directly
+Key behaviours:
+
+- Defaults to Oracle Linux 8 (latest image for the chosen shape).
+- Deploys to the VCN's private subnet by default (not directly
   internet-facing).
-* Adds a minimal SSH ingress rule to the appropriate security list
+- Adds a minimal SSH ingress rule to the appropriate security list
   (port 22 from the public subnet CIDR for bastion-host access).
-* Auto-generates an RSA 4096-bit SSH key pair when no key is supplied;
+- Auto-generates an RSA 4096-bit SSH key pair when no key is supplied;
   the keys are exported as Pulumi secrets.
-* Accepts a list of :class:`~blocks.compute.volume.VolumeSpec` objects to
-  attach any number of block volumes; defaults to a single 100 GiB
-  balanced-performance data volume.
-* Calls :meth:`~blocks.vcn.network.Vcn.finalize_network` automatically.
+- Accepts a list of `VolumeSpec` objects to attach any number of block
+  volumes; defaults to a single 100 GiB balanced-performance data volume.
+- Calls `Vcn.finalize_network` automatically.
 
 Exports:
     ComputeInstance: Single-VM component resource with multi-volume support.
@@ -41,6 +39,7 @@ from providers.oci.network import (
     Vcn,
     VcnRef,
 )
+from providers.oci.nsg import Nsg
 from providers.oci.volume import VolumeSpec
 
 
@@ -48,74 +47,74 @@ class ComputeInstance(BaseResource, AbstractCompute):
     """OCI Compute Instance with one or more attached block volumes.
 
     Creates a single VM in the chosen VCN subnet together with the block
-    volumes described by the ``volumes`` parameter.  Each
-    :class:`~blocks.compute.volume.VolumeSpec` in the list produces one
-    ``oci.core.Volume`` and one ``oci.core.VolumeAttachment``; all are
-    created at the same time as the instance.
+    volumes described by the `volumes` parameter.  Each `VolumeSpec` in the
+    list produces one `oci.core.Volume` and one `oci.core.VolumeAttachment`;
+    all are created at the same time as the instance.
 
     Attributes:
-        vcn: The :class:`~blocks.vcn.network.Vcn` this instance is deployed
-            into.
-        shape: Compute shape (e.g. ``"VM.Standard.E4.Flex"``).
+        vcn: The `Vcn` this instance is deployed into.
+        shape: Compute shape (e.g. `"VM.Standard.E4.Flex"`).
         ocpus: Number of OCPUs allocated to the instance.
         memory_in_gbs: RAM in GiB allocated to the instance.
-        ssh_public_key: OpenSSH public key installed in
-            ``authorized_keys``.
-        ssh_private_key: Corresponding private key string, or ``None`` when
+        ssh_public_key: OpenSSH public key installed in `authorized_keys`.
+        ssh_private_key: Corresponding private key string, or `None` when
             the caller supplied their own public key.
         image_id: OCID of the boot image used by the instance.
         boot_volume_size_in_gbs: Size of the boot volume in GiB.
-        volumes_spec: Resolved list of :class:`~blocks.compute.volume.VolumeSpec`
-            objects used to create the attached block volumes.
-        instance: The underlying ``oci.core.Instance`` resource.
-        block_volumes: Ordered list of ``oci.core.Volume`` resources, one per
-            entry in ``volumes_spec``.
-        volume_attachments: Ordered list of ``oci.core.VolumeAttachment``
-            resources, parallel to :attr:`block_volumes`.
-        id: ``pulumi.Output[str]`` of the instance OCID.
-        auto_generated_keys: ``True`` when SSH keys were auto-generated.
+        volumes_spec: Resolved list of `VolumeSpec` objects used to create
+            the attached block volumes.
+        instance: The underlying `oci.core.Instance` resource.
+        block_volumes: Ordered list of `oci.core.Volume` resources, one per
+            entry in `volumes_spec`.
+        volume_attachments: Ordered list of `oci.core.VolumeAttachment`
+            resources, parallel to `block_volumes`.
+        id: `pulumi.Output[str]` of the instance OCID.
+        auto_generated_keys: `True` when SSH keys were auto-generated.
 
     Usage patterns:
 
-    1. **Minimal — single default data volume, auto-generated SSH keys**::
+    1. **Minimal — single default data volume, auto-generated SSH keys**:
+        ```python
+        vcn = Vcn(name="lab", compartment_id=comp_id, stack_name="prod")
+        instance = ComputeInstance(
+            name="web",
+            vcn=vcn,
+            compartment_id=comp_id,
+        )
+        private_key = instance.get_ssh_private_key()
+        ```
 
-            vcn = Vcn(name="lab", compartment_id=comp_id, stack_name="prod")
-            instance = ComputeInstance(
-                name="web",
-                vcn=vcn,
-                compartment_id=comp_id,
-            )
-            private_key = instance.get_ssh_private_key()
+    2. **Multiple volumes with explicit performance tiers**:
+        ```python
+        instance = ComputeInstance(
+            name="app",
+            vcn=vcn,
+            compartment_id=comp_id,
+            volumes=[
+                VolumeSpec(size_in_gbs=200, label="app"),
+                VolumeSpec(size_in_gbs=500, label="db",
+                           vpus_per_gb=VolumeSpec.PERF_HIGH),
+                VolumeSpec(size_in_gbs=100, label="logs",
+                           vpus_per_gb=VolumeSpec.PERF_LOW),
+            ],
+        )
+        db_vol_id = instance.get_volume_id("db")
+        ```
 
-    2. **Multiple volumes with explicit performance tiers**::
-
-            instance = ComputeInstance(
-                name="app",
-                vcn=vcn,
-                compartment_id=comp_id,
-                volumes=[
-                    VolumeSpec(size_in_gbs=200, label="app"),
-                    VolumeSpec(size_in_gbs=500, label="db",
-                               vpus_per_gb=VolumeSpec.PERF_HIGH),
-                    VolumeSpec(size_in_gbs=100, label="logs",
-                               vpus_per_gb=VolumeSpec.PERF_LOW),
-                ],
-            )
-            db_vol_id = instance.get_volume_id("db")
-
-    3. **Custom shape and boot volume**::
-
-            instance = ComputeInstance(
-                name="heavy",
-                vcn=vcn,
-                compartment_id=comp_id,
-                shape="VM.Standard.E4.Flex",
-                ocpus=8,
-                memory_in_gbs=128,
-                boot_volume_size_in_gbs=100,
-                volumes=[VolumeSpec(size_in_gbs=1000, label="data",
-                                    vpus_per_gb=VolumeSpec.PERF_HIGH)],
-            )
+    3. **Custom shape and boot volume**:
+        ```python
+        instance = ComputeInstance(
+            name="heavy",
+            vcn=vcn,
+            compartment_id=comp_id,
+            shape="VM.Standard.E4.Flex",
+            ocpus=8,
+            memory_in_gbs=128,
+            boot_volume_size_in_gbs=100,
+            volumes=[VolumeSpec(size_in_gbs=1000, label="data",
+                                vpus_per_gb=VolumeSpec.PERF_HIGH)],
+        )
+        ```
     """
 
     vcn: Vcn | VcnRef
@@ -149,56 +148,75 @@ class ComputeInstance(BaseResource, AbstractCompute):
         boot_volume_size_in_gbs: pulumi.Input[int] = 50,
         volumes: Sequence[VolumeSpec] | None = None,
         nsg_ids: list[pulumi.Input[str]] | None = None,
+        nsg: Nsg | None = None,
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
         """Create a compute instance with one or more attached block volumes.
 
         Args:
-            name: Logical name for the instance (e.g. ``"web-server"``).
+            name: Logical name for the instance (e.g. `"web-server"`).
             compartment_id: OCID of the OCI compartment to deploy into.
-            vcn: :class:`~blocks.vcn.network.Vcn` instance that provides the
-                subnet and security list for this instance.
+            vcn: `Vcn` instance that provides the subnet and security list
+                for this instance.
             stack_name: Pulumi stack name.  Defaults to
-                ``pulumi.get_stack()`` when ``None``.
+                `pulumi.get_stack()` when `None`.
             ssh_public_key: OpenSSH public key string to install on the
-                instance.  When ``None`` or empty, a new RSA 4096-bit key
+                instance.  When `None` or empty, a new RSA 4096-bit key
                 pair is auto-generated and exported as Pulumi secrets.
-            shape: OCI compute shape (default: ``"VM.Standard.E4.Flex"``).
-            ocpus: Number of OCPUs (default: ``1``).
-            memory_in_gbs: Memory in GiB (default: ``16``).
-            image_id: Explicit boot image OCID.  When provided, *os_name*
+            shape: OCI compute shape (default: `"VM.Standard.E4.Flex"`).
+            ocpus: Number of OCPUs (default: `1`).
+            memory_in_gbs: Memory in GiB (default: `16`).
+            image_id: Explicit boot image OCID.  When provided, `os_name`
                 is ignored.
             os_name: Friendly OS name used to auto-discover the latest
-                image when *image_id* is ``None``.  Supported values:
-                ``"oracle"`` (Oracle Linux 8, default), ``"ubuntu"``
-                (Canonical Ubuntu 22.04), ``"windows"``
+                image when `image_id` is `None`.  Supported values:
+                `"oracle"` (Oracle Linux 8, default), `"ubuntu"`
+                (Canonical Ubuntu 22.04), `"windows"`
                 (Windows Server 2022 Standard).
             subnet: Which VCN tier to place the instance in.  Use the
-                constants ``SUBNET_PRIVATE`` (default), ``SUBNET_PUBLIC``,
-                ``SUBNET_SECURE``, or ``SUBNET_MANAGEMENT`` imported from
-                :mod:`blocks.vcn`.
+                constants `SUBNET_PRIVATE` (default), `SUBNET_PUBLIC`,
+                `SUBNET_SECURE`, or `SUBNET_MANAGEMENT` imported from
+                `blocks.vcn`.  Ignored when `nsg` is supplied and the
+                NSG has a `Role` — the role's `subnet_tier` takes
+                precedence.
             boot_volume_size_in_gbs: Boot volume size in GiB (default:
-                ``50``).
-            volumes: Ordered list of :class:`~blocks.compute.volume.VolumeSpec`
-                objects describing the block volumes to attach.  Each entry
-                must have a **unique** ``label``; the label is used to derive
-                the resource name suffix.  Defaults to ``None``, which creates
-                a single 100 GiB balanced-performance data volume
-                (``VolumeSpec(size_in_gbs=100)``).  Pass an explicit list to
-                override; an empty list raises ``ValueError``.
+                `50`).
+            volumes: Ordered list of `VolumeSpec` objects describing the
+                block volumes to attach.  Each entry must have a unique
+                `label`; the label is used to derive the resource name
+                suffix.  Defaults to `None`, which creates a single 100 GiB
+                balanced-performance data volume (`VolumeSpec(size_in_gbs=100)`).
+                Pass an explicit list to override; an empty list raises
+                `ValueError`.
             nsg_ids: List of Network Security Group OCIDs to attach to the
-                instance VNIC.  When ``None``, no NSGs are attached and
+                instance VNIC.  When `None`, no NSGs are attached and
                 security is enforced by the subnet security list alone.
-                Provide NSG OCIDs (e.g. from
-                :class:`~providers.oci.nsg.VcnNsgPolicy`) to add a second,
+                Provide NSG OCIDs (e.g. from `Nsg`) to add a second,
                 resource-level security layer.
+            nsg: Shorthand for single-NSG deployments.  When supplied, sets
+                `nsg_ids=[nsg.id]` and, if the NSG carries a `Role`, also
+                infers `subnet` from `nsg.role.subnet_tier`.  Takes
+                precedence over `subnet` and `nsg_ids` when both are
+                provided.
             opts: Pulumi resource options forwarded to the component.
 
         Raises:
-            ValueError: If *subnet* is not a recognised tier constant, or if
-                any two :class:`~blocks.compute.volume.VolumeSpec` entries
-                share the same ``label``.
+            ValueError: If `subnet` is not a recognised tier constant, or if
+                any two `VolumeSpec` entries share the same `label`.
+
+        Example:
+            ```python
+            # Role-based shorthand — subnet inferred from NSG role
+            web = ComputeInstance("web-1", compartment_id=comp_id, vcn=vcn, nsg=web_nsg)
+            db  = ComputeInstance("db-1",  compartment_id=comp_id, vcn=vcn, nsg=db_nsg,
+                                  volumes=[VolumeSpec(size_in_gbs=200, label="data")])
+            ```
         """
+        # Resolve nsg= shorthand: infer subnet from role and expand nsg_ids.
+        if nsg is not None:
+            if nsg.role is not None:
+                subnet = nsg.role.subnet_tier
+            nsg_ids = [nsg.id]
         super().__init__("custom:compute:Instance", name, compartment_id, stack_name, opts)
 
         self.name = name
@@ -362,11 +380,11 @@ class ComputeInstance(BaseResource, AbstractCompute):
         """Return the first (primary) block volume.
 
         Provides backward compatibility for code that references
-        ``instance.block_volume`` directly.  For multi-volume setups use
-        :attr:`block_volumes` or :meth:`get_volume` instead.
+        `instance.block_volume` directly.  For multi-volume setups use
+        `block_volumes` or `get_volume` instead.
 
         Returns:
-            The first ``oci.core.Volume`` in :attr:`block_volumes`.
+            The first `oci.core.Volume` in `block_volumes`.
         """
         return self.block_volumes[0]
 
@@ -375,12 +393,11 @@ class ComputeInstance(BaseResource, AbstractCompute):
         """Return the first (primary) volume attachment.
 
         Provides backward compatibility for code that references
-        ``instance.volume_attachment`` directly.  For multi-volume setups use
-        :attr:`volume_attachments` or :meth:`get_volume_attachment` instead.
+        `instance.volume_attachment` directly.  For multi-volume setups use
+        `volume_attachments` or `get_volume_attachment` instead.
 
         Returns:
-            The first ``oci.core.VolumeAttachment`` in
-            :attr:`volume_attachments`.
+            The first `oci.core.VolumeAttachment` in `volume_attachments`.
         """
         return self.volume_attachments[0]
 
@@ -398,7 +415,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         from the private subnet CIDR.
 
         For **public** subnet instances: allows TCP port 22 from anywhere
-        (``0.0.0.0/0``).
+        (`0.0.0.0/0`).
         """
         ssh_rule = oci.core.SecurityListIngressSecurityRuleArgs(
             protocol="6",
@@ -440,10 +457,10 @@ class ComputeInstance(BaseResource, AbstractCompute):
         public key under keys derived from the block's logical name.  The SSH
         private key is exported as a Pulumi secret only when it was
         auto-generated.  Each volume is exported under
-        ``{name}_{label}_volume_id``.
+        `{name}_{label}_volume_id`.
 
-        Example::
-
+        Example:
+            ```python
             instance = ComputeInstance(
                 name="app",
                 vcn=vcn,
@@ -458,6 +475,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
             #          app_data_volume_id, app_db_volume_id,
             #          app_ssh_public_key,
             #          app_ssh_private_key (secret, only if auto-generated)
+            ```
         """
         prefix = self.name.replace("-", "_")
         pulumi.export(f"{prefix}_id", self.get_instance_id())
@@ -477,7 +495,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         """Return the private IP address of the instance.
 
         Returns:
-            ``pulumi.Output[str]`` resolving to the instance's private IP.
+            `pulumi.Output[str]` resolving to the instance's private IP.
         """
         return self.instance.private_ip
 
@@ -485,7 +503,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         """Return the OCID of the compute instance.
 
         Returns:
-            ``pulumi.Output[str]`` resolving to the instance OCID.
+            `pulumi.Output[str]` resolving to the instance OCID.
         """
         return self.instance.id
 
@@ -493,10 +511,10 @@ class ComputeInstance(BaseResource, AbstractCompute):
         """Return the OCID of the first (primary) block volume.
 
         Provided for backward compatibility.  For multi-volume setups use
-        :meth:`get_volume_id` or :meth:`get_all_volume_ids`.
+        `get_volume_id` or `get_all_volume_ids`.
 
         Returns:
-            ``pulumi.Output[str]`` resolving to the first block volume OCID.
+            `pulumi.Output[str]` resolving to the first block volume OCID.
         """
         return self.block_volumes[0].id
 
@@ -504,18 +522,18 @@ class ComputeInstance(BaseResource, AbstractCompute):
         """Return the OCID of the block volume with the given label.
 
         Args:
-            label: The ``label`` value of the target
-                :class:`~blocks.compute.volume.VolumeSpec`.
+            label: The `label` value of the target `VolumeSpec`.
 
         Returns:
-            ``pulumi.Output[str]`` resolving to the volume OCID.
+            `pulumi.Output[str]` resolving to the volume OCID.
 
         Raises:
             KeyError: If no volume with the given label exists.
 
-        Example::
-
+        Example:
+            ```python
             db_vol_id = instance.get_volume_id("db")
+            ```
         """
         for spec, vol in zip(self.volumes_spec, self.block_volumes):
             if spec.label == label:
@@ -525,15 +543,14 @@ class ComputeInstance(BaseResource, AbstractCompute):
     def get_disk_id(self, label: str) -> pulumi.Output[str]:
         """Return the OCID of the block volume with the given label.
 
-        Satisfies :meth:`~core.abstractions.compute.AbstractCompute.get_disk_id`.
-        Delegates to :meth:`get_volume_id`.
+        Satisfies `AbstractCompute.get_disk_id`.  Delegates to
+        `get_volume_id`.
 
         Args:
-            label: The ``label`` value of the target
-                :class:`~providers.oci.volume.VolumeSpec`.
+            label: The `label` value of the target `VolumeSpec`.
 
         Returns:
-            ``pulumi.Output[str]`` resolving to the volume OCID.
+            `pulumi.Output[str]` resolving to the volume OCID.
 
         Raises:
             KeyError: If no volume with the given label exists.
@@ -541,14 +558,13 @@ class ComputeInstance(BaseResource, AbstractCompute):
         return self.get_volume_id(label)
 
     def get_volume(self, label: str) -> oci.core.Volume:
-        """Return the ``oci.core.Volume`` resource with the given label.
+        """Return the `oci.core.Volume` resource with the given label.
 
         Args:
-            label: The ``label`` value of the target
-                :class:`~blocks.compute.volume.VolumeSpec`.
+            label: The `label` value of the target `VolumeSpec`.
 
         Returns:
-            The ``oci.core.Volume`` resource.
+            The `oci.core.Volume` resource.
 
         Raises:
             KeyError: If no volume with the given label exists.
@@ -559,14 +575,13 @@ class ComputeInstance(BaseResource, AbstractCompute):
         raise KeyError(f"No volume with label {label!r}. Available labels: {[s.label for s in self.volumes_spec]}")
 
     def get_volume_attachment(self, label: str) -> oci.core.VolumeAttachment:
-        """Return the ``oci.core.VolumeAttachment`` resource with the given label.
+        """Return the `oci.core.VolumeAttachment` resource with the given label.
 
         Args:
-            label: The ``label`` value of the target
-                :class:`~blocks.compute.volume.VolumeSpec`.
+            label: The `label` value of the target `VolumeSpec`.
 
         Returns:
-            The ``oci.core.VolumeAttachment`` resource.
+            The `oci.core.VolumeAttachment` resource.
 
         Raises:
             KeyError: If no volume with the given label exists.
@@ -581,11 +596,11 @@ class ComputeInstance(BaseResource, AbstractCompute):
     def get_all_volume_ids(self) -> list[pulumi.Output[str]]:
         """Return a list of OCIDs for all attached block volumes.
 
-        The list order matches the order of the ``volumes`` parameter passed
+        The list order matches the order of the `volumes` parameter passed
         at construction time.
 
         Returns:
-            List of ``pulumi.Output[str]`` resolving to each volume OCID.
+            List of `pulumi.Output[str]` resolving to each volume OCID.
         """
         return [vol.id for vol in self.block_volumes]
 
@@ -602,7 +617,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
 
         Returns:
             PEM-encoded private key string when keys were auto-generated,
-            or ``None`` when the caller supplied their own public key.
+            or `None` when the caller supplied their own public key.
         """
         return self.ssh_private_key
 

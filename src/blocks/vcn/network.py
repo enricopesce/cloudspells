@@ -1,8 +1,8 @@
-"""Backward-compatibility shim: re-exports from :mod:`providers.oci.network`.
+"""Backward-compatibility shim: re-exports from `providers.oci.network`.
 
-All imports that previously targeted ``blocks.vcn.network`` continue to work
-without modification.  New code should import directly from
-``providers.oci.network``.
+All imports that previously targeted `blocks.vcn.network` continue to work
+without modification. New code should import directly from
+`providers.oci.network`.
 """
 
 from providers.oci.network import (  # noqa: F401

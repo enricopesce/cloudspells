@@ -2,12 +2,12 @@
 
 Different providers implement secure shell access differently:
 
-* OCI — :class:`~providers.oci.bastion.Bastion` uses the OCI Bastion
-  Service (managed endpoint with ephemeral session tokens).
-* AWS — AWS Systems Manager Session Manager or EC2 Instance Connect.
-* GCP — Identity-Aware Proxy (IAP) TCP forwarding.
+- OCI — `Bastion` uses the OCI Bastion Service (managed endpoint with
+  ephemeral session tokens).
+- AWS — AWS Systems Manager Session Manager or EC2 Instance Connect.
+- GCP — Identity-Aware Proxy (IAP) TCP forwarding.
 
-All implementations satisfy :class:`AbstractBastion`.
+All implementations satisfy `AbstractBastion`.
 
 Exports:
     AbstractBastion: Interface for a secure shell access mechanism.
@@ -23,20 +23,21 @@ import pulumi
 class AbstractBastion(ABC):
     """Interface for a provider-agnostic secure shell access mechanism.
 
-    Provider implementations (OCI :class:`~providers.oci.bastion.Bastion`,
-    AWS ``AwsSessionManagerBastion``, GCP ``GcpIapBastion``) satisfy this
+    Provider implementations (OCI `Bastion`,
+    AWS `AwsSessionManagerBastion`, GCP `GcpIapBastion`) satisfy this
     interface.
 
     Attributes:
         id: Provider resource ID of the bastion resource.
 
-    Example::
-
+    Example:
+        ```python
         def export_bastion(b: AbstractBastion, label: str) -> None:
             pulumi.export(f"{label}_bastion_endpoint",
                           b.get_access_endpoint())
 
         export_bastion(oci_bastion, "mgmt")
+        ```
     """
 
     id: pulumi.Output[str]
@@ -49,7 +50,7 @@ class AbstractBastion(ABC):
         be the SSM endpoint URL.  For GCP it is the IAP tunnel address.
 
         Returns:
-            ``pulumi.Output[str]`` resolving to the endpoint address.
+            `pulumi.Output[str]` resolving to the endpoint address.
         """
 
     @abstractmethod
