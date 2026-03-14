@@ -9,6 +9,11 @@ pytest-cov==6.1.0
 ruff==0.9.10
 vulture==2.14
 
+# Documentation
+mkdocs==1.6.1
+mkdocs-material==9.5.49
+mkdocstrings[python]==0.27.0
+
 # Runtime utilities
 PyYAML==6.0.3
 Random-Word==1.0.13
