@@ -1,7 +1,7 @@
 site_name: CloudBlocks
 site_description: High-level Pulumi building blocks for Oracle Cloud Infrastructure
-repo_url: https://github.com/enricopesce/ociblocks
-repo_name: enricopesce/ociblocks
+repo_url: https://github.com/enricopesce/cloudblocks
+repo_name: enricopesce/cloudblocks
 
 theme:
   name: material
