@@ -7,12 +7,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
 import base64
 
-import pulumi
-
+from core import Config
 from providers.oci.autoscale import ScalableWorkload
 from providers.oci.network import Vcn
 
-config: pulumi.Config = pulumi.Config()
+config = Config()
 compartment_id: str = config.require("compartment_ocid")
 vcn_cidr_block: str = config.get("vcn_cidr_block") or "10.0.0.0/16"
 

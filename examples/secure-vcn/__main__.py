@@ -95,8 +95,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
-import pulumi
-
+from core import Config
 from providers.oci.network import Vcn
 from providers.oci.network_logging import VcnFlowLogs
 from providers.oci.nsg import HTTP, HTTPS, SSH, Nsg
@@ -104,7 +103,7 @@ from providers.oci.roles import APP_SERVER, DATABASE, INTERNET_EDGE, MANAGEMENT
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-config: pulumi.Config = pulumi.Config()
+config = Config()
 
 compartment_id: str = config.require("compartment_ocid")
 vcn_cidr: str = config.get("vcn_cidr") or "10.0.0.0/16"
@@ -169,4 +168,4 @@ flow_logs: VcnFlowLogs = VcnFlowLogs(
 # ── Stack outputs ──────────────────────────────────────────────────────────────
 #
 vcn.export()
-pulumi.export("network_audit_log_group_id", flow_logs.log_group_id)
+flow_logs.export()

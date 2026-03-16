@@ -33,15 +33,14 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
-import pulumi
-
+from core import Config
 from providers.oci.compute import ComputeInstance
 from providers.oci.network import Vcn
 from providers.oci.nsg import HTTP, HTTPS, SSH, Nsg
 from providers.oci.roles import INTERNET_EDGE
 from providers.oci.volume import VolumeSpec
 
-config: pulumi.Config = pulumi.Config()
+config = Config()
 compartment_id: str = config.require("compartment_ocid")
 ssh_key: str | None = config.get("ssh_key")
 

@@ -7,6 +7,7 @@ For new code, import directly from `providers.oci` or from
 `core.abstractions` to write cloud-neutral typed functions.
 """
 
+from core.config import Config
 from providers.oci.autoscale import (
     MetricScalingPolicy,
     OciLoadBalancerConfig,
@@ -28,6 +29,7 @@ from providers.oci.volume import VolumeSpec
 __all__ = [
     "Bastion",
     "ComputeInstance",
+    "Config",
     "LoadBalancerConfig",
     "MetricScalingPolicy",
     "OciLoadBalancerConfig",

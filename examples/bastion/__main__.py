@@ -35,15 +35,14 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
-import pulumi
-
+from core import Config
 from providers.oci.bastion import Bastion
 from providers.oci.compute import ComputeInstance
 from providers.oci.network import Vcn
 from providers.oci.nsg import Nsg
 from providers.oci.roles import APP_SERVER
 
-config: pulumi.Config = pulumi.Config()
+config = Config()
 compartment_id: str = config.require("compartment_ocid")
 
 # ── 1. VCN ───────────────────────────────────────────────────────────────────

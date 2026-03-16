@@ -5,19 +5,18 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
-import pulumi
-
+from core import Config
 from providers.oci.kubernetes import OkeCluster
 from providers.oci.network import Vcn
 
-config: pulumi.Config = pulumi.Config()
+config = Config()
 compartment_id: str = config.require("compartment_ocid")
 node_shape: str = config.require("node_shape")
 kubernetes_version: str = config.require("kubernetes_version")
-oke_min_nodes: int = int(config.require("oke_min_nodes"))
+oke_min_nodes: int = config.require_int("oke_min_nodes")
 node_image_id: str = config.require("node_image_id")
-oke_ocpus: float = float(config.require("oke_ocpus"))
-oke_memory_in_gbs: float = float(config.require("oke_memory_in_gbs"))
+oke_ocpus: float = config.require_float("oke_ocpus")
+oke_memory_in_gbs: float = config.require_float("oke_memory_in_gbs")
 
 # Create VCN
 vcn: Vcn = Vcn(

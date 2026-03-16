@@ -159,6 +159,21 @@ class VcnFlowLogs(BaseResource):
             opts=pulumi.ResourceOptions(parent=self, depends_on=[self.log_group]),
         )
 
+    def export(self) -> None:
+        """Export the network-audit log group OCID as a Pulumi stack output.
+
+        Registers `network_audit_log_group_id` so other stacks and compliance
+        tooling can reference the log group without duplicating its OCID.
+
+        Example:
+            ```python
+            flow_logs = VcnFlowLogs(name="lab", vcn=vcn)
+            flow_logs.export()
+            # Stack output: network_audit_log_group_id = ocid1.loggroup...
+            ```
+        """
+        pulumi.export("network_audit_log_group_id", self.log_group_id)
+
     def _create_flow_logs(self) -> None:
         """Create one flow log resource per subnet tier.
 

@@ -9,11 +9,10 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
-import pulumi
-
+from core import Config
 from providers.oci.network import Vcn
 
-config: pulumi.Config = pulumi.Config()
+config = Config()
 compartment_id: str = config.require("compartment_ocid")
 
 vcn: Vcn = Vcn(

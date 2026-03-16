@@ -28,6 +28,8 @@ OCI-specific helpers:
   mapping.
 """
 
+from core.config import Config
+
 from .autoscale import (
     LoadBalancerConfig,
     MetricScalingPolicy,
@@ -57,6 +59,8 @@ from .roles import APP_SERVER, CACHE, DATABASE, INTERNET_EDGE, MANAGEMENT, Role
 from .volume import VolumeSpec
 
 __all__ = [
+    # Config
+    "Config",
     # Network
     "Vcn",
     "VcnRef",
