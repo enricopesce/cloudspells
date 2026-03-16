@@ -1571,7 +1571,7 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#providers.oci.volume" class="md-nav__link">
+  <a href="#cloudspells.providers.oci.volume" class="md-nav__link">
     <span class="md-ellipsis">
       volume
     </span>
@@ -1581,7 +1581,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#providers.oci.volume.VolumeSpec" class="md-nav__link">
+  <a href="#cloudspells.providers.oci.volume.VolumeSpec" class="md-nav__link">
     <span class="md-ellipsis">
       VolumeSpec
     </span>
@@ -1591,7 +1591,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#providers.oci.volume.VolumeSpec.__post_init__" class="md-nav__link">
+  <a href="#cloudspells.providers.oci.volume.VolumeSpec.__post_init__" class="md-nav__link">
     <span class="md-ellipsis">
       __post_init__
     </span>
@@ -1723,7 +1723,7 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#providers.oci.volume" class="md-nav__link">
+  <a href="#cloudspells.providers.oci.volume" class="md-nav__link">
     <span class="md-ellipsis">
       volume
     </span>
@@ -1733,7 +1733,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#providers.oci.volume.VolumeSpec" class="md-nav__link">
+  <a href="#cloudspells.providers.oci.volume.VolumeSpec" class="md-nav__link">
     <span class="md-ellipsis">
       VolumeSpec
     </span>
@@ -1743,7 +1743,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#providers.oci.volume.VolumeSpec.__post_init__" class="md-nav__link">
+  <a href="#cloudspells.providers.oci.volume.VolumeSpec.__post_init__" class="md-nav__link">
     <span class="md-ellipsis">
       __post_init__
     </span>
@@ -1786,8 +1786,8 @@
 
 
 
-<h2 id="providers.oci.volume" class="doc doc-heading">
-            <code>providers.oci.volume</code>
+<h2 id="cloudspells.providers.oci.volume" class="doc doc-heading">
+            <code>cloudspells.providers.oci.volume</code>
 
 
 </h2>
@@ -1824,7 +1824,7 @@ created and attached to a <code>ComputeInstance</code>.  Pass a list of specs to
 
 
 
-<h3 id="providers.oci.volume.VolumeSpec" class="doc doc-heading">
+<h3 id="cloudspells.providers.oci.volume.VolumeSpec" class="doc doc-heading">
             <code>VolumeSpec</code>
 
 
@@ -1858,7 +1858,7 @@ exposed as class-level constants.</p>
       </thead>
       <tbody>
           <tr class="doc-section-item">
-            <td><code><span title="providers.oci.volume.VolumeSpec.size_in_gbs">size_in_gbs</span></code></td>
+            <td><code><span title="cloudspells.providers.oci.volume.VolumeSpec.size_in_gbs">size_in_gbs</span></code></td>
             <td>
                   <code><span title="int">int</span></code>
             </td>
@@ -1869,7 +1869,7 @@ exposed as class-level constants.</p>
             </td>
           </tr>
           <tr class="doc-section-item">
-            <td><code><span title="providers.oci.volume.VolumeSpec.label">label</span></code></td>
+            <td><code><span title="cloudspells.providers.oci.volume.VolumeSpec.label">label</span></code></td>
             <td>
                   <code><span title="str">str</span></code>
             </td>
@@ -1883,7 +1883,7 @@ Must be unique within the list passed to <code>ComputeInstance</code>.</p>
             </td>
           </tr>
           <tr class="doc-section-item">
-            <td><code><span title="providers.oci.volume.VolumeSpec.vpus_per_gb">vpus_per_gb</span></code></td>
+            <td><code><span title="cloudspells.providers.oci.volume.VolumeSpec.vpus_per_gb">vpus_per_gb</span></code></td>
             <td>
                   <code><span title="int">int</span></code>
             </td>
@@ -1896,7 +1896,7 @@ constants <code>PERF_LOW</code> (0), <code>PERF_BALANCED</code> (10, default),
             </td>
           </tr>
           <tr class="doc-section-item">
-            <td><code><span title="providers.oci.volume.VolumeSpec.is_read_only">is_read_only</span></code></td>
+            <td><code><span title="cloudspells.providers.oci.volume.VolumeSpec.is_read_only">is_read_only</span></code></td>
             <td>
                   <code><span title="bool">bool</span></code>
             </td>
@@ -1966,7 +1966,7 @@ ref_vol = VolumeSpec(size_in_gbs=50, label=&quot;ref&quot;, is_read_only=True)
 
 
               <details class="quote">
-                <summary>Source code in <code>src/providers/oci/volume.py</code></summary>
+                <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/volume.py</code></summary>
                 <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 18</span>
 <span class="normal"> 19</span>
 <span class="normal"> 20</span>
@@ -2152,7 +2152,7 @@ ref_vol = VolumeSpec(size_in_gbs=50, label=&quot;ref&quot;, is_read_only=True)
 <div class="doc doc-object doc-function">
 
 
-<h4 id="providers.oci.volume.VolumeSpec.__post_init__" class="doc doc-heading">
+<h4 id="cloudspells.providers.oci.volume.VolumeSpec.__post_init__" class="doc doc-heading">
             <code class="highlight language-python"><span class="n">__post_init__</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
 
 </h4>
@@ -2186,7 +2186,7 @@ ref_vol = VolumeSpec(size_in_gbs=50, label=&quot;ref&quot;, is_read_only=True)
     </table>
 
             <details class="quote">
-              <summary>Source code in <code>src/providers/oci/volume.py</code></summary>
+              <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/volume.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 83</span>
 <span class="normal"> 84</span>
 <span class="normal"> 85</span>

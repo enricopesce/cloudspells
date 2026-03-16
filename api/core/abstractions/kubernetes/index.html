@@ -1151,7 +1151,7 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#core.abstractions.kubernetes" class="md-nav__link">
+  <a href="#cloudspells.core.abstractions.kubernetes" class="md-nav__link">
     <span class="md-ellipsis">
       kubernetes
     </span>
@@ -1161,7 +1161,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#core.abstractions.kubernetes.AbstractKubernetes" class="md-nav__link">
+  <a href="#cloudspells.core.abstractions.kubernetes.AbstractKubernetes" class="md-nav__link">
     <span class="md-ellipsis">
       AbstractKubernetes
     </span>
@@ -1171,7 +1171,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#core.abstractions.kubernetes.AbstractKubernetes.export" class="md-nav__link">
+  <a href="#cloudspells.core.abstractions.kubernetes.AbstractKubernetes.export" class="md-nav__link">
     <span class="md-ellipsis">
       export
     </span>
@@ -1180,7 +1180,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#core.abstractions.kubernetes.AbstractKubernetes.create_kubeconfig" class="md-nav__link">
+  <a href="#cloudspells.core.abstractions.kubernetes.AbstractKubernetes.create_kubeconfig" class="md-nav__link">
     <span class="md-ellipsis">
       create_kubeconfig
     </span>
@@ -1732,7 +1732,7 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#core.abstractions.kubernetes" class="md-nav__link">
+  <a href="#cloudspells.core.abstractions.kubernetes" class="md-nav__link">
     <span class="md-ellipsis">
       kubernetes
     </span>
@@ -1742,7 +1742,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#core.abstractions.kubernetes.AbstractKubernetes" class="md-nav__link">
+  <a href="#cloudspells.core.abstractions.kubernetes.AbstractKubernetes" class="md-nav__link">
     <span class="md-ellipsis">
       AbstractKubernetes
     </span>
@@ -1752,7 +1752,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#core.abstractions.kubernetes.AbstractKubernetes.export" class="md-nav__link">
+  <a href="#cloudspells.core.abstractions.kubernetes.AbstractKubernetes.export" class="md-nav__link">
     <span class="md-ellipsis">
       export
     </span>
@@ -1761,7 +1761,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#core.abstractions.kubernetes.AbstractKubernetes.create_kubeconfig" class="md-nav__link">
+  <a href="#cloudspells.core.abstractions.kubernetes.AbstractKubernetes.create_kubeconfig" class="md-nav__link">
     <span class="md-ellipsis">
       create_kubeconfig
     </span>
@@ -1804,8 +1804,8 @@
 
 
 
-<h2 id="core.abstractions.kubernetes" class="doc doc-heading">
-            <code>core.abstractions.kubernetes</code>
+<h2 id="cloudspells.core.abstractions.kubernetes" class="doc doc-heading">
+            <code>cloudspells.core.abstractions.kubernetes</code>
 
 
 </h2>
@@ -1839,7 +1839,7 @@
 
 
 
-<h3 id="core.abstractions.kubernetes.AbstractKubernetes" class="doc doc-heading">
+<h3 id="cloudspells.core.abstractions.kubernetes.AbstractKubernetes" class="doc doc-heading">
             <code>AbstractKubernetes</code>
 
 
@@ -1867,7 +1867,7 @@ AWS <code>EksCluster</code>, GCP <code>GkeCluster</code>) satisfy this interface
       </thead>
       <tbody>
           <tr class="doc-section-item">
-            <td><code><span title="core.abstractions.kubernetes.AbstractKubernetes.id">id</span></code></td>
+            <td><code><span title="cloudspells.core.abstractions.kubernetes.AbstractKubernetes.id">id</span></code></td>
             <td>
                   <code><span title="pulumi.Output">Output</span>[<span title="str">str</span>]</code>
             </td>
@@ -1895,7 +1895,7 @@ export_cluster(oke_cluster, &quot;oci_k8s&quot;)
 
 
               <details class="quote">
-                <summary>Source code in <code>src/core/abstractions/kubernetes.py</code></summary>
+                <summary>Source code in <code>packages/cloudspells-core/src/cloudspells/core/abstractions/kubernetes.py</code></summary>
                 <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">14</span>
 <span class="normal">15</span>
 <span class="normal">16</span>
@@ -1977,7 +1977,7 @@ export_cluster(oke_cluster, &quot;oci_k8s&quot;)
 <div class="doc doc-object doc-function">
 
 
-<h4 id="core.abstractions.kubernetes.AbstractKubernetes.export" class="doc doc-heading">
+<h4 id="cloudspells.core.abstractions.kubernetes.AbstractKubernetes.export" class="doc doc-heading">
             <code class="highlight language-python"><span class="n">export</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
 
   <span class="doc doc-labels">
@@ -1992,7 +1992,7 @@ export_cluster(oke_cluster, &quot;oci_k8s&quot;)
         <p>Publish standard Kubernetes cluster stack outputs.</p>
 
             <details class="quote">
-              <summary>Source code in <code>src/core/abstractions/kubernetes.py</code></summary>
+              <summary>Source code in <code>packages/cloudspells-core/src/cloudspells/core/abstractions/kubernetes.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">34</span>
 <span class="normal">35</span>
 <span class="normal">36</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@abstractmethod</span>
@@ -2007,7 +2007,7 @@ export_cluster(oke_cluster, &quot;oci_k8s&quot;)
 <div class="doc doc-object doc-function">
 
 
-<h4 id="core.abstractions.kubernetes.AbstractKubernetes.create_kubeconfig" class="doc doc-heading">
+<h4 id="cloudspells.core.abstractions.kubernetes.AbstractKubernetes.create_kubeconfig" class="doc doc-heading">
             <code class="highlight language-python"><span class="n">create_kubeconfig</span><span class="p">(</span><span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
 
   <span class="doc doc-labels">
@@ -2054,7 +2054,7 @@ should be written (e.g. <code>"/tmp/kubeconfig"</code>).</p>
     </table>
 
             <details class="quote">
-              <summary>Source code in <code>src/core/abstractions/kubernetes.py</code></summary>
+              <summary>Source code in <code>packages/cloudspells-core/src/cloudspells/core/abstractions/kubernetes.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">38</span>
 <span class="normal">39</span>
 <span class="normal">40</span>
