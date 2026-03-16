@@ -35,6 +35,12 @@ class OCIMocks(pulumi.runtime.Mocks):
         if args.typ == "oci:Bastion/bastion:Bastion":
             outputs["privateEndpointIpAddress"] = "10.0.128.5"
 
+        if args.typ == "oci:Logging/logGroup:LogGroup":
+            outputs["id"] = f"{args.name}-id"
+
+        if args.typ == "oci:Logging/log:Log":
+            outputs["id"] = f"{args.name}-id"
+
         return (f"{args.name}-id", outputs)
 
     def call(self, args: pulumi.runtime.MockCallArgs) -> tuple[dict[Any, Any], list[tuple[str, str]]]:

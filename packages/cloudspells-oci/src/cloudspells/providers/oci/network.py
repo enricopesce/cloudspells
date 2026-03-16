@@ -164,6 +164,9 @@ class Vcn(BaseResource, AbstractNetwork):
         management_route_table: Route table for the management subnet
             (Service Gateway only — same isolation policy as secure).
         id: `pulumi.Output[str]` of the VCN OCID.
+        flow_logs: `VcnFlowLogs` component when `flow_logs=True` was passed
+            to `__init__`, or `None` when flow logging is disabled.
+            Available after `finalize_network` is called.
 
     Usage patterns:
 
@@ -215,6 +218,8 @@ class Vcn(BaseResource, AbstractNetwork):
         stack_name: str | None = None,
         opts: pulumi.ResourceOptions | None = None,
         cidr_block: pulumi.Input[str] | None = None,
+        flow_logs: bool = False,
+        flow_logs_retention: int = 90,
     ) -> None:
         """Create a VCN with gateways and route tables.
 
@@ -237,15 +242,26 @@ class Vcn(BaseResource, AbstractNetwork):
                 management 12.5 % each (prefix+3).  See the module
                 docstring for a full example table across common prefix
                 lengths.
+            flow_logs: When `True`, a `VcnFlowLogs` component is created
+                automatically inside `finalize_network`, capturing accepted
+                and rejected traffic on all four subnet tiers.  Defaults
+                to `False`.  The created component is accessible via
+                `self.flow_logs`.
+            flow_logs_retention: Log retention in days when `flow_logs=True`.
+                Accepted values are `30`, `60`, `90`, `120`, `150`, `180`.
+                Defaults to `90`.
         """
         super().__init__("custom:network:Vcn", name, compartment_id, stack_name, opts)
         self.cidr_block = cidr_block or "10.0.0.0/18"
+        self._flow_logs_enabled = flow_logs
+        self._flow_logs_retention = flow_logs_retention
 
         # Initialize the subnet properties
         self.public_subnet = None
         self.private_subnet = None
         self.secure_subnet = None
         self.management_subnet = None
+        self.flow_logs = None
 
         # Storage for security list rules (builder pattern).
         # Populated by add_security_list_rules() calls from other spells.
@@ -682,6 +698,8 @@ class Vcn(BaseResource, AbstractNetwork):
         pulumi.export("management_subnet_id", self.management_subnet.id)
         pulumi.export("management_subnet_cidr", self.get_management_subnet_cidr())
         pulumi.export("management_security_list_id", self.management_security_list.id)
+        if self.flow_logs is not None:
+            pulumi.export("network_audit_log_group_id", self.flow_logs.log_group_id)
 
     def add_security_list_rules(
         self,
@@ -920,6 +938,16 @@ class Vcn(BaseResource, AbstractNetwork):
         self._create_subnets(self._subnet_cidrs)
 
         self._security_lists_finalized = True
+
+        if self._flow_logs_enabled:
+            from .network_logging import VcnFlowLogs  # lazy import avoids circular dependency
+
+            self.flow_logs = VcnFlowLogs(
+                name=self.name,
+                vcn=self,
+                retention_duration=self._flow_logs_retention,
+                stack_name=self.stack_name,
+            )
 
         self.register_outputs(
             {

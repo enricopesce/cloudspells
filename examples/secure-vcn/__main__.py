@@ -99,7 +99,6 @@ sys.path.insert(0, os.path.join(_root, "packages/cloudspells-oci/src"))
 
 from cloudspells.core import Config
 from cloudspells.providers.oci.network import Vcn
-from cloudspells.providers.oci.network_logging import VcnFlowLogs
 from cloudspells.providers.oci.nsg import HTTP, HTTPS, SSH, Nsg
 from cloudspells.providers.oci.roles import APP_SERVER, DATABASE, INTERNET_EDGE, MANAGEMENT
 
@@ -124,6 +123,8 @@ vcn: Vcn = Vcn(
     name="lab",
     compartment_id=compartment_id,
     cidr_block=vcn_cidr,
+    flow_logs=True,
+    flow_logs_retention=log_retention_days,
 )
 
 # ── Step 2 — NSG roles ────────────────────────────────────────────────────────
@@ -159,15 +160,7 @@ mgmt_nsg.serves(lb_nsg, port=SSH, with_ssh=False)  # mgmt → LB: SSH only
 mgmt_nsg.serves(app_nsg, port=SSH, with_ssh=False)  # mgmt → app: SSH only
 mgmt_nsg.serves(db_nsg, port=SSH, with_ssh=False)  # mgmt → DB: SSH only
 
-# ── Step 4 — VCN Flow Logs (observability) ────────────────────────────────────
-
-flow_logs: VcnFlowLogs = VcnFlowLogs(
-    name="lab",
-    vcn=vcn,
-    retention_duration=log_retention_days,
-)
-
 # ── Stack outputs ──────────────────────────────────────────────────────────────
 #
+# vcn.export() also publishes network_audit_log_group_id when flow_logs=True.
 vcn.export()
-flow_logs.export()

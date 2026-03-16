@@ -186,6 +186,44 @@ class TestVcn(unittest.TestCase):
         self.assertIsNotNone(vcn.secure_subnet)
         self.assertIsNotNone(vcn.management_subnet)
 
+    def test_flow_logs_none_by_default(self):
+        """Test that flow_logs is None when flow_logs=False (default)."""
+        vcn = Vcn(
+            name="test-vcn",
+            compartment_id="ocid1.compartment.test",
+        )
+        vcn.finalize_network()
+        self.assertIsNone(vcn.flow_logs)
+
+    @pulumi.runtime.test
+    def test_flow_logs_created_when_enabled(self):
+        """Test that VcnFlowLogs is created automatically when flow_logs=True."""
+        from cloudspells.providers.oci.network_logging import VcnFlowLogs
+
+        vcn = Vcn(
+            name="test-vcn",
+            compartment_id="ocid1.compartment.test",
+            flow_logs=True,
+        )
+        vcn.finalize_network()
+
+        self.assertIsNotNone(vcn.flow_logs, "flow_logs attribute must be set after finalize_network")
+        self.assertIsInstance(vcn.flow_logs, VcnFlowLogs)
+
+        def check_log_group(log_group_id):
+            self.assertIsNotNone(log_group_id, "Log group must be created")
+
+        return vcn.flow_logs.log_group_id.apply(check_log_group)
+
+    def test_flow_logs_not_created_before_finalize(self):
+        """Test that flow_logs remains None before finalize_network() is called."""
+        vcn = Vcn(
+            name="test-vcn",
+            compartment_id="ocid1.compartment.test",
+            flow_logs=True,
+        )
+        self.assertIsNone(vcn.flow_logs, "flow_logs must be None before finalize_network")
+
 
 if __name__ == "__main__":
     unittest.main()
