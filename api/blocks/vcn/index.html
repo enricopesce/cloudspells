@@ -2657,6 +2657,18 @@ after <code>finalize_network</code>).</p>
               </div>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.network.Vcn.flow_logs">flow_logs</span></code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>VcnFlowLogs</code> component when <code>flow_logs=True</code> was passed
+to <code>__init__</code>, or <code>None</code> when flow logging is disabled.
+Available after <code>finalize_network</code> is called.</p>
+              </div>
+            </td>
+          </tr>
       </tbody>
     </table>
         <p>Usage patterns:</p>
@@ -3502,7 +3514,35 @@ cluster = OkeCluster(vcn=vcn, ...)   # calls finalize_network internally</p>
 <span class="normal">929</span>
 <span class="normal">930</span>
 <span class="normal">931</span>
-<span class="normal">932</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Vcn</span><span class="p">(</span><span class="n">BaseResource</span><span class="p">,</span> <span class="n">AbstractNetwork</span><span class="p">):</span>
+<span class="normal">932</span>
+<span class="normal">933</span>
+<span class="normal">934</span>
+<span class="normal">935</span>
+<span class="normal">936</span>
+<span class="normal">937</span>
+<span class="normal">938</span>
+<span class="normal">939</span>
+<span class="normal">940</span>
+<span class="normal">941</span>
+<span class="normal">942</span>
+<span class="normal">943</span>
+<span class="normal">944</span>
+<span class="normal">945</span>
+<span class="normal">946</span>
+<span class="normal">947</span>
+<span class="normal">948</span>
+<span class="normal">949</span>
+<span class="normal">950</span>
+<span class="normal">951</span>
+<span class="normal">952</span>
+<span class="normal">953</span>
+<span class="normal">954</span>
+<span class="normal">955</span>
+<span class="normal">956</span>
+<span class="normal">957</span>
+<span class="normal">958</span>
+<span class="normal">959</span>
+<span class="normal">960</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Vcn</span><span class="p">(</span><span class="n">BaseResource</span><span class="p">,</span> <span class="n">AbstractNetwork</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;OCI Virtual Cloud Network with subnets, gateways, and security lists.</span>
 
 <span class="sd">    Creates the complete OCI network foundation required by all other</span>
@@ -3553,6 +3593,9 @@ cluster = OkeCluster(vcn=vcn, ...)   # calls finalize_network internally</p>
 <span class="sd">        management_route_table: Route table for the management subnet</span>
 <span class="sd">            (Service Gateway only — same isolation policy as secure).</span>
 <span class="sd">        id: `pulumi.Output[str]` of the VCN OCID.</span>
+<span class="sd">        flow_logs: `VcnFlowLogs` component when `flow_logs=True` was passed</span>
+<span class="sd">            to `__init__`, or `None` when flow logging is disabled.</span>
+<span class="sd">            Available after `finalize_network` is called.</span>
 
 <span class="sd">    Usage patterns:</span>
 
@@ -3604,6 +3647,8 @@ cluster = OkeCluster(vcn=vcn, ...)   # calls finalize_network internally</p>
         <span class="n">stack_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">cidr_block</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">flow_logs</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">flow_logs_retention</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">90</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a VCN with gateways and route tables.</span>
 
@@ -3626,15 +3671,26 @@ cluster = OkeCluster(vcn=vcn, ...)   # calls finalize_network internally</p>
 <span class="sd">                management 12.5 % each (prefix+3).  See the module</span>
 <span class="sd">                docstring for a full example table across common prefix</span>
 <span class="sd">                lengths.</span>
+<span class="sd">            flow_logs: When `True`, a `VcnFlowLogs` component is created</span>
+<span class="sd">                automatically inside `finalize_network`, capturing accepted</span>
+<span class="sd">                and rejected traffic on all four subnet tiers.  Defaults</span>
+<span class="sd">                to `False`.  The created component is accessible via</span>
+<span class="sd">                `self.flow_logs`.</span>
+<span class="sd">            flow_logs_retention: Log retention in days when `flow_logs=True`.</span>
+<span class="sd">                Accepted values are `30`, `60`, `90`, `120`, `150`, `180`.</span>
+<span class="sd">                Defaults to `90`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;custom:network:Vcn&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">compartment_id</span><span class="p">,</span> <span class="n">stack_name</span><span class="p">,</span> <span class="n">opts</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cidr_block</span> <span class="o">=</span> <span class="n">cidr_block</span> <span class="ow">or</span> <span class="s2">&quot;10.0.0.0/18&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_flow_logs_enabled</span> <span class="o">=</span> <span class="n">flow_logs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_flow_logs_retention</span> <span class="o">=</span> <span class="n">flow_logs_retention</span>
 
         <span class="c1"># Initialize the subnet properties</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">public_subnet</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">private_subnet</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">secure_subnet</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">management_subnet</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flow_logs</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="c1"># Storage for security list rules (builder pattern).</span>
         <span class="c1"># Populated by add_security_list_rules() calls from other spells.</span>
@@ -4071,6 +4127,8 @@ cluster = OkeCluster(vcn=vcn, ...)   # calls finalize_network internally</p>
         <span class="n">pulumi</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="s2">&quot;management_subnet_id&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">management_subnet</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
         <span class="n">pulumi</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="s2">&quot;management_subnet_cidr&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_management_subnet_cidr</span><span class="p">())</span>
         <span class="n">pulumi</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="s2">&quot;management_security_list_id&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">management_security_list</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">flow_logs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">pulumi</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="s2">&quot;network_audit_log_group_id&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">flow_logs</span><span class="o">.</span><span class="n">log_group_id</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">add_security_list_rules</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -4310,6 +4368,16 @@ cluster = OkeCluster(vcn=vcn, ...)   # calls finalize_network internally</p>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_security_lists_finalized</span> <span class="o">=</span> <span class="kc">True</span>
 
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_flow_logs_enabled</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">.network_logging</span><span class="w"> </span><span class="kn">import</span> <span class="n">VcnFlowLogs</span>  <span class="c1"># lazy import avoids circular dependency</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">flow_logs</span> <span class="o">=</span> <span class="n">VcnFlowLogs</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="n">vcn</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+                <span class="n">retention_duration</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_flow_logs_retention</span><span class="p">,</span>
+                <span class="n">stack_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stack_name</span><span class="p">,</span>
+            <span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">register_outputs</span><span class="p">(</span>
             <span class="p">{</span>
                 <span class="s2">&quot;public_subnet&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">public_subnet</span><span class="p">,</span>
@@ -4338,7 +4406,7 @@ cluster = OkeCluster(vcn=vcn, ...)   # calls finalize_network internally</p>
 
 
 <h4 id="cloudspells.providers.oci.network.Vcn.__init__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">compartment_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">stack_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">cidr_block</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
+            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">compartment_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">stack_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">cidr_block</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">flow_logs</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">flow_logs_retention</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">90</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
 
 </h4>
 
@@ -4451,15 +4519,50 @@ lengths.</p>
                   <code>None</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>flow_logs</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>When <code>True</code>, a <code>VcnFlowLogs</code> component is created
+automatically inside <code>finalize_network</code>, capturing accepted
+and rejected traffic on all four subnet tiers.  Defaults
+to <code>False</code>.  The created component is accessible via
+<code>self.flow_logs</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>flow_logs_retention</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Log retention in days when <code>flow_logs=True</code>.
+Accepted values are <code>30</code>, <code>60</code>, <code>90</code>, <code>120</code>, <code>150</code>, <code>180</code>.
+Defaults to <code>90</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>90</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">211</span>
-<span class="normal">212</span>
-<span class="normal">213</span>
-<span class="normal">214</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">214</span>
 <span class="normal">215</span>
 <span class="normal">216</span>
 <span class="normal">217</span>
@@ -4521,13 +4624,31 @@ lengths.</p>
 <span class="normal">273</span>
 <span class="normal">274</span>
 <span class="normal">275</span>
-<span class="normal">276</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">compartment_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">stack_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">cidr_block</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">flow_logs</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">flow_logs_retention</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">90</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a VCN with gateways and route tables.</span>
 
@@ -4550,15 +4671,26 @@ lengths.</p>
 <span class="sd">            management 12.5 % each (prefix+3).  See the module</span>
 <span class="sd">            docstring for a full example table across common prefix</span>
 <span class="sd">            lengths.</span>
+<span class="sd">        flow_logs: When `True`, a `VcnFlowLogs` component is created</span>
+<span class="sd">            automatically inside `finalize_network`, capturing accepted</span>
+<span class="sd">            and rejected traffic on all four subnet tiers.  Defaults</span>
+<span class="sd">            to `False`.  The created component is accessible via</span>
+<span class="sd">            `self.flow_logs`.</span>
+<span class="sd">        flow_logs_retention: Log retention in days when `flow_logs=True`.</span>
+<span class="sd">            Accepted values are `30`, `60`, `90`, `120`, `150`, `180`.</span>
+<span class="sd">            Defaults to `90`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;custom:network:Vcn&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">compartment_id</span><span class="p">,</span> <span class="n">stack_name</span><span class="p">,</span> <span class="n">opts</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">cidr_block</span> <span class="o">=</span> <span class="n">cidr_block</span> <span class="ow">or</span> <span class="s2">&quot;10.0.0.0/18&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_flow_logs_enabled</span> <span class="o">=</span> <span class="n">flow_logs</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_flow_logs_retention</span> <span class="o">=</span> <span class="n">flow_logs_retention</span>
 
     <span class="c1"># Initialize the subnet properties</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">public_subnet</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">private_subnet</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">secure_subnet</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">management_subnet</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">flow_logs</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="c1"># Storage for security list rules (builder pattern).</span>
     <span class="c1"># Populated by add_security_list_rules() calls from other spells.</span>
@@ -4620,23 +4752,7 @@ vcn.export()  # finalize_network() is called automatically
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">650</span>
-<span class="normal">651</span>
-<span class="normal">652</span>
-<span class="normal">653</span>
-<span class="normal">654</span>
-<span class="normal">655</span>
-<span class="normal">656</span>
-<span class="normal">657</span>
-<span class="normal">658</span>
-<span class="normal">659</span>
-<span class="normal">660</span>
-<span class="normal">661</span>
-<span class="normal">662</span>
-<span class="normal">663</span>
-<span class="normal">664</span>
-<span class="normal">665</span>
-<span class="normal">666</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">666</span>
 <span class="normal">667</span>
 <span class="normal">668</span>
 <span class="normal">669</span>
@@ -4654,7 +4770,25 @@ vcn.export()  # finalize_network() is called automatically
 <span class="normal">681</span>
 <span class="normal">682</span>
 <span class="normal">683</span>
-<span class="normal">684</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">684</span>
+<span class="normal">685</span>
+<span class="normal">686</span>
+<span class="normal">687</span>
+<span class="normal">688</span>
+<span class="normal">689</span>
+<span class="normal">690</span>
+<span class="normal">691</span>
+<span class="normal">692</span>
+<span class="normal">693</span>
+<span class="normal">694</span>
+<span class="normal">695</span>
+<span class="normal">696</span>
+<span class="normal">697</span>
+<span class="normal">698</span>
+<span class="normal">699</span>
+<span class="normal">700</span>
+<span class="normal">701</span>
+<span class="normal">702</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Export the canonical VCN stack outputs for cross-stack consumption.</span>
 
 <span class="sd">    Publishes the fourteen keys that `VcnRef.from_stack_reference`</span>
@@ -4689,6 +4823,8 @@ vcn.export()  # finalize_network() is called automatically
     <span class="n">pulumi</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="s2">&quot;management_subnet_id&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">management_subnet</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
     <span class="n">pulumi</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="s2">&quot;management_subnet_cidr&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_management_subnet_cidr</span><span class="p">())</span>
     <span class="n">pulumi</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="s2">&quot;management_security_list_id&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">management_security_list</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">flow_logs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">pulumi</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="s2">&quot;network_audit_log_group_id&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">flow_logs</span><span class="o">.</span><span class="n">log_group_id</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -4895,25 +5031,7 @@ vcn.finalize_network()
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">686</span>
-<span class="normal">687</span>
-<span class="normal">688</span>
-<span class="normal">689</span>
-<span class="normal">690</span>
-<span class="normal">691</span>
-<span class="normal">692</span>
-<span class="normal">693</span>
-<span class="normal">694</span>
-<span class="normal">695</span>
-<span class="normal">696</span>
-<span class="normal">697</span>
-<span class="normal">698</span>
-<span class="normal">699</span>
-<span class="normal">700</span>
-<span class="normal">701</span>
-<span class="normal">702</span>
-<span class="normal">703</span>
-<span class="normal">704</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">704</span>
 <span class="normal">705</span>
 <span class="normal">706</span>
 <span class="normal">707</span>
@@ -4962,7 +5080,25 @@ vcn.finalize_network()
 <span class="normal">750</span>
 <span class="normal">751</span>
 <span class="normal">752</span>
-<span class="normal">753</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_security_list_rules</span><span class="p">(</span>
+<span class="normal">753</span>
+<span class="normal">754</span>
+<span class="normal">755</span>
+<span class="normal">756</span>
+<span class="normal">757</span>
+<span class="normal">758</span>
+<span class="normal">759</span>
+<span class="normal">760</span>
+<span class="normal">761</span>
+<span class="normal">762</span>
+<span class="normal">763</span>
+<span class="normal">764</span>
+<span class="normal">765</span>
+<span class="normal">766</span>
+<span class="normal">767</span>
+<span class="normal">768</span>
+<span class="normal">769</span>
+<span class="normal">770</span>
+<span class="normal">771</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_security_list_rules</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">public_ingress</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">SecurityListIngressSecurityRuleArgs</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">public_egress</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">SecurityListEgressSecurityRuleArgs</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -5116,25 +5252,7 @@ already been called.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">755</span>
-<span class="normal">756</span>
-<span class="normal">757</span>
-<span class="normal">758</span>
-<span class="normal">759</span>
-<span class="normal">760</span>
-<span class="normal">761</span>
-<span class="normal">762</span>
-<span class="normal">763</span>
-<span class="normal">764</span>
-<span class="normal">765</span>
-<span class="normal">766</span>
-<span class="normal">767</span>
-<span class="normal">768</span>
-<span class="normal">769</span>
-<span class="normal">770</span>
-<span class="normal">771</span>
-<span class="normal">772</span>
-<span class="normal">773</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">773</span>
 <span class="normal">774</span>
 <span class="normal">775</span>
 <span class="normal">776</span>
@@ -5204,7 +5322,25 @@ already been called.</p>
 <span class="normal">840</span>
 <span class="normal">841</span>
 <span class="normal">842</span>
-<span class="normal">843</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_security_rules</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rules</span><span class="p">:</span> <span class="n">SecurityRules</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">843</span>
+<span class="normal">844</span>
+<span class="normal">845</span>
+<span class="normal">846</span>
+<span class="normal">847</span>
+<span class="normal">848</span>
+<span class="normal">849</span>
+<span class="normal">850</span>
+<span class="normal">851</span>
+<span class="normal">852</span>
+<span class="normal">853</span>
+<span class="normal">854</span>
+<span class="normal">855</span>
+<span class="normal">856</span>
+<span class="normal">857</span>
+<span class="normal">858</span>
+<span class="normal">859</span>
+<span class="normal">860</span>
+<span class="normal">861</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_security_rules</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rules</span><span class="p">:</span> <span class="n">SecurityRules</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Accumulate cloud-neutral security rules by translating them to OCI args.</span>
 
 <span class="sd">    Converts each `IngressRule` / `EgressRule` into the corresponding</span>
@@ -5340,17 +5476,17 @@ their security rules.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">845</span>
-<span class="normal">846</span>
-<span class="normal">847</span>
-<span class="normal">848</span>
-<span class="normal">849</span>
-<span class="normal">850</span>
-<span class="normal">851</span>
-<span class="normal">852</span>
-<span class="normal">853</span>
-<span class="normal">854</span>
-<span class="normal">855</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_public_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">863</span>
+<span class="normal">864</span>
+<span class="normal">865</span>
+<span class="normal">866</span>
+<span class="normal">867</span>
+<span class="normal">868</span>
+<span class="normal">869</span>
+<span class="normal">870</span>
+<span class="normal">871</span>
+<span class="normal">872</span>
+<span class="normal">873</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_public_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the public subnet CIDR.</span>
 
 <span class="sd">    Available immediately after construction (before</span>
@@ -5408,17 +5544,17 @@ their security rules.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">857</span>
-<span class="normal">858</span>
-<span class="normal">859</span>
-<span class="normal">860</span>
-<span class="normal">861</span>
-<span class="normal">862</span>
-<span class="normal">863</span>
-<span class="normal">864</span>
-<span class="normal">865</span>
-<span class="normal">866</span>
-<span class="normal">867</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_private_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">875</span>
+<span class="normal">876</span>
+<span class="normal">877</span>
+<span class="normal">878</span>
+<span class="normal">879</span>
+<span class="normal">880</span>
+<span class="normal">881</span>
+<span class="normal">882</span>
+<span class="normal">883</span>
+<span class="normal">884</span>
+<span class="normal">885</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_private_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the private subnet CIDR.</span>
 
 <span class="sd">    Available immediately after construction (before</span>
@@ -5476,17 +5612,17 @@ their security rules.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">869</span>
-<span class="normal">870</span>
-<span class="normal">871</span>
-<span class="normal">872</span>
-<span class="normal">873</span>
-<span class="normal">874</span>
-<span class="normal">875</span>
-<span class="normal">876</span>
-<span class="normal">877</span>
-<span class="normal">878</span>
-<span class="normal">879</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_secure_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">887</span>
+<span class="normal">888</span>
+<span class="normal">889</span>
+<span class="normal">890</span>
+<span class="normal">891</span>
+<span class="normal">892</span>
+<span class="normal">893</span>
+<span class="normal">894</span>
+<span class="normal">895</span>
+<span class="normal">896</span>
+<span class="normal">897</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_secure_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the secure subnet CIDR.</span>
 
 <span class="sd">    Available immediately after construction (before</span>
@@ -5541,13 +5677,13 @@ their security rules.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">881</span>
-<span class="normal">882</span>
-<span class="normal">883</span>
-<span class="normal">884</span>
-<span class="normal">885</span>
-<span class="normal">886</span>
-<span class="normal">887</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_management_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">899</span>
+<span class="normal">900</span>
+<span class="normal">901</span>
+<span class="normal">902</span>
+<span class="normal">903</span>
+<span class="normal">904</span>
+<span class="normal">905</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_management_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the management subnet CIDR.</span>
 
 <span class="sd">    Returns:</span>
@@ -5599,25 +5735,7 @@ vcn.finalize_network()
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">889</span>
-<span class="normal">890</span>
-<span class="normal">891</span>
-<span class="normal">892</span>
-<span class="normal">893</span>
-<span class="normal">894</span>
-<span class="normal">895</span>
-<span class="normal">896</span>
-<span class="normal">897</span>
-<span class="normal">898</span>
-<span class="normal">899</span>
-<span class="normal">900</span>
-<span class="normal">901</span>
-<span class="normal">902</span>
-<span class="normal">903</span>
-<span class="normal">904</span>
-<span class="normal">905</span>
-<span class="normal">906</span>
-<span class="normal">907</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">907</span>
 <span class="normal">908</span>
 <span class="normal">909</span>
 <span class="normal">910</span>
@@ -5642,7 +5760,35 @@ vcn.finalize_network()
 <span class="normal">929</span>
 <span class="normal">930</span>
 <span class="normal">931</span>
-<span class="normal">932</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">finalize_network</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">932</span>
+<span class="normal">933</span>
+<span class="normal">934</span>
+<span class="normal">935</span>
+<span class="normal">936</span>
+<span class="normal">937</span>
+<span class="normal">938</span>
+<span class="normal">939</span>
+<span class="normal">940</span>
+<span class="normal">941</span>
+<span class="normal">942</span>
+<span class="normal">943</span>
+<span class="normal">944</span>
+<span class="normal">945</span>
+<span class="normal">946</span>
+<span class="normal">947</span>
+<span class="normal">948</span>
+<span class="normal">949</span>
+<span class="normal">950</span>
+<span class="normal">951</span>
+<span class="normal">952</span>
+<span class="normal">953</span>
+<span class="normal">954</span>
+<span class="normal">955</span>
+<span class="normal">956</span>
+<span class="normal">957</span>
+<span class="normal">958</span>
+<span class="normal">959</span>
+<span class="normal">960</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">finalize_network</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create security lists and subnets with all accumulated rules.</span>
 
 <span class="sd">    This method is **idempotent** — only the first call has any effect;</span>
@@ -5676,6 +5822,16 @@ vcn.finalize_network()
     <span class="bp">self</span><span class="o">.</span><span class="n">_create_subnets</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_subnet_cidrs</span><span class="p">)</span>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">_security_lists_finalized</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_flow_logs_enabled</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.network_logging</span><span class="w"> </span><span class="kn">import</span> <span class="n">VcnFlowLogs</span>  <span class="c1"># lazy import avoids circular dependency</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">flow_logs</span> <span class="o">=</span> <span class="n">VcnFlowLogs</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">vcn</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+            <span class="n">retention_duration</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_flow_logs_retention</span><span class="p">,</span>
+            <span class="n">stack_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stack_name</span><span class="p">,</span>
+        <span class="p">)</span>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">register_outputs</span><span class="p">(</span>
         <span class="p">{</span>
@@ -5885,35 +6041,7 @@ cluster = OkeCluster(name=&quot;app&quot;, vcn=vcn, compartment_id=comp_id, ...)
 
               <details class="quote">
                 <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 935</span>
-<span class="normal"> 936</span>
-<span class="normal"> 937</span>
-<span class="normal"> 938</span>
-<span class="normal"> 939</span>
-<span class="normal"> 940</span>
-<span class="normal"> 941</span>
-<span class="normal"> 942</span>
-<span class="normal"> 943</span>
-<span class="normal"> 944</span>
-<span class="normal"> 945</span>
-<span class="normal"> 946</span>
-<span class="normal"> 947</span>
-<span class="normal"> 948</span>
-<span class="normal"> 949</span>
-<span class="normal"> 950</span>
-<span class="normal"> 951</span>
-<span class="normal"> 952</span>
-<span class="normal"> 953</span>
-<span class="normal"> 954</span>
-<span class="normal"> 955</span>
-<span class="normal"> 956</span>
-<span class="normal"> 957</span>
-<span class="normal"> 958</span>
-<span class="normal"> 959</span>
-<span class="normal"> 960</span>
-<span class="normal"> 961</span>
-<span class="normal"> 962</span>
-<span class="normal"> 963</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 963</span>
 <span class="normal"> 964</span>
 <span class="normal"> 965</span>
 <span class="normal"> 966</span>
@@ -6123,7 +6251,35 @@ cluster = OkeCluster(name=&quot;app&quot;, vcn=vcn, compartment_id=comp_id, ...)
 <span class="normal">1170</span>
 <span class="normal">1171</span>
 <span class="normal">1172</span>
-<span class="normal">1173</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">VcnRef</span><span class="p">(</span><span class="n">AbstractNetworkRef</span><span class="p">):</span>
+<span class="normal">1173</span>
+<span class="normal">1174</span>
+<span class="normal">1175</span>
+<span class="normal">1176</span>
+<span class="normal">1177</span>
+<span class="normal">1178</span>
+<span class="normal">1179</span>
+<span class="normal">1180</span>
+<span class="normal">1181</span>
+<span class="normal">1182</span>
+<span class="normal">1183</span>
+<span class="normal">1184</span>
+<span class="normal">1185</span>
+<span class="normal">1186</span>
+<span class="normal">1187</span>
+<span class="normal">1188</span>
+<span class="normal">1189</span>
+<span class="normal">1190</span>
+<span class="normal">1191</span>
+<span class="normal">1192</span>
+<span class="normal">1193</span>
+<span class="normal">1194</span>
+<span class="normal">1195</span>
+<span class="normal">1196</span>
+<span class="normal">1197</span>
+<span class="normal">1198</span>
+<span class="normal">1199</span>
+<span class="normal">1200</span>
+<span class="normal">1201</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">VcnRef</span><span class="p">(</span><span class="n">AbstractNetworkRef</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Read-only reference to a VCN managed by another Pulumi stack.</span>
 
 <span class="sd">    Lets you deploy CloudSpells services (OKE, Compute, ScalableWorkload) into a</span>
@@ -6641,35 +6797,7 @@ if present.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 999</span>
-<span class="normal">1000</span>
-<span class="normal">1001</span>
-<span class="normal">1002</span>
-<span class="normal">1003</span>
-<span class="normal">1004</span>
-<span class="normal">1005</span>
-<span class="normal">1006</span>
-<span class="normal">1007</span>
-<span class="normal">1008</span>
-<span class="normal">1009</span>
-<span class="normal">1010</span>
-<span class="normal">1011</span>
-<span class="normal">1012</span>
-<span class="normal">1013</span>
-<span class="normal">1014</span>
-<span class="normal">1015</span>
-<span class="normal">1016</span>
-<span class="normal">1017</span>
-<span class="normal">1018</span>
-<span class="normal">1019</span>
-<span class="normal">1020</span>
-<span class="normal">1021</span>
-<span class="normal">1022</span>
-<span class="normal">1023</span>
-<span class="normal">1024</span>
-<span class="normal">1025</span>
-<span class="normal">1026</span>
-<span class="normal">1027</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1027</span>
 <span class="normal">1028</span>
 <span class="normal">1029</span>
 <span class="normal">1030</span>
@@ -6701,7 +6829,35 @@ if present.</p>
 <span class="normal">1056</span>
 <span class="normal">1057</span>
 <span class="normal">1058</span>
-<span class="normal">1059</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<span class="normal">1059</span>
+<span class="normal">1060</span>
+<span class="normal">1061</span>
+<span class="normal">1062</span>
+<span class="normal">1063</span>
+<span class="normal">1064</span>
+<span class="normal">1065</span>
+<span class="normal">1066</span>
+<span class="normal">1067</span>
+<span class="normal">1068</span>
+<span class="normal">1069</span>
+<span class="normal">1070</span>
+<span class="normal">1071</span>
+<span class="normal">1072</span>
+<span class="normal">1073</span>
+<span class="normal">1074</span>
+<span class="normal">1075</span>
+<span class="normal">1076</span>
+<span class="normal">1077</span>
+<span class="normal">1078</span>
+<span class="normal">1079</span>
+<span class="normal">1080</span>
+<span class="normal">1081</span>
+<span class="normal">1082</span>
+<span class="normal">1083</span>
+<span class="normal">1084</span>
+<span class="normal">1085</span>
+<span class="normal">1086</span>
+<span class="normal">1087</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">vcn_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">public_subnet_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
@@ -6851,41 +7007,41 @@ if present.</p>
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1061</span>
-<span class="normal">1062</span>
-<span class="normal">1063</span>
-<span class="normal">1064</span>
-<span class="normal">1065</span>
-<span class="normal">1066</span>
-<span class="normal">1067</span>
-<span class="normal">1068</span>
-<span class="normal">1069</span>
-<span class="normal">1070</span>
-<span class="normal">1071</span>
-<span class="normal">1072</span>
-<span class="normal">1073</span>
-<span class="normal">1074</span>
-<span class="normal">1075</span>
-<span class="normal">1076</span>
-<span class="normal">1077</span>
-<span class="normal">1078</span>
-<span class="normal">1079</span>
-<span class="normal">1080</span>
-<span class="normal">1081</span>
-<span class="normal">1082</span>
-<span class="normal">1083</span>
-<span class="normal">1084</span>
-<span class="normal">1085</span>
-<span class="normal">1086</span>
-<span class="normal">1087</span>
-<span class="normal">1088</span>
-<span class="normal">1089</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1089</span>
 <span class="normal">1090</span>
 <span class="normal">1091</span>
 <span class="normal">1092</span>
 <span class="normal">1093</span>
 <span class="normal">1094</span>
-<span class="normal">1095</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="normal">1095</span>
+<span class="normal">1096</span>
+<span class="normal">1097</span>
+<span class="normal">1098</span>
+<span class="normal">1099</span>
+<span class="normal">1100</span>
+<span class="normal">1101</span>
+<span class="normal">1102</span>
+<span class="normal">1103</span>
+<span class="normal">1104</span>
+<span class="normal">1105</span>
+<span class="normal">1106</span>
+<span class="normal">1107</span>
+<span class="normal">1108</span>
+<span class="normal">1109</span>
+<span class="normal">1110</span>
+<span class="normal">1111</span>
+<span class="normal">1112</span>
+<span class="normal">1113</span>
+<span class="normal">1114</span>
+<span class="normal">1115</span>
+<span class="normal">1116</span>
+<span class="normal">1117</span>
+<span class="normal">1118</span>
+<span class="normal">1119</span>
+<span class="normal">1120</span>
+<span class="normal">1121</span>
+<span class="normal">1122</span>
+<span class="normal">1123</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">from_stack_reference</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">stack_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">VcnRef</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a `VcnRef` from outputs published by another Pulumi stack.</span>
 
@@ -7088,35 +7244,7 @@ services here.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1097</span>
-<span class="normal">1098</span>
-<span class="normal">1099</span>
-<span class="normal">1100</span>
-<span class="normal">1101</span>
-<span class="normal">1102</span>
-<span class="normal">1103</span>
-<span class="normal">1104</span>
-<span class="normal">1105</span>
-<span class="normal">1106</span>
-<span class="normal">1107</span>
-<span class="normal">1108</span>
-<span class="normal">1109</span>
-<span class="normal">1110</span>
-<span class="normal">1111</span>
-<span class="normal">1112</span>
-<span class="normal">1113</span>
-<span class="normal">1114</span>
-<span class="normal">1115</span>
-<span class="normal">1116</span>
-<span class="normal">1117</span>
-<span class="normal">1118</span>
-<span class="normal">1119</span>
-<span class="normal">1120</span>
-<span class="normal">1121</span>
-<span class="normal">1122</span>
-<span class="normal">1123</span>
-<span class="normal">1124</span>
-<span class="normal">1125</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1125</span>
 <span class="normal">1126</span>
 <span class="normal">1127</span>
 <span class="normal">1128</span>
@@ -7129,7 +7257,35 @@ services here.</p>
 <span class="normal">1135</span>
 <span class="normal">1136</span>
 <span class="normal">1137</span>
-<span class="normal">1138</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_security_list_rules</span><span class="p">(</span>
+<span class="normal">1138</span>
+<span class="normal">1139</span>
+<span class="normal">1140</span>
+<span class="normal">1141</span>
+<span class="normal">1142</span>
+<span class="normal">1143</span>
+<span class="normal">1144</span>
+<span class="normal">1145</span>
+<span class="normal">1146</span>
+<span class="normal">1147</span>
+<span class="normal">1148</span>
+<span class="normal">1149</span>
+<span class="normal">1150</span>
+<span class="normal">1151</span>
+<span class="normal">1152</span>
+<span class="normal">1153</span>
+<span class="normal">1154</span>
+<span class="normal">1155</span>
+<span class="normal">1156</span>
+<span class="normal">1157</span>
+<span class="normal">1158</span>
+<span class="normal">1159</span>
+<span class="normal">1160</span>
+<span class="normal">1161</span>
+<span class="normal">1162</span>
+<span class="normal">1163</span>
+<span class="normal">1164</span>
+<span class="normal">1165</span>
+<span class="normal">1166</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_security_list_rules</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">public_ingress</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">public_egress</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -7215,13 +7371,13 @@ services here.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1140</span>
-<span class="normal">1141</span>
-<span class="normal">1142</span>
-<span class="normal">1143</span>
-<span class="normal">1144</span>
-<span class="normal">1145</span>
-<span class="normal">1146</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_public_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1168</span>
+<span class="normal">1169</span>
+<span class="normal">1170</span>
+<span class="normal">1171</span>
+<span class="normal">1172</span>
+<span class="normal">1173</span>
+<span class="normal">1174</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_public_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the public subnet CIDR.</span>
 
 <span class="sd">    Returns:</span>
@@ -7272,13 +7428,13 @@ services here.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1148</span>
-<span class="normal">1149</span>
-<span class="normal">1150</span>
-<span class="normal">1151</span>
-<span class="normal">1152</span>
-<span class="normal">1153</span>
-<span class="normal">1154</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_private_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1176</span>
+<span class="normal">1177</span>
+<span class="normal">1178</span>
+<span class="normal">1179</span>
+<span class="normal">1180</span>
+<span class="normal">1181</span>
+<span class="normal">1182</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_private_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the private subnet CIDR.</span>
 
 <span class="sd">    Returns:</span>
@@ -7329,13 +7485,13 @@ services here.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1156</span>
-<span class="normal">1157</span>
-<span class="normal">1158</span>
-<span class="normal">1159</span>
-<span class="normal">1160</span>
-<span class="normal">1161</span>
-<span class="normal">1162</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_secure_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1184</span>
+<span class="normal">1185</span>
+<span class="normal">1186</span>
+<span class="normal">1187</span>
+<span class="normal">1188</span>
+<span class="normal">1189</span>
+<span class="normal">1190</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_secure_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the secure subnet CIDR.</span>
 
 <span class="sd">    Returns:</span>
@@ -7386,13 +7542,13 @@ services here.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1164</span>
-<span class="normal">1165</span>
-<span class="normal">1166</span>
-<span class="normal">1167</span>
-<span class="normal">1168</span>
-<span class="normal">1169</span>
-<span class="normal">1170</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_management_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1192</span>
+<span class="normal">1193</span>
+<span class="normal">1194</span>
+<span class="normal">1195</span>
+<span class="normal">1196</span>
+<span class="normal">1197</span>
+<span class="normal">1198</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_management_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the management subnet CIDR.</span>
 
 <span class="sd">    Returns:</span>
@@ -7420,8 +7576,8 @@ services here.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1172</span>
-<span class="normal">1173</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">finalize_network</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1200</span>
+<span class="normal">1201</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">finalize_network</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;No-op — the referenced VCN network is already finalized.&quot;&quot;&quot;</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -7551,28 +7707,28 @@ services here.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1176</span>
-<span class="normal">1177</span>
-<span class="normal">1178</span>
-<span class="normal">1179</span>
-<span class="normal">1180</span>
-<span class="normal">1181</span>
-<span class="normal">1182</span>
-<span class="normal">1183</span>
-<span class="normal">1184</span>
-<span class="normal">1185</span>
-<span class="normal">1186</span>
-<span class="normal">1187</span>
-<span class="normal">1188</span>
-<span class="normal">1189</span>
-<span class="normal">1190</span>
-<span class="normal">1191</span>
-<span class="normal">1192</span>
-<span class="normal">1193</span>
-<span class="normal">1194</span>
-<span class="normal">1195</span>
-<span class="normal">1196</span>
-<span class="normal">1197</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_resources_by_tag</span><span class="p">(</span><span class="n">vcn_instance</span><span class="p">:</span> <span class="n">Vcn</span><span class="p">,</span> <span class="n">tag_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">tag_value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1204</span>
+<span class="normal">1205</span>
+<span class="normal">1206</span>
+<span class="normal">1207</span>
+<span class="normal">1208</span>
+<span class="normal">1209</span>
+<span class="normal">1210</span>
+<span class="normal">1211</span>
+<span class="normal">1212</span>
+<span class="normal">1213</span>
+<span class="normal">1214</span>
+<span class="normal">1215</span>
+<span class="normal">1216</span>
+<span class="normal">1217</span>
+<span class="normal">1218</span>
+<span class="normal">1219</span>
+<span class="normal">1220</span>
+<span class="normal">1221</span>
+<span class="normal">1222</span>
+<span class="normal">1223</span>
+<span class="normal">1224</span>
+<span class="normal">1225</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_resources_by_tag</span><span class="p">(</span><span class="n">vcn_instance</span><span class="p">:</span> <span class="n">Vcn</span><span class="p">,</span> <span class="n">tag_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">tag_value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return all child resources of a VCN that match a specific freeform tag.</span>
 
 <span class="sd">    Iterates over every attribute of vcn_instance that exposes a</span>
