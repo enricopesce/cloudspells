@@ -1,11 +1,6 @@
 """Unit tests for AutoScale workload block."""
 
-import os
-import sys
 import unittest
-
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import pulumi
 
@@ -15,7 +10,7 @@ from tests.mocks import set_mocks
 set_mocks()
 
 # Import AFTER mocks are set
-from blocks.autoscale.workload import (
+from cloudspells.blocks.autoscale.workload import (
     LoadBalancerConfig,
     MetricScalingPolicy,
     ScalableWorkload,
@@ -24,7 +19,7 @@ from blocks.autoscale.workload import (
     ScheduleEntry,
     ScheduleScalingPolicy,
 )
-from blocks.vcn.network import Vcn
+from cloudspells.blocks.vcn.network import Vcn
 
 
 class TestAutoscaleWorkload(unittest.TestCase):

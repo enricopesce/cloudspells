@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cloudspells-core"
+version = "0.1.0"
+description = "Cloud-neutral abstractions and base classes for CloudSpells"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.8"
+dependencies = [
+    "pulumi>=3.204.0,<4",
+    "PyYAML>=6.0",
+    "Random-Word>=1.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cloudspells"]

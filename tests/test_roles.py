@@ -1,10 +1,6 @@
 """Unit tests for the Role system and Nsg.serves() relationship API."""
 
-import os
-import sys
 import unittest
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import pulumi
 
@@ -12,15 +8,15 @@ from tests.mocks import set_mocks
 
 set_mocks()
 
-from providers.oci.network import (
+from cloudspells.providers.oci.network import (
     SUBNET_MANAGEMENT,
     SUBNET_PRIVATE,
     SUBNET_PUBLIC,
     SUBNET_SECURE,
     Vcn,
 )
-from providers.oci.nsg import Nsg
-from providers.oci.roles import (
+from cloudspells.providers.oci.nsg import Nsg
+from cloudspells.providers.oci.roles import (
     APP_SERVER,
     CACHE,
     DATABASE,
@@ -262,7 +258,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
     @pulumi.runtime.test
     def test_nsg_shorthand_infers_private_subnet(self) -> None:
         """ComputeInstance with nsg=APP_SERVER NSG is placed in private subnet."""
-        from providers.oci.compute import ComputeInstance
+        from cloudspells.providers.oci.compute import ComputeInstance
 
         vcn = Vcn(name="ci-priv", compartment_id=COMP_ID)
         web_nsg = Nsg("web", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
@@ -279,7 +275,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
     @pulumi.runtime.test
     def test_nsg_shorthand_infers_public_subnet(self) -> None:
         """ComputeInstance with nsg=INTERNET_EDGE NSG is placed in public subnet."""
-        from providers.oci.compute import ComputeInstance
+        from cloudspells.providers.oci.compute import ComputeInstance
 
         vcn = Vcn(name="ci-pub", compartment_id=COMP_ID)
         lb_nsg = Nsg("lb", role=INTERNET_EDGE, ports=[80], vcn=vcn, compartment_id=COMP_ID)
@@ -295,7 +291,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
     @pulumi.runtime.test
     def test_nsg_shorthand_infers_secure_subnet(self) -> None:
         """ComputeInstance with nsg=DATABASE NSG is placed in secure subnet."""
-        from providers.oci.compute import ComputeInstance
+        from cloudspells.providers.oci.compute import ComputeInstance
 
         vcn = Vcn(name="ci-sec", compartment_id=COMP_ID)
         db_nsg = Nsg("db", role=DATABASE, vcn=vcn, compartment_id=COMP_ID)
@@ -311,7 +307,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
     @pulumi.runtime.test
     def test_nsg_shorthand_sets_nsg_ids(self) -> None:
         """ComputeInstance with nsg= sets nsg_ids to [nsg.id]."""
-        from providers.oci.compute import ComputeInstance
+        from cloudspells.providers.oci.compute import ComputeInstance
 
         vcn = Vcn(name="ci-ids", compartment_id=COMP_ID)
         web_nsg = Nsg("web", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
@@ -327,8 +323,8 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
     @pulumi.runtime.test
     def test_old_api_unchanged(self) -> None:
         """ComputeInstance with explicit subnet= and nsg_ids= still works."""
-        from providers.oci.compute import ComputeInstance
-        from providers.oci.network import SUBNET_PRIVATE
+        from cloudspells.providers.oci.compute import ComputeInstance
+        from cloudspells.providers.oci.network import SUBNET_PRIVATE
 
         vcn = Vcn(name="ci-old", compartment_id=COMP_ID)
         web_nsg = Nsg("web-old", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)

@@ -1,10 +1,6 @@
 """Unit tests for ComputeInstance block and VolumeSpec dataclass."""
 
-import os
-import sys
 import unittest
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import pulumi
 
@@ -12,9 +8,9 @@ from tests.mocks import set_mocks
 
 set_mocks()
 
-from blocks.compute.instance import ComputeInstance
-from blocks.compute.volume import VolumeSpec
-from blocks.vcn.network import Vcn
+from cloudspells.blocks.compute.instance import ComputeInstance
+from cloudspells.blocks.compute.volume import VolumeSpec
+from cloudspells.blocks.vcn.network import Vcn
 
 
 class TestVolumeSpec(unittest.TestCase):

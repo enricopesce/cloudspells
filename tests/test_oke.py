@@ -1,11 +1,6 @@
 """Unit tests for OKE Cluster block."""
 
-import os
-import sys
 import unittest
-
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import pulumi
 
@@ -15,8 +10,8 @@ from tests.mocks import set_mocks
 set_mocks()
 
 # Import AFTER mocks are set
-from blocks.oke.cluster import OkeCluster
-from blocks.vcn.network import Vcn
+from cloudspells.blocks.oke.cluster import OkeCluster
+from cloudspells.blocks.vcn.network import Vcn
 
 
 class TestOkeCluster(unittest.TestCase):

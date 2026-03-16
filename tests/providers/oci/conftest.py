@@ -9,11 +9,7 @@ Usage:
     per-file ``set_mocks()`` call is needed; this conftest handles it.
 """
 
-import os
-import sys
 
-# Ensure src/ is on the path so provider modules resolve correctly.
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "src"))
 
 from tests.mocks import set_mocks
 
