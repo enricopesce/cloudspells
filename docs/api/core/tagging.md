@@ -1,3 +1,3 @@
 # Resource Tagging
 
-::: core.tagging
+::: cloudspells.core.tagging

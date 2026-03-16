@@ -1,3 +1,3 @@
 # OCI Provider Helpers
 
-::: providers.oci.helper
+::: cloudspells.providers.oci.helper

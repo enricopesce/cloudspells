@@ -1,3 +1,3 @@
 # Network Abstractions
 
-::: core.abstractions.network
+::: cloudspells.core.abstractions.network

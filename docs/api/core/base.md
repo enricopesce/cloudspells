@@ -1,3 +1,3 @@
 # Base Resource
 
-::: core.base
+::: cloudspells.core.base

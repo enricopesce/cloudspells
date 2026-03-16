@@ -1,3 +1,3 @@
 # Compute Abstractions
 
-::: core.abstractions.compute
+::: cloudspells.core.abstractions.compute

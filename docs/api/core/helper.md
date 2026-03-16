@@ -1,3 +1,3 @@
 # Helpers
 
-::: core.helper
+::: cloudspells.core.helper

@@ -1,3 +1,3 @@
 # Kubernetes Abstractions
 
-::: core.abstractions.kubernetes
+::: cloudspells.core.abstractions.kubernetes

@@ -1,3 +1,3 @@
 # VCN
 
-::: providers.oci.network
+::: cloudspells.providers.oci.network

@@ -20,7 +20,7 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
-          paths: [src]
+          paths: [packages/cloudspells-core/src, packages/cloudspells-oci/src]
           options:
             docstring_style: google
             show_source: true

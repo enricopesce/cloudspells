@@ -1,3 +1,3 @@
 # OCI Compute
 
-::: providers.oci.compute
+::: cloudspells.providers.oci.compute

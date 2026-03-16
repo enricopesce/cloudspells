@@ -1,3 +1,3 @@
 # OCI Network
 
-::: providers.oci.network
+::: cloudspells.providers.oci.network

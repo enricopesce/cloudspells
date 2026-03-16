@@ -9,8 +9,6 @@ Usage:
     per-file ``set_mocks()`` call is needed; this conftest handles it.
 """
 
-
-
 from tests.mocks import set_mocks
 
 set_mocks()

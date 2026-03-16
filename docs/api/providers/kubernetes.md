@@ -1,3 +1,3 @@
 # OCI Kubernetes (OKE)
 
-::: providers.oci.kubernetes
+::: cloudspells.providers.oci.kubernetes

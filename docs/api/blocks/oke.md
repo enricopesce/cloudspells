@@ -1,3 +1,3 @@
 # OKE (Kubernetes)
 
-::: providers.oci.kubernetes
+::: cloudspells.providers.oci.kubernetes

@@ -1,3 +1,3 @@
 # OCI Network Logging
 
-::: providers.oci.network_logging
+::: cloudspells.providers.oci.network_logging

@@ -1,3 +1,3 @@
 # OCI Roles
 
-::: providers.oci.roles
+::: cloudspells.providers.oci.roles

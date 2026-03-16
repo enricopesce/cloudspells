@@ -1,3 +1,3 @@
 # OCI Block Volumes
 
-::: providers.oci.volume
+::: cloudspells.providers.oci.volume

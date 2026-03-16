@@ -1,3 +1,3 @@
 # OCI Network Security Groups
 
-::: providers.oci.nsg
+::: cloudspells.providers.oci.nsg

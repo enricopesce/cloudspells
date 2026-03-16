@@ -1,3 +1,3 @@
 # Bastion
 
-::: providers.oci.bastion
+::: cloudspells.providers.oci.bastion

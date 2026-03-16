@@ -1,3 +1,3 @@
 # Resource Naming
 
-::: core.naming
+::: cloudspells.core.naming

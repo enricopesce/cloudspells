@@ -1,3 +1,3 @@
 # Autoscale Abstractions
 
-::: core.abstractions.autoscale
+::: cloudspells.core.abstractions.autoscale

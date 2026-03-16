@@ -1,3 +1,3 @@
 # Bastion Abstractions
 
-::: core.abstractions.bastion
+::: cloudspells.core.abstractions.bastion

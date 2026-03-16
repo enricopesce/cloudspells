@@ -1,3 +1,3 @@
 # OCI Autoscale
 
-::: providers.oci.autoscale
+::: cloudspells.providers.oci.autoscale
