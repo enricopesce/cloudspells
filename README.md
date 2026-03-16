@@ -259,45 +259,7 @@ Each example is a self-contained Pulumi stack in `examples/`:
 
 ## Contributing
 
-**We're building the definitive opinionated infrastructure as code library for Oracle Cloud Infrastructure — and extending it to AWS and GCP. If you believe infrastructure should be correct by default, not by careful configuration, we want to work with you.**
-
-CloudBlocks is early-stage and actively looking for contributors who care about platform engineering done right. Every block you contribute saves the next team from a week of reading cloud documentation and another week of debugging security list rules.
-
-### Who we need
-
-- **Python / Pulumi developers** — extend existing blocks, add tests, improve type coverage
-- **OCI experts** — validate reference architectures, add missing OCI-native services
-- **AWS / GCP engineers** — implement the AWS and GCP provider layers (the abstraction interfaces are already defined)
-- **Platform engineers** — real-world usage feedback, example stacks, battle-testing
-- **Documentation writers** — examples, tutorials, API reference improvements
-
-### How to start
-
-1. Browse [issues labeled `good-first-issue`](https://github.com/enricopesce/ociblocks/issues?q=is%3Aissue+is%3Aopen+label%3Agood-first-issue) for a well-scoped starting point.
-2. Read `CLAUDE.md` for architecture rules and coding standards — these are enforced, not suggestions.
-3. Look at an existing block (e.g. `src/providers/oci/bastion.py`) as a template: minimal constructor, full docstrings, no exposed low-level parameters.
-4. Open an issue before starting large work so we can align on design before you invest time.
-
-### Development workflow
-
-```bash
-source .venv/bin/activate
-
-# Lint and format
-ruff check src/ tests/ --fix
-ruff format src/ tests/
-
-# Type checking
-pyright
-
-# Tests with coverage
-pytest
-
-# Full quality gate (run before opening a PR)
-ruff check src/ tests/ && ruff format --check src/ tests/ && pyright && pytest
-```
-
-All four checks must pass. PRs that fail the quality gate will not be merged.
+CloudBlocks is actively looking for contributors. See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the full guide — project philosophy, local setup, quality gate, block authoring steps, and PR guidelines.
 
 ---
 
