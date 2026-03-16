@@ -1,4 +1,4 @@
-"""Cloud-neutral compute abstractions for CloudBlocks multi-cloud support.
+"""Cloud-neutral compute abstractions for CloudSpells multi-cloud support.
 
 Defines the disk descriptor, subnet-tier constants, and the compute
 interface that all provider implementations must satisfy.

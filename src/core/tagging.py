@@ -1,7 +1,7 @@
-"""Resource tagging utilities for CloudBlocks.
+"""Resource tagging utilities for CloudSpells.
 
 Provides `ResourceTagger`, which generates consistent OCI freeform tag
-dictionaries.  Every resource created by an CloudBlocks component receives at
+dictionaries.  Every resource created by an CloudSpells component receives at
 minimum these baseline tags, enabling cost reporting, governance queries, and
 resource discovery:
 
@@ -55,7 +55,7 @@ class ResourceTagger:
         - `ResourceType` — resource_type (e.g. `"vcn"`, `"subnet"`).
         - `Environment` — the Pulumi stack name.
         - `CreatedBy`   — `"{stack_name}-{resource_name}"` string
-          identifying the CloudBlocks component that created the resource.
+          identifying the CloudSpells component that created the resource.
 
         Args:
             resource_name: Display name for the `Name` tag (usually the

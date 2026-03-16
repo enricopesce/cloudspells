@@ -1,4 +1,4 @@
-# CloudBlocks — High-Level Infrastructure Building Blocks for OCI
+# CloudSpells — High-Level Infrastructure Building Blocks for OCI
 
 **Stop configuring infrastructure. Start deploying architectures.**
 
@@ -9,17 +9,17 @@
 [![OCI](https://img.shields.io/badge/cloud-OCI-red)](https://www.oracle.com/cloud/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/enricopesce/ociblocks/issues?q=is%3Aissue+is%3Aopen+label%3Agood-first-issue)
 
-CloudBlocks is a Python-based infrastructure as code framework built on [Pulumi](https://www.pulumi.com/) that packages proven Oracle Cloud Infrastructure reference architectures as minimal, opinionated building blocks — you name things, the block handles everything else.
+CloudSpells is a Python-based infrastructure as code framework built on [Pulumi](https://www.pulumi.com/) that packages proven Oracle Cloud Infrastructure reference architectures as minimal, opinionated building blocks — you name things, the block handles everything else.
 
 ---
 
-## The Problem — and Why CloudBlocks Exists
+## The Problem — and Why CloudSpells Exists
 
 Raw Pulumi and Terraform give you every knob. That freedom is also the source of every misconfigured security rule, every missing NAT route, and every accidentally public subnet.
 
-CloudBlocks makes **the architecture the product**. Network topology, subnet tiers, gateway placement, routing policy, and security posture are baked in — derived from OCI best practices — and are not configurable at call time. The user's job is to name things and pick a location. The block's job is everything else.
+CloudSpells makes **the architecture the product**. Network topology, subnet tiers, gateway placement, routing policy, and security posture are baked in — derived from OCI best practices — and are not configurable at call time. The user's job is to name things and pick a location. The block's job is everything else.
 
-| With raw Pulumi / Terraform | With CloudBlocks |
+| With raw Pulumi / Terraform | With CloudSpells |
 |-----------------------------|-----------------|
 | Define VCN, subnets, route tables, gateways, security lists — each resource individually | `Vcn(name="lab", compartment_id=cid)` — one call, full 4-tier architecture |
 | Wire up NAT, Service GW, and Internet GW routes by hand | Routes are fixed by tier and generated automatically |
@@ -58,7 +58,7 @@ That's it. Four subnets, three gateways, four route tables, security lists — a
 
 ### 2. Add a Compute Instance
 
-Assign a role, and CloudBlocks infers the subnet tier, generates NSG rules, and sets up security lists automatically.
+Assign a role, and CloudSpells infers the subnet tier, generates NSG rules, and sets up security lists automatically.
 
 ```python
 from providers.oci.compute import ComputeInstance
@@ -148,7 +148,7 @@ Adding a third web backend? Attach `web_nsg` to a new `ComputeInstance`. Zero NS
 
 ## Architecture
 
-CloudBlocks uses a strict three-layer design that separates cloud-neutral contracts from cloud-specific implementations:
+CloudSpells uses a strict three-layer design that separates cloud-neutral contracts from cloud-specific implementations:
 
 ```
 src/
@@ -259,7 +259,7 @@ Each example is a self-contained Pulumi stack in `examples/`:
 
 ## Contributing
 
-CloudBlocks is actively looking for contributors. See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the full guide — project philosophy, local setup, quality gate, block authoring steps, and PR guidelines.
+CloudSpells is actively looking for contributors. See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the full guide — project philosophy, local setup, quality gate, block authoring steps, and PR guidelines.
 
 ---
 
@@ -273,7 +273,7 @@ CloudBlocks is actively looking for contributors. See [CONTRIBUTING.md](.github/
 - [ ] AWS provider — implement `AbstractNetwork`, `AbstractScalableWorkload`, etc. for AWS
 - [ ] GCP provider — same abstraction layer for GCP
 - [ ] Azure provider
-- [ ] CloudBlocks CLI tool for stack management
+- [ ] CloudSpells CLI tool for stack management
 - [ ] MkDocs documentation site (in progress — `mkdocs.yml` present)
 - [ ] Community block registry
 
@@ -283,4 +283,4 @@ CloudBlocks is actively looking for contributors. See [CONTRIBUTING.md](.github/
 
 Released under the terms described in [LICENSE](LICENSE).
 
-CloudBlocks is built on [Pulumi](https://www.pulumi.com/) and the [pulumi-oci](https://github.com/pulumi/pulumi-oci) provider. The design philosophy — making the architecture the product — is inspired by the principle that correct infrastructure should not require expert configuration on every deployment.
+CloudSpells is built on [Pulumi](https://www.pulumi.com/) and the [pulumi-oci](https://github.com/pulumi/pulumi-oci) provider. The design philosophy — making the architecture the product — is inspired by the principle that correct infrastructure should not require expert configuration on every deployment.

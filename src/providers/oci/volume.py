@@ -1,4 +1,4 @@
-"""Volume specification dataclass for CloudBlocks compute block volumes.
+"""Volume specification dataclass for CloudSpells compute block volumes.
 
 Provides `VolumeSpec`, a typed descriptor for a single OCI block volume to be
 created and attached to a `ComputeInstance`.  Pass a list of specs to

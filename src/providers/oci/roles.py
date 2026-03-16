@@ -1,4 +1,4 @@
-"""Role-based security posture descriptors for CloudBlocks NSGs.
+"""Role-based security posture descriptors for CloudSpells NSGs.
 
 A `Role` captures the security posture of a class of resources — which subnet
 tier it belongs to, what ambient network access it needs, and whether it

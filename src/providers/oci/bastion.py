@@ -1,4 +1,4 @@
-r"""Bastion Service building block for CloudBlocks.
+r"""Bastion Service building block for CloudSpells.
 
 Provides `Bastion`, which creates an OCI Bastion Service endpoint attached to
 the VCN's private subnet.  The Bastion enables time-limited SSH sessions to

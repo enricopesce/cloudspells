@@ -1,6 +1,6 @@
 # Network Topology
 
-Every CloudBlocks deployment is built on a fixed 4-tier VCN architecture. This page explains the topology, the CIDR sizing rationale, the routing policy per tier, and the security posture — and why none of it is configurable.
+Every CloudSpells deployment is built on a fixed 4-tier VCN architecture. This page explains the topology, the CIDR sizing rationale, the routing policy per tier, and the security posture — and why none of it is configurable.
 
 ---
 
@@ -28,7 +28,7 @@ The four tiers are created by binary subdivision of the VCN CIDR. You supply the
 
 ## CIDR allocation
 
-CloudBlocks splits the VCN CIDR by dividing the prefix into increasingly specific blocks:
+CloudSpells splits the VCN CIDR by dividing the prefix into increasingly specific blocks:
 
 | Tier | Share | Prefix offset | Rationale |
 |------|-------|---------------|-----------|
@@ -97,11 +97,11 @@ Three gateways are created for every VCN:
 
 ## Security enforcement
 
-OCI enforces network rules at two layers. CloudBlocks populates both automatically:
+OCI enforces network rules at two layers. CloudSpells populates both automatically:
 
-**Security Lists** — applied at the subnet boundary. OCI evaluates these rules before traffic enters or leaves the subnet. CloudBlocks adds security list rules when role-bearing NSGs are declared, and cross-subnet rules when `nsg.serves()` is called between NSGs in different tiers.
+**Security Lists** — applied at the subnet boundary. OCI evaluates these rules before traffic enters or leaves the subnet. CloudSpells adds security list rules when role-bearing NSGs are declared, and cross-subnet rules when `nsg.serves()` is called between NSGs in different tiers.
 
-**NSGs** — applied at the VNIC (network interface) level. More granular than security lists; traffic between two NSGs in the same subnet is controlled entirely by NSG rules. CloudBlocks generates NSG rules from the role and from `serves()` relationships.
+**NSGs** — applied at the VNIC (network interface) level. More granular than security lists; traffic between two NSGs in the same subnet is controlled entirely by NSG rules. CloudSpells generates NSG rules from the role and from `serves()` relationships.
 
 Both layers are always consistent. You never write a rule in one layer and forget the other.
 
@@ -130,4 +130,4 @@ The following are fixed by design and are not exposed as parameters:
 - **Gateway types per tier** (Internet / NAT / Service as described above)
 - **Routing policy per tier** (default route target is fixed per tier)
 
-This is intentional. If you need a different topology, use raw `pulumi_oci` resources. CloudBlocks is for use-cases where the reference architecture fits — and for those use-cases, the fixed topology means you cannot get it wrong.
+This is intentional. If you need a different topology, use raw `pulumi_oci` resources. CloudSpells is for use-cases where the reference architecture fits — and for those use-cases, the fixed topology means you cannot get it wrong.

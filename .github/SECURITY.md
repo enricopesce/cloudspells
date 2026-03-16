@@ -12,7 +12,7 @@
 
 **Please do not open a public GitHub issue for security vulnerabilities.**
 
-Instead, email **security@cloudblocks.dev** with:
+Instead, email **security@cloudspells.dev** with:
 - Subject: `SECURITY: <one-line summary>`
 - Steps to reproduce
 - Potential impact and affected versions
@@ -23,7 +23,7 @@ We will acknowledge receipt within **3 business days** and aim to release a patc
 ## Scope
 
 **In scope:**
-- Vulnerabilities in CloudBlocks framework code (`src/`)
+- Vulnerabilities in CloudSpells framework code (`src/`)
 - Insecure defaults that could expose user infrastructure
 
 **Out of scope:**

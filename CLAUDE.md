@@ -4,20 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Important Rules
 
-- **High-level constructs, not low-level wrappers**: CloudBlocks encodes fixed, opinionated reference architectures. It is not a Terraform replacement or a thin cloud-API layer — it is the opposite. Architecture decisions (topology, routing, security posture) are baked in, not left to the caller.
+- **High-level constructs, not low-level wrappers**: CloudSpells encodes fixed, opinionated reference architectures. It is not a Terraform replacement or a thin cloud-API layer — it is the opposite. Architecture decisions (topology, routing, security posture) are baked in, not left to the caller.
 - **Minimal user input**: blocks must require only essential identifiers (name, compartment/project, network). Every value that can be derived, computed, or defaulted securely must be. Exposing unnecessary parameters — especially ones that just pass through underlying provider options — is a design defect.
 - **Full documentation required**: every public class, method, and module must have a Google-style docstring with `Args:`, `Returns:`, `Raises:`, `Attributes:`, and `Example:` as applicable. No undocumented public API is acceptable.
 
 ## Design Philosophy
 
-### What CloudBlocks is — and is not
+### What CloudSpells is — and is not
 
-**CloudBlocks is not a Terraform replacement or a low-level cloud-API wrapper.** It is the opposite: a collection of opinionated, high-level constructs that encode proven reference architectures as immutable, bulletproof building blocks.
+**CloudSpells is not a Terraform replacement or a low-level cloud-API wrapper.** It is the opposite: a collection of opinionated, high-level constructs that encode proven reference architectures as immutable, bulletproof building blocks.
 
-CloudBlocks started with OCI support and is designed from the ground up to be multi-cloud. The `src/core/abstractions/` layer defines cloud-neutral interfaces; `src/providers/<cloud>/` contains provider-specific implementations. Adding a new provider means implementing those interfaces — not changing the user-facing API.
+CloudSpells started with OCI support and is designed from the ground up to be multi-cloud. The `src/core/abstractions/` layer defines cloud-neutral interfaces; `src/providers/<cloud>/` contains provider-specific implementations. Adding a new provider means implementing those interfaces — not changing the user-facing API.
 
 - Terraform (and raw Pulumi provider resources) give you every knob and let you wire everything yourself. That freedom is also the source of every misconfigured security rule, missing route, and open subnet.
-- CloudBlocks makes the architecture the product. Network topology, subnet tiers, routing policy, gateway placement, and security posture are fixed by design — derived from cloud provider best practices — and are not negotiable at call time.
+- CloudSpells makes the architecture the product. Network topology, subnet tiers, routing policy, gateway placement, and security posture are fixed by design — derived from cloud provider best practices — and are not negotiable at call time.
 
 **The user's job is to name things and pick a location. The block's job is everything else.**
 
@@ -31,7 +31,7 @@ When adding or modifying a block, ask: *can the user deploy this correctly with 
 
 ## Project Overview
 
-CloudBlocks is a Python-based infrastructure-as-code framework built on Pulumi that provides high-level, opinionated building blocks for cloud infrastructure. It is multi-cloud by design: a cloud-neutral abstraction layer sits above provider-specific implementations, starting with OCI. It extends Pulumi's `ComponentResource` model to encapsulate entire reference architectures behind minimal interfaces.
+CloudSpells is a Python-based infrastructure-as-code framework built on Pulumi that provides high-level, opinionated building blocks for cloud infrastructure. It is multi-cloud by design: a cloud-neutral abstraction layer sits above provider-specific implementations, starting with OCI. It extends Pulumi's `ComponentResource` model to encapsulate entire reference architectures behind minimal interfaces.
 
 ## Commands
 

@@ -1,4 +1,4 @@
-"""Cloud-neutral Kubernetes abstractions for CloudBlocks multi-cloud support.
+"""Cloud-neutral Kubernetes abstractions for CloudSpells multi-cloud support.
 
 Exports:
     AbstractKubernetes: Interface for a managed Kubernetes cluster.

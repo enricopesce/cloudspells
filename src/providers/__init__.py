@@ -1,4 +1,4 @@
-"""Cloud provider implementations for CloudBlocks.
+"""Cloud provider implementations for CloudSpells.
 
 Each sub-package contains a complete implementation of the abstractions
 defined in :mod:`core.abstractions` for a specific cloud provider.

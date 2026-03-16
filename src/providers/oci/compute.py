@@ -1,4 +1,4 @@
-"""Compute Instance building block for CloudBlocks.
+"""Compute Instance building block for CloudSpells.
 
 Provides `ComputeInstance`, which deploys a single OCI VM into a chosen VCN
 subnet and attaches one or more block volumes for persistent storage.

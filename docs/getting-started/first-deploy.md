@@ -1,6 +1,6 @@
 # First Deploy
 
-This guide deploys a Virtual Cloud Network (VCN) — the foundation for every CloudBlocks architecture. You will end up with a fully-wired 4-tier network in OCI: public, private, secure, and management subnets, all gateways, and correct routing — from a single Python call.
+This guide deploys a Virtual Cloud Network (VCN) — the foundation for every CloudSpells architecture. You will end up with a fully-wired 4-tier network in OCI: public, private, secure, and management subnets, all gateways, and correct routing — from a single Python call.
 
 ## What gets created
 
@@ -97,7 +97,7 @@ vcn = Vcn(
 vcn.export()
 ```
 
-Three lines of infrastructure code create a production-grade, fully-routed network. There are no subnet CIDRs to calculate, no route tables to attach, no gateways to wire — CloudBlocks handles all of it.
+Three lines of infrastructure code create a production-grade, fully-routed network. There are no subnet CIDRs to calculate, no route tables to attach, no gateways to wire — CloudSpells handles all of it.
 
 ## Teardown
 

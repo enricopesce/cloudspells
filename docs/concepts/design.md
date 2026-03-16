@@ -1,18 +1,18 @@
 # Design Philosophy
 
-Understanding why CloudBlocks is built the way it is helps you use it correctly — and helps you know when *not* to use it.
+Understanding why CloudSpells is built the way it is helps you use it correctly — and helps you know when *not* to use it.
 
 ---
 
-## The problem CloudBlocks solves
+## The problem CloudSpells solves
 
 Raw Pulumi and Terraform give you every knob. You define VCNs, subnets, route tables, gateways, and security lists individually, wire them together yourself, and make every architectural decision at the keyboard.
 
 That freedom is also the source of every misconfigured security rule, every missing NAT route, and every accidentally-public subnet. The platform team's job is to encode best practices. The application team's job is to deploy applications. Raw IaC tools conflate those jobs.
 
-**CloudBlocks separates them.**
+**CloudSpells separates them.**
 
-| With raw Pulumi / Terraform | With CloudBlocks |
+| With raw Pulumi / Terraform | With CloudSpells |
 |-----------------------------|-----------------|
 | Define VCN, subnets, route tables, gateways, security lists — each resource individually | `Vcn("lab", compartment_id=cid)` — one call, full 4-tier architecture |
 | Calculate CIDR splits manually | Derived automatically from the VCN CIDR |
@@ -24,7 +24,7 @@ That freedom is also the source of every misconfigured security rule, every miss
 
 ## Architecture is the product
 
-CloudBlocks makes the architecture the product. Network topology, subnet tiers, gateway placement, routing policy, and security posture are **fixed by design** — derived from OCI best practices — and are not configurable at call time.
+CloudSpells makes the architecture the product. Network topology, subnet tiers, gateway placement, routing policy, and security posture are **fixed by design** — derived from OCI best practices — and are not configurable at call time.
 
 The user's job is to name things and pick a location. The block's job is everything else.
 
@@ -32,14 +32,14 @@ This is a deliberate constraint, not a limitation. Every parameter you do not ha
 
 ---
 
-## What CloudBlocks is — and is not
+## What CloudSpells is — and is not
 
-**CloudBlocks is not a Terraform replacement or a low-level cloud-API wrapper.**
+**CloudSpells is not a Terraform replacement or a low-level cloud-API wrapper.**
 
-Terraform and raw Pulumi give you every resource type with every attribute exposed. That is the right tool when you need full control over non-standard architectures. CloudBlocks is the opposite: it encodes a small set of proven reference architectures and makes them trivially deployable.
+Terraform and raw Pulumi give you every resource type with every attribute exposed. That is the right tool when you need full control over non-standard architectures. CloudSpells is the opposite: it encodes a small set of proven reference architectures and makes them trivially deployable.
 
 ```
-Low-level tools              CloudBlocks
+Low-level tools              CloudSpells
 ────────────────             ──────────────────────────
 Full API surface             Curated building blocks
 Maximum flexibility          Minimum required input
@@ -47,7 +47,7 @@ Architecture = your problem  Architecture = solved by design
 Every knob exposed           Only essential identifiers
 ```
 
-Use CloudBlocks when your architecture matches a reference pattern. Use raw Pulumi when you genuinely need something outside those patterns.
+Use CloudSpells when your architecture matches a reference pattern. Use raw Pulumi when you genuinely need something outside those patterns.
 
 ---
 
@@ -61,13 +61,13 @@ A block requires only the minimum information that cannot be derived:
 
 Everything else — CIDRs, subnet placement, route tables, security rules, gateway wiring — is derived or defaulted securely.
 
-**Exposing unnecessary parameters is treated as a design defect.** If a parameter exists only to pass through an underlying OCI provider option, it does not belong in CloudBlocks. Users who need that level of control should use raw Pulumi resources directly.
+**Exposing unnecessary parameters is treated as a design defect.** If a parameter exists only to pass through an underlying OCI provider option, it does not belong in CloudSpells. Users who need that level of control should use raw Pulumi resources directly.
 
 ---
 
 ## Two layers of security enforcement
 
-OCI enforces network rules at two levels: **Security Lists** (subnet-level, stateful) and **NSGs** (VNIC-level, stateful). CloudBlocks populates both automatically so they are always consistent.
+OCI enforces network rules at two levels: **Security Lists** (subnet-level, stateful) and **NSGs** (VNIC-level, stateful). CloudSpells populates both automatically so they are always consistent.
 
 When you declare an NSG with a role:
 
@@ -104,7 +104,7 @@ This means rule accumulation is order-independent within a stack: you can declar
 
 ## Multi-cloud by design
 
-CloudBlocks started with OCI and is designed from the ground up to add more providers. The three-layer structure enforces this:
+CloudSpells started with OCI and is designed from the ground up to add more providers. The three-layer structure enforces this:
 
 ```
 src/core/abstractions/     — cloud-neutral interfaces (AbstractNetwork, …)
@@ -119,10 +119,10 @@ Adding a new provider means implementing the abstractions under a new `src/provi
 
 ## When to reach for raw Pulumi instead
 
-CloudBlocks is the right tool for reference architectures. Use raw `pulumi_oci` resources when you need:
+CloudSpells is the right tool for reference architectures. Use raw `pulumi_oci` resources when you need:
 
-- A resource type CloudBlocks does not cover yet
+- A resource type CloudSpells does not cover yet
 - Non-standard subnet topology (e.g. a flat single-tier network)
 - Fine-grained control over specific provider options for a one-off requirement
 
-You can mix CloudBlocks blocks and raw Pulumi resources in the same stack freely. The VCN, subnets, and security lists created by `Vcn` are standard Pulumi outputs — you can reference them from any raw resource.
+You can mix CloudSpells blocks and raw Pulumi resources in the same stack freely. The VCN, subnets, and security lists created by `Vcn` are standard Pulumi outputs — you can reference them from any raw resource.

@@ -2,7 +2,7 @@
 
 ## Our Pledge
 
-We are committed to making participation in CloudBlocks a welcoming, respectful, and harassment-free experience for everyone, regardless of background, experience level, or identity.
+We are committed to making participation in CloudSpells a welcoming, respectful, and harassment-free experience for everyone, regardless of background, experience level, or identity.
 
 ## Our Standards
 
@@ -24,7 +24,7 @@ This Code of Conduct applies in all project spaces — GitHub issues, pull reque
 
 ## Enforcement
 
-Instances of unacceptable behaviour may be reported to **conduct@cloudblocks.dev**. All reports will be reviewed and investigated promptly and fairly. Maintainers are obligated to maintain confidentiality regarding the reporter.
+Instances of unacceptable behaviour may be reported to **conduct@cloudspells.dev**. All reports will be reviewed and investigated promptly and fairly. Maintainers are obligated to maintain confidentiality regarding the reporter.
 
 Violations may result in a warning, temporary ban, or permanent ban from the project, at the maintainers' discretion.
 

@@ -1,4 +1,4 @@
-"""OCI (Oracle Cloud Infrastructure) provider for CloudBlocks.
+"""OCI (Oracle Cloud Infrastructure) provider for CloudSpells.
 
 Implements all abstractions from `core.abstractions` using `pulumi_oci`
 resources.  This is the original and currently only fully-implemented

@@ -1,4 +1,4 @@
-"""Scalable Workload building block for CloudBlocks.
+"""Scalable Workload building block for CloudSpells.
 
 Provides `ScalableWorkload`, which creates a complete horizontally-scalable
 OCI compute tier with load balancing and autoscaling:

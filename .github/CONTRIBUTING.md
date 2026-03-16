@@ -1,14 +1,14 @@
-# Contributing to CloudBlocks
+# Contributing to CloudSpells
 
-Thank you for your interest in contributing to CloudBlocks. This document explains how to set up a development environment, how contributions are evaluated, and what we are — and are not — looking for.
+Thank you for your interest in contributing to CloudSpells. This document explains how to set up a development environment, how contributions are evaluated, and what we are — and are not — looking for.
 
 ---
 
 ## Project philosophy — read this first
 
-CloudBlocks is **not** a Terraform replacement. It is not a thin wrapper around OCI APIs. It is the opposite: a collection of opinionated, high-level constructs that encode proven reference architectures as immutable building blocks.
+CloudSpells is **not** a Terraform replacement. It is not a thin wrapper around OCI APIs. It is the opposite: a collection of opinionated, high-level constructs that encode proven reference architectures as immutable building blocks.
 
-When Terraform (or raw Pulumi resources) give you every knob, the freedom to misconfigure is just as available as the freedom to configure correctly. CloudBlocks removes that freedom deliberately. Network topology, subnet tiers, routing policy, gateway placement, and security posture are baked in — derived from OCI best practices — and are not negotiable at call time.
+When Terraform (or raw Pulumi resources) give you every knob, the freedom to misconfigure is just as available as the freedom to configure correctly. CloudSpells removes that freedom deliberately. Network topology, subnet tiers, routing policy, gateway placement, and security posture are baked in — derived from OCI best practices — and are not negotiable at call time.
 
 **The user's job is to name things and pick a location. The block's job is everything else.**
 
@@ -282,7 +282,7 @@ These areas are actively looking for contributors:
 - **AWS provider** — implement `src/providers/aws/` against the existing abstractions in `src/core/abstractions/`
 - **GCP provider** — implement `src/providers/gcp/`
 - **Additional OCI blocks** — Database, Object Storage, API Gateway, Functions, Streaming
-- **CLI tool** — CloudBlocks-specific commands for stack scaffolding and management
+- **CLI tool** — CloudSpells-specific commands for stack scaffolding and management
 - **Enhanced observability** — VCN Flow Logs, monitoring alarms as first-class block features
 
 If you want to work on any of these, open an issue first so we can align on the design before you invest significant time.
@@ -306,4 +306,4 @@ If you want to work on any of these, open an issue first so we can align on the 
 
 ## Thank you
 
-CloudBlocks exists because people care about infrastructure that is correct by construction, not just correct by convention. Every thoughtful issue, well-scoped PR, and honest review makes it better for everyone who uses it. We are glad you are here.
+CloudSpells exists because people care about infrastructure that is correct by construction, not just correct by convention. Every thoughtful issue, well-scoped PR, and honest review makes it better for everyone who uses it. We are glad you are here.

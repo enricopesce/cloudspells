@@ -1,4 +1,4 @@
-"""CloudBlocks — backward-compatibility shim.
+"""CloudSpells — backward-compatibility shim.
 
 All existing imports (`from blocks import Vcn`, etc.) continue to work.
 The canonical source for each symbol is now `providers.oci`.

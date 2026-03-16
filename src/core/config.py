@@ -1,7 +1,7 @@
-"""Pulumi configuration wrapper for CloudBlocks.
+"""Pulumi configuration wrapper for CloudSpells.
 
 Provides `Config`, a thin composition wrapper around `pulumi.Config` that
-exposes the methods needed by CloudBlocks stacks without requiring user code
+exposes the methods needed by CloudSpells stacks without requiring user code
 to import Pulumi directly.
 
 Exports:

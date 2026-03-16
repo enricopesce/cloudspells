@@ -1,4 +1,4 @@
-"""Cloud-neutral autoscaling abstractions for CloudBlocks multi-cloud support.
+"""Cloud-neutral autoscaling abstractions for CloudSpells multi-cloud support.
 
 Defines the scaling policy dataclasses and the scalable workload interface
 shared across all providers.  Scaling concepts—CPU/memory thresholds and

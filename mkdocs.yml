@@ -1,7 +1,7 @@
-site_name: CloudBlocks
+site_name: CloudSpells
 site_description: High-level Pulumi building blocks for Oracle Cloud Infrastructure
-repo_url: https://github.com/enricopesce/cloudblocks
-repo_name: enricopesce/cloudblocks
+repo_url: https://github.com/enricopesce/cloudspells
+repo_name: enricopesce/cloudspells
 
 theme:
   name: material

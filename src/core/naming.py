@@ -1,7 +1,7 @@
-"""Resource naming utilities for CloudBlocks.
+"""Resource naming utilities for CloudSpells.
 
 Provides `ResourceNamer`, which generates consistent, predictable names
-for every OCI resource created by an CloudBlocks component. All names follow
+for every OCI resource created by an CloudSpells component. All names follow
 the pattern:
 
 ```
@@ -42,7 +42,7 @@ class ResourceNamer:
         """Build a standardised OCI resource name.
 
         Combines the stack name, resource name, and a type suffix into the
-        canonical CloudBlocks naming pattern: `{stack_name}-{resource_name}-{suffix}`.
+        canonical CloudSpells naming pattern: `{stack_name}-{resource_name}-{suffix}`.
 
         Args:
             suffix: Resource type suffix (e.g. `"vcn"`, `"igw"`, `"sn-public"`).

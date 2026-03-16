@@ -1,6 +1,6 @@
-"""Base resource class for all CloudBlocks building blocks.
+"""Base resource class for all CloudSpells building blocks.
 
-All CloudBlocks resource classes (`Vcn`, `OkeCluster`, `ComputeInstance`,
+All CloudSpells resource classes (`Vcn`, `OkeCluster`, `ComputeInstance`,
 `ScalableWorkload`, etc.) inherit from `BaseResource`, which extends
 `pulumi.ComponentResource` with:
 
@@ -25,7 +25,7 @@ from .tagging import ResourceTagger
 
 
 class BaseResource(pulumi.ComponentResource):
-    """Base class for all CloudBlocks components.
+    """Base class for all CloudSpells components.
 
     Extends `pulumi.ComponentResource` with standardised naming, tagging,
     and optional SSH key management.  All building blocks inherit from this

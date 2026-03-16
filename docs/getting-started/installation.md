@@ -1,6 +1,6 @@
 # Installation
 
-This page walks you through installing CloudBlocks and its prerequisites from scratch.
+This page walks you through installing CloudSpells and its prerequisites from scratch.
 
 ## Prerequisites
 
@@ -38,7 +38,7 @@ pulumi version
 
 ### Configure OCI credentials
 
-CloudBlocks uses the standard OCI SDK credential chain. The simplest approach is `~/.oci/config`:
+CloudSpells uses the standard OCI SDK credential chain. The simplest approach is `~/.oci/config`:
 
 ```ini
 [DEFAULT]
@@ -57,13 +57,13 @@ oci iam region list
 
 ---
 
-## Install CloudBlocks
+## Install CloudSpells
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/enricopesce/cloudblocks.git
-cd cloudblocks
+git clone https://github.com/enricopesce/cloudspells.git
+cd cloudspells
 ```
 
 ### 2. Create and activate a virtual environment

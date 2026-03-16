@@ -75,7 +75,7 @@ web_nsg = Nsg(
 )
 ```
 
-`INTERNET_EDGE` is a semantic role constant. It tells CloudBlocks that this resource lives in the **public subnet** and communicates directly with the internet. CloudBlocks automatically adds ICMP path-MTU rules in both directions — you only declare the application ports.
+`INTERNET_EDGE` is a semantic role constant. It tells CloudSpells that this resource lives in the **public subnet** and communicates directly with the internet. CloudSpells automatically adds ICMP path-MTU rules in both directions — you only declare the application ports.
 
 ### 2c. Create the compute instance
 

@@ -1,1 +1,1 @@
-# CloudBlocks Test Suite
+# CloudSpells Test Suite

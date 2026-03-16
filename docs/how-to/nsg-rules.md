@@ -1,6 +1,6 @@
 # How to Configure NSG Rules
 
-CloudBlocks uses **Network Security Groups (NSGs)** as the primary security mechanism. NSGs are role-based policies: one NSG represents the security posture of a class of resources (all web servers, all databases, all load balancers). The same NSG can be shared across many instances, and one instance can hold multiple NSGs.
+CloudSpells uses **Network Security Groups (NSGs)** as the primary security mechanism. NSGs are role-based policies: one NSG represents the security posture of a class of resources (all web servers, all databases, all load balancers). The same NSG can be shared across many instances, and one instance can hold multiple NSGs.
 
 ---
 
@@ -30,7 +30,7 @@ db_nsg  = Nsg("database",      role=DATABASE,
                vcn=vcn, compartment_id=compartment_id)
 ```
 
-When you pass `role=`, CloudBlocks automatically:
+When you pass `role=`, CloudSpells automatically:
 
 - Adds ambient ingress/egress rules to the NSG (ICMP path-MTU, service egress, NAT egress — depending on role)
 - Accumulates the matching rules into the VCN's security list for that subnet tier

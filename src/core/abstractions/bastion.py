@@ -1,4 +1,4 @@
-"""Cloud-neutral bastion abstractions for CloudBlocks multi-cloud support.
+"""Cloud-neutral bastion abstractions for CloudSpells multi-cloud support.
 
 Different providers implement secure shell access differently:
 

@@ -1,4 +1,4 @@
-"""Cloud-neutral utility helpers for CloudBlocks resource management.
+"""Cloud-neutral utility helpers for CloudSpells resource management.
 
 Provides `Helper`, a stateless utility class whose methods cover
 two cloud-neutral areas:
@@ -22,7 +22,7 @@ from random_word import RandomWords
 
 
 class Helper:
-    """Stateless utility methods used by CloudBlocks building blocks.
+    """Stateless utility methods used by CloudSpells building blocks.
 
     All methods are safe to call multiple times and have no side-effects
     on instance state.  Instantiate with `Helper()` wherever needed.

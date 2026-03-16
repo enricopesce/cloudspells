@@ -1,5 +1,5 @@
 name: Bug Report
-description: Report a defect in CloudBlocks
+description: Report a defect in CloudSpells
 labels: ["bug", "needs-triage"]
 body:
   - type: markdown
@@ -10,7 +10,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: CloudBlocks version
+      label: CloudSpells version
       description: Git commit SHA or tag
       placeholder: "e.g. fe67556 or v0.3.0"
     validations:

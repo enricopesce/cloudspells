@@ -2,7 +2,7 @@
 
 Architecture
 ============
-This example deploys the complete CloudBlocks secure-network stack:
+This example deploys the complete CloudSpells secure-network stack:
 
 .. code-block:: text
 
