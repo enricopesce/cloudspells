@@ -13,51 +13,54 @@ CloudBlocks encodes proven reference architectures as immutable, composable buil
 ## Quick start
 
 ```python
-import pulumi
-import pulumi_oci as oci
+from core import Config
 from providers.oci.network import Vcn
 from providers.oci.compute import ComputeInstance
+from providers.oci.nsg import Nsg, HTTP, HTTPS, SSH
+from providers.oci.roles import INTERNET_EDGE
 
-config = pulumi.Config()
+config = Config()
 compartment_id = config.require("compartment_ocid")
 
 # A fully-wired 4-tier VCN — public, private, secure, and management subnets,
 # all gateways, and correct routing — from a single call.
-vcn = Vcn(
-    "lab",
-    compartment_id=compartment_id,
-    cidr_block="10.0.0.0/16",
-)
+vcn = Vcn("lab", compartment_id=compartment_id)
 
-# A compute instance in the private subnet with automatic SSH key generation
-# and a block volume — no further wiring needed.
-instance = ComputeInstance(
-    "app",
-    compartment_id=compartment_id,
-    vcn=vcn,
-    shape="VM.Standard.E4.Flex",
-    image_id=config.require("image_ocid"),
-)
+# An NSG role — places this resource in the public subnet, opens HTTP/HTTPS/SSH,
+# and adds ICMP path-MTU rules automatically.
+web_nsg = Nsg("web", role=INTERNET_EDGE, ports=[HTTP, HTTPS, SSH],
+              vcn=vcn, compartment_id=compartment_id)
 
-pulumi.export("instance_ip", instance.private_ip)
+# A compute instance — subnet inferred from the NSG role, SSH key auto-generated.
+instance = ComputeInstance("web", compartment_id=compartment_id, vcn=vcn, nsg=web_nsg)
+
+vcn.export()
+instance.export()
 ```
 
-## Navigation
+## Where to start
 
-| Section | Description |
-|---------|-------------|
-| [API Reference — Core](api/core/base.md) | `BaseResource`, naming, tagging, and helper utilities |
-| [API Reference — Abstractions](api/core/abstractions/network.md) | Cloud-neutral dataclasses and abstract base classes |
-| [API Reference — Blocks](api/blocks/vcn.md) | High-level OCI building blocks (VCN, Compute, OKE, …) |
-| [API Reference — OCI Provider](api/providers/network.md) | Full OCI provider implementation details |
+| I want to… | Go to |
+|-----------|-------|
+| Install CloudBlocks and set up credentials | [Getting Started → Installation](getting-started/installation.md) |
+| Deploy my first VCN | [Getting Started → First Deploy](getting-started/first-deploy.md) |
+| Deploy a compute instance | [Tutorials → Compute Instance](tutorials/compute.md) |
+| Deploy an OKE Kubernetes cluster | [Tutorials → OKE Cluster](tutorials/oke.md) |
+| Deploy an autoscaling web tier | [Tutorials → Scalable Workload](tutorials/autoscale.md) |
+| Share a VCN between stacks | [How-to → Share a VCN Across Stacks](how-to/vcnref.md) |
+| Configure security rules | [How-to → Configure NSG Rules](how-to/nsg-rules.md) |
+| SSH into a private instance | [How-to → Use a Bastion](how-to/bastion.md) |
+| Understand the design philosophy | [Concepts → Design Philosophy](concepts/design.md) |
+| Understand the 4-tier network topology | [Concepts → Network Topology](concepts/network-topology.md) |
+| Browse the full API | [API Reference → OCI Provider](api/providers/network.md) |
 
 ## Design principles
 
-**1. High-level constructs, not low-level wrappers.**
-CloudBlocks encodes fixed, opinionated reference architectures. It is not a Terraform replacement or a thin cloud-API layer. Architecture decisions — topology, routing, security posture — are baked in, not left to the caller.
+**1. Architecture is the product.**
+Network topology, subnet tiers, routing policy, gateway placement, and security posture are fixed by design — derived from OCI best practices — and are not configurable at call time.
 
-**2. Minimal user input.**
-Blocks must require only essential identifiers. Every value that can be derived, computed, or defaulted securely must be. Exposing unnecessary parameters — especially ones that just pass through underlying provider options — is a design defect.
+**2. Minimal required input.**
+A block requires only essential identifiers (name, compartment, network). Every value that can be derived, computed, or defaulted securely must be. Exposing unnecessary parameters is a design defect.
 
-**3. Full documentation required.**
-Every public class, method, and module has a Google-style docstring. No undocumented public API is acceptable.
+**3. Not a Terraform replacement.**
+CloudBlocks encodes opinionated reference architectures. For non-standard topologies or full control over individual resources, use raw Pulumi. You can mix both in the same stack freely.
