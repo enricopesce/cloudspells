@@ -8,6 +8,9 @@ version = "0.1.0"
 description = "OCI provider spells for CloudSpells"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+]
 dependencies = [
     "cloudspells-core>=0.1.0",
     "pulumi>=3.204.0,<4",
