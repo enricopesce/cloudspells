@@ -22,7 +22,7 @@ class ResourceNamer:
 
     Attributes:
         stack_name: Pulumi stack name (e.g. `"prod"`).
-        resource_name: Logical name of the building block (e.g. `"lab"`).
+        resource_name: Logical name of the spell (e.g. `"lab"`).
     """
 
     stack_name: str
@@ -33,7 +33,7 @@ class ResourceNamer:
 
         Args:
             stack_name: Pulumi stack name (e.g. `"prod"`).
-            resource_name: Logical name of the building block (e.g. `"lab"`).
+            resource_name: Logical name of the spell (e.g. `"lab"`).
         """
         self.stack_name = stack_name
         self.resource_name = resource_name

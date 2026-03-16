@@ -1,17 +1,17 @@
-name: New Block Proposal
-description: Propose a new high-level infrastructure building block
+name: New Spell Proposal
+description: Propose a new high-level infrastructure spell
 labels: ["new-block", "needs-triage"]
 body:
   - type: markdown
     attributes:
       value: |
-        A new block should encapsulate a complete, opinionated reference architecture — not just wrap an API.
+        A new spell should encapsulate a complete, opinionated reference architecture — not just wrap an API.
         Read [CONTRIBUTING.md](../CONTRIBUTING.md) before proposing.
 
   - type: input
     id: block-name
     attributes:
-      label: Block name
+      label: Spell name
       placeholder: "e.g. ObjectStorageBucket, LoadBalancer, MysqlDatabase"
     validations:
       required: true
@@ -32,7 +32,7 @@ body:
   - type: textarea
     id: problem
     attributes:
-      label: What problem does this block solve?
+      label: What problem does this spell solve?
       description: What painful infrastructure pattern does it encode as a safe default?
     validations:
       required: true
@@ -41,7 +41,7 @@ body:
     id: encapsulates
     attributes:
       label: What does it encapsulate?
-      description: Which cloud resources would this block manage internally?
+      description: Which cloud resources would this spell manage internally?
     validations:
       required: true
 

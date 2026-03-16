@@ -12,7 +12,7 @@ pulumi destroy   # tear down
 
 ## Examples
 
-| Directory | Blocks used | Teaches |
+| Directory | Spells used | Teaches |
 |-----------|-------------|---------|
 | `vcn/` | `Vcn` | Standalone VCN; outputs consumed by `import-vcn` |
 | `compute/` | `Vcn`, `ComputeInstance`, `Nsg` | NSG roles, role-inferred subnet placement, volumes |
@@ -32,5 +32,5 @@ Required keys for most examples:
 ## Rules
 - Examples demonstrate usage patterns; they are not tests
 - Keep each example minimal — one concept per directory
-- Never add logic to examples that belongs in a block
+- Never add logic to examples that belongs in a spell
 - `__main__.py` is the entry point for every Pulumi stack

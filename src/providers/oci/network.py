@@ -7,11 +7,11 @@ network topology using a lazy initialisation (builder) pattern:
 
 1. Construct the `Vcn` object — the VCN, gateways, and route tables are
    created immediately.
-2. Other blocks (OKE, Compute, ScalableWorkload) call
+2. Other spells (OKE, Compute, ScalableWorkload) call
    `Vcn.add_security_list_rules` to accumulate their required rules.
-3. The first block to finish calls `Vcn.finalize_network`, which
-   creates the security lists with all accumulated rules and then creates
-   the subnets.  Subsequent calls to `finalize_network` are no-ops.
+3. The first spell to finish calls `Vcn.finalize_network`, which creates
+   the security lists with all accumulated rules and then creates the
+   subnets.  Subsequent calls to `finalize_network` are no-ops.
 
 This approach keeps the OCI security-list-per-subnet count at 1, leaving
 the remaining 4 slots free for future services.
@@ -40,7 +40,7 @@ Examples for common prefix lengths:
 
 (h = usable host IPs after subtracting the OCI-reserved 5 addresses per subnet)
 
-All four blocks together exactly cover the VCN CIDR — no gaps, no overlaps.
+All four subnet tiers together exactly cover the VCN CIDR — no gaps, no overlaps.
 CIDR validation (canonical form, prefix length sanity) is delegated to OCI;
 the Pulumi provider will reject malformed values at plan time.
 """
@@ -131,9 +131,8 @@ class Vcn(BaseResource, AbstractNetwork):
       `/24`, etc.  See the module docstring for a worked example table.
 
     Security lists and subnets are **not** created in `__init__`.  They
-    are created only when `finalize_network` is called.  Other
-    blocks add their rules via `add_security_list_rules` **before**
-    that call.
+    are created only when `finalize_network` is called.  Other spells add
+    their rules via `add_security_list_rules` **before** that call.
 
     Attributes:
         cidr_block: IPv4 CIDR block for the VCN.
@@ -177,7 +176,7 @@ class Vcn(BaseResource, AbstractNetwork):
         # vcn.public_subnet and vcn.private_subnet are now available
         ```
 
-    2. **With other CloudSpells components** (automatic finalisation):
+    2. **With other CloudSpells spells** (automatic finalisation):
 
         ```python
         vcn = Vcn(name="lab", compartment_id=comp_id, stack_name="prod")
@@ -221,7 +220,7 @@ class Vcn(BaseResource, AbstractNetwork):
         """Create a VCN with gateways and route tables.
 
         Security lists and subnets are not created here; call
-        `finalize_network` (directly or indirectly via another block)
+        `finalize_network` (directly or indirectly via another spell)
         once all security rules have been accumulated.
 
         Args:
@@ -250,7 +249,7 @@ class Vcn(BaseResource, AbstractNetwork):
         self.management_subnet = None
 
         # Storage for security list rules (builder pattern).
-        # Populated by add_security_list_rules() calls from other blocks.
+        # Populated by add_security_list_rules() calls from other spells.
         self._public_ingress_rules: list[oci.core.SecurityListIngressSecurityRuleArgs] = []
         self._public_egress_rules: list[oci.core.SecurityListEgressSecurityRuleArgs] = []
         self._private_ingress_rules: list[oci.core.SecurityListIngressSecurityRuleArgs] = []
@@ -279,7 +278,7 @@ class Vcn(BaseResource, AbstractNetwork):
 
     @staticmethod
     def _split_tiers(cidr: str) -> list[str]:
-        """Split a VCN CIDR into four contiguous, CIDR-aligned tier blocks.
+        """Split a VCN CIDR into four contiguous, CIDR-aligned tiers.
 
         Uses binary subdivision — each tier takes exactly half of the
         remaining address space:
@@ -294,9 +293,9 @@ class Vcn(BaseResource, AbstractNetwork):
                 └── Management  (prefix/N+3) ───────────────────  12.5 %
         ```
 
-        The four blocks are placed in ascending address order so private
+        The four tiers are placed in ascending address order so private
         occupies the naturally aligned lower half (guaranteed CIDR alignment).
-        All four blocks together exactly reconstruct the original VCN CIDR —
+        All four tiers together exactly reconstruct the original VCN CIDR —
         no gaps, no overlaps.
 
         The same formula applies for any prefix length:
@@ -398,7 +397,7 @@ class Vcn(BaseResource, AbstractNetwork):
         Called exactly once by `finalize_network`.  The security lists
         are built from the rules stored in the four `_*_rules` lists, which
         were populated by `add_security_list_rules` calls from other
-        blocks.
+        spells.
 
         After this method returns, `self.public_security_list` and
         `self.private_security_list` are set.
@@ -698,7 +697,7 @@ class Vcn(BaseResource, AbstractNetwork):
     ) -> None:
         """Accumulate security list rules before the network is finalised.
 
-        Uses the builder pattern: rules contributed by different blocks are
+        Uses the builder pattern: rules contributed by different spells are
         collected here and applied together when `finalize_network` is
         called.  This ensures only a single security list per subnet is
         created, leaving the remaining OCI slots free for future services.
@@ -845,10 +844,10 @@ class Vcn(BaseResource, AbstractNetwork):
         )
 
     def get_public_subnet_cidr(self) -> pulumi.Input[str]:
-        """Return the public subnet CIDR block.
+        """Return the public subnet CIDR.
 
         Available immediately after construction (before
-        `finalize_network`), so other blocks can use it when building
+        `finalize_network`), so other spells can use it when building
         their security rules.
 
         Returns:
@@ -857,10 +856,10 @@ class Vcn(BaseResource, AbstractNetwork):
         return self._subnet_cidrs[0]
 
     def get_private_subnet_cidr(self) -> pulumi.Input[str]:
-        """Return the private subnet CIDR block.
+        """Return the private subnet CIDR.
 
         Available immediately after construction (before
-        `finalize_network`), so other blocks can use it when building
+        `finalize_network`), so other spells can use it when building
         their security rules.
 
         Returns:
@@ -869,10 +868,10 @@ class Vcn(BaseResource, AbstractNetwork):
         return self._subnet_cidrs[1]
 
     def get_secure_subnet_cidr(self) -> pulumi.Input[str]:
-        """Return the secure subnet CIDR block.
+        """Return the secure subnet CIDR.
 
         Available immediately after construction (before
-        `finalize_network`), so other blocks can use it when building
+        `finalize_network`), so other spells can use it when building
         their security rules.
 
         Returns:
@@ -881,7 +880,7 @@ class Vcn(BaseResource, AbstractNetwork):
         return self._subnet_cidrs[2]
 
     def get_management_subnet_cidr(self) -> pulumi.Input[str]:
-        """Return the management subnet CIDR block.
+        """Return the management subnet CIDR.
 
         Returns:
             Management subnet CIDR (e.g. `"10.0.56.0/21"`).
@@ -893,9 +892,9 @@ class Vcn(BaseResource, AbstractNetwork):
 
         This method is **idempotent** — only the first call has any effect;
         subsequent calls return immediately.  It is invoked automatically by
-        other CloudSpells components (OKE, Compute, ScalableWorkload) at the
-        end of their `__init__` methods.  Call it explicitly only when
-        using `Vcn` in standalone mode (without other blocks).
+        other CloudSpells spells (OKE, Compute, ScalableWorkload) at the end
+        of their `__init__` methods.  Call it explicitly only when using
+        `Vcn` in standalone mode (without other spells).
 
         After this method returns:
 
@@ -1022,7 +1021,7 @@ class VcnRef(AbstractNetworkRef):
             public_subnet_id: OCID of the existing public subnet.
             private_subnet_id: OCID of the existing private subnet.
             public_subnet_cidr: IPv4 CIDR of the public subnet
-                (e.g. `"10.0.0.0/17"`).  Used by blocks when building
+                (e.g. `"10.0.0.0/17"`).  Used by spells when building
                 security rules — must match the actual subnet CIDR.
             private_subnet_cidr: IPv4 CIDR of the private subnet
                 (e.g. `"10.0.128.0/17"`).
@@ -1109,7 +1108,7 @@ class VcnRef(AbstractNetworkRef):
     ) -> None:
         """No-op — security rules must be managed in the source VCN stack.
 
-        Emits a Pulumi warning to alert you that rules requested by a block
+        Emits a Pulumi warning to alert you that rules requested by a spell
         (OKE, Compute, ScalableWorkload) are **not** being applied.  Ensure
         the referenced VCN already has all required rules before deploying
         services here.
@@ -1135,7 +1134,7 @@ class VcnRef(AbstractNetworkRef):
             management_egress,
         )
         pulumi.log.warn(
-            "VcnRef: security rules requested by this block are not applied to the "
+            "VcnRef: security rules requested by this spell are not applied to the "
             "imported VCN. Add the required rules to the source stack first."
         )
 

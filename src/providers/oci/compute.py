@@ -1,4 +1,4 @@
-"""Compute Instance building block for CloudSpells.
+"""Compute Instance spell for CloudSpells.
 
 Provides `ComputeInstance`, which deploys a single OCI VM into a chosen VCN
 subnet and attaches one or more block volumes for persistent storage.
@@ -257,7 +257,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         # Accumulate security rules, then materialise the VCN.
         # Skip rule-addition when the network is already finalised (e.g. a
         # sibling ComputeInstance was constructed first); the caller is
-        # responsible for adding any additional rules before the first block
+        # responsible for adding any additional rules before the first spell
         # triggers finalisation.
         if isinstance(self.vcn, Vcn) and not self.vcn._security_lists_finalized:
             self._add_compute_security_rules()
@@ -454,7 +454,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         """Export standard compute instance stack outputs.
 
         Publishes instance OCID, private IP, all block volume OCIDs, and SSH
-        public key under keys derived from the block's logical name.  The SSH
+        public key under keys derived from the spell's logical name.  The SSH
         private key is exported as a Pulumi secret only when it was
         auto-generated.  Each volume is exported under
         `{name}_{label}_volume_id`.

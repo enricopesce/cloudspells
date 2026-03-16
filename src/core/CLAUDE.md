@@ -6,7 +6,7 @@ Cloud-neutral foundation. No OCI imports anywhere in this directory.
 
 | File | Exports | Purpose |
 |------|---------|---------|
-| `base.py` | `BaseResource` | Base class for all blocks — naming, tagging, SSH keys |
+| `base.py` | `BaseResource` | Base class for all spells — naming, tagging, SSH keys |
 | `naming.py` | `ResourceNamer` | `{stack}-{name}-{suffix}` names; DNS labels ≤15 chars |
 | `tagging.py` | `ResourceTagger` | Freeform tags (Name, ResourceType, Environment, CreatedBy) |
 | `helper.py` | `Helper` | Cloud-neutral utils: CIDR subdivision, SSH key-pair generation |

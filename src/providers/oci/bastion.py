@@ -1,4 +1,4 @@
-r"""Bastion Service building block for CloudSpells.
+r"""Bastion Service spell for CloudSpells.
 
 Provides `Bastion`, which creates an OCI Bastion Service endpoint attached to
 the VCN's private subnet.  The Bastion enables time-limited SSH sessions to
@@ -16,7 +16,7 @@ Key behaviours:
   `client_cidr_block_allow_list`; the security-list rule allows all sources
   because OCI Bastion uses dynamically-assigned managed IPs.
 
-Sessions are ephemeral (max 3 h TTL) and are not managed by this block.
+Sessions are ephemeral (max 3 h TTL) and are not managed by this spell.
 Create them on demand via the OCI CLI:
 
 ```text
@@ -166,7 +166,7 @@ class Bastion(BaseResource, AbstractBastion):
         is restricted at the Bastion level via `client_cidr_block_allow_list`.
 
         Must be called before `Vcn.finalize_network`.  Constructing `Bastion`
-        before any block that triggers finalisation (e.g. `ComputeInstance`)
+        before any spell that triggers finalisation (e.g. `ComputeInstance`)
         ensures the correct ordering.
         """
         self.vcn.add_security_list_rules(
@@ -192,7 +192,7 @@ class Bastion(BaseResource, AbstractBastion):
         """Export standard Bastion stack outputs.
 
         Publishes the Bastion OCID and private endpoint IP under keys
-        derived from the block's logical name.
+        derived from the spell's logical name.
 
         Example:
             ```python

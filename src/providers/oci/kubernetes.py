@@ -1,4 +1,4 @@
-"""OKE (Oracle Kubernetes Engine) cluster building block for CloudSpells.
+"""OKE (Oracle Kubernetes Engine) cluster spell for CloudSpells.
 
 Provides `OkeCluster`, a high-level Pulumi component that creates a complete
 OKE cluster with a node pool and all required OCI security list rules.
@@ -28,7 +28,7 @@ OCI-imposed 5-list-per-subnet quota), `OkeCluster` adds its rules directly to
 the VCN's shared security lists via `Vcn.add_security_list_rules`.  This uses
 only 1 list per subnet, leaving 4 slots free for additional services.
 
-Rules added by this block:
+Rules added by this spell:
 
 Public subnet (API endpoint + Load Balancer):
 
@@ -568,7 +568,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
     def export(self) -> None:
         """Export standard OKE cluster stack outputs.
 
-        Publishes the cluster OCID under a key derived from the block's
+        Publishes the cluster OCID under a key derived from the spell's
         logical name (e.g. `okeinfra_cluster_id` for name `"okeinfra"`).
 
         Example:

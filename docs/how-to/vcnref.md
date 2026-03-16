@@ -2,7 +2,7 @@
 
 By default, each CloudSpells stack owns its own VCN. For larger deployments you often want a single shared network managed by one stack — a **platform stack** — and multiple service stacks that deploy into it without recreating it.
 
-`VcnRef` is a read-only handle to a VCN owned by another stack. Every block that accepts `Vcn` also accepts `VcnRef`, so service stacks need no changes when you split them.
+`VcnRef` is a read-only handle to a VCN owned by another stack. Every spell that accepts `Vcn` also accepts `VcnRef`, so service stacks need no changes when you split them.
 
 ---
 
@@ -93,9 +93,9 @@ pulumi up
 | `add_security_list_rules()` | Accumulates rules | No-op (deliberate) |
 | `finalize_network()` | Materialises subnets | No-op (deliberate) |
 | Subnet CIDR accessors | Returns computed `Output[str]` | Returns cross-stack `Output[str]` |
-| Usable with service blocks | Yes | Yes |
+| Usable with spells | Yes | Yes |
 
-`VcnRef.add_security_list_rules()` is a no-op because `VcnRef` cannot modify the security lists of a network it does not own. This means **security rules required by service blocks must already exist in the source VCN stack** — either added there directly or by including the service block in that stack.
+`VcnRef.add_security_list_rules()` is a no-op because `VcnRef` cannot modify the security lists of a network it does not own. This means **security rules required by spells must already exist in the source VCN stack** — either added there directly or by including the spell in that stack.
 
 For most use-cases this is fine: the VCN stack provisions baseline rules (SSH, HTTP, HTTPS) and service stacks add application-level NSGs on top.
 
@@ -115,7 +115,7 @@ If you delete or rename a VCN output that a service stack depends on, `pulumi pr
 
 | Output key | Used for |
 |------------|---------|
-| `vcn_id` | Block attach points |
+| `vcn_id` | Spell attach points |
 | `cidr_block` | CIDR calculations |
 | `public_subnet_id` | `SUBNET_PUBLIC` placement |
 | `private_subnet_id` | `SUBNET_PRIVATE` placement |

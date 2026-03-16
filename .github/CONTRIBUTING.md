@@ -6,11 +6,11 @@ Thank you for your interest in contributing to CloudSpells. This document explai
 
 ## Project philosophy — read this first
 
-CloudSpells is **not** a Terraform replacement. It is not a thin wrapper around OCI APIs. It is the opposite: a collection of opinionated, high-level constructs that encode proven reference architectures as immutable building blocks.
+CloudSpells is **not** a Terraform replacement. It is not a thin wrapper around OCI APIs. It is the opposite: a collection of opinionated, high-level constructs that encode proven reference architectures as immutable spells.
 
 When Terraform (or raw Pulumi resources) give you every knob, the freedom to misconfigure is just as available as the freedom to configure correctly. CloudSpells removes that freedom deliberately. Network topology, subnet tiers, routing policy, gateway placement, and security posture are baked in — derived from OCI best practices — and are not negotiable at call time.
 
-**The user's job is to name things and pick a location. The block's job is everything else.**
+**The user's job is to name things and pick a location. The spell's job is everything else.**
 
 ### What this means for contributors
 
@@ -123,23 +123,23 @@ from providers.oci.network import Vcn  # import after mocks are set
 
 ---
 
-## How to add a new block
+## How to add a new spell
 
-Adding a block requires changes in four places. Follow all four steps.
+Adding a spell requires changes in four places. Follow all four steps.
 
 ### 1. Define the abstraction
 
 Add a cloud-neutral interface (dataclass or ABC) in `src/core/abstractions/`. This is the contract that all provider implementations must satisfy.
 
 ```python
-# src/core/abstractions/my_block.py
+# src/core/abstractions/my_spell.py
 from abc import ABC, abstractmethod
 
-class AbstractMyBlock(ABC):
-    """Cloud-neutral interface for MyBlock.
+class AbstractMySpell(ABC):
+    """Cloud-neutral interface for MySpell.
 
     Attributes:
-        name: Logical name of the block.
+        name: Logical name of the spell.
     """
 
     @abstractmethod
@@ -152,16 +152,16 @@ Export it from `src/core/abstractions/__init__.py` and add it to `__all__`.
 
 ### 2. Implement the OCI provider
 
-Add the implementation in `src/providers/oci/my_block.py`. Inherit from both the abstraction and `BaseResource`:
+Add the implementation in `src/providers/oci/my_spell.py`. Inherit from both the abstraction and `BaseResource`:
 
 ```python
-# src/providers/oci/my_block.py
+# src/providers/oci/my_spell.py
 from core.base import BaseResource
-from core.abstractions.my_block import AbstractMyBlock
+from core.abstractions.my_spell import AbstractMySpell
 from providers.oci.network import Vcn, VcnRef
 
-class MyBlock(BaseResource, AbstractMyBlock):
-    """OCI implementation of MyBlock.
+class MySpell(BaseResource, AbstractMySpell):
+    """OCI implementation of MySpell.
 
     Args:
         name: Logical name used for all child resources.
@@ -175,7 +175,7 @@ class MyBlock(BaseResource, AbstractMyBlock):
 
     Example:
         ```python
-        block = MyBlock(
+        spell = MySpell(
             name="example",
             compartment_id=compartment_id,
             vcn=vcn,
@@ -192,24 +192,24 @@ Export it from `src/providers/oci/__init__.py`.
 Add a re-export shim in `src/blocks/` so that any existing code using the old import path keeps working. **Do not add logic here** — only re-exports.
 
 ```python
-# src/blocks/my_block.py
-from providers.oci.my_block import MyBlock
+# src/blocks/my_spell.py
+from providers.oci.my_spell import MySpell
 
-__all__ = ["MyBlock"]
+__all__ = ["MySpell"]
 ```
 
 ### 4. Write tests
 
-Add `tests/test_my_block.py`. Cover:
+Add `tests/test_my_spell.py`. Cover:
 
 - All resources are created
 - Names follow the `{stack}-{resource}-{suffix}` pattern
 - Security list / NSG rules are registered correctly
-- Edge cases relevant to your block
+- Edge cases relevant to your spell
 
 ### 5. Add an example
 
-Add `examples/my-block/__main__.py` demonstrating minimal usage. Follow the pattern in existing examples.
+Add `examples/my-spell/__main__.py` demonstrating minimal usage. Follow the pattern in existing examples.
 
 ---
 
@@ -255,11 +255,11 @@ Classes also require an `Attributes:` section for IDE hover support.
 
 ## Pull request guidelines
 
-- **Keep PRs small and focused.** One block, one fix, one improvement — not a combination.
+- **Keep PRs small and focused.** One spell, one fix, one improvement — not a combination.
 - **Link to an issue.** Every PR should reference an open issue: `Closes #123`.
 - **Explain the "why", not just the "what".** The PR description should explain the motivation, not just list the files changed.
 - **All quality gate checks must pass.** CI will verify this; do not open a PR expecting to fix failures there.
-- **New blocks require tests and an example.** PRs missing either will be sent back.
+- **New spells require tests and an example.** PRs missing either will be sent back.
 
 ---
 
@@ -269,7 +269,7 @@ The following will not be merged, regardless of code quality:
 
 - **Thin wrappers** that expose OCI resource properties without an architectural opinion
 - **Pass-through parameters** that exist only to forward a low-level option to the underlying resource
-- **Parameters that reduce abstraction** — if adding a parameter lets the caller misconfigure something the block currently prevents, it will not be accepted
+- **Parameters that reduce abstraction** — if adding a parameter lets the caller misconfigure something the spell currently prevents, it will not be accepted
 - **Undocumented public APIs** — every public symbol must have a full Google-style docstring
 - **Direct additions to `src/blocks/`** — that package is backward-compat shims only; no logic goes there
 
@@ -281,9 +281,9 @@ These areas are actively looking for contributors:
 
 - **AWS provider** — implement `src/providers/aws/` against the existing abstractions in `src/core/abstractions/`
 - **GCP provider** — implement `src/providers/gcp/`
-- **Additional OCI blocks** — Database, Object Storage, API Gateway, Functions, Streaming
+- **Additional OCI spells** — Database, Object Storage, API Gateway, Functions, Streaming
 - **CLI tool** — CloudSpells-specific commands for stack scaffolding and management
-- **Enhanced observability** — VCN Flow Logs, monitoring alarms as first-class block features
+- **Enhanced observability** — VCN Flow Logs, monitoring alarms as first-class spell features
 
 If you want to work on any of these, open an issue first so we can align on the design before you invest significant time.
 
@@ -294,8 +294,8 @@ If you want to work on any of these, open an issue first so we can align on the 
 | Label | Meaning |
 |-------|---------|
 | `bug` | Something is broken |
-| `enhancement` | Improvement to an existing block or feature |
-| `new-block` | Proposal or implementation of a new block |
+| `enhancement` | Improvement to an existing spell or feature |
+| `new-block` | Proposal or implementation of a new spell |
 | `new-provider` | Work toward a new cloud provider |
 | `documentation` | Docs-only change |
 | `good first issue` | Suitable for first-time contributors |

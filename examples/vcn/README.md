@@ -52,7 +52,7 @@ VCN  10.0.0.0/18  (default — 16 384 IPs total)
 - 1 VCN
 - Internet Gateway, NAT Gateway, Service Gateway
 - 4 route tables (public / private / secure / management)
-- 4 security lists (populated by service blocks via the builder pattern)
+- 4 security lists (populated by spells via the builder pattern)
 - 4 subnets (public / private / secure / management)
 
 ## Prerequisites

@@ -26,7 +26,7 @@ That freedom is also the source of every misconfigured security rule, every miss
 
 CloudSpells makes the architecture the product. Network topology, subnet tiers, gateway placement, routing policy, and security posture are **fixed by design** — derived from OCI best practices — and are not configurable at call time.
 
-The user's job is to name things and pick a location. The block's job is everything else.
+The user's job is to name things and pick a location. The spell's job is everything else.
 
 This is a deliberate constraint, not a limitation. Every parameter you do not have to specify is one you cannot get wrong.
 
@@ -41,7 +41,7 @@ Terraform and raw Pulumi give you every resource type with every attribute expos
 ```
 Low-level tools              CloudSpells
 ────────────────             ──────────────────────────
-Full API surface             Curated building blocks
+Full API surface             Curated spells
 Maximum flexibility          Minimum required input
 Architecture = your problem  Architecture = solved by design
 Every knob exposed           Only essential identifiers
@@ -53,7 +53,7 @@ Use CloudSpells when your architecture matches a reference pattern. Use raw Pulu
 
 ## Minimal required input
 
-A block requires only the minimum information that cannot be derived:
+A spell requires only the minimum information that cannot be derived:
 
 - **Name** — every resource needs a name
 - **Compartment OCID** — where to deploy in OCI
@@ -61,7 +61,7 @@ A block requires only the minimum information that cannot be derived:
 
 Everything else — CIDRs, subnet placement, route tables, security rules, gateway wiring — is derived or defaulted securely.
 
-**Exposing unnecessary parameters is treated as a design defect.** If a parameter exists only to pass through an underlying OCI provider option, it does not belong in CloudSpells. Users who need that level of control should use raw Pulumi resources directly.
+**Exposing unnecessary parameters is treated as a design defect.** If a parameter exists only to pass through an underlying OCI provider option, it does not belong in a spell. Users who need that level of control should use raw Pulumi resources directly.
 
 ---
 
@@ -85,7 +85,7 @@ You never touch a security list directly. Consistent enforcement at both layers 
 
 ## The lazy-init builder pattern
 
-The `Vcn` block uses a lazy-init builder pattern. Security rules accumulate as service blocks are declared, and the actual OCI resources (subnets, security lists) are materialised in a single call to `finalize_network()`.
+The `Vcn` spell uses a lazy-init builder pattern. Security rules accumulate as spells are declared, and the actual OCI resources (subnets, security lists) are materialised in a single call to `finalize_network()`.
 
 ```python
 vcn = Vcn("lab", compartment_id=compartment_id)
@@ -125,4 +125,4 @@ CloudSpells is the right tool for reference architectures. Use raw `pulumi_oci` 
 - Non-standard subnet topology (e.g. a flat single-tier network)
 - Fine-grained control over specific provider options for a one-off requirement
 
-You can mix CloudSpells blocks and raw Pulumi resources in the same stack freely. The VCN, subnets, and security lists created by `Vcn` are standard Pulumi outputs — you can reference them from any raw resource.
+You can mix CloudSpells spells and raw Pulumi resources in the same stack freely. The VCN, subnets, and security lists created by `Vcn` are standard Pulumi outputs — you can reference them from any raw resource.

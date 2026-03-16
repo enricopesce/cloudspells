@@ -9,8 +9,8 @@ Closes #<!-- issue number -->
 ## Type of change
 
 - [ ] Bug fix
-- [ ] New block
-- [ ] Enhancement to existing block
+- [ ] New spell
+- [ ] Enhancement to existing spell
 - [ ] Refactoring (no behaviour change)
 - [ ] Documentation
 - [ ] Tests

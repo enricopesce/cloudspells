@@ -1,4 +1,4 @@
-# CloudSpells — High-Level Infrastructure Building Blocks for OCI
+# CloudSpells — High-Level Infrastructure Spells for OCI
 
 **Stop configuring infrastructure. Start deploying architectures.**
 
@@ -9,7 +9,7 @@
 [![OCI](https://img.shields.io/badge/cloud-OCI-red)](https://www.oracle.com/cloud/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/enricopesce/ociblocks/issues?q=is%3Aissue+is%3Aopen+label%3Agood-first-issue)
 
-CloudSpells is a Python-based infrastructure as code framework built on [Pulumi](https://www.pulumi.com/) that packages proven Oracle Cloud Infrastructure reference architectures as minimal, opinionated building blocks — you name things, the block handles everything else.
+CloudSpells is a Python-based infrastructure as code framework built on [Pulumi](https://www.pulumi.com/) that packages proven Oracle Cloud Infrastructure reference architectures as minimal, opinionated spells — you name things, the spell handles everything else.
 
 ---
 
@@ -17,7 +17,7 @@ CloudSpells is a Python-based infrastructure as code framework built on [Pulumi]
 
 Raw Pulumi and Terraform give you every knob. That freedom is also the source of every misconfigured security rule, every missing NAT route, and every accidentally public subnet.
 
-CloudSpells makes **the architecture the product**. Network topology, subnet tiers, gateway placement, routing policy, and security posture are baked in — derived from OCI best practices — and are not configurable at call time. The user's job is to name things and pick a location. The block's job is everything else.
+CloudSpells makes **the architecture the product**. Network topology, subnet tiers, gateway placement, routing policy, and security posture are baked in — derived from OCI best practices — and are not configurable at call time. The user's job is to name things and pick a location. The spell's job is everything else.
 
 | With raw Pulumi / Terraform | With CloudSpells |
 |-----------------------------|-----------------|
@@ -26,7 +26,7 @@ CloudSpells makes **the architecture the product**. Network topology, subnet tie
 | Write security list rules for every subnet pair | Declare a role (`INTERNET_EDGE`, `APP_SERVER`, `DATABASE`) — rules are inferred |
 | Risk misconfiguration on every project | Architecture is encoded once, reused everywhere, correct by construction |
 
-> **The user's job is to name things and pick a location. The block's job is everything else.**
+> **The user's job is to name things and pick a location. The spell's job is everything else.**
 
 ---
 
@@ -131,9 +131,9 @@ Adding a third web backend? Attach `web_nsg` to a new `ComputeInstance`. Zero NS
 
 ---
 
-## Available Blocks
+## Available Spells
 
-| Block | Cloud | What it encapsulates | Status |
+| Spell | Cloud | What it encapsulates | Status |
 |-------|-------|----------------------|--------|
 | `Vcn` | OCI | 4-tier VCN (public/private/secure/management), all gateways, route tables, security lists | Stable |
 | `OkeCluster` | OCI | Oracle Kubernetes Engine cluster, node pool, OCI_VCN_IP_NATIVE CNI, multi-AD node placement | Stable |
@@ -141,8 +141,8 @@ Adding a third web backend? Attach `web_nsg` to a new `ComputeInstance`. Zero NS
 | `Bastion` | OCI | OCI Bastion service in the private subnet, ready for session-based access | Stable |
 | `ScalableWorkload` | OCI | Load balancer (public) + instance pool (private) + CPU autoscaling | Stable |
 | `Nsg` | OCI | Network Security Group with role-based rule generation and port constants | Stable |
-| AWS provider | AWS | Full block library for AWS | Planned |
-| GCP provider | GCP | Full block library for GCP | Planned |
+| AWS provider | AWS | Full spell library for AWS | Planned |
+| GCP provider | GCP | Full spell library for GCP | Planned |
 
 ---
 
@@ -177,7 +177,7 @@ src/
 
 ### VCN Network Topology
 
-Every `Vcn` block creates a fixed, four-tier architecture regardless of CIDR size:
+Every `Vcn` spell creates a fixed, four-tier architecture regardless of CIDR size:
 
 ```
 VCN (e.g. 10.0.0.0/16)
@@ -193,9 +193,9 @@ Subnet tier, gateway routing, and security posture are not configurable — they
 
 ## Design Principles
 
-- **Minimal user input** — blocks accept only a name, compartment, and network reference. Every value that can be derived, computed, or defaulted securely is. Exposing unnecessary parameters is a design defect, not a feature.
+- **Minimal user input** — spells accept only a name, compartment, and network reference. Every value that can be derived, computed, or defaulted securely is. Exposing unnecessary parameters is a design defect, not a feature.
 
-- **Architecture as the product** — network topology, routing policy, gateway placement, and security posture are fixed by design. The block encodes the correct architecture; the user just names things and picks a location.
+- **Architecture as the product** — network topology, routing policy, gateway placement, and security posture are fixed by design. The spell encodes the correct architecture; the user just names things and picks a location.
 
 - **Multi-cloud by design** — cloud-neutral abstractions in `src/core/abstractions/` define what a network or workload is. OCI, AWS, and GCP are implementations, not forks. The user-facing API is the same regardless of the target cloud.
 
@@ -259,13 +259,13 @@ Each example is a self-contained Pulumi stack in `examples/`:
 
 ## Contributing
 
-CloudSpells is actively looking for contributors. See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the full guide — project philosophy, local setup, quality gate, block authoring steps, and PR guidelines.
+CloudSpells is actively looking for contributors. See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the full guide — project philosophy, local setup, quality gate, spell authoring steps, and PR guidelines.
 
 ---
 
 ## Roadmap
 
-- [x] OCI core blocks — VCN, OKE, Compute, Bastion, ScalableWorkload
+- [x] OCI core spells — VCN, OKE, Compute, Bastion, ScalableWorkload
 - [x] NSG support with role constants and port constants
 - [x] 4-tier network architecture with fixed routing
 - [x] Security list rule helpers and `INTERNET` constant
@@ -275,7 +275,7 @@ CloudSpells is actively looking for contributors. See [CONTRIBUTING.md](.github/
 - [ ] Azure provider
 - [ ] CloudSpells CLI tool for stack management
 - [ ] MkDocs documentation site (in progress — `mkdocs.yml` present)
-- [ ] Community block registry
+- [ ] Community spell registry
 
 ---
 

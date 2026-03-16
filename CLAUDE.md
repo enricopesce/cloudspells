@@ -5,33 +5,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Important Rules
 
 - **High-level constructs, not low-level wrappers**: CloudSpells encodes fixed, opinionated reference architectures. It is not a Terraform replacement or a thin cloud-API layer — it is the opposite. Architecture decisions (topology, routing, security posture) are baked in, not left to the caller.
-- **Minimal user input**: blocks must require only essential identifiers (name, compartment/project, network). Every value that can be derived, computed, or defaulted securely must be. Exposing unnecessary parameters — especially ones that just pass through underlying provider options — is a design defect.
+- **Minimal user input**: spells must require only essential identifiers (name, compartment/project, network). Every value that can be derived, computed, or defaulted securely must be. Exposing unnecessary parameters — especially ones that just pass through underlying provider options — is a design defect.
 - **Full documentation required**: every public class, method, and module must have a Google-style docstring with `Args:`, `Returns:`, `Raises:`, `Attributes:`, and `Example:` as applicable. No undocumented public API is acceptable.
 
 ## Design Philosophy
 
 ### What CloudSpells is — and is not
 
-**CloudSpells is not a Terraform replacement or a low-level cloud-API wrapper.** It is the opposite: a collection of opinionated, high-level constructs that encode proven reference architectures as immutable, bulletproof building blocks.
+**CloudSpells is not a Terraform replacement or a low-level cloud-API wrapper.** It is the opposite: a collection of opinionated, high-level constructs that encode proven reference architectures as immutable, bulletproof spells.
 
 CloudSpells started with OCI support and is designed from the ground up to be multi-cloud. The `src/core/abstractions/` layer defines cloud-neutral interfaces; `src/providers/<cloud>/` contains provider-specific implementations. Adding a new provider means implementing those interfaces — not changing the user-facing API.
 
 - Terraform (and raw Pulumi provider resources) give you every knob and let you wire everything yourself. That freedom is also the source of every misconfigured security rule, missing route, and open subnet.
 - CloudSpells makes the architecture the product. Network topology, subnet tiers, routing policy, gateway placement, and security posture are fixed by design — derived from cloud provider best practices — and are not negotiable at call time.
 
-**The user's job is to name things and pick a location. The block's job is everything else.**
+**The user's job is to name things and pick a location. The spell's job is everything else.**
 
 ### Guiding rules
 
-**Blocks must require minimal user input.** A block encapsulates a complete, well-architected design. The user supplies only essential identifiers (name, compartment/project, network) and the block handles all internal wiring. Sensible, secure defaults are never left to the caller.
+**Spells must require minimal user input.** A spell encapsulates a complete, well-architected design. The user supplies only essential identifiers (name, compartment/project, network) and the spell handles all internal wiring. Sensible, secure defaults are never left to the caller.
 
-When adding or modifying a block, ask: *can the user deploy this correctly with fewer parameters?* If a value can be derived, computed, or defaulted securely, it must be. Exposing unnecessary knobs is a design defect.
+When adding or modifying a spell, ask: *can the user deploy this correctly with fewer parameters?* If a value can be derived, computed, or defaulted securely, it must be. Exposing unnecessary knobs is a design defect.
 
 **Never expose a parameter just because the underlying provider resource accepts it.** Parameters that exist only to pass through a low-level option belong in raw Pulumi/Terraform, not here.
 
 ## Project Overview
 
-CloudSpells is a Python-based infrastructure-as-code framework built on Pulumi that provides high-level, opinionated building blocks for cloud infrastructure. It is multi-cloud by design: a cloud-neutral abstraction layer sits above provider-specific implementations, starting with OCI. It extends Pulumi's `ComponentResource` model to encapsulate entire reference architectures behind minimal interfaces.
+CloudSpells is a Python-based infrastructure-as-code framework built on Pulumi that provides high-level, opinionated spells for cloud infrastructure. It is multi-cloud by design: a cloud-neutral abstraction layer sits above provider-specific implementations, starting with OCI. It extends Pulumi's `ComponentResource` model to encapsulate entire reference architectures behind minimal interfaces.
 
 ## Commands
 
@@ -91,22 +91,22 @@ src/providers/<cloud>/     — provider implementations (oci/ today; future: aws
 src/blocks/                — backward-compat re-export shims only (do not add logic here)
 ```
 
-New provider = implement the abstractions under a new `src/providers/<cloud>/` directory. No changes to core or blocks needed.
+New provider = implement the abstractions under a new `src/providers/<cloud>/` directory. No changes to core or spells needed.
 
 **New code imports from `providers.oci` directly.** `src/blocks/` exists only so old imports keep working.
 
 ### Core (`src/core/`)
 
-- **`base.py`**: `BaseResource` — all blocks inherit this. Standardised naming, tagging, SSH key management.
+- **`base.py`**: `BaseResource` — all spells inherit this. Standardised naming, tagging, SSH key management.
 - **`naming.py`**: `ResourceNamer` — names follow `{stack}-{resource}-{suffix}`.
 - **`abstractions/`**: Cloud-neutral dataclasses and ABCs (`LoadBalancerConfig`, `MetricScalingPolicy`, `AbstractScalableWorkload`, …). Write provider-agnostic typed functions against these.
 
-### OCI blocks (`src/providers/oci/`)
+### OCI spells (`src/providers/oci/`)
 
 - **`network.py`** — `Vcn`: 4-tier subnet architecture, all gateways, fixed routing per tier.
   - Public (12.5%) → Internet GW. Private (50%) → NAT + Service GW. Secure (25%) → Service GW only. Management (12.5%) → Service GW only.
   - CIDR split: private=prefix+1, secure=prefix+2, public=prefix+3, management=prefix+3.
-  - `VcnRef`: read-only handle to a VCN owned by another stack. All service blocks accept `Vcn | VcnRef`.
+  - `VcnRef`: read-only handle to a VCN owned by another stack. All spells accept `Vcn | VcnRef`.
 - **`kubernetes.py`** — `OkeCluster`: BASIC_CLUSTER, OCI_VCN_IP_NATIVE CNI, fixed pod/service CIDRs, nodes spread across all ADs.
 - **`compute.py`** — `ComputeInstance`: single instance, auto SSH keys, block volumes, any subnet tier.
 - **`bastion.py`** — `Bastion`: OCI Bastion service in the private subnet.
@@ -116,7 +116,7 @@ New provider = implement the abstractions under a new `src/providers/<cloud>/` d
 
 ### Key pattern: VCN lazy initialisation
 
-Services call `vcn.add_security_list_rules()` to accumulate rules, then `vcn.finalize_network()` to materialise security lists and subnets. `finalize_network()` is idempotent — only the first call has effect; service blocks call it automatically.
+Services call `vcn.add_security_list_rules()` to accumulate rules, then `vcn.finalize_network()` to materialise security lists and subnets. `finalize_network()` is idempotent — only the first call has effect; spells call it automatically.
 
 Subnet CIDR accessors return `pulumi.Input[str]` (not `str`) so they work for both `Vcn` and `VcnRef`.
 
@@ -183,4 +183,4 @@ Infrastructure configuration is managed through Pulumi config (`Pulumi.<stack>.y
 - `compartment_ocid`: OCI compartment OCID
 - `vcn_cidr_block`: CIDR block for the VCN
 
-Example usage is demonstrated in `examples/` (one directory per block).
+Example usage is demonstrated in `examples/` (one directory per spell).

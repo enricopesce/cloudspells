@@ -1,6 +1,6 @@
 # Tutorial: Deploy a Compute Instance
 
-This tutorial deploys a public-facing web server on OCI — a VM in the public subnet, reachable on HTTP, HTTPS, and SSH from the internet — using the `ComputeInstance` and `Nsg` blocks.
+This tutorial deploys a public-facing web server on OCI — a VM in the public subnet, reachable on HTTP, HTTPS, and SSH from the internet — using the `ComputeInstance` and `Nsg` spells.
 
 **What you will build:**
 

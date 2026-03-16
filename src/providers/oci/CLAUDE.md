@@ -1,6 +1,6 @@
 # src/providers/oci — OCI Implementation
 
-All canonical block logic lives here. `src/blocks/` re-exports from here — never the other way.
+All canonical spell logic lives here. `src/blocks/` re-exports from here — never the other way.
 
 ## Files & Exports
 
@@ -28,7 +28,7 @@ vcn.finalize_network()               # materialises subnets + security lists —
 ```
 
 - `finalize_network()` is idempotent (`_security_lists_finalized` flag); first call wins
-- Service blocks (`OkeCluster`, `ComputeInstance`, `ScalableWorkload`, `Bastion`) call `finalize_network()` automatically — callers don't need to
+- Spells (`OkeCluster`, `ComputeInstance`, `ScalableWorkload`, `Bastion`) call `finalize_network()` automatically — callers don't need to
 - Subnet attributes (`public_subnet`, `private_subnet`, …) are `None` before finalization
 - CIDR accessors return `pulumi.Input[str]`, not `str` — works for both `Vcn` and `VcnRef`
 
@@ -49,7 +49,7 @@ vcnref = VcnRef.from_stack_reference(stack_name)
 
 - `add_security_rules()` and `finalize_network()` are deliberate no-ops
 - CIDR accessors return `pulumi.Output[str]` pointing to cross-stack values
-- All service blocks accept `Vcn | VcnRef` transparently
+- All spells accept `Vcn | VcnRef` transparently
 
 ### NSG roles
 

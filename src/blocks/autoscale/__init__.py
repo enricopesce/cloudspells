@@ -1,4 +1,4 @@
-"""Autoscaling building blocks — backward-compatibility shim.
+"""Autoscaling spells — backward-compatibility shim.
 
 Re-exports from `providers.oci.autoscale`.
 The `LoadBalancerConfig` name maps to `OciLoadBalancerConfig` so that

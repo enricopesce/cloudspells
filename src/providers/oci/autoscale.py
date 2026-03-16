@@ -1,4 +1,4 @@
-"""Scalable Workload building block for CloudSpells.
+"""Scalable Workload spell for CloudSpells.
 
 Provides `ScalableWorkload`, which creates a complete horizontally-scalable
 OCI compute tier with load balancing and autoscaling:
@@ -305,7 +305,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
 
         Note:
             SSH access to pool instances is not managed here.  Deploy a
-            `Bastion` block alongside this workload to enable time-limited
+            `Bastion` spell alongside this workload to enable time-limited
             SSH via the OCI Bastion Service.
 
             Must be called before `Vcn.finalize_network`.
@@ -716,7 +716,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         """Export standard scalable workload stack outputs.
 
         Publishes load balancer IP, load balancer OCID, and instance pool
-        OCID under keys derived from the block's logical name.  The SSH
+        OCID under keys derived from the spell's logical name.  The SSH
         private key is exported as a Pulumi secret only when it was
         auto-generated.
 

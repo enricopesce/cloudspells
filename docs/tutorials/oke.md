@@ -1,6 +1,6 @@
 # Tutorial: Deploy an OKE Cluster
 
-This tutorial deploys an Oracle Kubernetes Engine (OKE) cluster with a managed node pool using the `OkeCluster` block.
+This tutorial deploys an Oracle Kubernetes Engine (OKE) cluster with a managed node pool using the `OkeCluster` spell.
 
 **What you will build:**
 

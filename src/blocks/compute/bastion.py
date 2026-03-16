@@ -1,4 +1,4 @@
-"""Bastion building block — backward-compatibility shim.
+"""Bastion spell — backward-compatibility shim.
 
 Re-exports from :mod:`providers.oci.bastion`.
 """

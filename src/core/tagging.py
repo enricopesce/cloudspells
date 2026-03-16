@@ -8,7 +8,7 @@ resource discovery:
 - `Name`        — human-readable resource identifier.
 - `ResourceType` — category of the resource (e.g. `"vcn"`, `"subnet"`).
 - `Environment` — the Pulumi stack name.
-- `CreatedBy`   — `"{stack_name}-{resource_name}"` identifying the block.
+- `CreatedBy`   — `"{stack_name}-{resource_name}"` identifying the spell.
 
 Specialised helpers add extra keys for network and gateway resources.
 """
@@ -24,7 +24,7 @@ class ResourceTagger:
 
     Attributes:
         stack_name: Pulumi stack name (e.g. `"prod"`).
-        resource_name: Logical name of the building block (e.g. `"lab"`).
+        resource_name: Logical name of the spell (e.g. `"lab"`).
     """
 
     stack_name: str
@@ -35,7 +35,7 @@ class ResourceTagger:
 
         Args:
             stack_name: Pulumi stack name used as the `Environment` tag value.
-            resource_name: Logical name of the resource block, used in the
+            resource_name: Logical name of the spell, used in the
                 `CreatedBy` tag.
         """
         self.stack_name = stack_name
@@ -55,7 +55,7 @@ class ResourceTagger:
         - `ResourceType` — resource_type (e.g. `"vcn"`, `"subnet"`).
         - `Environment` — the Pulumi stack name.
         - `CreatedBy`   — `"{stack_name}-{resource_name}"` string
-          identifying the CloudSpells component that created the resource.
+          identifying the CloudSpells spell that created the resource.
 
         Args:
             resource_name: Display name for the `Name` tag (usually the

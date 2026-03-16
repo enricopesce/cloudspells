@@ -1,4 +1,4 @@
-"""Scalable Workload building block — backward-compatibility shim.
+"""Scalable Workload spell — backward-compatibility shim.
 
 Re-exports from `providers.oci.autoscale`.
 The `LoadBalancerConfig` name maps to `OciLoadBalancerConfig` so that

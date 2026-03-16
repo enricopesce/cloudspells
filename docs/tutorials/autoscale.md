@@ -1,6 +1,6 @@
 # Tutorial: Deploy a Scalable Workload
 
-This tutorial deploys a horizontally-scalable web tier using the `ScalableWorkload` block: an OCI Load Balancer in the public subnet, an instance pool in the private subnet, and CPU-based autoscaling.
+This tutorial deploys a horizontally-scalable web tier using the `ScalableWorkload` spell: an OCI Load Balancer in the public subnet, an instance pool in the private subnet, and CPU-based autoscaling.
 
 **What you will build:**
 

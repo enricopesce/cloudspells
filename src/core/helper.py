@@ -22,7 +22,7 @@ from random_word import RandomWords
 
 
 class Helper:
-    """Stateless utility methods used by CloudSpells building blocks.
+    """Stateless utility methods used by CloudSpells spells.
 
     All methods are safe to call multiple times and have no side-effects
     on instance state.  Instantiate with `Helper()` wherever needed.

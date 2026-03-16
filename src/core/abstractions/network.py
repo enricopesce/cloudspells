@@ -1,7 +1,7 @@
 """Cloud-neutral network abstractions for CloudSpells multi-cloud support.
 
 Defines the security-rule dataclasses, factory helpers, and network
-interfaces that decouple service blocks (Compute, OKE, ScalableWorkload)
+interfaces that decouple spells (Compute, OKE, ScalableWorkload)
 from any specific cloud provider.  Each provider translates these
 descriptors into its own firewall model (OCI SecurityList, AWS Security
 Group, GCP Firewall Rule).
@@ -166,12 +166,12 @@ class EgressRule:
 class SecurityRules:
     """Accumulated cloud-neutral security rules for all four subnet tiers.
 
-    Service blocks call `AbstractNetwork.add_security_rules` with a
-    populated `SecurityRules` instance.  The network implementation
-    translates each `IngressRule` / `EgressRule` into
-    provider-specific constructs (OCI `SecurityListIngressSecurityRuleArgs`,
-    AWS `SecurityGroupIngressArgs`, etc.) and accumulates them for batch
-    materialisation when `AbstractNetwork.finalize_network` is called.
+    Spells call `AbstractNetwork.add_security_rules` with a populated
+    `SecurityRules` instance.  The network implementation translates each
+    `IngressRule` / `EgressRule` into provider-specific constructs (OCI
+    `SecurityListIngressSecurityRuleArgs`, AWS `SecurityGroupIngressArgs`,
+    etc.) and accumulates them for batch materialisation when
+    `AbstractNetwork.finalize_network` is called.
 
     Attributes:
         public_ingress: Ingress rules for the public (load-balancer) tier.
@@ -396,7 +396,7 @@ class AbstractNetwork(ABC):
     - **Management** — monitoring agents, VPN endpoints; same isolation as
       secure.
 
-    Typical usage by a service block:
+    Typical usage by a spell:
 
     ```python
     rules = SecurityRules(
@@ -440,8 +440,8 @@ class AbstractNetwork(ABC):
         """Create subnets and firewall resources from accumulated rules.
 
         Idempotent — only the first call has effect.  Called automatically
-        by every service block (Compute, OKE, ScalableWorkload) after it
-        has appended its security rules.
+        by every spell (Compute, OKE, ScalableWorkload) after it has
+        appended its security rules.
         """
 
     @abstractmethod
@@ -485,10 +485,10 @@ class AbstractNetworkRef(ABC):
     """Read-only reference to a network deployed in another Pulumi stack.
 
     `add_security_rules` and `finalize_network` are deliberate
-    no-ops — the owning stack manages all firewall rules.  Service blocks
-    accept either `AbstractNetwork` or `AbstractNetworkRef` and
-    call both methods unconditionally; the no-ops make `VcnRef`-style
-    usage safe without extra branching in service code.
+    no-ops — the owning stack manages all firewall rules.  Spells accept
+    either `AbstractNetwork` or `AbstractNetworkRef` and call both methods
+    unconditionally; the no-ops make `VcnRef`-style usage safe without
+    extra branching in spell code.
 
     Example:
         ```python

@@ -1,4 +1,4 @@
-"""Compute Instance building block — backward-compatibility shim.
+"""Compute Instance spell — backward-compatibility shim.
 
 Re-exports from :mod:`providers.oci.compute`.
 """

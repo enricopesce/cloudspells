@@ -28,7 +28,7 @@ The four tiers are created by binary subdivision of the VCN CIDR. You supply the
 
 ## CIDR allocation
 
-CloudSpells splits the VCN CIDR by dividing the prefix into increasingly specific blocks:
+CloudSpells splits the VCN CIDR by dividing the prefix into increasingly specific subnet tiers:
 
 | Tier | Share | Prefix offset | Rationale |
 |------|-------|---------------|-----------|

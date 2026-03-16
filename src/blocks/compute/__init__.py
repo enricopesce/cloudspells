@@ -1,4 +1,4 @@
-"""Compute building blocks — backward-compatibility shim.
+"""Compute spells — backward-compatibility shim.
 
 Re-exports from :mod:`providers.oci`.
 """

@@ -1,4 +1,4 @@
-"""Base resource class for all CloudSpells building blocks.
+"""Base resource class for all CloudSpells spells.
 
 All CloudSpells resource classes (`Vcn`, `OkeCluster`, `ComputeInstance`,
 `ScalableWorkload`, etc.) inherit from `BaseResource`, which extends
@@ -28,14 +28,14 @@ class BaseResource(pulumi.ComponentResource):
     """Base class for all CloudSpells components.
 
     Extends `pulumi.ComponentResource` with standardised naming, tagging,
-    and optional SSH key management.  All building blocks inherit from this
-    class and call `super().__init__()` as their first step.
+    and optional SSH key management.  All spells inherit from this class
+    and call `super().__init__()` as their first step.
 
     Attributes:
         project_ref: Cloud-neutral provider project reference (OCI compartment
             OCID, AWS account ID, GCP project ID, etc.).
         compartment_id: OCI-specific alias for `project_ref`.  Kept for
-            backward compatibility with all OCI blocks.
+            backward compatibility with all OCI spells.
         stack_name: Resolved Pulumi stack name used in all resource names and
             tags.
         name: Logical resource name supplied by the caller.
@@ -88,7 +88,7 @@ class BaseResource(pulumi.ComponentResource):
         super().__init__(resource_type, f"{resolved_stack}-{name}", {}, opts)
 
         # Resolve the provider-specific project reference from either alias.
-        # compartment_id is kept for backward compatibility with all OCI blocks.
+        # compartment_id is kept for backward compatibility with all OCI spells.
         resolved_ref = compartment_id if compartment_id is not None else project_ref
         self.project_ref = resolved_ref
         self.compartment_id = resolved_ref

@@ -1,4 +1,4 @@
-"""OKE building block — backward-compatibility shim.
+"""OKE spell — backward-compatibility shim.
 
 Re-exports from :mod:`providers.oci.kubernetes`.
 """

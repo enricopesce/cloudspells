@@ -1,5 +1,5 @@
 site_name: CloudSpells
-site_description: High-level Pulumi building blocks for Oracle Cloud Infrastructure
+site_description: High-level Pulumi spells for Oracle Cloud Infrastructure
 repo_url: https://github.com/enricopesce/cloudspells
 repo_name: enricopesce/cloudspells
 
@@ -56,7 +56,7 @@ nav:
       - api/core/abstractions/kubernetes.md
       - api/core/abstractions/bastion.md
       - api/core/abstractions/autoscale.md
-    - Blocks:
+    - Spells:
       - api/blocks/vcn.md
       - api/blocks/compute.md
       - api/blocks/oke.md

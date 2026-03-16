@@ -1,6 +1,6 @@
 # How to Use a Bastion for Private Access
 
-Instances in the private or secure subnet have no public IP. The `Bastion` block provisions the **OCI Bastion service** — a managed, audited jump host — to give you SSH access to those instances without exposing them to the internet.
+Instances in the private or secure subnet have no public IP. The `Bastion` spell provisions the **OCI Bastion service** — a managed, audited jump host — to give you SSH access to those instances without exposing them to the internet.
 
 ```
 Internet
@@ -17,7 +17,7 @@ Internet
 
 ## Add a Bastion to a stack
 
-Declare the `Bastion` block **after** the instance so the VCN is already finalised and the private subnet exists:
+Declare the `Bastion` spell **after** the instance so the VCN is already finalised and the private subnet exists:
 
 ```python
 from providers.oci.bastion import Bastion

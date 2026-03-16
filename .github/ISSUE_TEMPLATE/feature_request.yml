@@ -1,5 +1,5 @@
 name: Feature Request
-description: Propose a new block, enhancement, or cloud provider support
+description: Propose a new spell, enhancement, or cloud provider support
 labels: ["enhancement", "needs-triage"]
 body:
   - type: markdown
@@ -12,9 +12,9 @@ body:
     attributes:
       label: Type of request
       options:
-        - New OCI Block
+        - New OCI Spell
         - New Cloud Provider (AWS / GCP / Azure)
-        - Enhancement to existing block
+        - Enhancement to existing spell
         - Core framework improvement
         - Documentation
         - Other
