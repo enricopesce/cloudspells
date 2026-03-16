@@ -3,13 +3,15 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
+_root = os.path.join(os.path.dirname(__file__), "../..")
+sys.path.insert(0, os.path.join(_root, "packages/cloudspells-core/src"))
+sys.path.insert(0, os.path.join(_root, "packages/cloudspells-oci/src"))
 
 import base64
 
-from core import Config
-from providers.oci.autoscale import ScalableWorkload
-from providers.oci.network import Vcn
+from cloudspells.core import Config
+from cloudspells.providers.oci.autoscale import ScalableWorkload
+from cloudspells.providers.oci.network import Vcn
 
 config = Config()
 compartment_id: str = config.require("compartment_ocid")

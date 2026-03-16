@@ -33,14 +33,16 @@ Optional:
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
+_root = os.path.join(os.path.dirname(__file__), "../..")
+sys.path.insert(0, os.path.join(_root, "packages/cloudspells-core/src"))
+sys.path.insert(0, os.path.join(_root, "packages/cloudspells-oci/src"))
 
-from core import Config
-from providers.oci.bastion import Bastion
-from providers.oci.compute import ComputeInstance
-from providers.oci.network import Vcn
-from providers.oci.nsg import Nsg
-from providers.oci.roles import APP_SERVER
+from cloudspells.core import Config
+from cloudspells.providers.oci.bastion import Bastion
+from cloudspells.providers.oci.compute import ComputeInstance
+from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.nsg import Nsg
+from cloudspells.providers.oci.roles import APP_SERVER
 
 config = Config()
 compartment_id: str = config.require("compartment_ocid")

@@ -66,14 +66,16 @@ Optional:
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
+_root = os.path.join(os.path.dirname(__file__), "../..")
+sys.path.insert(0, os.path.join(_root, "packages/cloudspells-core/src"))
+sys.path.insert(0, os.path.join(_root, "packages/cloudspells-oci/src"))
 
-from core import Config
-from providers.oci.compute import ComputeInstance
-from providers.oci.network import Vcn
-from providers.oci.nsg import HTTP, HTTPS, SSH, Nsg
-from providers.oci.roles import APP_SERVER, DATABASE, INTERNET_EDGE
-from providers.oci.volume import VolumeSpec
+from cloudspells.core import Config
+from cloudspells.providers.oci.compute import ComputeInstance
+from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.nsg import HTTP, HTTPS, SSH, Nsg
+from cloudspells.providers.oci.roles import APP_SERVER, DATABASE, INTERNET_EDGE
+from cloudspells.providers.oci.volume import VolumeSpec
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
