@@ -16,16 +16,14 @@ config:
     default: VM.Standard.A1.Flex
   kubernetes_version:
     type: string
-    description: Kubernetes version
-    default: "v1.32.1"
+    description: Kubernetes version for the OKE cluster (e.g. "v1.32.1")
+  node_image_id:
+    type: string
+    description: OCID of the boot image for worker nodes
   oke_min_nodes:
     type: string
     description: Starting number of worker nodes
     default: "2"
-  node_image_id:
-    type: string
-    description: Image OCID for worker nodes
-    default: ""
   oke_ocpus:
     type: string
     description: OCPUs per worker node

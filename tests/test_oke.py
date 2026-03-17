@@ -194,6 +194,56 @@ class TestOkeCluster(unittest.TestCase):
             self.vcn.private_security_list.id,
         ).apply(check_security_lists)
 
+    def test_oke_nsgs_created(self):
+        """Test that OkeCluster creates all four NSGs."""
+        oke = OkeCluster(
+            name="test-cluster",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            kubernetes_version="v1.28.2",
+            shape="VM.Standard.A1.Flex",
+            image="ocid1.image.test",
+            min_nodes=2,
+            ocpus=2,
+            memory_in_gbs=16,
+            display_name="test-cluster",
+        )
+
+        self.assertIsNotNone(oke.api_nsg, "api_nsg must be created")
+        self.assertIsNotNone(oke.lb_nsg, "lb_nsg must be created")
+        self.assertIsNotNone(oke.worker_nsg, "worker_nsg must be created")
+        self.assertIsNotNone(oke.pod_nsg, "pod_nsg must be created")
+
+    @pulumi.runtime.test
+    def test_oke_nsgs_have_ids(self):
+        """Test that all four NSGs expose Output IDs."""
+        oke = OkeCluster(
+            name="test-cluster",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            kubernetes_version="v1.28.2",
+            shape="VM.Standard.A1.Flex",
+            image="ocid1.image.test",
+            min_nodes=2,
+            ocpus=2,
+            memory_in_gbs=16,
+            display_name="test-cluster",
+        )
+
+        def check_nsg_ids(args):
+            api_id, lb_id, worker_id, pod_id = args
+            self.assertIsNotNone(api_id, "api_nsg must have an ID")
+            self.assertIsNotNone(lb_id, "lb_nsg must have an ID")
+            self.assertIsNotNone(worker_id, "worker_nsg must have an ID")
+            self.assertIsNotNone(pod_id, "pod_nsg must have an ID")
+
+        return pulumi.Output.all(
+            oke.api_nsg.id,
+            oke.lb_nsg.id,
+            oke.worker_nsg.id,
+            oke.pod_nsg.id,
+        ).apply(check_nsg_ids)
+
     def test_oke_ssh_key_optional(self):
         """Test that OkeCluster SSH key is optional (None when not provided)."""
         oke = OkeCluster(

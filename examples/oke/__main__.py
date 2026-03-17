@@ -15,8 +15,8 @@ config = Config()
 compartment_id: str = config.require("compartment_ocid")
 node_shape: str = config.require("node_shape")
 kubernetes_version: str = config.require("kubernetes_version")
-oke_min_nodes: int = config.require_int("oke_min_nodes")
 node_image_id: str = config.require("node_image_id")
+oke_min_nodes: int = config.require_int("oke_min_nodes")
 oke_ocpus: float = config.require_float("oke_ocpus")
 oke_memory_in_gbs: float = config.require_float("oke_memory_in_gbs")
 
@@ -31,9 +31,9 @@ oke: OkeCluster = OkeCluster(
     name="okeinfra",
     compartment_id=compartment_id,
     vcn=vcn,
-    kubernetes_version=kubernetes_version,
     shape=node_shape,
-    image=node_image_id if node_image_id else None,
+    kubernetes_version=kubernetes_version,
+    image=node_image_id,
     display_name="infra",
     memory_in_gbs=oke_memory_in_gbs,
     min_nodes=oke_min_nodes,
@@ -42,3 +42,7 @@ oke: OkeCluster = OkeCluster(
 
 vcn.export()
 oke.export()
+
+# Write kubeconfig to this directory so kubectl works without touching the
+# system kubeconfig.  Use: KUBECONFIG=./kubeconfig kubectl get nodes
+oke.create_kubeconfig(os.path.join(os.path.dirname(__file__), "kubeconfig"))
