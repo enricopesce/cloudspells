@@ -83,8 +83,8 @@ These outputs are consumed automatically when another stack references this VCN 
 The entire `examples/vcn/__main__.py` is:
 
 ```python
-from core import Config
-from providers.oci.network import Vcn
+from cloudspells.core import Config
+from cloudspells.providers.oci.network import Vcn
 
 config = Config()
 compartment_id = config.require("compartment_ocid")

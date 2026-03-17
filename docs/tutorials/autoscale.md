@@ -74,8 +74,8 @@ The load balancer health check polls `/health` on port 80. Instances that fail h
 ### 2b. Create the VCN and workload
 
 ```python
-from providers.oci.network import Vcn
-from providers.oci.autoscale import ScalableWorkload
+from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.autoscale import ScalableWorkload
 
 vcn = Vcn(
     name="scalable",
@@ -168,7 +168,7 @@ Pool instances are in the private subnet and have no public IP. Use the OCI Bast
 If you need direct SSH access during development, add a bastion to the same stack:
 
 ```python
-from providers.oci.bastion import Bastion
+from cloudspells.providers.oci.bastion import Bastion
 
 bastion = Bastion(
     name="mgmt",

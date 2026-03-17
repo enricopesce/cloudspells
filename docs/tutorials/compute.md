@@ -50,7 +50,7 @@ Open `examples/compute/__main__.py`. It has three logical steps.
 ### 2a. Create the VCN
 
 ```python
-from providers.oci.network import Vcn
+from cloudspells.providers.oci.network import Vcn
 
 vcn = Vcn(
     name="lab",
@@ -63,8 +63,8 @@ A fully-wired 4-tier VCN. No further network configuration is needed.
 ### 2b. Attach a role with an NSG
 
 ```python
-from providers.oci.nsg import HTTP, HTTPS, SSH, Nsg
-from providers.oci.roles import INTERNET_EDGE
+from cloudspells.providers.oci.nsg import HTTP, HTTPS, SSH, Nsg
+from cloudspells.providers.oci.roles import INTERNET_EDGE
 
 web_nsg = Nsg(
     "web-server",
@@ -80,8 +80,8 @@ web_nsg = Nsg(
 ### 2c. Create the compute instance
 
 ```python
-from providers.oci.compute import ComputeInstance
-from providers.oci.volume import VolumeSpec
+from cloudspells.providers.oci.compute import ComputeInstance
+from cloudspells.providers.oci.volume import VolumeSpec
 
 web_server = ComputeInstance(
     name="web-server",

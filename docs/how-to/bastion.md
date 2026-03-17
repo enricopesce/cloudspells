@@ -20,11 +20,11 @@ Internet
 Declare the `Bastion` spell **after** the instance so the VCN is already finalised and the private subnet exists:
 
 ```python
-from providers.oci.bastion import Bastion
-from providers.oci.compute import ComputeInstance
-from providers.oci.network import Vcn
-from providers.oci.nsg import Nsg
-from providers.oci.roles import APP_SERVER
+from cloudspells.providers.oci.bastion import Bastion
+from cloudspells.providers.oci.compute import ComputeInstance
+from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.nsg import Nsg
+from cloudspells.providers.oci.roles import APP_SERVER
 
 vcn = Vcn("lab", compartment_id=compartment_id)
 

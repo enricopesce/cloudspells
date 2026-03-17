@@ -13,11 +13,11 @@ CloudSpells encodes proven reference architectures as immutable, composable spel
 ## Quick start
 
 ```python
-from core import Config
-from providers.oci.network import Vcn
-from providers.oci.compute import ComputeInstance
-from providers.oci.nsg import Nsg, HTTP, HTTPS, SSH
-from providers.oci.roles import INTERNET_EDGE
+from cloudspells.core import Config
+from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.compute import ComputeInstance
+from cloudspells.providers.oci.nsg import Nsg, HTTP, HTTPS, SSH
+from cloudspells.providers.oci.roles import INTERNET_EDGE
 
 config = Config()
 compartment_id = config.require("compartment_ocid")

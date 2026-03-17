@@ -24,8 +24,8 @@ Deploy the VCN standalone so it exports all its subnet OCIDs and CIDRs:
 
 ```python
 # platform/vcn/__main__.py
-from core import Config
-from providers.oci.network import Vcn
+from cloudspells.core import Config
+from cloudspells.providers.oci.network import Vcn
 
 config = Config()
 vcn = Vcn(
@@ -55,9 +55,9 @@ Note the stack reference string. Its format depends on your state backend:
 
 ```python
 # services/app/__main__.py
-from core import Config
-from providers.oci.network import VcnRef
-from providers.oci.compute import ComputeInstance
+from cloudspells.core import Config
+from cloudspells.providers.oci.network import VcnRef
+from cloudspells.providers.oci.compute import ComputeInstance
 
 config = Config()
 compartment_id = config.require("compartment_ocid")

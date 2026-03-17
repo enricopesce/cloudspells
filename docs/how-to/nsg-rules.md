@@ -17,8 +17,8 @@ The fastest path is to use a predefined role constant. Roles encode which subnet
 | `MANAGEMENT` | Management | Services only | Monitoring agents, tooling |
 
 ```python
-from providers.oci.nsg import Nsg, HTTP, HTTPS, SSH
-from providers.oci.roles import INTERNET_EDGE, APP_SERVER, DATABASE
+from cloudspells.providers.oci.nsg import Nsg, HTTP, HTTPS, SSH
+from cloudspells.providers.oci.roles import INTERNET_EDGE, APP_SERVER, DATABASE
 
 lb_nsg  = Nsg("load-balancer", role=INTERNET_EDGE, ports=[HTTP, HTTPS],
                vcn=vcn, compartment_id=compartment_id)
@@ -67,7 +67,7 @@ A two-tier relationship (LB → app server) requires four NSG rules and potentia
 ## Port constants
 
 ```python
-from providers.oci.nsg import SSH, HTTP, HTTPS, POSTGRES, MYSQL, ORACLE_DB, REDIS, KAFKA, NFS
+from cloudspells.providers.oci.nsg import SSH, HTTP, HTTPS, POSTGRES, MYSQL, ORACLE_DB, REDIS, KAFKA, NFS
 
 # SSH=22, HTTP=80, HTTPS=443, POSTGRES=5432, MYSQL=3306
 # ORACLE_DB=1521, REDIS=6379, KAFKA=9092, NFS=2049
@@ -76,7 +76,7 @@ from providers.oci.nsg import SSH, HTTP, HTTPS, POSTGRES, MYSQL, ORACLE_DB, REDI
 Or construct a custom port:
 
 ```python
-from providers.oci.nsg import tcp_port
+from cloudspells.providers.oci.nsg import tcp_port
 my_port = tcp_port(8443)
 ```
 
@@ -87,7 +87,7 @@ my_port = tcp_port(8443)
 Pass the NSG to `ComputeInstance` via `nsg=`. The subnet is inferred from the role:
 
 ```python
-from providers.oci.compute import ComputeInstance
+from cloudspells.providers.oci.compute import ComputeInstance
 
 web = ComputeInstance(
     name="web",
@@ -102,9 +102,9 @@ web = ComputeInstance(
 ## Full three-tier example
 
 ```python
-from providers.oci.nsg import Nsg, HTTP, HTTPS, SSH, POSTGRES
-from providers.oci.roles import INTERNET_EDGE, APP_SERVER, DATABASE
-from providers.oci.compute import ComputeInstance
+from cloudspells.providers.oci.nsg import Nsg, HTTP, HTTPS, SSH, POSTGRES
+from cloudspells.providers.oci.roles import INTERNET_EDGE, APP_SERVER, DATABASE
+from cloudspells.providers.oci.compute import ComputeInstance
 
 # ── NSGs ──────────────────────────────────────────────────────────────────────
 
@@ -149,8 +149,8 @@ db  = ComputeInstance("db",  compartment_id=compartment_id, vcn=vcn, nsg=db_nsg)
 If a predefined role does not match your use-case, compose one from `Role`:
 
 ```python
-from providers.oci.roles import Role
-from providers.oci.network import SUBNET_PRIVATE
+from cloudspells.providers.oci.roles import Role
+from cloudspells.providers.oci.network import SUBNET_PRIVATE
 
 # Private-tier proxy — internet + service egress, SSH delivered via Bastion
 proxy_role = Role(
@@ -180,7 +180,7 @@ For cases that `serves()` does not cover, use the individual allow methods direc
 | `allow_icmp_path_mtu_out(name)` | ICMP type 3 code 4 outbound |
 
 ```python
-from providers.oci.nsg import INTERNET
+from cloudspells.providers.oci.nsg import INTERNET
 
 # Allow inbound HTTPS from any IP
 my_nsg.allow_from_cidr("https-in", HTTPS, INTERNET)
