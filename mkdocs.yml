@@ -37,6 +37,8 @@ nav:
     - Compute Instance: tutorials/compute.md
     - OKE Cluster: tutorials/oke.md
     - Scalable Workload: tutorials/autoscale.md
+    - 3-Tier Web Application: tutorials/web-db.md
+    - Secure Monitored Network: tutorials/secure-vcn.md
   - How-to Guides:
     - Share a VCN Across Stacks: how-to/vcnref.md
     - Configure NSG Rules: how-to/nsg-rules.md
