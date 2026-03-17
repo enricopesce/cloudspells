@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../../getting-started/first-deploy/">
+        <link rel="prev" href="../web-db/">
       
       
-        <link rel="next" href="../oke/">
+        <link rel="next" href="../../how-to/vcnref/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Compute Instance - CloudSpells</title>
+        <title>Secure Monitored Network - CloudSpells</title>
       
     
     
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#tutorial-deploy-a-compute-instance" class="md-skip">
+        <a href="#tutorial-secure-monitored-network" class="md-skip">
           Skip to content
         </a>
       
@@ -110,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Compute Instance
+              Secure Monitored Network
             
           </span>
         </div>
@@ -244,7 +244,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+        <a href="../compute/" class="md-tabs__link">
           
   
     
@@ -563,30 +563,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Compute Instance
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../compute/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -595,131 +575,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
-    <span class="md-ellipsis">
-      Prerequisites
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-1-initialise-the-stack" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 1 — Initialise the stack
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-2-walk-through-the-code" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 2 — Walk through the code
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Step 2 — Walk through the code">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#2a-create-the-vcn" class="md-nav__link">
-    <span class="md-ellipsis">
-      2a. Create the VCN
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2b-attach-a-role-with-an-nsg" class="md-nav__link">
-    <span class="md-ellipsis">
-      2b. Attach a role with an NSG
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2c-create-the-compute-instance" class="md-nav__link">
-    <span class="md-ellipsis">
-      2c. Create the compute instance
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-3-deploy" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 3 — Deploy
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-4-connect-via-ssh" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 4 — Connect via SSH
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-5-inspect-outputs" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 5 — Inspect outputs
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#teardown" class="md-nav__link">
-    <span class="md-ellipsis">
-      Teardown
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#whats-next" class="md-nav__link">
-    <span class="md-ellipsis">
-      What's next
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -792,10 +647,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../secure-vcn/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Secure Monitored Network
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -804,6 +679,140 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-1-initialise-the-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 1 — Initialise the stack
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-2-walk-through-the-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 2 — Walk through the code
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 2 — Walk through the code">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2a-create-the-vcn-with-flow-logs-enabled" class="md-nav__link">
+    <span class="md-ellipsis">
+      2a. Create the VCN with flow logs enabled
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2b-declare-all-four-security-roles" class="md-nav__link">
+    <span class="md-ellipsis">
+      2b. Declare all four security roles
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2c-wire-traffic-relationships" class="md-nav__link">
+    <span class="md-ellipsis">
+      2c. Wire traffic relationships
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 3 — Deploy
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-inspect-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 4 — Inspect outputs
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#zero-trust-packet-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Zero Trust Packet Routing
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-subnet-ids-in-downstream-stacks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using subnet IDs in downstream stacks
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#teardown" class="md-nav__link">
+    <span class="md-ellipsis">
+      Teardown
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#whats-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      What's next
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1972,27 +1981,27 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#2a-create-the-vcn" class="md-nav__link">
+  <a href="#2a-create-the-vcn-with-flow-logs-enabled" class="md-nav__link">
     <span class="md-ellipsis">
-      2a. Create the VCN
+      2a. Create the VCN with flow logs enabled
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#2b-attach-a-role-with-an-nsg" class="md-nav__link">
+  <a href="#2b-declare-all-four-security-roles" class="md-nav__link">
     <span class="md-ellipsis">
-      2b. Attach a role with an NSG
+      2b. Declare all four security roles
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#2c-create-the-compute-instance" class="md-nav__link">
+  <a href="#2c-wire-traffic-relationships" class="md-nav__link">
     <span class="md-ellipsis">
-      2c. Create the compute instance
+      2c. Wire traffic relationships
     </span>
   </a>
   
@@ -2013,18 +2022,27 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-4-connect-via-ssh" class="md-nav__link">
+  <a href="#step-4-inspect-outputs" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 4 — Connect via SSH
+      Step 4 — Inspect outputs
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-5-inspect-outputs" class="md-nav__link">
+  <a href="#zero-trust-packet-routing" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 5 — Inspect outputs
+      Zero Trust Packet Routing
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-subnet-ids-in-downstream-stacks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using subnet IDs in downstream stacks
     </span>
   </a>
   
@@ -2066,19 +2084,33 @@
   
 
 
-<h1 id="tutorial-deploy-a-compute-instance">Tutorial: Deploy a Compute Instance</h1>
-<p>This tutorial deploys a public-facing web server on OCI — a VM in the public subnet, reachable on HTTP, HTTPS, and SSH from the internet — using the <code>ComputeInstance</code> and <code>Nsg</code> spells.</p>
+<h1 id="tutorial-secure-monitored-network">Tutorial: Secure, Monitored Network</h1>
+<p>This tutorial deploys a production-ready OCI network with all four security tiers, VCN Flow Logs for audit, a dedicated management tier, and Zero Trust Packet Routing (ZPR) labels — no compute instances required.</p>
 <p><strong>What you will build:</strong></p>
-<pre><code>Internet
-   │  HTTP 80 / HTTPS 443 / SSH 22
-   ▼
-┌──────────────────────────────────────────┐
-│ Public subnet  ← Internet Gateway        │
-│  web-server  [INTERNET_EDGE role]        │
-│  100 GB data volume + 200 GB logs volume │
-└──────────────────────────────────────────┘
+<pre><code>┌─────────────────────────────────────────────────────────────────┐
+│  VCN  10.0.0.0/16                                               │
+│                                                                 │
+│  ┌─────────────────┐  ┌──────────────────────────────────────┐  │
+│  │ Public /19      │  │ Private /17                          │  │
+│  │ (LB tier)       │  │ (App tier)                           │  │
+│  │ IGW route       │  │ NAT GW + Service GW routes           │  │
+│  │ lb-nsg ──────────┼──► app-nsg                             │  │
+│  └─────────────────┘  └──────────────────┬───────────────────┘  │
+│                                          │ TCP 1521             │
+│  ┌────────────────────────────────────────▼───────────────────┐  │
+│  │ Secure /18 (DB tier)                                       │  │
+│  │ Service GW only — NO internet path                         │  │
+│  │ db-nsg                                                     │  │
+│  └────────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │ Management /19 — Service GW only                           │  │
+│  │ mgmt-nsg — SSH access to all other tiers                   │  │
+│  └────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+             ↕ all traffic captured by VCN Flow Logs
 </code></pre>
-<p><strong>What gets created:</strong> 1 VCN (4 subnets + 3 gateways), 1 NSG, 1 compute instance, 2 block volumes, 1 SSH key pair.</p>
+<p><strong>What gets created:</strong> 1 VCN (4 subnets + 3 gateways), 4 NSGs, 1 Log Group + 4 Flow Log objects.</p>
 <hr />
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
@@ -2087,57 +2119,99 @@
 </ul>
 <hr />
 <h2 id="step-1-initialise-the-stack">Step 1 — Initialise the stack</h2>
-<pre><code class="language-bash">cd examples/compute
+<pre><code class="language-bash">cd examples/secure-vcn
 
 pulumi stack init dev
 pulumi config set compartment_ocid ocid1.compartment.oc1..aaaa...
 </code></pre>
-<p>Optionally, provide your own SSH public key (skip this to auto-generate one):</p>
-<pre><code class="language-bash">pulumi config set ssh_key &quot;$(cat ~/.ssh/id_rsa.pub)&quot;
+<p>Optionally override defaults:</p>
+<pre><code class="language-bash">pulumi config set management_ingress_cidr 10.1.0.0/24   # restrict SSH source — do this before go-live
+pulumi config set app_port 8080                          # app-tier TCP port (default: 8080)
+pulumi config set db_port  1521                          # database TCP port (default: 1521)
+pulumi config set log_retention_days 90                  # flow log retention: 30/60/90/120/150/180
 </code></pre>
+<blockquote>
+<p><strong>Security note:</strong> <code>management_ingress_cidr</code> defaults to <code>0.0.0.0/0</code>. Always restrict this to your actual operations CIDR before deploying to production.</p>
+</blockquote>
 <hr />
 <h2 id="step-2-walk-through-the-code">Step 2 — Walk through the code</h2>
-<p>Open <code>examples/compute/__main__.py</code>. It has three logical steps.</p>
-<h3 id="2a-create-the-vcn">2a. Create the VCN</h3>
+<p>Open <code>examples/secure-vcn/__main__.py</code>. It has three logical steps.</p>
+<h3 id="2a-create-the-vcn-with-flow-logs-enabled">2a. Create the VCN with flow logs enabled</h3>
 <pre><code class="language-python">from cloudspells.providers.oci.network import Vcn
 
 vcn = Vcn(
     name=&quot;lab&quot;,
     compartment_id=compartment_id,
+    cidr_block=vcn_cidr,
+    flow_logs=True,
+    flow_logs_retention=log_retention_days,
 )
 </code></pre>
-<p>A fully-wired 4-tier VCN. No further network configuration is needed.</p>
-<h3 id="2b-attach-a-role-with-an-nsg">2b. Attach a role with an NSG</h3>
+<p>Setting <code>flow_logs=True</code> attaches a <code>VcnFlowLogs</code> spell automatically. It creates a Log Group and one Flow Log object per subnet, capturing all accepted and rejected traffic for network audit and forensics. The <code>flow_logs_retention</code> parameter accepts 30, 60, 90, 120, 150, or 180 days.</p>
+<p>When <code>flow_logs=True</code>, <code>vcn.export()</code> also publishes <code>network_audit_log_group_id</code> so downstream stacks or monitoring tools can subscribe to the log group.</p>
+<h3 id="2b-declare-all-four-security-roles">2b. Declare all four security roles</h3>
 <pre><code class="language-python">from cloudspells.providers.oci.nsg import HTTP, HTTPS, SSH, Nsg
-from cloudspells.providers.oci.roles import INTERNET_EDGE
+from cloudspells.providers.oci.roles import APP_SERVER, DATABASE, INTERNET_EDGE, MANAGEMENT
 
-web_nsg = Nsg(
-    &quot;web-server&quot;,
-    role=INTERNET_EDGE,
-    ports=[HTTP, HTTPS, SSH],
-    vcn=vcn,
-    compartment_id=compartment_id,
-)
+lb_nsg   = Nsg(&quot;load-balancer&quot;, role=INTERNET_EDGE, ports=[HTTP, HTTPS], vcn=vcn, compartment_id=compartment_id)
+app_nsg  = Nsg(&quot;app-server&quot;,    role=APP_SERVER,                          vcn=vcn, compartment_id=compartment_id)
+db_nsg   = Nsg(&quot;database&quot;,      role=DATABASE,                            vcn=vcn, compartment_id=compartment_id)
+mgmt_nsg = Nsg(&quot;management&quot;,    role=MANAGEMENT,                          vcn=vcn, compartment_id=compartment_id)
 </code></pre>
-<p><code>INTERNET_EDGE</code> is a semantic role constant. It tells CloudSpells that this resource lives in the <strong>public subnet</strong> and communicates directly with the internet. CloudSpells automatically adds ICMP path-MTU rules in both directions — you only declare the application ports.</p>
-<h3 id="2c-create-the-compute-instance">2c. Create the compute instance</h3>
-<pre><code class="language-python">from cloudspells.providers.oci.compute import ComputeInstance
-from cloudspells.providers.oci.volume import VolumeSpec
+<p>All four CloudSpells role constants are represented here:</p>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Subnet</th>
+<th>Egress</th>
+<th>Ambient rules</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>INTERNET_EDGE</code></td>
+<td>Public</td>
+<td>Internet GW</td>
+<td>ICMP path-MTU, accepts declared ports from <code>0.0.0.0/0</code></td>
+</tr>
+<tr>
+<td><code>APP_SERVER</code></td>
+<td>Private</td>
+<td>NAT GW + Oracle Services</td>
+<td>ICMP path-MTU</td>
+</tr>
+<tr>
+<td><code>DATABASE</code></td>
+<td>Secure</td>
+<td>Oracle Services only</td>
+<td>No internet egress</td>
+</tr>
+<tr>
+<td><code>MANAGEMENT</code></td>
+<td>Management</td>
+<td>Oracle Services only</td>
+<td>No internet egress</td>
+</tr>
+</tbody>
+</table>
+<p>Every NSG is also tagged with <code>ZprLabel=tier:&lt;name&gt;</code> for Zero Trust Packet Routing (see <a href="#zero-trust-packet-routing">below</a>).</p>
+<h3 id="2c-wire-traffic-relationships">2c. Wire traffic relationships</h3>
+<pre><code class="language-python"># Restrict SSH ingress on the management tier to a specific CIDR.
+mgmt_nsg.allow_from_cidr(&quot;ssh-in&quot;, SSH, management_ingress_cidr, description=&quot;SSH from ops network&quot;)
 
-web_server = ComputeInstance(
-    name=&quot;web-server&quot;,
-    compartment_id=compartment_id,
-    vcn=vcn,
-    ssh_public_key=ssh_key,
-    nsg=web_nsg,
-    volumes=[
-        VolumeSpec(size_in_gbs=100, label=&quot;data&quot;),
-        VolumeSpec(size_in_gbs=200, label=&quot;logs&quot;, vpus_per_gb=VolumeSpec.PERF_LOW),
-    ],
-)
+# Application traffic hops (app port + SSH management channel each).
+lb_nsg.serves(app_nsg, port=app_port)    # LB  → app: app_port + SSH 22
+app_nsg.serves(db_nsg, port=db_port)     # app → DB:  db_port  + SSH 22
+
+# Management tier reaches each tier directly over SSH only.
+# with_ssh=False because SSH IS the declared port — no extra channel added.
+mgmt_nsg.serves(lb_nsg,  port=SSH, with_ssh=False)   # mgmt → LB
+mgmt_nsg.serves(app_nsg, port=SSH, with_ssh=False)   # mgmt → app
+mgmt_nsg.serves(db_nsg,  port=SSH, with_ssh=False)   # mgmt → DB
 </code></pre>
-<p>The instance inherits its subnet from the NSG role: because <code>web_nsg</code> uses <code>INTERNET_EDGE</code>, the instance is automatically placed in the public subnet. No subnet argument needed.</p>
-<p><code>ComputeInstance</code> calls <code>vcn.finalize_network()</code> automatically — security lists and subnets are materialised at this point.</p>
+<p><code>allow_from_cidr()</code> adds a single ingress rule for a specific source CIDR — useful when the source is an external network rather than another NSG in the VCN.</p>
+<p>The <code>with_ssh=False</code> flag on the management <code>serves()</code> calls suppresses the automatic SSH management channel that <code>serves()</code> normally adds alongside the application port. Since the declared <code>port</code> here is already <code>SSH</code>, adding a second SSH channel would create duplicate rules.</p>
 <hr />
 <h2 id="step-3-deploy">Step 3 — Deploy</h2>
 <pre><code class="language-bash">pulumi preview   # verify the plan
@@ -2145,17 +2219,7 @@ pulumi up
 </code></pre>
 <p>Deployment takes roughly 3–5 minutes.</p>
 <hr />
-<h2 id="step-4-connect-via-ssh">Step 4 — Connect via SSH</h2>
-<p>If you provided your own key:</p>
-<pre><code class="language-bash">ssh opc@$(pulumi stack output web_server_public_ip)
-</code></pre>
-<p>If the key was auto-generated, retrieve the private key first:</p>
-<pre><code class="language-bash">pulumi stack output web_server_ssh_private_key --show-secrets &gt; ~/.ssh/oci_web
-chmod 600 ~/.ssh/oci_web
-ssh -i ~/.ssh/oci_web opc@$(pulumi stack output web_server_public_ip)
-</code></pre>
-<hr />
-<h2 id="step-5-inspect-outputs">Step 5 — Inspect outputs</h2>
+<h2 id="step-4-inspect-outputs">Step 4 — Inspect outputs</h2>
 <pre><code class="language-bash">pulumi stack output
 </code></pre>
 <p>Key outputs:</p>
@@ -2168,19 +2232,51 @@ ssh -i ~/.ssh/oci_web opc@$(pulumi stack output web_server_public_ip)
 </thead>
 <tbody>
 <tr>
-<td><code>web_server_public_ip</code></td>
-<td>Public IP of the instance</td>
+<td><code>vcn_id</code></td>
+<td>VCN OCID</td>
 </tr>
 <tr>
-<td><code>web_server_id</code></td>
-<td>Instance OCID</td>
+<td><code>public_subnet_id</code></td>
+<td>Public (LB) subnet OCID</td>
 </tr>
 <tr>
-<td><code>web_server_ssh_private_key</code></td>
-<td><em>(secret)</em> Only present when auto-generated</td>
+<td><code>private_subnet_id</code></td>
+<td>Private (App) subnet OCID</td>
+</tr>
+<tr>
+<td><code>secure_subnet_id</code></td>
+<td>Secure (DB) subnet OCID</td>
+</tr>
+<tr>
+<td><code>management_subnet_id</code></td>
+<td>Management subnet OCID</td>
+</tr>
+<tr>
+<td><code>network_audit_log_group_id</code></td>
+<td>Log Group OCID — subscribe your SIEM here</td>
 </tr>
 </tbody>
 </table>
+<hr />
+<h2 id="zero-trust-packet-routing">Zero Trust Packet Routing</h2>
+<p>Every NSG created by CloudSpells is tagged with <code>ZprLabel=tier:&lt;name&gt;</code>. If you enable <strong>Zero Trust Packet Routing (ZPR)</strong> in your OCI tenancy, you can write ZPR policies that enforce traffic rules at the OCI control plane — independently of, and in addition to, NSG rules:</p>
+<pre><code>Define policy &quot;network-zpr-policy&quot; as
+  allow private-nsg to connect to secure-nsg on TCP port 1521
+  where target.security-attribute.ZprLabel = 'tier:secure'
+</code></pre>
+<p>ZPR policies guarantee that no misconfigured VNIC attachment can bypass the NSG rules, providing a second, identity-based enforcement layer.</p>
+<hr />
+<h2 id="using-subnet-ids-in-downstream-stacks">Using subnet IDs in downstream stacks</h2>
+<p>The subnet OCIDs are normal Pulumi stack outputs. A downstream service stack can consume them via <code>VcnRef</code>:</p>
+<pre><code class="language-python">from cloudspells.providers.oci.network import VcnRef
+
+vcn = VcnRef.from_stack_reference(
+    stack_ref=pulumi.StackReference(&quot;org/secure-network/dev&quot;),
+    name=&quot;lab&quot;,
+    compartment_id=compartment_id,
+)
+</code></pre>
+<p>See <a href="../../how-to/vcnref/">Share a VCN Across Stacks</a> for the full pattern.</p>
 <hr />
 <h2 id="teardown">Teardown</h2>
 <pre><code class="language-bash">pulumi destroy
@@ -2188,8 +2284,9 @@ ssh -i ~/.ssh/oci_web opc@$(pulumi stack output web_server_public_ip)
 <hr />
 <h2 id="whats-next">What's next</h2>
 <ul>
-<li><a href="../oke/">Deploy an OKE cluster →</a></li>
-<li><a href="../../how-to/bastion/">Use a Bastion for private access →</a> — place the instance in the private subnet instead and access it via the OCI Bastion service</li>
+<li><a href="../web-db/">Deploy a 3-Tier Web Application →</a> — add compute instances across the tiers</li>
+<li><a href="../../how-to/vcnref/">Share a VCN Across Stacks →</a> — let service stacks consume this network</li>
+<li><a href="../../how-to/nsg-rules/">Configure NSG Rules →</a> — deep dive into role constants and custom rules</li>
 </ul>
 
 
