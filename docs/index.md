@@ -52,6 +52,8 @@ instance.export()
 | SSH into a private instance | [How-to → Use a Bastion](how-to/bastion.md) |
 | Understand the design philosophy | [Concepts → Design Philosophy](concepts/design.md) |
 | Understand the 4-tier network topology | [Concepts → Network Topology](concepts/network-topology.md) |
+| Deep-dive VCN architecture (CIDR math, routing, security lists, VcnRef) | [Reference → VCN Architecture](reference/vcn-architecture.md) |
+| Deep-dive OKE architecture (NSG rules, CNI, traffic flows, ports) | [Reference → OKE Architecture](reference/oke-architecture.md) |
 | Browse the full API | [API Reference → OCI Provider](api/providers/network.md) |
 
 ## Design principles
