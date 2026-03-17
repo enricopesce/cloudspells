@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **CloudSpells is not a Terraform replacement or a low-level cloud-API wrapper.** It is the opposite: a collection of opinionated, high-level constructs that encode proven reference architectures as immutable, bulletproof spells.
 
-CloudSpells started with OCI support and is designed from the ground up to be multi-cloud. The `src/core/abstractions/` layer defines cloud-neutral interfaces; `src/providers/<cloud>/` contains provider-specific implementations. Adding a new provider means implementing those interfaces — not changing the user-facing API.
+CloudSpells started with OCI support and is designed from the ground up to be multi-cloud. The `cloudspells.core.abstractions` layer defines cloud-neutral interfaces; `cloudspells.providers.<cloud>` contains provider-specific implementations. Adding a new provider means implementing those interfaces — not changing the user-facing API.
 
 - Terraform (and raw Pulumi provider resources) give you every knob and let you wire everything yourself. That freedom is also the source of every misconfigured security rule, missing route, and open subnet.
 - CloudSpells makes the architecture the product. Network topology, subnet tiers, routing policy, gateway placement, and security posture are fixed by design — derived from cloud provider best practices — and are not negotiable at call time.
@@ -43,16 +43,16 @@ pip install -r requirements.txt
 pyright
 
 # Lint (ruff — reports errors)
-ruff check src/ tests/
+ruff check packages/ tests/
 
 # Lint with auto-fix
-ruff check src/ tests/ --fix
+ruff check packages/ tests/ --fix
 
 # Format (ruff)
-ruff format src/ tests/
+ruff format packages/ tests/
 
 # Format check only (no changes)
-ruff format --check src/ tests/
+ruff format --check packages/ tests/
 
 # Run all tests with coverage
 pytest
@@ -64,10 +64,10 @@ pytest tests/test_vcn.py
 pytest tests/test_vcn.py::TestVcn::test_vcn_creates_base_resources
 
 # Dead code detection
-vulture src/ --min-confidence 80
+vulture packages/ --min-confidence 80
 
 # Full quality gate (run before committing)
-ruff check src/ tests/ && ruff format --check src/ tests/ && pyright && pytest
+ruff check packages/ tests/ && ruff format --check packages/ tests/ && pyright && pytest
 
 # Preview infrastructure changes (run from an example directory)
 cd examples/autoscale && pulumi preview
@@ -86,22 +86,22 @@ Always activate the virtualenv before running tests or pyright: `source .venv/bi
 ### Three-layer structure
 
 ```
-src/core/abstractions/     — cloud-neutral interfaces (AbstractNetwork, AbstractScalableWorkload, …)
-src/providers/<cloud>/     — provider implementations (oci/ today; future: aws/, gcp/, …)
-src/blocks/                — backward-compat re-export shims only (do not add logic here)
+packages/cloudspells-core/src/cloudspells/core/abstractions/   — cloud-neutral interfaces (AbstractNetwork, AbstractScalableWorkload, …)
+packages/cloudspells-oci/src/cloudspells/providers/<cloud>/    — provider implementations (oci/ today; future: aws/, gcp/, …)
+packages/cloudspells-oci/src/cloudspells/blocks/               — backward-compat re-export shims only (do not add logic here)
 ```
 
-New provider = implement the abstractions under a new `src/providers/<cloud>/` directory. No changes to core or spells needed.
+New provider = implement the abstractions under a new `packages/cloudspells-<cloud>/src/cloudspells/providers/<cloud>/` directory. No changes to core or spells needed.
 
-**New code imports from `providers.oci` directly.** `src/blocks/` exists only so old imports keep working.
+**New code imports from `cloudspells.providers.oci` directly.** `cloudspells.blocks` exists only so old imports keep working.
 
-### Core (`src/core/`)
+### Core (`packages/cloudspells-core/src/cloudspells/core/`)
 
 - **`base.py`**: `BaseResource` — all spells inherit this. Standardised naming, tagging, SSH key management.
 - **`naming.py`**: `ResourceNamer` — names follow `{stack}-{resource}-{suffix}`.
 - **`abstractions/`**: Cloud-neutral dataclasses and ABCs (`LoadBalancerConfig`, `MetricScalingPolicy`, `AbstractScalableWorkload`, …). Write provider-agnostic typed functions against these.
 
-### OCI spells (`src/providers/oci/`)
+### OCI spells (`packages/cloudspells-oci/src/cloudspells/providers/oci/`)
 
 - **`network.py`** — `Vcn`: 4-tier subnet architecture, all gateways, fixed routing per tier.
   - Public (12.5%) → Internet GW. Private (50%) → NAT + Service GW. Secure (25%) → Service GW only. Management (12.5%) → Service GW only.
@@ -113,6 +113,8 @@ New provider = implement the abstractions under a new `src/providers/<cloud>/` d
 - **`autoscale.py`** — `ScalableWorkload`: LB in public subnet, instance pool in private, CPU autoscaling by default.
 - **`nsg.py`** — `Nsg` + port constants (`SSH`, `HTTP`, `HTTPS`, …) for NSG-based security.
 - **`roles.py`** — Semantic role constants (`APP_SERVER`, `DATABASE`, `INTERNET_EDGE`, …).
+- **`volume.py`** — `VolumeSpec`: block volume descriptor (size, label, performance tier, read-only flag).
+- **`network_logging.py`** — `VcnFlowLogs`: VCN Flow Logs for network audit (opt-in via `flow_logs=True` on `Vcn`).
 
 ### Key pattern: VCN lazy initialisation
 
@@ -128,10 +130,10 @@ Subnet CIDR accessors return `pulumi.Input[str]` (not `str`) so they work for bo
 from tests.mocks import set_mocks
 set_mocks()
 
-from providers.oci.network import Vcn  # import after mocks
+from cloudspells.blocks.vcn.network import Vcn  # import after mocks
 ```
 
-`tests/mocks.py` intercepts OCI provider calls (`get_services`, `get_images`, `get_availability_domains`). `src/` is on `sys.path` in every test file.
+`tests/mocks.py` intercepts OCI provider calls (`get_services`, `get_images`, `get_availability_domains`). Both packages are on `sys.path` via `pythonpath` in `pyproject.toml` — no manual `sys.path` manipulation needed in test files.
 
 ### Documentation Conventions
 
@@ -171,9 +173,9 @@ def create_resource_name(self, suffix: str) -> str:
 
 ## Dependencies
 
-- **Pulumi**: 3.204.0
-- **pulumi_oci**: 3.9.0
-- **Python**: 3.8+
+- **Pulumi**: 3.219.0
+- **pulumi-oci**: 3.16.0
+- **Python**: 3.8+ (ruff target); pyright checks at 3.12
 - **Type checking**: pyright
 - **Testing**: pytest
 

@@ -5,14 +5,13 @@
 `set_mocks()` **must** be called before importing any infrastructure module, or the OCI provider won't be intercepted.
 
 ```python
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
 from tests.mocks import set_mocks
 set_mocks()  # ← BEFORE infrastructure imports
 
-from providers.oci.network import Vcn  # ← AFTER
+from cloudspells.blocks.vcn.network import Vcn  # ← AFTER
 ```
+
+Both packages are on `sys.path` via `pythonpath` in `pyproject.toml` — no manual `sys.path` manipulation needed.
 
 ## mocks.py — what's mocked
 

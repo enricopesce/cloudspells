@@ -2,12 +2,12 @@
 
 **Stop configuring infrastructure. Start deploying architectures.**
 
-[![CI](https://github.com/enricopesce/ociblocks/actions/workflows/ci.yml/badge.svg)](https://github.com/enricopesce/ociblocks/actions/workflows/ci.yml)
+[![CI](https://github.com/enricopesce/cloudspells/actions/workflows/ci.yml/badge.svg)](https://github.com/enricopesce/cloudspells/actions/workflows/ci.yml)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/github/license/enricopesce/ociblocks)](LICENSE)
+[![License](https://img.shields.io/github/license/enricopesce/cloudspells)](LICENSE)
 [![Pulumi 3.x](https://img.shields.io/badge/pulumi-3.x-blueviolet)](https://www.pulumi.com/)
 [![OCI](https://img.shields.io/badge/cloud-OCI-red)](https://www.oracle.com/cloud/)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/enricopesce/ociblocks/issues?q=is%3Aissue+is%3Aopen+label%3Agood-first-issue)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/enricopesce/cloudspells/issues?q=is%3Aissue+is%3Aopen+label%3Agood-first-issue)
 
 > **Alpha — API is stabilising; expect changes between minor versions.**
 
@@ -46,8 +46,8 @@ pip install cloudspells-oci    # OCI spells (installs cloudspells-core automatic
 For local development from source:
 
 ```bash
-git clone https://github.com/enricopesce/ociblocks.git
-cd ociblocks
+git clone https://github.com/enricopesce/cloudspells.git
+cd cloudspells
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
@@ -63,7 +63,7 @@ from cloudspells.providers.oci.network import Vcn
 cfg = Config()
 vcn = Vcn(
     name="lab",
-    compartment_id=cfg.compartment_id,
+    compartment_id=cfg.require("compartment_ocid"),
 )
 
 vcn.export()
@@ -84,7 +84,8 @@ from cloudspells.providers.oci.roles import INTERNET_EDGE
 from cloudspells.providers.oci.volume import VolumeSpec
 
 cfg = Config()
-vcn = Vcn(name="lab", compartment_id=cfg.compartment_id)
+compartment_id = cfg.require("compartment_ocid")
+vcn = Vcn(name="lab", compartment_id=compartment_id)
 
 # Declare what this VM is — rules are generated from the role
 web_nsg = Nsg(
@@ -92,13 +93,13 @@ web_nsg = Nsg(
     role=INTERNET_EDGE,
     ports=[HTTP, HTTPS, SSH],
     vcn=vcn,
-    compartment_id=cfg.compartment_id,
+    compartment_id=compartment_id,
 )
 
 # nsg= infers subnet=SUBNET_PUBLIC from the INTERNET_EDGE role
 web_server = ComputeInstance(
     name="web-server",
-    compartment_id=cfg.compartment_id,
+    compartment_id=compartment_id,
     vcn=vcn,
     ssh_public_key=ssh_key,
     nsg=web_nsg,
@@ -125,24 +126,25 @@ from cloudspells.providers.oci.roles import APP_SERVER, DATABASE, INTERNET_EDGE
 from cloudspells.providers.oci.volume import VolumeSpec
 
 cfg = Config()
-vcn = Vcn(name="lab", compartment_id=cfg.compartment_id, cidr_block="10.0.0.0/16")
+compartment_id = cfg.require("compartment_ocid")
+vcn = Vcn(name="lab", compartment_id=compartment_id, cidr_block="10.0.0.0/16")
 
 # Declare security posture via roles — no manual rule writing
-lb_nsg  = Nsg("load-balancer", role=INTERNET_EDGE, ports=[HTTP, HTTPS, SSH], vcn=vcn, compartment_id=cfg.compartment_id)
-web_nsg = Nsg("web-backend",   role=APP_SERVER,     vcn=vcn, compartment_id=cfg.compartment_id)
-db_nsg  = Nsg("database",      role=DATABASE,        vcn=vcn, compartment_id=cfg.compartment_id)
+lb_nsg  = Nsg("load-balancer", role=INTERNET_EDGE, ports=[HTTP, HTTPS, SSH], vcn=vcn, compartment_id=compartment_id)
+web_nsg = Nsg("web-backend",   role=APP_SERVER,     vcn=vcn, compartment_id=compartment_id)
+db_nsg  = Nsg("database",      role=DATABASE,        vcn=vcn, compartment_id=compartment_id)
 
 # One line per hop generates bilateral NSG rules + Security List rules
 lb_nsg.serves(web_nsg, port=app_port)   # LB → web: app port + SSH mgmt
 web_nsg.serves(db_nsg, port=db_port)   # web → DB: db port + SSH mgmt
 
 # Subnet tier inferred from role — no explicit subnet= parameter
-load_balancer = ComputeInstance("load-balancer", compartment_id=cfg.compartment_id, vcn=vcn, nsg=lb_nsg)
-web_backend_1 = ComputeInstance("web-backend-1", compartment_id=cfg.compartment_id, vcn=vcn, nsg=web_nsg)
-web_backend_2 = ComputeInstance("web-backend-2", compartment_id=cfg.compartment_id, vcn=vcn, nsg=web_nsg)
-db_1 = ComputeInstance("db-1", compartment_id=cfg.compartment_id, vcn=vcn, nsg=db_nsg,
+load_balancer = ComputeInstance("load-balancer", compartment_id=compartment_id, vcn=vcn, nsg=lb_nsg)
+web_backend_1 = ComputeInstance("web-backend-1", compartment_id=compartment_id, vcn=vcn, nsg=web_nsg)
+web_backend_2 = ComputeInstance("web-backend-2", compartment_id=compartment_id, vcn=vcn, nsg=web_nsg)
+db_1 = ComputeInstance("db-1", compartment_id=compartment_id, vcn=vcn, nsg=db_nsg,
                         volumes=[VolumeSpec(size_in_gbs=200, label="data", vpus_per_gb=VolumeSpec.PERF_HIGH)])
-db_2 = ComputeInstance("db-2", compartment_id=cfg.compartment_id, vcn=vcn, nsg=db_nsg,
+db_2 = ComputeInstance("db-2", compartment_id=compartment_id, vcn=vcn, nsg=db_nsg,
                         volumes=[VolumeSpec(size_in_gbs=200, label="data", vpus_per_gb=VolumeSpec.PERF_HIGH)])
 ```
 
@@ -243,8 +245,8 @@ pip install cloudspells-oci
 For local development from source:
 
 ```bash
-git clone https://github.com/enricopesce/ociblocks.git
-cd ociblocks
+git clone https://github.com/enricopesce/cloudspells.git
+cd cloudspells
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
