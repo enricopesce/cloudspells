@@ -44,6 +44,9 @@ nav:
   - Concepts:
     - Design Philosophy: concepts/design.md
     - Network Topology: concepts/network-topology.md
+  - Reference:
+    - VCN Architecture: reference/vcn-architecture.md
+    - OKE Architecture: reference/oke-architecture.md
   - API Reference:
     - Core:
       - api/core/base.md
