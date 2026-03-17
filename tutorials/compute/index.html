@@ -2053,7 +2053,7 @@ pulumi config set compartment_ocid ocid1.compartment.oc1..aaaa...
 <h2 id="step-2-walk-through-the-code">Step 2 — Walk through the code</h2>
 <p>Open <code>examples/compute/__main__.py</code>. It has three logical steps.</p>
 <h3 id="2a-create-the-vcn">2a. Create the VCN</h3>
-<pre><code class="language-python">from providers.oci.network import Vcn
+<pre><code class="language-python">from cloudspells.providers.oci.network import Vcn
 
 vcn = Vcn(
     name=&quot;lab&quot;,
@@ -2062,8 +2062,8 @@ vcn = Vcn(
 </code></pre>
 <p>A fully-wired 4-tier VCN. No further network configuration is needed.</p>
 <h3 id="2b-attach-a-role-with-an-nsg">2b. Attach a role with an NSG</h3>
-<pre><code class="language-python">from providers.oci.nsg import HTTP, HTTPS, SSH, Nsg
-from providers.oci.roles import INTERNET_EDGE
+<pre><code class="language-python">from cloudspells.providers.oci.nsg import HTTP, HTTPS, SSH, Nsg
+from cloudspells.providers.oci.roles import INTERNET_EDGE
 
 web_nsg = Nsg(
     &quot;web-server&quot;,
@@ -2075,8 +2075,8 @@ web_nsg = Nsg(
 </code></pre>
 <p><code>INTERNET_EDGE</code> is a semantic role constant. It tells CloudSpells that this resource lives in the <strong>public subnet</strong> and communicates directly with the internet. CloudSpells automatically adds ICMP path-MTU rules in both directions — you only declare the application ports.</p>
 <h3 id="2c-create-the-compute-instance">2c. Create the compute instance</h3>
-<pre><code class="language-python">from providers.oci.compute import ComputeInstance
-from providers.oci.volume import VolumeSpec
+<pre><code class="language-python">from cloudspells.providers.oci.compute import ComputeInstance
+from cloudspells.providers.oci.volume import VolumeSpec
 
 web_server = ComputeInstance(
     name=&quot;web-server&quot;,

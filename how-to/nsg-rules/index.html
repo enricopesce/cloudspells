@@ -2013,8 +2013,8 @@
 </tr>
 </tbody>
 </table>
-<pre><code class="language-python">from providers.oci.nsg import Nsg, HTTP, HTTPS, SSH
-from providers.oci.roles import INTERNET_EDGE, APP_SERVER, DATABASE
+<pre><code class="language-python">from cloudspells.providers.oci.nsg import Nsg, HTTP, HTTPS, SSH
+from cloudspells.providers.oci.roles import INTERNET_EDGE, APP_SERVER, DATABASE
 
 lb_nsg  = Nsg(&quot;load-balancer&quot;, role=INTERNET_EDGE, ports=[HTTP, HTTPS],
                vcn=vcn, compartment_id=compartment_id)
@@ -2053,19 +2053,19 @@ web_nsg.serves(db_nsg, port=6379, with_ssh=False)
 <p>A two-tier relationship (LB → app server) requires four NSG rules and potentially four security list rules. Writing them individually is tedious and error-prone — one missing rule causes a silent connectivity failure. <code>serves()</code> generates all required rules from the relationship intent.</p>
 <hr />
 <h2 id="port-constants">Port constants</h2>
-<pre><code class="language-python">from providers.oci.nsg import SSH, HTTP, HTTPS, POSTGRES, MYSQL, ORACLE_DB, REDIS, KAFKA, NFS
+<pre><code class="language-python">from cloudspells.providers.oci.nsg import SSH, HTTP, HTTPS, POSTGRES, MYSQL, ORACLE_DB, REDIS, KAFKA, NFS
 
 # SSH=22, HTTP=80, HTTPS=443, POSTGRES=5432, MYSQL=3306
 # ORACLE_DB=1521, REDIS=6379, KAFKA=9092, NFS=2049
 </code></pre>
 <p>Or construct a custom port:</p>
-<pre><code class="language-python">from providers.oci.nsg import tcp_port
+<pre><code class="language-python">from cloudspells.providers.oci.nsg import tcp_port
 my_port = tcp_port(8443)
 </code></pre>
 <hr />
 <h2 id="attaching-nsgs-to-instances">Attaching NSGs to instances</h2>
 <p>Pass the NSG to <code>ComputeInstance</code> via <code>nsg=</code>. The subnet is inferred from the role:</p>
-<pre><code class="language-python">from providers.oci.compute import ComputeInstance
+<pre><code class="language-python">from cloudspells.providers.oci.compute import ComputeInstance
 
 web = ComputeInstance(
     name=&quot;web&quot;,
@@ -2076,9 +2076,9 @@ web = ComputeInstance(
 </code></pre>
 <hr />
 <h2 id="full-three-tier-example">Full three-tier example</h2>
-<pre><code class="language-python">from providers.oci.nsg import Nsg, HTTP, HTTPS, SSH, POSTGRES
-from providers.oci.roles import INTERNET_EDGE, APP_SERVER, DATABASE
-from providers.oci.compute import ComputeInstance
+<pre><code class="language-python">from cloudspells.providers.oci.nsg import Nsg, HTTP, HTTPS, SSH, POSTGRES
+from cloudspells.providers.oci.roles import INTERNET_EDGE, APP_SERVER, DATABASE
+from cloudspells.providers.oci.compute import ComputeInstance
 
 # ── NSGs ──────────────────────────────────────────────────────────────────────
 
@@ -2118,8 +2118,8 @@ db  = ComputeInstance(&quot;db&quot;,  compartment_id=compartment_id, vcn=vcn, n
 <hr />
 <h2 id="custom-roles">Custom roles</h2>
 <p>If a predefined role does not match your use-case, compose one from <code>Role</code>:</p>
-<pre><code class="language-python">from providers.oci.roles import Role
-from providers.oci.network import SUBNET_PRIVATE
+<pre><code class="language-python">from cloudspells.providers.oci.roles import Role
+from cloudspells.providers.oci.network import SUBNET_PRIVATE
 
 # Private-tier proxy — internet + service egress, SSH delivered via Bastion
 proxy_role = Role(
@@ -2172,7 +2172,7 @@ proxy_nsg = Nsg(&quot;proxy&quot;, role=proxy_role, vcn=vcn, compartment_id=comp
 </tr>
 </tbody>
 </table>
-<pre><code class="language-python">from providers.oci.nsg import INTERNET
+<pre><code class="language-python">from cloudspells.providers.oci.nsg import INTERNET
 
 # Allow inbound HTTPS from any IP
 my_nsg.allow_from_cidr(&quot;https-in&quot;, HTTPS, INTERNET)

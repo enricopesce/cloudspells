@@ -2038,8 +2038,8 @@ management_subnet_id       ocid1.subnet.oc1...
 <p>These outputs are consumed automatically when another stack references this VCN via <code>VcnRef.from_stack_reference()</code>.</p>
 <h2 id="the-code-behind-it">The code behind it</h2>
 <p>The entire <code>examples/vcn/__main__.py</code> is:</p>
-<pre><code class="language-python">from core import Config
-from providers.oci.network import Vcn
+<pre><code class="language-python">from cloudspells.core import Config
+from cloudspells.providers.oci.network import Vcn
 
 config = Config()
 compartment_id = config.require(&quot;compartment_ocid&quot;)

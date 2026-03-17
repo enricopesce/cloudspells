@@ -2090,8 +2090,8 @@ user_data_encoded = base64.b64encode(user_data_script.encode()).decode()
 </code></pre>
 <p>The load balancer health check polls <code>/health</code> on port 80. Instances that fail health checks are removed from the rotation.</p>
 <h3 id="2b-create-the-vcn-and-workload">2b. Create the VCN and workload</h3>
-<pre><code class="language-python">from providers.oci.network import Vcn
-from providers.oci.autoscale import ScalableWorkload
+<pre><code class="language-python">from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.autoscale import ScalableWorkload
 
 vcn = Vcn(
     name=&quot;scalable&quot;,
@@ -2205,7 +2205,7 @@ curl http://$LB_IP/
 <h2 id="ssh-access-to-pool-members">SSH access to pool members</h2>
 <p>Pool instances are in the private subnet and have no public IP. Use the OCI Bastion service or a jump host in the public subnet.</p>
 <p>If you need direct SSH access during development, add a bastion to the same stack:</p>
-<pre><code class="language-python">from providers.oci.bastion import Bastion
+<pre><code class="language-python">from cloudspells.providers.oci.bastion import Bastion
 
 bastion = Bastion(
     name=&quot;mgmt&quot;,

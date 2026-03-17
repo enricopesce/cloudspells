@@ -1998,11 +1998,11 @@
 <hr />
 <h2 id="add-a-bastion-to-a-stack">Add a Bastion to a stack</h2>
 <p>Declare the <code>Bastion</code> spell <strong>after</strong> the instance so the VCN is already finalised and the private subnet exists:</p>
-<pre><code class="language-python">from providers.oci.bastion import Bastion
-from providers.oci.compute import ComputeInstance
-from providers.oci.network import Vcn
-from providers.oci.nsg import Nsg
-from providers.oci.roles import APP_SERVER
+<pre><code class="language-python">from cloudspells.providers.oci.bastion import Bastion
+from cloudspells.providers.oci.compute import ComputeInstance
+from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.nsg import Nsg
+from cloudspells.providers.oci.roles import APP_SERVER
 
 vcn = Vcn(&quot;lab&quot;, compartment_id=compartment_id)
 

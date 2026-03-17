@@ -1934,8 +1934,8 @@
 <h2 id="step-1-create-the-vcn-stack">Step 1 — Create the VCN stack</h2>
 <p>Deploy the VCN standalone so it exports all its subnet OCIDs and CIDRs:</p>
 <pre><code class="language-python"># platform/vcn/__main__.py
-from core import Config
-from providers.oci.network import Vcn
+from cloudspells.core import Config
+from cloudspells.providers.oci.network import Vcn
 
 config = Config()
 vcn = Vcn(
@@ -1971,9 +1971,9 @@ pulumi up
 <hr />
 <h2 id="step-2-reference-the-vcn-from-a-service-stack">Step 2 — Reference the VCN from a service stack</h2>
 <pre><code class="language-python"># services/app/__main__.py
-from core import Config
-from providers.oci.network import VcnRef
-from providers.oci.compute import ComputeInstance
+from cloudspells.core import Config
+from cloudspells.providers.oci.network import VcnRef
+from cloudspells.providers.oci.compute import ComputeInstance
 
 config = Config()
 compartment_id = config.require(&quot;compartment_ocid&quot;)

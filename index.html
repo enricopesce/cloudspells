@@ -1885,11 +1885,11 @@
 <li><strong>Not a Terraform replacement.</strong> CloudSpells is the opposite of a thin API wrapper. Terraform and raw Pulumi give you every knob and let you wire everything yourself; CloudSpells makes the hard decisions for you so you cannot misconfigure them.</li>
 </ul>
 <h2 id="quick-start">Quick start</h2>
-<pre><code class="language-python">from core import Config
-from providers.oci.network import Vcn
-from providers.oci.compute import ComputeInstance
-from providers.oci.nsg import Nsg, HTTP, HTTPS, SSH
-from providers.oci.roles import INTERNET_EDGE
+<pre><code class="language-python">from cloudspells.core import Config
+from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.compute import ComputeInstance
+from cloudspells.providers.oci.nsg import Nsg, HTTP, HTTPS, SSH
+from cloudspells.providers.oci.roles import INTERNET_EDGE
 
 config = Config()
 compartment_id = config.require(&quot;compartment_ocid&quot;)

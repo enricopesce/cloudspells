@@ -657,6 +657,24 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#the-nsg-security-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      The NSG security model
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attaching-lb_nsg-to-a-kubernetes-load-balancer-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      Attaching lb_nsg to a Kubernetes Load Balancer service
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#why-workers-and-pods-share-the-private-subnet" class="md-nav__link">
     <span class="md-ellipsis">
       Why workers and pods share the private subnet
@@ -698,9 +716,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#default-configuration-reference" class="md-nav__link">
+  <a href="#required-configuration-reference" class="md-nav__link">
     <span class="md-ellipsis">
-      Default configuration reference
+      Required configuration reference
     </span>
   </a>
   
@@ -1926,6 +1944,24 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#the-nsg-security-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      The NSG security model
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attaching-lb_nsg-to-a-kubernetes-load-balancer-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      Attaching lb_nsg to a Kubernetes Load Balancer service
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#why-workers-and-pods-share-the-private-subnet" class="md-nav__link">
     <span class="md-ellipsis">
       Why workers and pods share the private subnet
@@ -1967,9 +2003,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#default-configuration-reference" class="md-nav__link">
+  <a href="#required-configuration-reference" class="md-nav__link">
     <span class="md-ellipsis">
-      Default configuration reference
+      Required configuration reference
     </span>
   </a>
   
@@ -2028,22 +2064,25 @@
    ▼
 ┌────────────────────────────────────────────────────┐
 │ Public subnet  ← Internet Gateway                  │
-│  OKE API endpoint + OCI Load Balancers             │
+│  OKE API endpoint [api_nsg]                        │
+│  OCI Load Balancers [lb_nsg]                       │
 └────────────────────────────────────────────────────┘
-          │ kubelet / NodePort / kube-proxy
+          │ kubelet (10250) / NodePort / kube-proxy
           ▼
 ┌────────────────────────────────────────────────────┐
 │ Private subnet  ← NAT GW + Service GW              │
-│  Worker node VNICs + Pod IPs (VCN-native CNI)      │
+│  Worker VNICs [worker_nsg]                         │
+│  Pod VNICs [pod_nsg]  (VCN-native CNI)             │
 │  Nodes spread across all Availability Domains      │
 └────────────────────────────────────────────────────┘
 </code></pre>
-<p><strong>What gets created:</strong> 1 VCN (4 subnets + 3 gateways), 1 OKE BASIC_CLUSTER, 1 node pool spread across all ADs, all required security list rules.</p>
+<p><strong>What gets created:</strong> 1 VCN (4 subnets + 3 gateways), 1 OKE BASIC_CLUSTER, 1 node pool spread across all ADs, 4 NSGs with 36 NSG rules, all required security list rules.</p>
 <hr />
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li>Completed <a href="../../getting-started/installation/">Installation</a></li>
 <li>OCI compartment OCID at hand</li>
+<li>OKE-compatible node image OCID (OCI Console → Marketplace → Oracle Linux image for OKE)</li>
 <li><code>kubectl</code> installed locally</li>
 </ul>
 <hr />
@@ -2052,48 +2091,110 @@
 
 pulumi stack init dev
 pulumi config set compartment_ocid ocid1.compartment.oc1..aaaa...
+pulumi config set node_image_id    ocid1.image.oc1..aaaa...
 </code></pre>
-<p>All other values have sensible defaults (shown below). Override only what you need:</p>
-<pre><code class="language-bash"># Optional overrides
-pulumi config set kubernetes_version v1.32.1
-pulumi config set node_shape VM.Standard.A1.Flex   # ARM — cost-effective
-pulumi config set oke_min_nodes 2
-pulumi config set oke_ocpus 2
+<p>Additional values with defaults — override only what you need:</p>
+<pre><code class="language-bash">pulumi config set kubernetes_version v1.32.1
+pulumi config set node_shape        VM.Standard.A1.Flex   # ARM — cost-effective
+pulumi config set oke_min_nodes     3
+pulumi config set oke_ocpus         2
 pulumi config set oke_memory_in_gbs 12
 </code></pre>
 <hr />
 <h2 id="step-2-walk-through-the-code">Step 2 — Walk through the code</h2>
 <p>Open <code>examples/oke/__main__.py</code>.</p>
-<pre><code class="language-python">from providers.oci.network import Vcn
-from providers.oci.kubernetes import OkeCluster
+<pre><code class="language-python">from cloudspells.core import Config
+from cloudspells.providers.oci.kubernetes import OkeCluster
+from cloudspells.providers.oci.network import Vcn
 
-vcn = Vcn(
-    name=&quot;lab&quot;,
-    compartment_id=compartment_id,
-)
+config = Config()
+compartment_id    = config.require(&quot;compartment_ocid&quot;)
+node_shape        = config.require(&quot;node_shape&quot;)
+kubernetes_version = config.require(&quot;kubernetes_version&quot;)
+node_image_id     = config.require(&quot;node_image_id&quot;)
+oke_min_nodes     = config.require_int(&quot;oke_min_nodes&quot;)
+oke_ocpus         = config.require_float(&quot;oke_ocpus&quot;)
+oke_memory_in_gbs = config.require_float(&quot;oke_memory_in_gbs&quot;)
+
+vcn = Vcn(name=&quot;lab&quot;, compartment_id=compartment_id)
 
 oke = OkeCluster(
     name=&quot;okeinfra&quot;,
     compartment_id=compartment_id,
     vcn=vcn,
     kubernetes_version=kubernetes_version,
+    image=node_image_id,
     shape=node_shape,
-    memory_in_gbs=oke_memory_in_gbs,
     min_nodes=oke_min_nodes,
     ocpus=oke_ocpus,
+    memory_in_gbs=oke_memory_in_gbs,
+    display_name=&quot;infra&quot;,
 )
+
+vcn.export()
+oke.export()
+
+# Write kubeconfig to the example directory for isolated kubectl access
+oke.create_kubeconfig(&quot;kubeconfig&quot;)
 </code></pre>
 <p><code>OkeCluster</code> handles all the complexity:</p>
 <ul>
-<li>Adds security list rules for the Kubernetes control plane (port 6443), kubelet (10250), NodePort range, kube-proxy, and ICMP</li>
-<li>Places the API endpoint in the public subnet and worker nodes in the private subnet</li>
+<li>Adds 24 security list rules covering the Kubernetes control plane (6443), kubelet (10250), NodePort range (30000-32767), kube-proxy (10256), and ICMP path-MTU</li>
+<li>Creates 4 NSGs (<code>api_nsg</code>, <code>lb_nsg</code>, <code>worker_nsg</code>, <code>pod_nsg</code>) with 36 VNIC-level rules for fine-grained segmentation</li>
+<li>Places the API endpoint in the public subnet and worker/pod VNICs in the private subnet</li>
 <li>Configures <code>OCI_VCN_IP_NATIVE</code> CNI so every pod gets a real VCN subnet IP</li>
 <li>Spreads nodes across all Availability Domains automatically</li>
 <li>Calls <code>vcn.finalize_network()</code> to materialise subnets and security lists</li>
 </ul>
+<h3 id="the-nsg-security-model">The NSG security model</h3>
+<p>Workers and pods share the private subnet CIDR. Four NSGs segment them at the VNIC level:</p>
+<table>
+<thead>
+<tr>
+<th>NSG</th>
+<th>Attached to</th>
+<th>What it controls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>api_nsg</code></td>
+<td>Kubernetes API endpoint VNIC</td>
+<td>Who may reach the API server</td>
+</tr>
+<tr>
+<td><code>lb_nsg</code></td>
+<td>OCI Load Balancer VNICs</td>
+<td>Internet → LB, LB → workers</td>
+</tr>
+<tr>
+<td><code>worker_nsg</code></td>
+<td>Every worker node VNIC</td>
+<td>kubelet, NodePort, node-to-node</td>
+</tr>
+<tr>
+<td><code>pod_nsg</code></td>
+<td>Every pod VNIC (OCI CNI)</td>
+<td>Pod east-west, webhooks, egress</td>
+</tr>
+</tbody>
+</table>
+<h3 id="attaching-lb_nsg-to-a-kubernetes-load-balancer-service">Attaching <code>lb_nsg</code> to a Kubernetes Load Balancer service</h3>
+<p>When you create a <code>Service</code> of type <code>LoadBalancer</code>, add the NSG via annotation so the OCI Cloud Controller Manager attaches it:</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    oci.oraclecloud.com/security-group-ids: &quot;&lt;okeinfra_lb_nsg_id&gt;&quot;
+spec:
+  type: LoadBalancer
+</code></pre>
+<p>Get the OCID with:</p>
+<pre><code class="language-bash">pulumi stack output okeinfra_lb_nsg_id
+</code></pre>
 <h3 id="why-workers-and-pods-share-the-private-subnet">Why workers and pods share the private subnet</h3>
-<p>With VCN-native CNI, each running pod gets a real VCN subnet IP. The private subnet (which has NAT) is used instead of the secure subnet (Service Gateway only) so pods can initiate outbound HTTPS connections — required for any workload calling an external API, image registry, or monitoring service.</p>
-<p>Use Kubernetes <strong>NetworkPolicy</strong> for pod-to-pod isolation; OCI security lists cannot distinguish pod IPs from worker IPs within the same CIDR.</p>
+<p>With VCN-native CNI, each running pod gets a real VCN subnet IP. The private subnet (which has NAT) is used instead of the secure subnet (Service Gateway only) so pods can initiate outbound HTTPS connections — required for image pulls and workloads calling external APIs.</p>
+<p>Security lists cannot distinguish pod IPs from worker IPs within the same CIDR. NSGs operate at the VNIC level and carry a separate ID per VNIC — this is why the four-NSG model exists. Use Kubernetes <strong>NetworkPolicy</strong> for pod-to-pod isolation within the cluster.</p>
 <hr />
 <h2 id="step-3-deploy">Step 3 — Deploy</h2>
 <pre><code class="language-bash">pulumi preview   # verify the plan
@@ -2102,10 +2203,14 @@ pulumi up
 <p>OKE cluster creation takes 8–15 minutes.</p>
 <hr />
 <h2 id="step-4-configure-kubectl">Step 4 — Configure kubectl</h2>
+<p>The example writes a kubeconfig to <code>examples/oke/kubeconfig</code> automatically. Use it without touching the system kubeconfig:</p>
+<pre><code class="language-bash">KUBECONFIG=./kubeconfig kubectl get nodes
+</code></pre>
+<p>Or generate via the OCI CLI pointing at the stack output:</p>
 <pre><code class="language-bash">oci ce cluster create-kubeconfig \
-    --cluster-id $(pulumi stack output oke_cluster_id) \
+    --cluster-id $(pulumi stack output okeinfra_cluster_id) \
     --file ~/.kube/config \
-    --region $(pulumi stack output region) \
+    --region &lt;your-region&gt; \
     --token-version 2.0.0
 
 kubectl get nodes
@@ -2115,7 +2220,7 @@ kubectl get nodes
 <h2 id="step-5-inspect-outputs">Step 5 — Inspect outputs</h2>
 <pre><code class="language-bash">pulumi stack output
 </code></pre>
-<p>Key outputs:</p>
+<p>Key outputs (prefix <code>okeinfra_</code> matches the <code>name="okeinfra"</code> argument):</p>
 <table>
 <thead>
 <tr>
@@ -2125,69 +2230,87 @@ kubectl get nodes
 </thead>
 <tbody>
 <tr>
-<td><code>oke_cluster_id</code></td>
+<td><code>okeinfra_cluster_id</code></td>
 <td>OKE cluster OCID</td>
 </tr>
 <tr>
-<td><code>oke_node_pool_id</code></td>
-<td>Node pool OCID</td>
+<td><code>okeinfra_kubernetes_version</code></td>
+<td>Kubernetes version deployed</td>
+</tr>
+<tr>
+<td><code>okeinfra_lb_nsg_id</code></td>
+<td><code>lb_nsg</code> OCID — use in <code>oci.oraclecloud.com/security-group-ids</code> annotation</td>
 </tr>
 <tr>
 <td><code>private_subnet_id</code></td>
-<td>Private subnet (worker nodes and pods)</td>
+<td>Private subnet OCID (worker nodes and pods)</td>
 </tr>
 <tr>
 <td><code>public_subnet_id</code></td>
-<td>Public subnet (API endpoint, load balancers)</td>
+<td>Public subnet OCID (API endpoint, load balancers)</td>
 </tr>
 </tbody>
 </table>
 <hr />
-<h2 id="default-configuration-reference">Default configuration reference</h2>
+<h2 id="required-configuration-reference">Required configuration reference</h2>
 <table>
 <thead>
 <tr>
 <th>Parameter</th>
+<th>Required</th>
 <th>Default</th>
 <th>Notes</th>
 </tr>
 </thead>
 <tbody>
 <tr>
+<td><code>compartment_ocid</code></td>
+<td>yes</td>
+<td>—</td>
+<td>OCI compartment OCID</td>
+</tr>
+<tr>
+<td><code>node_image_id</code></td>
+<td>yes</td>
+<td>—</td>
+<td>OKE-compatible Oracle Linux image OCID</td>
+</tr>
+<tr>
 <td><code>kubernetes_version</code></td>
-<td><code>v1.32.1</code></td>
-<td>Check OCI console for latest supported version</td>
+<td>yes</td>
+<td>—</td>
+<td>e.g. <code>v1.32.1</code> — check OCI console for supported versions</td>
 </tr>
 <tr>
 <td><code>node_shape</code></td>
-<td><code>VM.Standard.A1.Flex</code></td>
-<td>ARM; use <code>VM.Standard.E4.Flex</code> for x86</td>
+<td>yes</td>
+<td>—</td>
+<td>e.g. <code>VM.Standard.A1.Flex</code> (ARM) or <code>VM.Standard.E4.Flex</code> (x86)</td>
 </tr>
 <tr>
 <td><code>oke_min_nodes</code></td>
-<td><code>2</code></td>
-<td>Minimum node count (spread across ADs)</td>
+<td>yes</td>
+<td>—</td>
+<td>Worker node count (spread evenly across ADs)</td>
 </tr>
 <tr>
 <td><code>oke_ocpus</code></td>
-<td><code>2</code></td>
+<td>yes</td>
+<td>—</td>
 <td>OCPUs per node</td>
 </tr>
 <tr>
 <td><code>oke_memory_in_gbs</code></td>
-<td><code>12</code></td>
-<td>Memory per node in GB</td>
-</tr>
-<tr>
-<td><code>vcn_cidr_block</code></td>
-<td><code>10.0.0.0/16</code></td>
-<td>Larger CIDRs accommodate more pods</td>
+<td>yes</td>
+<td>—</td>
+<td>RAM in GiB per node</td>
 </tr>
 </tbody>
 </table>
 <hr />
 <h2 id="cidr-sizing-note">CIDR sizing note</h2>
 <p>With VCN-native CNI, a 100-node cluster with 30 pods per node consumes ~3 000 IPs in the private subnet. The default <code>/16</code> VCN gives the private tier a <code>/17</code> (32 766 usable IPs), which is sufficient for very large clusters. For smaller deployments a <code>/18</code> or <code>/20</code> VCN is fine.</p>
+<p>See <a href="../../reference/vcn-architecture/#cidr-sizing-guide">VCN Architecture → CIDR sizing guide</a> for a full sizing table.</p>
 <hr />
 <h2 id="teardown">Teardown</h2>
 <pre><code class="language-bash">pulumi destroy
@@ -2195,8 +2318,9 @@ kubectl get nodes
 <hr />
 <h2 id="whats-next">What's next</h2>
 <ul>
+<li><a href="../../reference/oke-architecture/">OKE Architecture reference →</a> — full NSG rule tables, traffic flows, port reference</li>
 <li><a href="../autoscale/">Deploy a scalable workload →</a> — load-balanced instance pool with CPU autoscaling</li>
-<li><a href="../../how-to/vcnref/">Use VcnRef to share this network →</a> — deploy the OKE cluster in a dedicated stack and reference the network from application stacks</li>
+<li><a href="../../how-to/vcnref/">Use VcnRef to share this network →</a> — deploy OKE in a dedicated stack and reference the network from application stacks</li>
 </ul>
 
 
