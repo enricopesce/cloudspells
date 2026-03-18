@@ -3391,7 +3391,7 @@ combo = ComputeInstance(&quot;app&quot;, ..., nsg_ids=[web_nsg.id, db_nsg.id])
 
 
 <h3 id="cloudspells.providers.oci.nsg.SVC_CIDR" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">SVC_CIDR</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">get_services</span><span class="p">()</span><span class="o">.</span><span class="n">services</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">cidr_block</span></code>
+            <code class="highlight language-python"><span class="n">SVC_CIDR</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">get_services_output</span><span class="p">()</span><span class="o">.</span><span class="n">services</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">svcs</span><span class="p">:</span> <span class="nb">next</span><span class="p">((</span><span class="n">s</span><span class="o">.</span><span class="n">cidr_block</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">svcs</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">cidr_block</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;all-&#39;</span><span class="p">)))</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
@@ -3403,6 +3403,8 @@ combo = ComputeInstance(&quot;app&quot;, ..., nsg_ids=[web_nsg.id, db_nsg.id])
     <div class="doc doc-contents ">
 
         <p>OCI All-Services CIDR block used for Service Gateway egress rules.</p>
+<p>Resolved lazily at plan time via <code>oci.core.get_services_output()</code>.
+Type is <code>pulumi.Output[str]</code>; passes directly to any <code>pulumi.Input[str]</code> field.</p>
     </div>
 
 </div>
@@ -3785,13 +3787,7 @@ db2  = ComputeInstance(&quot;db-2&quot;,  ..., nsg_ids=[db_nsg.id])
 
               <details class="quote">
                 <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/nsg.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">302</span>
-<span class="normal">303</span>
-<span class="normal">304</span>
-<span class="normal">305</span>
-<span class="normal">306</span>
-<span class="normal">307</span>
-<span class="normal">308</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">308</span>
 <span class="normal">309</span>
 <span class="normal">310</span>
 <span class="normal">311</span>
@@ -4454,7 +4450,13 @@ db2  = ComputeInstance(&quot;db-2&quot;,  ..., nsg_ids=[db_nsg.id])
 <span class="normal">968</span>
 <span class="normal">969</span>
 <span class="normal">970</span>
-<span class="normal">971</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Nsg</span><span class="p">(</span><span class="n">BaseResource</span><span class="p">):</span>
+<span class="normal">971</span>
+<span class="normal">972</span>
+<span class="normal">973</span>
+<span class="normal">974</span>
+<span class="normal">975</span>
+<span class="normal">976</span>
+<span class="normal">977</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Nsg</span><span class="p">(</span><span class="n">BaseResource</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A single named Network Security Group with caller-defined rules.</span>
 
 <span class="sd">    Represents the security policy for one **service role** (e.g. all web</span>
@@ -5310,13 +5312,7 @@ web_nsg.serves(db_nsg, port=5432)
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/nsg.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">369</span>
-<span class="normal">370</span>
-<span class="normal">371</span>
-<span class="normal">372</span>
-<span class="normal">373</span>
-<span class="normal">374</span>
-<span class="normal">375</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">375</span>
 <span class="normal">376</span>
 <span class="normal">377</span>
 <span class="normal">378</span>
@@ -5384,7 +5380,13 @@ web_nsg.serves(db_nsg, port=5432)
 <span class="normal">440</span>
 <span class="normal">441</span>
 <span class="normal">442</span>
-<span class="normal">443</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<span class="normal">443</span>
+<span class="normal">444</span>
+<span class="normal">445</span>
+<span class="normal">446</span>
+<span class="normal">447</span>
+<span class="normal">448</span>
+<span class="normal">449</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">vcn</span><span class="p">:</span> <span class="n">Vcn</span> <span class="o">|</span> <span class="n">VcnRef</span><span class="p">,</span>
@@ -5570,13 +5572,7 @@ lb_nsg.serves(web_nsg, port=443, with_ssh=False)  # HTTPS only
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/nsg.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">553</span>
-<span class="normal">554</span>
-<span class="normal">555</span>
-<span class="normal">556</span>
-<span class="normal">557</span>
-<span class="normal">558</span>
-<span class="normal">559</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">559</span>
 <span class="normal">560</span>
 <span class="normal">561</span>
 <span class="normal">562</span>
@@ -5659,7 +5655,13 @@ lb_nsg.serves(web_nsg, port=443, with_ssh=False)  # HTTPS only
 <span class="normal">639</span>
 <span class="normal">640</span>
 <span class="normal">641</span>
-<span class="normal">642</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">serves</span><span class="p">(</span>
+<span class="normal">642</span>
+<span class="normal">643</span>
+<span class="normal">644</span>
+<span class="normal">645</span>
+<span class="normal">646</span>
+<span class="normal">647</span>
+<span class="normal">648</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">serves</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">target</span><span class="p">:</span> <span class="n">Nsg</span><span class="p">,</span>
     <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
@@ -5988,13 +5990,7 @@ or <code>tcp_port_range</code>.</p>
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/nsg.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">648</span>
-<span class="normal">649</span>
-<span class="normal">650</span>
-<span class="normal">651</span>
-<span class="normal">652</span>
-<span class="normal">653</span>
-<span class="normal">654</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">654</span>
 <span class="normal">655</span>
 <span class="normal">656</span>
 <span class="normal">657</span>
@@ -6054,7 +6050,13 @@ or <code>tcp_port_range</code>.</p>
 <span class="normal">711</span>
 <span class="normal">712</span>
 <span class="normal">713</span>
-<span class="normal">714</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_rule</span><span class="p">(</span>
+<span class="normal">714</span>
+<span class="normal">715</span>
+<span class="normal">716</span>
+<span class="normal">717</span>
+<span class="normal">718</span>
+<span class="normal">719</span>
+<span class="normal">720</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_rule</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
@@ -6256,13 +6258,7 @@ db_nsg.allow_from_cidr(&quot;db-peered&quot;,   POSTGRES, &quot;172.16.0.0/12&qu
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/nsg.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">720</span>
-<span class="normal">721</span>
-<span class="normal">722</span>
-<span class="normal">723</span>
-<span class="normal">724</span>
-<span class="normal">725</span>
-<span class="normal">726</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">726</span>
 <span class="normal">727</span>
 <span class="normal">728</span>
 <span class="normal">729</span>
@@ -6294,7 +6290,13 @@ db_nsg.allow_from_cidr(&quot;db-peered&quot;,   POSTGRES, &quot;172.16.0.0/12&qu
 <span class="normal">755</span>
 <span class="normal">756</span>
 <span class="normal">757</span>
-<span class="normal">758</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">allow_from_cidr</span><span class="p">(</span>
+<span class="normal">758</span>
+<span class="normal">759</span>
+<span class="normal">760</span>
+<span class="normal">761</span>
+<span class="normal">762</span>
+<span class="normal">763</span>
+<span class="normal">764</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">allow_from_cidr</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
@@ -6467,13 +6469,7 @@ db_nsg.allow_from_nsg(&quot;db-in&quot;,  web_nsg, POSTGRES)
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/nsg.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">760</span>
-<span class="normal">761</span>
-<span class="normal">762</span>
-<span class="normal">763</span>
-<span class="normal">764</span>
-<span class="normal">765</span>
-<span class="normal">766</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">766</span>
 <span class="normal">767</span>
 <span class="normal">768</span>
 <span class="normal">769</span>
@@ -6504,7 +6500,13 @@ db_nsg.allow_from_nsg(&quot;db-in&quot;,  web_nsg, POSTGRES)
 <span class="normal">794</span>
 <span class="normal">795</span>
 <span class="normal">796</span>
-<span class="normal">797</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">allow_from_nsg</span><span class="p">(</span>
+<span class="normal">797</span>
+<span class="normal">798</span>
+<span class="normal">799</span>
+<span class="normal">800</span>
+<span class="normal">801</span>
+<span class="normal">802</span>
+<span class="normal">803</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">allow_from_nsg</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">source</span><span class="p">:</span> <span class="n">Nsg</span><span class="p">,</span>
@@ -6676,13 +6678,7 @@ web_nsg.allow_to_nsg(&quot;ssh-db-out&quot;, db_nsg,  SSH)
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/nsg.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">799</span>
-<span class="normal">800</span>
-<span class="normal">801</span>
-<span class="normal">802</span>
-<span class="normal">803</span>
-<span class="normal">804</span>
-<span class="normal">805</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">805</span>
 <span class="normal">806</span>
 <span class="normal">807</span>
 <span class="normal">808</span>
@@ -6713,7 +6709,13 @@ web_nsg.allow_to_nsg(&quot;ssh-db-out&quot;, db_nsg,  SSH)
 <span class="normal">833</span>
 <span class="normal">834</span>
 <span class="normal">835</span>
-<span class="normal">836</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">allow_to_nsg</span><span class="p">(</span>
+<span class="normal">836</span>
+<span class="normal">837</span>
+<span class="normal">838</span>
+<span class="normal">839</span>
+<span class="normal">840</span>
+<span class="normal">841</span>
+<span class="normal">842</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">allow_to_nsg</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">destination</span><span class="p">:</span> <span class="n">Nsg</span><span class="p">,</span>
@@ -6853,13 +6855,7 @@ db_nsg.allow_to_services(&quot;svc-out&quot;)
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/nsg.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">838</span>
-<span class="normal">839</span>
-<span class="normal">840</span>
-<span class="normal">841</span>
-<span class="normal">842</span>
-<span class="normal">843</span>
-<span class="normal">844</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">844</span>
 <span class="normal">845</span>
 <span class="normal">846</span>
 <span class="normal">847</span>
@@ -6885,7 +6881,13 @@ db_nsg.allow_to_services(&quot;svc-out&quot;)
 <span class="normal">867</span>
 <span class="normal">868</span>
 <span class="normal">869</span>
-<span class="normal">870</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">allow_to_services</span><span class="p">(</span>
+<span class="normal">870</span>
+<span class="normal">871</span>
+<span class="normal">872</span>
+<span class="normal">873</span>
+<span class="normal">874</span>
+<span class="normal">875</span>
+<span class="normal">876</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">allow_to_services</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
@@ -7035,13 +7037,7 @@ web_nsg.allow_to_cidr(&quot;peered-out&quot;,  &quot;10.1.0.0/16&quot;)
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/nsg.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">872</span>
-<span class="normal">873</span>
-<span class="normal">874</span>
-<span class="normal">875</span>
-<span class="normal">876</span>
-<span class="normal">877</span>
-<span class="normal">878</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">878</span>
 <span class="normal">879</span>
 <span class="normal">880</span>
 <span class="normal">881</span>
@@ -7068,7 +7064,13 @@ web_nsg.allow_to_cidr(&quot;peered-out&quot;,  &quot;10.1.0.0/16&quot;)
 <span class="normal">902</span>
 <span class="normal">903</span>
 <span class="normal">904</span>
-<span class="normal">905</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">allow_to_cidr</span><span class="p">(</span>
+<span class="normal">905</span>
+<span class="normal">906</span>
+<span class="normal">907</span>
+<span class="normal">908</span>
+<span class="normal">909</span>
+<span class="normal">910</span>
+<span class="normal">911</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">allow_to_cidr</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">cidr</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -7202,13 +7204,7 @@ for TCP connections.</p>
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/nsg.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">907</span>
-<span class="normal">908</span>
-<span class="normal">909</span>
-<span class="normal">910</span>
-<span class="normal">911</span>
-<span class="normal">912</span>
-<span class="normal">913</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">913</span>
 <span class="normal">914</span>
 <span class="normal">915</span>
 <span class="normal">916</span>
@@ -7233,7 +7229,13 @@ for TCP connections.</p>
 <span class="normal">935</span>
 <span class="normal">936</span>
 <span class="normal">937</span>
-<span class="normal">938</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">allow_icmp_path_mtu_in</span><span class="p">(</span>
+<span class="normal">938</span>
+<span class="normal">939</span>
+<span class="normal">940</span>
+<span class="normal">941</span>
+<span class="normal">942</span>
+<span class="normal">943</span>
+<span class="normal">944</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">allow_icmp_path_mtu_in</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
@@ -7365,13 +7367,7 @@ for TCP connections.</p>
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/nsg.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">940</span>
-<span class="normal">941</span>
-<span class="normal">942</span>
-<span class="normal">943</span>
-<span class="normal">944</span>
-<span class="normal">945</span>
-<span class="normal">946</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">946</span>
 <span class="normal">947</span>
 <span class="normal">948</span>
 <span class="normal">949</span>
@@ -7396,7 +7392,13 @@ for TCP connections.</p>
 <span class="normal">968</span>
 <span class="normal">969</span>
 <span class="normal">970</span>
-<span class="normal">971</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">allow_icmp_path_mtu_out</span><span class="p">(</span>
+<span class="normal">971</span>
+<span class="normal">972</span>
+<span class="normal">973</span>
+<span class="normal">974</span>
+<span class="normal">975</span>
+<span class="normal">976</span>
+<span class="normal">977</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">allow_icmp_path_mtu_out</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
@@ -7528,13 +7530,7 @@ for TCP connections.</p>
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/nsg.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">158</span>
 <span class="normal">159</span>
 <span class="normal">160</span>
 <span class="normal">161</span>
@@ -7548,7 +7544,13 @@ for TCP connections.</p>
 <span class="normal">169</span>
 <span class="normal">170</span>
 <span class="normal">171</span>
-<span class="normal">172</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">tcp_port</span><span class="p">(</span><span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">NetworkSecurityGroupSecurityRuleTcpOptionsArgs</span><span class="p">:</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">tcp_port</span><span class="p">(</span><span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">NetworkSecurityGroupSecurityRuleTcpOptionsArgs</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return TCP options restricting traffic to a single destination port.</span>
 
 <span class="sd">    Args:</span>
@@ -7676,13 +7678,7 @@ for TCP connections.</p>
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/nsg.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">175</span>
-<span class="normal">176</span>
-<span class="normal">177</span>
-<span class="normal">178</span>
-<span class="normal">179</span>
-<span class="normal">180</span>
-<span class="normal">181</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">181</span>
 <span class="normal">182</span>
 <span class="normal">183</span>
 <span class="normal">184</span>
@@ -7697,7 +7693,13 @@ for TCP connections.</p>
 <span class="normal">193</span>
 <span class="normal">194</span>
 <span class="normal">195</span>
-<span class="normal">196</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">tcp_port_range</span><span class="p">(</span><span class="n">min_port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">max_port</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">NetworkSecurityGroupSecurityRuleTcpOptionsArgs</span><span class="p">:</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">tcp_port_range</span><span class="p">(</span><span class="n">min_port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">max_port</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">NetworkSecurityGroupSecurityRuleTcpOptionsArgs</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return TCP options restricting traffic to a destination port range.</span>
 
 <span class="sd">    Args:</span>
@@ -7816,13 +7818,7 @@ for TCP connections.</p>
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/nsg.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">199</span>
-<span class="normal">200</span>
-<span class="normal">201</span>
-<span class="normal">202</span>
-<span class="normal">203</span>
-<span class="normal">204</span>
-<span class="normal">205</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">205</span>
 <span class="normal">206</span>
 <span class="normal">207</span>
 <span class="normal">208</span>
@@ -7834,7 +7830,13 @@ for TCP connections.</p>
 <span class="normal">214</span>
 <span class="normal">215</span>
 <span class="normal">216</span>
-<span class="normal">217</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">icmp_opts</span><span class="p">(</span><span class="n">icmp_type</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">icmp_code</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">NetworkSecurityGroupSecurityRuleIcmpOptionsArgs</span><span class="p">:</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">icmp_opts</span><span class="p">(</span><span class="n">icmp_type</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">icmp_code</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">NetworkSecurityGroupSecurityRuleIcmpOptionsArgs</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ICMP options for a specific type/code pair.</span>
 
 <span class="sd">    Args:</span>
