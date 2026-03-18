@@ -10,7 +10,7 @@ from tests.mocks import set_mocks
 set_mocks()
 
 # Import AFTER mocks are set
-from cloudspells.blocks.vcn.network import Vcn
+from cloudspells.providers.oci.network import Vcn
 
 
 class TestVcn(unittest.TestCase):

@@ -8,7 +8,7 @@
 from tests.mocks import set_mocks
 set_mocks()  # ← BEFORE infrastructure imports
 
-from cloudspells.blocks.vcn.network import Vcn  # ← AFTER
+from cloudspells.providers.oci.network import Vcn  # ← AFTER
 ```
 
 Both packages are on `sys.path` via `pythonpath` in `pyproject.toml` — no manual `sys.path` manipulation needed.

@@ -10,8 +10,8 @@ from tests.mocks import set_mocks
 set_mocks()
 
 # Import AFTER mocks are set
-from cloudspells.blocks.oke.cluster import OkeCluster
-from cloudspells.blocks.vcn.network import Vcn
+from cloudspells.providers.oci.kubernetes import OkeCluster
+from cloudspells.providers.oci.network import Vcn
 
 
 class TestOkeCluster(unittest.TestCase):

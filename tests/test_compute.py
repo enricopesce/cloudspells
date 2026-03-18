@@ -8,9 +8,9 @@ from tests.mocks import set_mocks
 
 set_mocks()
 
-from cloudspells.blocks.compute.instance import ComputeInstance
-from cloudspells.blocks.compute.volume import VolumeSpec
-from cloudspells.blocks.vcn.network import Vcn
+from cloudspells.providers.oci.compute import ComputeInstance
+from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.volume import VolumeSpec
 
 
 class TestVolumeSpec(unittest.TestCase):

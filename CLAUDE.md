@@ -88,12 +88,11 @@ Always activate the virtualenv before running tests or pyright: `source .venv/bi
 ```
 packages/cloudspells-core/src/cloudspells/core/abstractions/   — cloud-neutral interfaces (AbstractNetwork, AbstractScalableWorkload, …)
 packages/cloudspells-oci/src/cloudspells/providers/<cloud>/    — provider implementations (oci/ today; future: aws/, gcp/, …)
-packages/cloudspells-oci/src/cloudspells/blocks/               — backward-compat re-export shims only (do not add logic here)
 ```
 
 New provider = implement the abstractions under a new `packages/cloudspells-<cloud>/src/cloudspells/providers/<cloud>/` directory. No changes to core or spells needed.
 
-**New code imports from `cloudspells.providers.oci` directly.** `cloudspells.blocks` exists only so old imports keep working.
+**New code imports from `cloudspells.providers.oci` directly.**
 
 ### Core (`packages/cloudspells-core/src/cloudspells/core/`)
 
@@ -130,7 +129,7 @@ Subnet CIDR accessors return `pulumi.Input[str]` (not `str`) so they work for bo
 from tests.mocks import set_mocks
 set_mocks()
 
-from cloudspells.blocks.vcn.network import Vcn  # import after mocks
+from cloudspells.providers.oci.network import Vcn  # import after mocks
 ```
 
 `tests/mocks.py` intercepts OCI provider calls (`get_services`, `get_images`, `get_availability_domains`). Both packages are on `sys.path` via `pythonpath` in `pyproject.toml` — no manual `sys.path` manipulation needed in test files.

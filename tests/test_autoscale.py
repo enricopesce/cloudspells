@@ -10,7 +10,7 @@ from tests.mocks import set_mocks
 set_mocks()
 
 # Import AFTER mocks are set
-from cloudspells.blocks.autoscale.workload import (
+from cloudspells.providers.oci.autoscale import (
     LoadBalancerConfig,
     MetricScalingPolicy,
     ScalableWorkload,
@@ -19,7 +19,7 @@ from cloudspells.blocks.autoscale.workload import (
     ScheduleEntry,
     ScheduleScalingPolicy,
 )
-from cloudspells.blocks.vcn.network import Vcn
+from cloudspells.providers.oci.network import Vcn
 
 
 class TestAutoscaleWorkload(unittest.TestCase):
