@@ -107,8 +107,14 @@ ICMP: str = "1"
 ALL: str = "all"
 """OCI wildcard accepting all protocols."""
 
-SVC_CIDR: str = oci.core.get_services().services[0].cidr_block
-"""OCI All-Services CIDR block used for Service Gateway egress rules."""
+SVC_CIDR: pulumi.Output[str] = oci.core.get_services_output().services.apply(
+    lambda svcs: next(s.cidr_block for s in svcs if s.cidr_block.startswith("all-"))
+)
+"""OCI All-Services CIDR block used for Service Gateway egress rules.
+
+Resolved lazily at plan time via `oci.core.get_services_output()`.
+Type is `pulumi.Output[str]`; passes directly to any `pulumi.Input[str]` field.
+"""
 
 INTERNET: str = "0.0.0.0/0"
 """CIDR representing the public internet.  Use with `Nsg.allow_from_cidr`

@@ -16,7 +16,6 @@ from cloudspells.providers.oci.network import (  # noqa: F401
     VcnRef,
     _SecurityListRef,
     _SubnetRef,
-    get_resources_by_tag,
 )
 
 __all__ = [
@@ -28,5 +27,4 @@ __all__ = [
     "SubnetTier",
     "Vcn",
     "VcnRef",
-    "get_resources_by_tag",
 ]

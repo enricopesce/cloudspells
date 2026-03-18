@@ -312,6 +312,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         """
         public_subnet_cidr: pulumi.Input[str] = self.vcn.get_public_subnet_cidr()
         private_subnet_cidr: pulumi.Input[str] = self.vcn.get_private_subnet_cidr()
+        svc_cidr: pulumi.Output[str] = self.vcn._svc_cidr_block
         backend_port = self.load_balancer_config.backend_port
 
         # Public subnet ingress rules (Load Balancer)
@@ -371,7 +372,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             oci.core.SecurityListEgressSecurityRuleArgs(
                 description="Instances access OCI services for monitoring, telemetry, and updates",
                 protocol="6",  # TCP
-                destination=oci.core.get_services().services[0].cidr_block,
+                destination=svc_cidr,
                 destination_type="SERVICE_CIDR_BLOCK",
                 tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
                     min=443,

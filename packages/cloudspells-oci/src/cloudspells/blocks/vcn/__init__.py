@@ -12,7 +12,6 @@ from cloudspells.providers.oci.network import (
     SubnetTier,
     Vcn,
     VcnRef,
-    get_resources_by_tag,
 )
 
 __all__ = [
@@ -23,5 +22,4 @@ __all__ = [
     "SubnetTier",
     "Vcn",
     "VcnRef",
-    "get_resources_by_tag",
 ]

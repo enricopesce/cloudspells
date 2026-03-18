@@ -51,7 +51,6 @@ from .network import (
     SubnetTier,
     Vcn,
     VcnRef,
-    get_resources_by_tag,
 )
 from .network_logging import VcnFlowLogs
 from .nsg import ALL, ICMP, SVC_CIDR, TCP, UDP, Nsg, icmp_opts, tcp_port, tcp_port_range
@@ -69,7 +68,6 @@ __all__ = [
     "SUBNET_PRIVATE",
     "SUBNET_SECURE",
     "SUBNET_MANAGEMENT",
-    "get_resources_by_tag",
     # Security — NSG
     "Nsg",
     "TCP",

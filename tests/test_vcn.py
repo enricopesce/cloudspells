@@ -213,6 +213,7 @@ class TestVcn(unittest.TestCase):
         def check_log_group(log_group_id):
             self.assertIsNotNone(log_group_id, "Log group must be created")
 
+        assert vcn.flow_logs is not None
         return vcn.flow_logs.log_group_id.apply(check_log_group)
 
     def test_flow_logs_not_created_before_finalize(self):
@@ -223,6 +224,164 @@ class TestVcn(unittest.TestCase):
             flow_logs=True,
         )
         self.assertIsNone(vcn.flow_logs, "flow_logs must be None before finalize_network")
+
+    # ------------------------------------------------------------------
+    # Baseline ICMP tests
+    # ------------------------------------------------------------------
+
+    @pulumi.runtime.test
+    def test_baseline_pmtud_rule_on_all_tiers(self):
+        """ICMP Type 3 Code 4 (PMTUD) must appear in all four security lists."""
+        vcn = Vcn(name="test-vcn", compartment_id="ocid1.compartment.test")
+        vcn.finalize_network()
+
+        def has_pmtud(rules):
+            return any(
+                r.get("icmp_options", {}).get("type") == 3 and r.get("icmp_options", {}).get("code") == 4
+                for r in (rules or [])
+            )
+
+        def check_ingress(args):
+            pub, priv, sec, mgmt = args
+            for tier, rules in (("public", pub), ("private", priv), ("secure", sec), ("management", mgmt)):
+                self.assertTrue(has_pmtud(rules), f"{tier} ingress must have PMTUD rule (Type 3 Code 4)")
+
+        def check_egress(args):
+            pub, priv, sec, mgmt = args
+            for tier, rules in (("public", pub), ("private", priv), ("secure", sec), ("management", mgmt)):
+                self.assertTrue(has_pmtud(rules), f"{tier} egress must have PMTUD rule (Type 3 Code 4)")
+
+        ingress = pulumi.Output.all(
+            vcn.public_security_list.ingress_security_rules,
+            vcn.private_security_list.ingress_security_rules,
+            vcn.secure_security_list.ingress_security_rules,
+            vcn.management_security_list.ingress_security_rules,
+        ).apply(check_ingress)
+
+        egress = pulumi.Output.all(
+            vcn.public_security_list.egress_security_rules,
+            vcn.private_security_list.egress_security_rules,
+            vcn.secure_security_list.egress_security_rules,
+            vcn.management_security_list.egress_security_rules,
+        ).apply(check_egress)
+
+        return pulumi.Output.all(ingress, egress)
+
+    @pulumi.runtime.test
+    def test_baseline_icmp_public_extras(self):
+        """Public security list must have ICMP Type 3 all-codes and Type 8 ingress rules."""
+        vcn = Vcn(name="test-vcn", compartment_id="ocid1.compartment.test")
+        vcn.finalize_network()
+
+        def check(rules):
+            types = {r.get("icmp_options", {}).get("type") for r in (rules or [])}
+            self.assertIn(3, types, "Public ingress must have ICMP Type 3 (unreachable)")
+            self.assertIn(8, types, "Public ingress must have ICMP Type 8 (echo request)")
+
+        return vcn.public_security_list.ingress_security_rules.apply(check)
+
+    @pulumi.runtime.test
+    def test_baseline_icmp_not_on_private_egress_type8(self):
+        """ICMP Type 8 (echo request) must NOT appear in private/secure/management security lists."""
+        vcn = Vcn(name="test-vcn", compartment_id="ocid1.compartment.test")
+        vcn.finalize_network()
+
+        def check(args):
+            priv, sec, mgmt = args
+            for tier, rules in (("private", priv), ("secure", sec), ("management", mgmt)):
+                types = {r.get("icmp_options", {}).get("type") for r in (rules or [])}
+                self.assertNotIn(8, types, f"{tier} ingress must not have ICMP Type 8")
+
+        return pulumi.Output.all(
+            vcn.private_security_list.ingress_security_rules,
+            vcn.secure_security_list.ingress_security_rules,
+            vcn.management_security_list.ingress_security_rules,
+        ).apply(check)
+
+    # ------------------------------------------------------------------
+    # DRG tests
+    # ------------------------------------------------------------------
+
+    def test_drg_not_created_by_default(self):
+        """Test that DRG is None when drg=False (default)."""
+        vcn = Vcn(
+            name="test-vcn",
+            compartment_id="ocid1.compartment.test",
+        )
+        self.assertIsNone(vcn.drg, "drg must be None when drg=False")
+        self.assertIsNone(vcn.drg_attachment, "drg_attachment must be None when drg=False")
+
+    @pulumi.runtime.test
+    def test_drg_created_when_enabled(self):
+        """Test that DRG and its VCN attachment are created when drg=True."""
+        vcn = Vcn(
+            name="test-vcn",
+            compartment_id="ocid1.compartment.test",
+            drg=True,
+        )
+
+        self.assertIsNotNone(vcn.drg, "drg resource must be set when drg=True")
+        self.assertIsNotNone(vcn.drg_attachment, "drg_attachment must be set when drg=True")
+
+        def check_drg(args):
+            drg_id, attach_id = args
+            self.assertIsNotNone(drg_id, "DRG must have an ID")
+            self.assertIsNotNone(attach_id, "DRG attachment must have an ID")
+
+        assert vcn.drg is not None
+        assert vcn.drg_attachment is not None
+        return pulumi.Output.all(
+            vcn.drg.id,
+            vcn.drg_attachment.id,
+        ).apply(check_drg)
+
+    @pulumi.runtime.test
+    def test_drg_on_premise_routes_injected(self):
+        """Test that on-premise CIDRs are added to private, secure, and management route tables."""
+        on_premise_cidrs = ["10.10.0.0/16", "192.168.1.0/24"]
+        vcn = Vcn(
+            name="test-vcn",
+            compartment_id="ocid1.compartment.test",
+            drg=True,
+            on_premise_cidrs=on_premise_cidrs,
+        )
+
+        def check_private_routes(route_rules):
+            destinations = [r.get("destination") for r in route_rules]
+            for cidr in on_premise_cidrs:
+                self.assertIn(cidr, destinations, f"Private route table must contain DRG route for {cidr}")
+
+        def check_secure_routes(route_rules):
+            destinations = [r.get("destination") for r in route_rules]
+            for cidr in on_premise_cidrs:
+                self.assertIn(cidr, destinations, f"Secure route table must contain DRG route for {cidr}")
+
+        def check_management_routes(route_rules):
+            destinations = [r.get("destination") for r in route_rules]
+            for cidr in on_premise_cidrs:
+                self.assertIn(cidr, destinations, f"Management route table must contain DRG route for {cidr}")
+
+        def check_public_routes(route_rules):
+            destinations = [r.get("destination") for r in route_rules]
+            for cidr in on_premise_cidrs:
+                self.assertNotIn(cidr, destinations, f"Public route table must NOT contain DRG route for {cidr}")
+
+        private_check = vcn.private_route_table.route_rules.apply(check_private_routes)
+        secure_check = vcn.secure_route_table.route_rules.apply(check_secure_routes)
+        management_check = vcn.management_route_table.route_rules.apply(check_management_routes)
+        public_check = vcn.public_route_table.route_rules.apply(check_public_routes)
+
+        return pulumi.Output.all(private_check, secure_check, management_check, public_check)
+
+    def test_drg_on_premise_cidrs_ignored_when_drg_disabled(self):
+        """Test that on_premise_cidrs has no effect when drg=False."""
+        vcn = Vcn(
+            name="test-vcn",
+            compartment_id="ocid1.compartment.test",
+            drg=False,
+            on_premise_cidrs=["10.10.0.0/16"],
+        )
+        self.assertIsNone(vcn.drg, "drg must be None when drg=False even with on_premise_cidrs set")
 
 
 if __name__ == "__main__":
