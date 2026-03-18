@@ -2934,6 +2934,7 @@
 <p><code>OkeCluster</code> enforces security at two complementary OCI layers.</p>
 <h3 id="layer-1-security-lists-subnet-boundary">Layer 1 — Security lists (subnet boundary)</h3>
 <p>Security lists enforce coarse-grained, subnet-to-subnet routing policy. They are evaluated on every packet entering or leaving a subnet. <code>OkeCluster</code> calls <code>vcn.add_security_list_rules()</code> with a complete set of public and private subnet rules before calling <code>vcn.finalize_network()</code>.</p>
+<p>In addition to the OKE-specific rules documented below, <code>finalize_network</code> always injects a set of <strong>VCN baseline rules</strong> before materialising the security lists. These include ICMP Path-MTU Discovery rules on all four tiers and a TCP ingress rule permitting the private subnet to initiate connections into the secure subnet. See <a href="../vcn-architecture/#baseline-security-rules">Baseline security rules</a> in the VCN Architecture reference for the full list.</p>
 <p>Because the security list is shared (one list per subnet, accumulated from all spells), the rules written here establish the minimum necessary subnet-level connectivity. Within-subnet traffic (pod-to-pod, node-to-node) that stays inside the same CIDR block is <strong>not</strong> governed by security lists — it is governed exclusively by NSGs.</p>
 <h3 id="layer-2-nsgs-vnic-boundary">Layer 2 — NSGs (VNIC boundary)</h3>
 <p>NSGs enforce fine-grained, component-to-component rules. Each NSG is attached to a specific set of VNICs. Rules reference other NSGs as source or destination (not CIDRs), so they remain correct even when IP addresses change.</p>
@@ -3711,6 +3712,7 @@ OkeCluster.__init__()
   │                                   private_ingress, private_egress)
   │
   ├─ vcn.finalize_network()
+  │    ├─ _inject_baseline_rules()   ← PMTUD (all tiers) + private→secure TCP
   │    ├─ _create_security_lists()   ← materialises all accumulated rules
   │    └─ _create_subnets()          ← creates 4 subnets
   │

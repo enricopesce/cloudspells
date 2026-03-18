@@ -1121,6 +1121,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#default-security-list-neutralisation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Default security list neutralisation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#security-list-lifecycle-builder-pattern" class="md-nav__link">
     <span class="md-ellipsis">
       Security list lifecycle (builder pattern)
@@ -1152,6 +1161,15 @@
   <a href="#finalize_network" class="md-nav__link">
     <span class="md-ellipsis">
       finalize_network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#baseline-security-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      Baseline security rules
     </span>
   </a>
   
@@ -2238,6 +2256,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#default-security-list-neutralisation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Default security list neutralisation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#security-list-lifecycle-builder-pattern" class="md-nav__link">
     <span class="md-ellipsis">
       Security list lifecycle (builder pattern)
@@ -2269,6 +2296,15 @@
   <a href="#finalize_network" class="md-nav__link">
     <span class="md-ellipsis">
       finalize_network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#baseline-security-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      Baseline security rules
     </span>
   </a>
   
@@ -2385,6 +2421,11 @@
 <td><code>oci.core.Vcn</code></td>
 <td>1</td>
 <td>The VCN itself</td>
+</tr>
+<tr>
+<td><code>oci.core.DefaultSecurityList</code></td>
+<td>1</td>
+<td>Overrides the VCN built-in default security list with zero rules — see <a href="#default-security-list-neutralisation">Default security list neutralisation</a></td>
 </tr>
 <tr>
 <td><code>oci.core.InternetGateway</code></td>
@@ -2556,7 +2597,7 @@
 <li><strong>Direction:</strong> bidirectional with OCI service plane</li>
 <li><strong>Used by:</strong> private, secure, and management subnets</li>
 <li><strong>Traffic stays within OCI:</strong> packets to Oracle services (OCIR, Object Storage, Monitoring, Logging, Streaming) exit through the service gateway and never traverse the internet, even when the destination is a public IP</li>
-<li><strong>CIDR block:</strong> the <code>all &lt;region&gt; services</code> CIDR block is fetched from <code>oci.core.get_services().services[0]</code> at plan time</li>
+<li><strong>CIDR block:</strong> the <code>all &lt;region&gt; services</code> CIDR block is resolved lazily via <code>oci.core.get_services_output()</code> at plan time — no blocking API call is made during Python construction</li>
 </ul>
 <hr />
 <h2 id="routing">Routing</h2>
@@ -2636,6 +2677,11 @@
 </tbody>
 </table>
 <hr />
+<h2 id="default-security-list-neutralisation">Default security list neutralisation</h2>
+<p>Every OCI VCN ships with a built-in <strong>default security list</strong> that is automatically attached to every subnet. Out of the box this list includes a wide-open egress rule (<code>0.0.0.0/0</code>, all protocols) which would silently permit outbound traffic regardless of the per-tier security lists CloudSpells manages.</p>
+<p><code>Vcn</code> immediately neutralises this list by creating an <code>oci.core.DefaultSecurityList</code> resource that takes ownership of it and sets both its ingress and egress rule sets to empty. The resource is accessible via <code>vcn.default_security_list</code>.</p>
+<p>After neutralisation, only the four per-tier security lists created by <code>finalize_network</code> are in effect. Every subnet operates under a <strong>deny-by-default</strong> whitelist model — a packet is permitted only if a matching rule exists in the subnet's security list (or an attached NSG).</p>
+<hr />
 <h2 id="security-list-lifecycle-builder-pattern">Security list lifecycle (builder pattern)</h2>
 <p>Security lists and subnets are <strong>not</strong> created in <code>Vcn.__init__</code>. They are created only when <code>finalize_network</code> is called. This is deliberate: multiple spells (OKE, Compute, ScalableWorkload) contribute rules to the same security lists, and OCI enforces a hard limit of <strong>5 security lists per subnet</strong>. By using one list per subnet and accumulating all rules before creating it, CloudSpells consumes 1 slot and leaves 4 free for additional services.</p>
 <h3 id="initialisation-sequence">Initialisation sequence</h3>
@@ -2675,6 +2721,66 @@
 <li><code>vcn.management_subnet</code> — <code>oci.core.Subnet</code></li>
 </ul>
 <p>If <code>flow_logs=True</code> was passed to <code>__init__</code>, a <code>VcnFlowLogs</code> component is also created inside <code>finalize_network</code> and accessible via <code>vcn.flow_logs</code>.</p>
+<h3 id="baseline-security-rules">Baseline security rules</h3>
+<p>Before creating the security lists, <code>finalize_network</code> injects a fixed set of baseline rules that are always present regardless of which spells have contributed their own rules.</p>
+<p><strong>Applied to all four tiers (ingress and egress):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Protocol</th>
+<th>Type / Code</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ICMP</td>
+<td>Type 3 Code 4</td>
+<td>Path-MTU Discovery (RFC 1191) — required to prevent silent TCP hangs when payload exceeds the path MTU</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Applied to the public tier only (ingress):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Protocol</th>
+<th>Type / Code</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ICMP</td>
+<td>Type 3 (all codes)</td>
+<td>Destination Unreachable from internet — covers all PMTUD variants and routing failures</td>
+</tr>
+<tr>
+<td>ICMP</td>
+<td>Type 8</td>
+<td>Echo Request (ping) — required by OCI load balancer health-check probes</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Secure-tier segmentation (ingress):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Protocol</th>
+<th>Source</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TCP (all ports)</td>
+<td>Private subnet CIDR</td>
+<td>Only the private (application) tier may initiate connections into the secure (data) tier</td>
+</tr>
+</tbody>
+</table>
+<p>The secure-tier rule establishes the canonical private→secure communication path (app servers → databases) at the security-list layer. All other inbound sources — public subnet, management subnet, internet — are implicitly denied by the deny-by-default model. OCI stateful connection tracking handles return packets; no matching egress rule is required.</p>
+<p>Individual spells and NSGs add port-specific rules on top of this baseline.</p>
 <hr />
 <h2 id="flow-logs-opt-in">Flow logs (opt-in)</h2>
 <p>Pass <code>flow_logs=True</code> to <code>Vcn.__init__</code> to enable VCN Flow Logs for all four subnets. Flow logs capture accepted and rejected traffic at the subnet boundary — useful for network audit, threat detection, and debugging.</p>
@@ -2689,8 +2795,9 @@
 <p>Flow logs are <strong>not enabled by default</strong> — the additional OCI Logging cost may not be justified for all environments.</p>
 <hr />
 <h2 id="vcnref-cross-stack-reference"><code>VcnRef</code> — cross-stack reference</h2>
-<p><code>VcnRef</code> is a read-only handle to a VCN managed by a separate Pulumi stack. It exposes the same interface as <code>Vcn</code> (subnet accessors, security list references, <code>add_security_list_rules</code> as a no-op) so spells that accept <code>Vcn | VcnRef</code> work identically with either.</p>
-<p><strong>When <code>add_security_list_rules</code> is called on a <code>VcnRef</code>:</strong> the call is a no-op and Pulumi emits a warning. Any security rules required by the deployed spells must already exist in the source VCN stack.</p>
+<p><code>VcnRef</code> is a read-only handle to a CloudSpells VCN managed by a separate Pulumi stack. It exposes the same interface as <code>Vcn</code> (subnet accessors, security list references) so spells that accept <code>Vcn | VcnRef</code> work identically with either.</p>
+<p><strong><code>VcnRef</code> is only supported for VCNs created by CloudSpells.</strong> The source stack must export the standard CloudSpells output keys (all emitted automatically by <code>Vcn.export()</code>).</p>
+<p><strong>When <code>add_security_list_rules</code> is called on a <code>VcnRef</code>:</strong> a <code>RuntimeError</code> is raised immediately, listing the rule sets that cannot be applied. Any security rules required by the deployed spells must already exist in the source CloudSpells VCN stack — add them there first, then re-run this stack.</p>
 <h3 id="constructing-a-vcnref-from-a-stack-reference">Constructing a <code>VcnRef</code> from a stack reference</h3>
 <pre><code class="language-python">vcn = VcnRef.from_stack_reference(&quot;acme/networking/prod&quot;)
 </code></pre>
@@ -2777,15 +2884,21 @@
 </tbody>
 </table>
 <h3 id="constructing-a-vcnref-manually">Constructing a <code>VcnRef</code> manually</h3>
-<p>When the source stack does not use CloudSpells:</p>
+<p>When consuming a CloudSpells VCN that does not publish a Pulumi stack reference (e.g. a VCN created by an older CloudSpells deployment without <code>export()</code>), you can construct <code>VcnRef</code> directly with the OCID and CIDR values:</p>
 <pre><code class="language-python">vcn = VcnRef(
     vcn_id=&quot;ocid1.vcn.oc1...&quot;,
+    cidr_block=&quot;10.0.0.0/18&quot;,          # required — raises ValueError if omitted
     public_subnet_id=&quot;ocid1.subnet.oc1...&quot;,
     private_subnet_id=&quot;ocid1.subnet.oc1...&quot;,
-    public_subnet_cidr=&quot;10.0.192.0/19&quot;,
-    private_subnet_cidr=&quot;10.0.0.0/17&quot;,
+    secure_subnet_id=&quot;ocid1.subnet.oc1...&quot;,
+    management_subnet_id=&quot;ocid1.subnet.oc1...&quot;,
+    public_subnet_cidr=&quot;10.0.48.0/21&quot;,
+    private_subnet_cidr=&quot;10.0.0.0/19&quot;,
+    secure_subnet_cidr=&quot;10.0.32.0/20&quot;,
+    management_subnet_cidr=&quot;10.0.56.0/21&quot;,
 )
 </code></pre>
+<p><code>cidr_block</code> is <strong>required</strong>. Omitting it raises <code>ValueError</code> immediately — the constructor will not silently fall back to an incorrect value.</p>
 <hr />
 <h2 id="vcnexport-stack-outputs"><code>Vcn.export()</code> — stack outputs</h2>
 <p>Call <code>export()</code> to publish the canonical VCN outputs. This makes the network consumable by other stacks via <code>VcnRef.from_stack_reference</code>.</p>

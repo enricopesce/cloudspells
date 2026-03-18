@@ -2061,7 +2061,7 @@ pulumi up
 <tr>
 <td><code>add_security_list_rules()</code></td>
 <td>Accumulates rules</td>
-<td>No-op (deliberate)</td>
+<td>Raises <code>RuntimeError</code> (deliberate)</td>
 </tr>
 <tr>
 <td><code>finalize_network()</code></td>
@@ -2076,12 +2076,18 @@ pulumi up
 <tr>
 <td>Usable with spells</td>
 <td>Yes</td>
-<td>Yes</td>
+<td>Yes — with conditions (see below)</td>
 </tr>
 </tbody>
 </table>
-<p><code>VcnRef.add_security_list_rules()</code> is a no-op because <code>VcnRef</code> cannot modify the security lists of a network it does not own. This means <strong>security rules required by spells must already exist in the source VCN stack</strong> — either added there directly or by including the spell in that stack.</p>
-<p>For most use-cases this is fine: the VCN stack provisions baseline rules (SSH, HTTP, HTTPS) and service stacks add application-level NSGs on top.</p>
+<p><code>VcnRef.add_security_list_rules()</code> raises a <code>RuntimeError</code> because <code>VcnRef</code> cannot modify the security lists of a network it does not own. The error message lists the rule sets that were requested so you know exactly what to add.</p>
+<p><strong>This means security rules required by a spell must already exist in the source CloudSpells VCN stack before you deploy that spell against a <code>VcnRef</code>.</strong> The workflow is:</p>
+<ol>
+<li>In the source VCN stack, include the spell you intend to deploy here (even if it is a placeholder), so its rules are written to the security lists.</li>
+<li>Run <code>pulumi up</code> on the source stack.</li>
+<li>Deploy the spell against the <code>VcnRef</code> in this stack.</li>
+</ol>
+<p>In practice this is straightforward: the platform team owns the VCN stack and provisions the baseline security rules; application teams deploy spells against the <code>VcnRef</code> knowing the rules are already in place.</p>
 <hr />
 <h2 id="updating-the-vcn-stack-later">Updating the VCN stack later</h2>
 <p>Because <code>VcnRef</code> only reads exported outputs, changes to the VCN stack (adding new subnets, changing CIDRs) are reflected in service stacks automatically on their next <code>pulumi up</code>. No changes to service stack code are needed.</p>
