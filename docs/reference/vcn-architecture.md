@@ -13,6 +13,7 @@ Complete technical reference for the `Vcn` spell. This page covers the network t
 | Resource type | Count | Notes |
 |---|---|---|
 | `oci.core.Vcn` | 1 | The VCN itself |
+| `oci.core.DefaultSecurityList` | 1 | Overrides the VCN built-in default security list with zero rules — see [Default security list neutralisation](#default-security-list-neutralisation) |
 | `oci.core.InternetGateway` | 1 | Public subnet egress/ingress |
 | `oci.core.NatGateway` | 1 | Private subnet outbound-only internet |
 | `oci.core.ServiceGateway` | 1 | Oracle service plane (OCIR, Monitoring, Logging) |
@@ -98,7 +99,7 @@ Three gateways are created unconditionally for every VCN.
 - **Direction:** bidirectional with OCI service plane
 - **Used by:** private, secure, and management subnets
 - **Traffic stays within OCI:** packets to Oracle services (OCIR, Object Storage, Monitoring, Logging, Streaming) exit through the service gateway and never traverse the internet, even when the destination is a public IP
-- **CIDR block:** the `all <region> services` CIDR block is fetched from `oci.core.get_services().services[0]` at plan time
+- **CIDR block:** the `all <region> services` CIDR block is resolved lazily via `oci.core.get_services_output()` at plan time — no blocking API call is made during Python construction
 
 ---
 
@@ -132,6 +133,16 @@ Each subnet tier has a dedicated route table. The routes are fixed and not confi
 | Destination | Via | Notes |
 |---|---|---|
 | `<services CIDR>` | Service Gateway | Same isolation policy as secure — management agents communicate with OCI control-plane services only |
+
+---
+
+## Default security list neutralisation
+
+Every OCI VCN ships with a built-in **default security list** that is automatically attached to every subnet. Out of the box this list includes a wide-open egress rule (`0.0.0.0/0`, all protocols) which would silently permit outbound traffic regardless of the per-tier security lists CloudSpells manages.
+
+`Vcn` immediately neutralises this list by creating an `oci.core.DefaultSecurityList` resource that takes ownership of it and sets both its ingress and egress rule sets to empty. The resource is accessible via `vcn.default_security_list`.
+
+After neutralisation, only the four per-tier security lists created by `finalize_network` are in effect. Every subnet operates under a **deny-by-default** whitelist model — a packet is permitted only if a matching rule exists in the subnet's security list (or an attached NSG).
 
 ---
 
@@ -187,6 +198,33 @@ Idempotent. Only the first call creates resources. After it returns:
 
 If `flow_logs=True` was passed to `__init__`, a `VcnFlowLogs` component is also created inside `finalize_network` and accessible via `vcn.flow_logs`.
 
+### Baseline security rules
+
+Before creating the security lists, `finalize_network` injects a fixed set of baseline rules that are always present regardless of which spells have contributed their own rules.
+
+**Applied to all four tiers (ingress and egress):**
+
+| Protocol | Type / Code | Description |
+|---|---|---|
+| ICMP | Type 3 Code 4 | Path-MTU Discovery (RFC 1191) — required to prevent silent TCP hangs when payload exceeds the path MTU |
+
+**Applied to the public tier only (ingress):**
+
+| Protocol | Type / Code | Description |
+|---|---|---|
+| ICMP | Type 3 (all codes) | Destination Unreachable from internet — covers all PMTUD variants and routing failures |
+| ICMP | Type 8 | Echo Request (ping) — required by OCI load balancer health-check probes |
+
+**Secure-tier segmentation (ingress):**
+
+| Protocol | Source | Description |
+|---|---|---|
+| TCP (all ports) | Private subnet CIDR | Only the private (application) tier may initiate connections into the secure (data) tier |
+
+The secure-tier rule establishes the canonical private→secure communication path (app servers → databases) at the security-list layer. All other inbound sources — public subnet, management subnet, internet — are implicitly denied by the deny-by-default model. OCI stateful connection tracking handles return packets; no matching egress rule is required.
+
+Individual spells and NSGs add port-specific rules on top of this baseline.
+
 ---
 
 ## Flow logs (opt-in)
@@ -210,9 +248,11 @@ Flow logs are **not enabled by default** — the additional OCI Logging cost may
 
 ## `VcnRef` — cross-stack reference
 
-`VcnRef` is a read-only handle to a VCN managed by a separate Pulumi stack. It exposes the same interface as `Vcn` (subnet accessors, security list references, `add_security_list_rules` as a no-op) so spells that accept `Vcn | VcnRef` work identically with either.
+`VcnRef` is a read-only handle to a CloudSpells VCN managed by a separate Pulumi stack. It exposes the same interface as `Vcn` (subnet accessors, security list references) so spells that accept `Vcn | VcnRef` work identically with either.
 
-**When `add_security_list_rules` is called on a `VcnRef`:** the call is a no-op and Pulumi emits a warning. Any security rules required by the deployed spells must already exist in the source VCN stack.
+**`VcnRef` is only supported for VCNs created by CloudSpells.** The source stack must export the standard CloudSpells output keys (all emitted automatically by `Vcn.export()`).
+
+**When `add_security_list_rules` is called on a `VcnRef`:** a `RuntimeError` is raised immediately, listing the rule sets that cannot be applied. Any security rules required by the deployed spells must already exist in the source CloudSpells VCN stack — add them there first, then re-run this stack.
 
 ### Constructing a `VcnRef` from a stack reference
 
@@ -241,17 +281,24 @@ The source stack must export the following keys (all emitted automatically by `V
 
 ### Constructing a `VcnRef` manually
 
-When the source stack does not use CloudSpells:
+When consuming a CloudSpells VCN that does not publish a Pulumi stack reference (e.g. a VCN created by an older CloudSpells deployment without `export()`), you can construct `VcnRef` directly with the OCID and CIDR values:
 
 ```python
 vcn = VcnRef(
     vcn_id="ocid1.vcn.oc1...",
+    cidr_block="10.0.0.0/18",          # required — raises ValueError if omitted
     public_subnet_id="ocid1.subnet.oc1...",
     private_subnet_id="ocid1.subnet.oc1...",
-    public_subnet_cidr="10.0.192.0/19",
-    private_subnet_cidr="10.0.0.0/17",
+    secure_subnet_id="ocid1.subnet.oc1...",
+    management_subnet_id="ocid1.subnet.oc1...",
+    public_subnet_cidr="10.0.48.0/21",
+    private_subnet_cidr="10.0.0.0/19",
+    secure_subnet_cidr="10.0.32.0/20",
+    management_subnet_cidr="10.0.56.0/21",
 )
 ```
+
+`cidr_block` is **required**. Omitting it raises `ValueError` immediately — the constructor will not silently fall back to an incorrect value.
 
 ---
 

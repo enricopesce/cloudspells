@@ -138,6 +138,8 @@ The total node count (`size`) is divided as evenly as possible across ADs by the
 
 Security lists enforce coarse-grained, subnet-to-subnet routing policy. They are evaluated on every packet entering or leaving a subnet. `OkeCluster` calls `vcn.add_security_list_rules()` with a complete set of public and private subnet rules before calling `vcn.finalize_network()`.
 
+In addition to the OKE-specific rules documented below, `finalize_network` always injects a set of **VCN baseline rules** before materialising the security lists. These include ICMP Path-MTU Discovery rules on all four tiers and a TCP ingress rule permitting the private subnet to initiate connections into the secure subnet. See [Baseline security rules](vcn-architecture.md#baseline-security-rules) in the VCN Architecture reference for the full list.
+
 Because the security list is shared (one list per subnet, accumulated from all spells), the rules written here establish the minimum necessary subnet-level connectivity. Within-subnet traffic (pod-to-pod, node-to-node) that stays inside the same CIDR block is **not** governed by security lists — it is governed exclusively by NSGs.
 
 ### Layer 2 — NSGs (VNIC boundary)
@@ -454,6 +456,7 @@ OkeCluster.__init__()
   │                                   private_ingress, private_egress)
   │
   ├─ vcn.finalize_network()
+  │    ├─ _inject_baseline_rules()   ← PMTUD (all tiers) + private→secure TCP
   │    ├─ _create_security_lists()   ← materialises all accumulated rules
   │    └─ _create_subnets()          ← creates 4 subnets
   │

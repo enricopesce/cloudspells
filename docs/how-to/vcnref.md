@@ -90,14 +90,20 @@ pulumi up
 | | `Vcn` | `VcnRef` |
 |---|-------|---------|
 | Creates network resources | Yes | No |
-| `add_security_list_rules()` | Accumulates rules | No-op (deliberate) |
+| `add_security_list_rules()` | Accumulates rules | Raises `RuntimeError` (deliberate) |
 | `finalize_network()` | Materialises subnets | No-op (deliberate) |
 | Subnet CIDR accessors | Returns computed `Output[str]` | Returns cross-stack `Output[str]` |
-| Usable with spells | Yes | Yes |
+| Usable with spells | Yes | Yes — with conditions (see below) |
 
-`VcnRef.add_security_list_rules()` is a no-op because `VcnRef` cannot modify the security lists of a network it does not own. This means **security rules required by spells must already exist in the source VCN stack** — either added there directly or by including the spell in that stack.
+`VcnRef.add_security_list_rules()` raises a `RuntimeError` because `VcnRef` cannot modify the security lists of a network it does not own. The error message lists the rule sets that were requested so you know exactly what to add.
 
-For most use-cases this is fine: the VCN stack provisions baseline rules (SSH, HTTP, HTTPS) and service stacks add application-level NSGs on top.
+**This means security rules required by a spell must already exist in the source CloudSpells VCN stack before you deploy that spell against a `VcnRef`.** The workflow is:
+
+1. In the source VCN stack, include the spell you intend to deploy here (even if it is a placeholder), so its rules are written to the security lists.
+2. Run `pulumi up` on the source stack.
+3. Deploy the spell against the `VcnRef` in this stack.
+
+In practice this is straightforward: the platform team owns the VCN stack and provisions the baseline security rules; application teams deploy spells against the `VcnRef` knowing the rules are already in place.
 
 ---
 
