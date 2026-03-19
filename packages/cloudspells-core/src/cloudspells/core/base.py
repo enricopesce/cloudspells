@@ -7,14 +7,17 @@ All CloudSpells resource classes (`Vcn`, `OkeCluster`, `ComputeInstance`,
 - **Standardised naming** via `ResourceNamer` —
   all child resources follow the `{stack}-{name}-{suffix}` pattern.
 - **Consistent tagging** via `ResourceTagger` —
-  every resource receives `Name`, `ResourceType`, `Environment`,
-  and `CreatedBy` tags automatically.
+  every resource receives `managed-by`, `spell-type`, `spell-name`,
+  `environment`, `name`, and `resource-type` tags automatically.
+  The `spell-type` is derived from the Pulumi resource type URN so
+  callers never need to supply it explicitly.
 - **SSH key management** — auto-generates RSA 4096-bit key pairs when no
   key is provided, and exports them as Pulumi secrets.
 - **Convenience wrappers** that delegate to the namer and tagger so
   subclasses never import those helpers directly.
 """
 
+import re
 from typing import Any
 
 import pulumi
@@ -22,6 +25,33 @@ import pulumi
 from .helper import Helper
 from .naming import ResourceNamer
 from .tagging import ResourceTagger
+
+
+def _spell_type_from_urn(resource_type: str) -> str:
+    """Derive a kebab-case spell-type tag value from a Pulumi resource type URN.
+
+    Extracts the class-name segment (last `:`-delimited part) and converts
+    it from CamelCase to kebab-case.
+
+    Args:
+        resource_type: Pulumi resource type string in
+            `"custom:namespace:ClassName"` format.
+
+    Returns:
+        Lowercase kebab-case string (e.g. `"vcn-flow-logs"`).
+
+    Example:
+        >>> _spell_type_from_urn("custom:network:VcnFlowLogs")
+        'vcn-flow-logs'
+        >>> _spell_type_from_urn("custom:oke:Cluster")
+        'cluster'
+    """
+    class_name = resource_type.rsplit(":", 1)[-1]
+    # Insert hyphen between a run of uppercase and an uppercase+lowercase pair,
+    # then between a lowercase/digit and the next uppercase letter.
+    s = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1-\2", class_name)
+    s = re.sub(r"([a-z\d])([A-Z])", r"\1-\2", s)
+    return s.lower()
 
 
 class BaseResource(pulumi.ComponentResource):
@@ -98,7 +128,7 @@ class BaseResource(pulumi.ComponentResource):
 
         # Initialize helper classes
         self.namer = ResourceNamer(resolved_stack, name)
-        self.tagger = ResourceTagger(resolved_stack, name)
+        self.tagger = ResourceTagger(resolved_stack, name, _spell_type_from_urn(resource_type))
 
     # ------------------------------------------------------------------
     # Naming helpers

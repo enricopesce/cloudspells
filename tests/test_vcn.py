@@ -240,10 +240,7 @@ class TestVcn(unittest.TestCase):
         vcn.finalize_network()
 
         def check(rules):
-            has_nat = any(
-                r.get("destination") == "0.0.0.0/0" and r.get("protocol") == "all"
-                for r in (rules or [])
-            )
+            has_nat = any(r.get("destination") == "0.0.0.0/0" and r.get("protocol") == "all" for r in (rules or []))
             self.assertTrue(has_nat, "Private egress must have all-protocol rule to 0.0.0.0/0 for NAT gateway")
 
         return vcn.private_security_list.egress_security_rules.apply(check)
@@ -261,10 +258,7 @@ class TestVcn(unittest.TestCase):
         def check(args):
             priv, sec, mgmt = args
             for tier, rules in (("private", priv), ("secure", sec), ("management", mgmt)):
-                has_svc = any(
-                    r.get("destination_type") == "SERVICE_CIDR_BLOCK"
-                    for r in (rules or [])
-                )
+                has_svc = any(r.get("destination_type") == "SERVICE_CIDR_BLOCK" for r in (rules or []))
                 self.assertTrue(has_svc, f"{tier} egress must have SERVICE_CIDR_BLOCK rule for Service Gateway")
 
         return pulumi.Output.all(
@@ -285,10 +279,7 @@ class TestVcn(unittest.TestCase):
         vcn.finalize_network()
 
         def check(rules):
-            has_svc = any(
-                r.get("destination_type") == "SERVICE_CIDR_BLOCK"
-                for r in (rules or [])
-            )
+            has_svc = any(r.get("destination_type") == "SERVICE_CIDR_BLOCK" for r in (rules or []))
             self.assertFalse(has_svc, "Public egress must not have SERVICE_CIDR_BLOCK rule")
 
         return vcn.public_security_list.egress_security_rules.apply(check)
