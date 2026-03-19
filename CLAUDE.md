@@ -29,6 +29,8 @@ When adding or modifying a spell, ask: *can the user deploy this correctly with 
 
 **Never expose a parameter just because the underlying provider resource accepts it.** Parameters that exist only to pass through a low-level option belong in raw Pulumi/Terraform, not here.
 
+**Never auto-discover parameters by querying external APIs at deploy time.** Spells must not call cloud APIs (e.g. "get latest image", "get latest Kubernetes version") to resolve parameters the user did not supply. IaC must be deterministic and reproducible: the same config must produce the same infrastructure on every run. Auto-discovery hides the actual value being deployed, makes plans non-reproducible across runs, and defeats the audit trail that IaC exists to provide. Version and image identifiers are explicit caller inputs — always.
+
 ## Project Overview
 
 CloudSpells is a Python-based infrastructure-as-code framework built on Pulumi that provides high-level, opinionated spells for cloud infrastructure. It is multi-cloud by design: a cloud-neutral abstraction layer sits above provider-specific implementations, starting with OCI. It extends Pulumi's `ComponentResource` model to encapsulate entire reference architectures behind minimal interfaces.
