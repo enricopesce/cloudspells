@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import Any, ClassVar
 
 
 @dataclass
@@ -37,6 +37,12 @@ class VolumeSpec:
             constants `PERF_LOW` (0), `PERF_BALANCED` (10, default),
             `PERF_HIGH` (20), or `PERF_ULTRA` (120).
         is_read_only: Attach the volume read-only.  Defaults to `False`.
+        device: Device path override for the paravirtualized attachment
+            (e.g. `"/dev/oracleoci/oraclevdb"`).  When `None`, OCI assigns
+            the next available device.
+        defined_tags: OCI defined tags applied to the block volume resource,
+            in `{"namespace": {"key": "value"}}` format.  Merged with
+            freeform tags; does not affect `ComputeInstance.defined_tags`.
 
     Class Attributes:
         PERF_LOW: Low-cost tier — 0 VPUs/GB.
@@ -50,16 +56,17 @@ class VolumeSpec:
 
     Example:
         ```python
-        from blocks.compute.volume import VolumeSpec
+        from cloudspells.providers.oci.volume import VolumeSpec
 
         # Default balanced 100 GiB data volume (simplest usage)
         vol = VolumeSpec(size_in_gbs=100)
 
-        # High-performance 500 GiB database volume
+        # High-performance 500 GiB database volume with explicit device path
         db_vol = VolumeSpec(
             size_in_gbs=500,
             label="db",
             vpus_per_gb=VolumeSpec.PERF_HIGH,
+            device="/dev/oracleoci/oraclevdb",
         )
 
         # Read-only 50 GiB reference volume
@@ -79,6 +86,8 @@ class VolumeSpec:
     label: str = "data"
     vpus_per_gb: int = 10  # PERF_BALANCED
     is_read_only: bool = False
+    device: str | None = None
+    defined_tags: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         """Validate field values on construction.

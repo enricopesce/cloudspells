@@ -22,7 +22,8 @@ Exports:
 
 from __future__ import annotations
 
-from typing import Sequence
+import base64
+from typing import Any, Sequence
 
 import pulumi
 import pulumi_oci as oci
@@ -70,6 +71,11 @@ class ComputeInstance(BaseResource, AbstractCompute):
             resources, parallel to `block_volumes`.
         id: `pulumi.Output[str]` of the instance OCID.
         auto_generated_keys: `True` when SSH keys were auto-generated.
+        fault_domain: Fault domain the instance is placed in, or `None`
+            when OCI auto-assigns (default spread behaviour).
+        hostname_label: DNS hostname for the primary VNIC, or `None`.
+        preserve_boot_volume: Whether the boot volume is retained after
+            instance termination.
 
     Usage patterns:
 
@@ -131,6 +137,9 @@ class ComputeInstance(BaseResource, AbstractCompute):
     volume_attachments: list[oci.core.VolumeAttachment]
     id: pulumi.Output[str]
     auto_generated_keys: bool
+    fault_domain: str | None
+    hostname_label: str | None
+    preserve_boot_volume: bool
 
     def __init__(
         self,
@@ -146,9 +155,22 @@ class ComputeInstance(BaseResource, AbstractCompute):
         os_name: str = "oracle",
         subnet: SubnetTier = SUBNET_PRIVATE,
         boot_volume_size_in_gbs: pulumi.Input[int] = 50,
+        boot_volume_vpus_per_gb: int = 10,
         volumes: Sequence[VolumeSpec] | None = None,
         nsg_ids: list[pulumi.Input[str]] | None = None,
         nsg: Nsg | None = None,
+        user_data: str | bytes | None = None,
+        defined_tags: dict[str, Any] | None = None,
+        fault_domain: str | None = None,
+        hostname_label: str | None = None,
+        private_ip: str | None = None,
+        skip_source_dest_check: bool = False,
+        is_pv_encryption_in_transit: bool = False,
+        preserve_boot_volume: bool = False,
+        recovery_action: str | None = None,
+        baseline_ocpu_utilization: str | None = None,
+        dedicated_vm_host_id: str | None = None,
+        capacity_reservation_id: str | None = None,
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
         """Create a compute instance with one or more attached block volumes.
@@ -198,6 +220,47 @@ class ComputeInstance(BaseResource, AbstractCompute):
                 infers `subnet` from `nsg.role.subnet_tier`.  Takes
                 precedence over `subnet` and `nsg_ids` when both are
                 provided.
+            boot_volume_vpus_per_gb: Boot volume performance tier.  Use
+                `0` (low), `10` (balanced, default), `20` (high), or
+                `120` (ultra-high).
+            user_data: Cloud-init script as a plain `str` or `bytes`.
+                CloudSpells base64-encodes it before passing to OCI.  When
+                `None`, no user data is injected.
+            defined_tags: OCI defined tags applied to the instance and all
+                block volumes, in `{"namespace": {"key": "value"}}` format.
+                Per-volume `defined_tags` on `VolumeSpec` are merged on top
+                of this value (volume spec wins on conflict).
+            fault_domain: Explicit fault domain for placement
+                (e.g. `"FAULT-DOMAIN-1"`).  When `None`, OCI auto-assigns
+                and spreads instances across fault domains.
+            hostname_label: DNS hostname registered for the primary VNIC.
+                Must be unique within the subnet.  When `None`, OCI does
+                not assign a hostname.
+            private_ip: Explicit private IP address for the primary VNIC.
+                Must fall within the selected subnet's CIDR.  When `None`,
+                OCI assigns the next available IP.
+            skip_source_dest_check: Disable the source/destination check on
+                the primary VNIC.  Set to `True` for NAT instances or
+                software routers.  Defaults to `False`.
+            is_pv_encryption_in_transit: Encrypt data in transit between
+                the instance and paravirtualized-attached volumes.
+                Defaults to `False`.
+            preserve_boot_volume: Keep the boot volume after the instance
+                is terminated.  Defaults to `False` (boot volume is deleted
+                with the instance).
+            recovery_action: Live-migration recovery action.  Pass
+                `"RESTORE_INSTANCE"` (default OCI behaviour) to restart
+                after host maintenance, or `"STOP_INSTANCE"` to stop
+                instead.  `None` accepts the OCI account default.
+            baseline_ocpu_utilization: Burstable-instance CPU baseline.
+                One of `"BASELINE_1_8"` (12.5 %), `"BASELINE_1_2"` (50 %),
+                or `"BASELINE_1_1"` (100 % — effectively non-burstable).
+                `None` uses a standard (non-burstable) instance.
+            dedicated_vm_host_id: OCID of the dedicated VM host to place
+                this instance on.  When `None`, the instance runs on shared
+                infrastructure.
+            capacity_reservation_id: OCID of the capacity reservation to
+                consume.  When `None`, no reservation is used.
             opts: Pulumi resource options forwarded to the component.
 
         Raises:
@@ -229,6 +292,9 @@ class ComputeInstance(BaseResource, AbstractCompute):
         self.subnet = subnet
         self.image_id = image_id
         self.boot_volume_size_in_gbs = boot_volume_size_in_gbs
+        self.fault_domain = fault_domain
+        self.hostname_label = hostname_label
+        self.preserve_boot_volume = preserve_boot_volume
 
         # Resolve volumes list.
         # None  → one default 100 GiB balanced-performance data volume.
@@ -275,18 +341,33 @@ class ComputeInstance(BaseResource, AbstractCompute):
         ads = oci.identity.get_availability_domains(compartment_id=str(compartment_id))
         availability_domain = ads.availability_domains[0].name
 
+        # ---- Encode cloud-init user data --------------------------------
+        encoded_user_data: str | None = None
+        if user_data is not None:
+            raw = user_data.encode() if isinstance(user_data, str) else user_data
+            encoded_user_data = base64.b64encode(raw).decode()
+
         # ---- Compute instance ------------------------------------------
         instance_name = self.create_resource_name("instance")
+
+        instance_metadata: dict[str, str] = {"ssh_authorized_keys": self.ssh_public_key}
+        if encoded_user_data is not None:
+            instance_metadata["user_data"] = encoded_user_data
+
         self.instance = oci.core.Instance(
             instance_name,
             availability_domain=availability_domain,
             compartment_id=self.compartment_id,
             shape=self.shape,
             display_name=instance_name,
+            fault_domain=fault_domain,
+            dedicated_vm_host_id=dedicated_vm_host_id,
+            capacity_reservation_id=capacity_reservation_id,
             source_details=oci.core.InstanceSourceDetailsArgs(
                 source_type="image",
                 source_id=self.image_id,
                 boot_volume_size_in_gbs=str(self.boot_volume_size_in_gbs),
+                boot_volume_vpus_per_gb=str(boot_volume_vpus_per_gb),
             ),
             create_vnic_details=oci.core.InstanceCreateVnicDetailsArgs(
                 subnet_id=(
@@ -301,12 +382,23 @@ class ComputeInstance(BaseResource, AbstractCompute):
                 assign_public_ip="true" if self.subnet == SUBNET_PUBLIC else "false",
                 display_name=f"{instance_name}-vnic",
                 nsg_ids=self.nsg_ids if self.nsg_ids else None,
+                hostname_label=hostname_label,
+                private_ip=private_ip,
+                skip_source_dest_check=skip_source_dest_check,
             ),
-            metadata={"ssh_authorized_keys": self.ssh_public_key},
+            metadata=instance_metadata,
             shape_config=oci.core.InstanceShapeConfigArgs(
                 ocpus=self.ocpus,
                 memory_in_gbs=self.memory_in_gbs,
+                baseline_ocpu_utilization=baseline_ocpu_utilization,
             ),
+            availability_config=oci.core.InstanceAvailabilityConfigArgs(
+                recovery_action=recovery_action,
+            )
+            if recovery_action is not None
+            else None,
+            is_pv_encryption_in_transit_enabled=is_pv_encryption_in_transit,
+            preserve_boot_volume=preserve_boot_volume,
             freeform_tags=self.create_freeform_tags(
                 instance_name,
                 "compute-instance",
@@ -316,6 +408,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
                     "MemoryGB": str(memory_in_gbs),
                 },
             ),
+            defined_tags=defined_tags,
             opts=pulumi.ResourceOptions(parent=self),
         )
 
@@ -327,6 +420,11 @@ class ComputeInstance(BaseResource, AbstractCompute):
 
         for spec in self.volumes_spec:
             vol_name = self.create_resource_name(f"{spec.label}-vol")
+            # Per-volume defined_tags: merge instance-level tags with
+            # spec-level tags; spec-level wins on key conflicts.
+            vol_defined_tags: dict[str, Any] | None = defined_tags
+            if spec.defined_tags is not None:
+                vol_defined_tags = {**(defined_tags or {}), **spec.defined_tags}
             vol = oci.core.Volume(
                 vol_name,
                 availability_domain=availability_domain,
@@ -344,6 +442,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
                         "AttachedTo": instance_name,
                     },
                 ),
+                defined_tags=vol_defined_tags,
                 opts=pulumi.ResourceOptions(parent=self),
             )
             att_name = self.create_resource_name(f"{spec.label}-vol-attach")
@@ -354,6 +453,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
                 attachment_type="paravirtualized",
                 display_name=att_name,
                 is_read_only=spec.is_read_only,
+                device=spec.device,
                 opts=pulumi.ResourceOptions(parent=self, delete_before_replace=True),
             )
             self.block_volumes.append(vol)

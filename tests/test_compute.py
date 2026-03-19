@@ -349,6 +349,141 @@ class TestComputeInstance(unittest.TestCase):
         self.assertIsNotNone(instance.get_ssh_public_key())
         self.assertEqual(len(instance.get_all_volume_ids()), 1)
 
+    # ------ new optional parameters ------------------------------------
+
+    def test_user_data_string_accepted(self):
+        """user_data as a plain string is stored and base64-encoded by the spell."""
+        instance = ComputeInstance(
+            name="userdata-str-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+            user_data="#!/bin/bash\necho hello\n",
+        )
+        self.assertIsNotNone(instance.instance)
+
+    def test_user_data_bytes_accepted(self):
+        """user_data as bytes is accepted."""
+        instance = ComputeInstance(
+            name="userdata-bytes-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+            user_data=b"#!/bin/bash\necho hello\n",
+        )
+        self.assertIsNotNone(instance.instance)
+
+    def test_fault_domain_optional(self):
+        """fault_domain defaults to None (OCI auto-assigns)."""
+        instance = ComputeInstance(
+            name="fd-default-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+        )
+        self.assertIsNone(instance.fault_domain)
+
+    def test_fault_domain_explicit(self):
+        """Explicit fault_domain is stored on the instance."""
+        instance = ComputeInstance(
+            name="fd-explicit-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+            fault_domain="FAULT-DOMAIN-2",
+        )
+        self.assertEqual(instance.fault_domain, "FAULT-DOMAIN-2")
+
+    def test_preserve_boot_volume_default(self):
+        """preserve_boot_volume defaults to False."""
+        instance = ComputeInstance(
+            name="pbv-default-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+        )
+        self.assertFalse(instance.preserve_boot_volume)
+
+    def test_preserve_boot_volume_set(self):
+        """preserve_boot_volume=True is stored."""
+        instance = ComputeInstance(
+            name="pbv-set-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+            preserve_boot_volume=True,
+        )
+        self.assertTrue(instance.preserve_boot_volume)
+
+    def test_hostname_label_optional(self):
+        """hostname_label defaults to None."""
+        instance = ComputeInstance(
+            name="hl-default-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+        )
+        self.assertIsNone(instance.hostname_label)
+
+    def test_hostname_label_set(self):
+        """Explicit hostname_label is stored."""
+        instance = ComputeInstance(
+            name="hl-set-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+            hostname_label="app-server",
+        )
+        self.assertEqual(instance.hostname_label, "app-server")
+
+    def test_volume_spec_device_field(self):
+        """VolumeSpec.device stores the explicit device path."""
+        spec = VolumeSpec(
+            size_in_gbs=100,
+            label="data",
+            device="/dev/oracleoci/oraclevdb",
+        )
+        self.assertEqual(spec.device, "/dev/oracleoci/oraclevdb")
+
+    def test_volume_spec_device_default_none(self):
+        """VolumeSpec.device defaults to None."""
+        spec = VolumeSpec(size_in_gbs=100, label="data")
+        self.assertIsNone(spec.device)
+
+    def test_volume_spec_defined_tags(self):
+        """VolumeSpec.defined_tags stores the provided tags."""
+        tags = {"Ops": {"Env": "prod"}}
+        spec = VolumeSpec(size_in_gbs=100, label="data", defined_tags=tags)
+        self.assertEqual(spec.defined_tags, tags)
+
+    @pulumi.runtime.test
+    def test_all_new_params_accepted(self):
+        """ComputeInstance accepts all new optional parameters without error."""
+        instance = ComputeInstance(
+            name="full-params-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+            user_data="#!/bin/bash\necho hello\n",
+            fault_domain="FAULT-DOMAIN-1",
+            hostname_label="full-params",
+            private_ip="10.0.1.50",
+            skip_source_dest_check=True,
+            boot_volume_vpus_per_gb=20,
+            is_pv_encryption_in_transit=True,
+            preserve_boot_volume=True,
+            recovery_action="RESTORE_INSTANCE",
+            baseline_ocpu_utilization="BASELINE_1_2",
+            volumes=[
+                VolumeSpec(
+                    size_in_gbs=200,
+                    label="data",
+                    device="/dev/oracleoci/oraclevdb",
+                ),
+            ],
+        )
+        return instance.instance.id.apply(lambda iid: self.assertIsNotNone(iid))
+
 
 if __name__ == "__main__":
     unittest.main()
