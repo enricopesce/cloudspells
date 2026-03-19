@@ -23,7 +23,9 @@ Supporting configuration dataclasses:
 
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass
+from typing import Any
 
 import pulumi
 import pulumi_oci as oci
@@ -102,7 +104,9 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         ssh_private_key: Corresponding private key, or `None` when the caller
             supplied their own public key.
         image_id: OCID of the boot image resolved for the pool instances.
-        user_data: Base64-encoded cloud-init user data string, or `None`.
+        user_data: Base64-encoded cloud-init user data string stored internally,
+            or `None`.  Pass a plain `str` or `bytes` to `__init__`; encoding
+            is performed automatically.
         min_instances: Minimum (floor) number of instances for autoscaling.
         max_instances: Maximum (ceiling) number of instances for autoscaling.
         initial_instances: Instance count when the pool is first created.
@@ -174,9 +178,11 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         ocpus: pulumi.Input[float] = 1,
         memory_in_gbs: pulumi.Input[float] = 16,
         image_id: pulumi.Input[str] | None = None,
+        os_name: str = "oracle",
         ssh_public_key: pulumi.Input[str] | None = None,
-        user_data: str | None = None,
+        user_data: str | bytes | None = None,
         boot_volume_size_in_gbs: pulumi.Input[int] = 50,
+        nsg_ids: list[pulumi.Input[str]] | None = None,
         # Pool configuration
         min_instances: int = 1,
         max_instances: int = 5,
@@ -185,6 +191,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         load_balancer_config: LoadBalancerConfig | None = None,
         # Scaling policy (metric OR schedule, not both); pass None to disable autoscaling
         scaling_policy: MetricScalingPolicy | ScheduleScalingPolicy | None = _UNSET,  # type: ignore[assignment]
+        defined_tags: dict[str, Any] | None = None,
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
         """Create a scalable workload with load balancer, instance pool, and autoscaling.
@@ -202,15 +209,26 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             ocpus: Number of OCPUs per instance (default: `1`).
             memory_in_gbs: RAM in GiB per instance (default: `16`).
             image_id: Explicit boot image OCID.  When `None`, the latest
-                Oracle Linux 8 image compatible with `shape` is resolved
+                image compatible with `shape` and `os_name` is resolved
                 automatically.
+            os_name: Friendly OS name used to auto-discover the latest image
+                when `image_id` is `None`.  Supported values: `"oracle"`
+                (Oracle Linux 8, default), `"ubuntu"` (Canonical Ubuntu
+                22.04), `"windows"` (Windows Server 2022 Standard).
+                Ignored when `image_id` is provided.
             ssh_public_key: OpenSSH public key to install on instances.
                 When `None` or empty, a key pair is auto-generated and
                 exported as Pulumi secrets.
-            user_data: Cloud-init user data script, base64-encoded.
-                Passed to instances via OCI instance metadata.
+            user_data: Cloud-init script as a plain `str` or `bytes`.
+                CloudSpells base64-encodes it before passing to OCI.  When
+                `None`, no user data is injected.
             boot_volume_size_in_gbs: Boot volume size in GiB (default:
                 `50`).
+            nsg_ids: List of Network Security Group OCIDs to attach to each
+                pool instance VNIC.  When `None`, no NSGs are attached and
+                security is enforced by the subnet security list alone.
+                Provide NSG OCIDs (e.g. from `Nsg`) to add a second,
+                resource-level security layer on pool VMs.
             min_instances: Minimum number of instances in the pool
                 (default: `1`).
             max_instances: Maximum number of instances the autoscaler may
@@ -225,6 +243,10 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 (cron-based), or `None` to disable autoscaling entirely.
                 When omitted, defaults to `MetricScalingPolicy()`
                 (80% CPU scale-out).
+            defined_tags: OCI defined tags applied to the load balancer,
+                instance configuration, instance pool, and autoscaling
+                resources, in `{"namespace": {"key": "value"}}` format.
+                When `None` no defined tags are applied.
             opts: Pulumi resource options forwarded to the component.
         """
         super().__init__("custom:compute:ScalableWorkload", name, compartment_id, stack_name, opts)
@@ -236,7 +258,6 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         self.ocpus = ocpus
         self.memory_in_gbs = memory_in_gbs
         self.image_id = image_id
-        self.user_data = user_data
         self.boot_volume_size_in_gbs = boot_volume_size_in_gbs
         self.min_instances = min_instances
         self.max_instances = max_instances
@@ -245,6 +266,22 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         self.scaling_policy = MetricScalingPolicy() if scaling_policy is _UNSET else scaling_policy
         self.listeners = []
         self.autoscaling_configuration = None
+        # [GAP] G2: store defined_tags for propagation to all sub-resources
+        self._defined_tags = defined_tags
+        # [GAP] G3: store nsg_ids for pool VNIC in InstanceConfiguration
+        self._nsg_ids = nsg_ids or []
+
+        # [GAP] G1: base64-encode user_data (parity with ComputeInstance).
+        # OCI InstanceConfiguration metadata["user_data"] requires base64,
+        # just as oci.core.Instance does.  Accept plain str/bytes and encode
+        # here so callers do not need to pre-encode the payload.
+        if user_data is not None:
+            raw: bytes = user_data.encode() if isinstance(user_data, str) else user_data
+            self.user_data = base64.b64encode(raw).decode()
+        else:
+            self.user_data = None
+        # [GAP] G4: store os_name for image resolution fallback (parity with ComputeInstance)
+        self._os_name = os_name
 
         # Handle SSH key - either use provided or auto-generate
         self._setup_ssh_keys(ssh_public_key)
@@ -259,9 +296,9 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         assert self.vcn.public_subnet is not None, "VCN public subnet must exist after finalization"
         assert self.vcn.private_subnet is not None, "VCN private subnet must exist after finalization"
 
-        # Get the latest Oracle Linux 8 image if no custom image specified
+        # [GAP] G4: pass os_name so non-Oracle images can be resolved
         resolved_image_id = str(image_id) if image_id is not None else None
-        self.image_id = OciHelper().resolve_image_id(str(compartment_id), str(shape), resolved_image_id)
+        self.image_id = OciHelper().resolve_image_id(str(compartment_id), str(shape), resolved_image_id, self._os_name)
 
         # Get availability domains
         ads = oci.identity.get_availability_domains(compartment_id=str(compartment_id))
@@ -417,6 +454,8 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             subnet_ids=[self.vcn.public_subnet.id],
             is_private=not lb_config.is_public,
             freeform_tags=self.create_freeform_tags(lb_name, "load-balancer"),
+            # [GAP] G2: propagate defined_tags to load balancer
+            defined_tags=self._defined_tags,
             opts=pulumi.ResourceOptions(parent=self),
         )
 
@@ -513,8 +552,13 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                     create_vnic_details=oci.core.InstanceConfigurationInstanceDetailsLaunchDetailsCreateVnicDetailsArgs(
                         assign_public_ip=False,
                         subnet_id=self.vcn.private_subnet.id,
+                        # [GAP] G3: wire nsg_ids into pool VNIC so instances
+                        # can be placed behind caller-supplied NSGs
+                        nsg_ids=self._nsg_ids if self._nsg_ids else None,
                     ),
                     metadata=metadata,
+                    # [GAP] G2: propagate defined_tags to instance configuration
+                    defined_tags=self._defined_tags,
                 ),
             ),
             freeform_tags=self.create_freeform_tags(ic_name, "instance-configuration"),
@@ -560,6 +604,8 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 ),
             ],
             freeform_tags=self.create_freeform_tags(pool_name, "instance-pool"),
+            # [GAP] G2: propagate defined_tags to instance pool
+            defined_tags=self._defined_tags,
             opts=pulumi.ResourceOptions(parent=self),
         )
 
@@ -657,6 +703,8 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 ),
             ],
             freeform_tags=self.create_freeform_tags(asc_name, "autoscaling-configuration"),
+            # [GAP] G2: propagate defined_tags to metric autoscaling configuration
+            defined_tags=self._defined_tags,
             opts=pulumi.ResourceOptions(parent=self),
         )
 
@@ -710,6 +758,8 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             is_enabled=True,
             policies=policies,
             freeform_tags=self.create_freeform_tags(asc_name, "autoscaling-configuration"),
+            # [GAP] G2: propagate defined_tags to schedule autoscaling configuration
+            defined_tags=self._defined_tags,
             opts=pulumi.ResourceOptions(parent=self),
         )
 

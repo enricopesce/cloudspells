@@ -58,6 +58,8 @@ Exports:
 
 from __future__ import annotations
 
+from typing import Any
+
 import pulumi
 import pulumi_oci as oci
 from cloudspells.core.base import BaseResource
@@ -459,6 +461,7 @@ class Nsg(BaseResource):
         opts: pulumi.ResourceOptions | None = None,
         role: Role | None = None,
         ports: list[int] | None = None,
+        defined_tags: dict[str, Any] | None = None,
     ) -> None:
         """Create a single NSG for a service role.
 
@@ -486,6 +489,11 @@ class Nsg(BaseResource):
             ports: TCP port numbers that `INTERNET_EDGE` resources accept from
                 the internet (e.g. `[HTTP, HTTPS, SSH]`).  Required when
                 `role=INTERNET_EDGE`; ignored for other roles.
+            defined_tags: OCI defined tags applied to the
+                `NetworkSecurityGroup` resource, in
+                `{"namespace": {"key": "value"}}` format.  Used for
+                enterprise cost tracking and governance.  When `None` no
+                defined tags are applied.
 
         Example:
             ```python
@@ -519,6 +527,8 @@ class Nsg(BaseResource):
             vcn_id=vcn.id,
             display_name=resource_name,
             freeform_tags=self.create_freeform_tags(resource_name, "nsg"),
+            # [GAP] G5: wire defined_tags into the NSG resource
+            defined_tags=defined_tags,
             opts=pulumi.ResourceOptions(parent=self),
         )
         self.id = self.nsg.id
