@@ -8,6 +8,7 @@ Exports:
     network: AbstractNetwork, AbstractNetworkRef, SecurityRules,
         IngressRule, EgressRule.
     compute: AbstractCompute, DiskSpec, SubnetTier constants.
+    roles: Role, INTERNET_EDGE, APP_SERVER, DATABASE, CACHE, MANAGEMENT.
     kubernetes: AbstractKubernetes.
     bastion: AbstractBastion.
     autoscale: AbstractScalableWorkload, LoadBalancerConfig, ScalingMetric,
@@ -42,6 +43,7 @@ from .network import (
     IngressRule,
     SecurityRules,
 )
+from .roles import APP_SERVER, CACHE, DATABASE, INTERNET_EDGE, MANAGEMENT, Role
 
 __all__ = [
     # network
@@ -58,6 +60,13 @@ __all__ = [
     "SUBNET_PRIVATE",
     "SUBNET_SECURE",
     "SUBNET_MANAGEMENT",
+    # roles
+    "Role",
+    "INTERNET_EDGE",
+    "APP_SERVER",
+    "DATABASE",
+    "CACHE",
+    "MANAGEMENT",
     # kubernetes
     "AbstractKubernetes",
     # bastion

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Literal
 
 import pulumi
 
@@ -23,7 +24,7 @@ import pulumi
 # ---------------------------------------------------------------------------
 
 #: Type alias for the four subnet placement tiers.
-SubnetTier = str
+SubnetTier = Literal["public", "private", "secure", "management"]
 
 #: Public tier — load balancers and bastion hosts.  Route: internet gateway.
 SUBNET_PUBLIC: SubnetTier = "public"
