@@ -11,7 +11,7 @@
       
       
       
-        <link rel="prev" href="../../blocks/autoscale/">
+        <link rel="prev" href="../autoscale/">
       
       
         <link rel="next" href="../compute/">
@@ -1182,6 +1182,8 @@
       
         
       
+        
+      
     
     
       
@@ -1318,6 +1320,27 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/abstractions/roles/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Role Abstractions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1380,14 +1403,300 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../blocks/vcn/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    OCI Network
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
-    VCN
+    OCI Network
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network" class="md-nav__link">
+    <span class="md-ellipsis">
+      network
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="network">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.SubnetConfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      SubnetConfig
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.Vcn" class="md-nav__link">
+    <span class="md-ellipsis">
+      Vcn
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Vcn">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.Vcn--vcnpublic_subnet-and-vcnprivate_subnet-are-now-available" class="md-nav__link">
+    <span class="md-ellipsis">
+      vcn.public_subnet and vcn.private_subnet are now available
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.Vcn--vcnpublic_subnet-and-vcnprivate_subnet-are-now-available_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      vcn.public_subnet and vcn.private_subnet are now available
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.Vcn.__init__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __init__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.Vcn.export" class="md-nav__link">
+    <span class="md-ellipsis">
+      export
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.Vcn.add_security_list_rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      add_security_list_rules
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.Vcn.add_security_rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      add_security_rules
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.Vcn.get_public_subnet_cidr" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_public_subnet_cidr
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.Vcn.get_private_subnet_cidr" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_private_subnet_cidr
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.Vcn.get_secure_subnet_cidr" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_secure_subnet_cidr
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.Vcn.get_management_subnet_cidr" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_management_subnet_cidr
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.Vcn.finalize_network" class="md-nav__link">
+    <span class="md-ellipsis">
+      finalize_network
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.VcnRef" class="md-nav__link">
+    <span class="md-ellipsis">
+      VcnRef
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="VcnRef">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.VcnRef.__init__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __init__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.VcnRef.from_stack_reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      from_stack_reference
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.VcnRef.add_security_list_rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      add_security_list_rules
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.VcnRef.get_public_subnet_cidr" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_public_subnet_cidr
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.VcnRef.get_private_subnet_cidr" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_private_subnet_cidr
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.VcnRef.get_secure_subnet_cidr" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_secure_subnet_cidr
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.VcnRef.get_management_subnet_cidr" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_management_subnet_cidr
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.network.VcnRef.finalize_network" class="md-nav__link">
+    <span class="md-ellipsis">
+      finalize_network
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../compute/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    OCI Compute
   </span>
   
 
@@ -1404,11 +1713,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../blocks/compute/" class="md-nav__link">
+      <a href="../kubernetes/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Compute
+    OCI Kubernetes (OKE)
   </span>
   
 
@@ -1425,11 +1734,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../blocks/oke/" class="md-nav__link">
+      <a href="../bastion/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    OKE (Kubernetes)
+    OCI Bastion
   </span>
   
 
@@ -1446,32 +1755,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../blocks/bastion/" class="md-nav__link">
+      <a href="../autoscale/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Bastion
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../blocks/autoscale/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Autoscale
+    OCI Autoscale
   </span>
   
 
@@ -8107,7 +8395,7 @@ virtual circuits.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><a class="autorefs autorefs-internal" title="cloudspells.providers.oci.network.VcnRef" href="../../blocks/vcn/#cloudspells.providers.oci.network.VcnRef">VcnRef</a></code>
+                  <code><a class="autorefs autorefs-internal" title="cloudspells.providers.oci.network.VcnRef" href="#cloudspells.providers.oci.network.VcnRef">VcnRef</a></code>
             </td>
             <td>
               <div class="doc-md-description">

@@ -1334,6 +1334,8 @@
       
         
       
+        
+      
     
     
       
@@ -1470,6 +1472,27 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/core/abstractions/roles/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Role Abstractions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1535,11 +1558,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/blocks/vcn/" class="md-nav__link">
+      <a href="../../api/providers/network/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    VCN
+    OCI Network
   </span>
   
 
@@ -1556,11 +1579,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/blocks/compute/" class="md-nav__link">
+      <a href="../../api/providers/compute/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Compute
+    OCI Compute
   </span>
   
 
@@ -1577,11 +1600,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/blocks/oke/" class="md-nav__link">
+      <a href="../../api/providers/kubernetes/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    OKE (Kubernetes)
+    OCI Kubernetes (OKE)
   </span>
   
 
@@ -1598,11 +1621,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/blocks/bastion/" class="md-nav__link">
+      <a href="../../api/providers/bastion/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Bastion
+    OCI Bastion
   </span>
   
 
@@ -1619,11 +1642,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/blocks/autoscale/" class="md-nav__link">
+      <a href="../../api/providers/autoscale/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Autoscale
+    OCI Autoscale
   </span>
   
 
@@ -2123,17 +2146,14 @@ pulumi config set compartment_ocid ocid1.compartment.oc1..aaaa...
 <h2 id="step-2-walk-through-the-code">Step 2 — Walk through the code</h2>
 <p>Open <code>examples/autoscale/__main__.py</code>.</p>
 <h3 id="2a-prepare-a-cloud-init-script">2a. Prepare a cloud-init script</h3>
-<p>The example uses a base64-encoded cloud-init script to install nginx and create a health check endpoint:</p>
-<pre><code class="language-python">import base64
-
-user_data_script = &quot;&quot;&quot;#!/bin/bash
+<p>The example passes a plain cloud-init script to install nginx and create a health check endpoint:</p>
+<pre><code class="language-python">user_data_script = &quot;&quot;&quot;#!/bin/bash
 yum install -y nginx
 systemctl enable nginx &amp;&amp; systemctl start nginx
 echo &quot;OK&quot; &gt; /usr/share/nginx/html/health
 &quot;&quot;&quot;
-
-user_data_encoded = base64.b64encode(user_data_script.encode()).decode()
 </code></pre>
+<p>CloudSpells base64-encodes <code>user_data</code> internally before passing it to OCI — pass the plain string or bytes directly.</p>
 <p>The load balancer health check polls <code>/health</code> on port 80. Instances that fail health checks are removed from the rotation.</p>
 <h3 id="2b-create-the-vcn-and-workload">2b. Create the VCN and workload</h3>
 <pre><code class="language-python">from cloudspells.providers.oci.network import Vcn
@@ -2149,7 +2169,7 @@ scalable_pool = ScalableWorkload(
     compartment_id=compartment_id,
     vcn=vcn,
     ssh_public_key=config.get(&quot;ssh_key&quot;),
-    user_data=user_data_encoded,
+    user_data=user_data_script,
     max_instances=3,
 )
 </code></pre>

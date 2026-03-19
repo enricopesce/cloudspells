@@ -1334,6 +1334,8 @@
       
         
       
+        
+      
     
     
       
@@ -1470,6 +1472,27 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/core/abstractions/roles/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Role Abstractions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1535,11 +1558,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/blocks/vcn/" class="md-nav__link">
+      <a href="../../api/providers/network/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    VCN
+    OCI Network
   </span>
   
 
@@ -1556,11 +1579,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/blocks/compute/" class="md-nav__link">
+      <a href="../../api/providers/compute/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Compute
+    OCI Compute
   </span>
   
 
@@ -1577,11 +1600,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/blocks/oke/" class="md-nav__link">
+      <a href="../../api/providers/kubernetes/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    OKE (Kubernetes)
+    OCI Kubernetes (OKE)
   </span>
   
 
@@ -1598,11 +1621,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/blocks/bastion/" class="md-nav__link">
+      <a href="../../api/providers/bastion/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Bastion
+    OCI Bastion
   </span>
   
 
@@ -1619,11 +1642,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/blocks/autoscale/" class="md-nav__link">
+      <a href="../../api/providers/autoscale/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Autoscale
+    OCI Autoscale
   </span>
   
 
@@ -2270,11 +2293,7 @@ pulumi up
 <p>The subnet OCIDs are normal Pulumi stack outputs. A downstream service stack can consume them via <code>VcnRef</code>:</p>
 <pre><code class="language-python">from cloudspells.providers.oci.network import VcnRef
 
-vcn = VcnRef.from_stack_reference(
-    stack_ref=pulumi.StackReference(&quot;org/secure-network/dev&quot;),
-    name=&quot;lab&quot;,
-    compartment_id=compartment_id,
-)
+vcn = VcnRef.from_stack_reference(&quot;org/secure-network/dev&quot;)
 </code></pre>
 <p>See <a href="../../how-to/vcnref/">Share a VCN Across Stacks</a> for the full pattern.</p>
 <hr />

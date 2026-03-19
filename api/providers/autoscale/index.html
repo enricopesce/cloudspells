@@ -1182,6 +1182,8 @@
       
         
       
+        
+      
     
     
       
@@ -1318,6 +1320,27 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/abstractions/roles/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Role Abstractions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1383,11 +1406,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../blocks/vcn/" class="md-nav__link">
+      <a href="../network/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    VCN
+    OCI Network
   </span>
   
 
@@ -1404,11 +1427,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../blocks/compute/" class="md-nav__link">
+      <a href="../compute/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Compute
+    OCI Compute
   </span>
   
 
@@ -1425,11 +1448,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../blocks/oke/" class="md-nav__link">
+      <a href="../kubernetes/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    OKE (Kubernetes)
+    OCI Kubernetes (OKE)
   </span>
   
 
@@ -1446,11 +1469,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../blocks/bastion/" class="md-nav__link">
+      <a href="../bastion/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Bastion
+    OCI Bastion
   </span>
   
 
@@ -1464,18 +1487,205 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../blocks/autoscale/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    OCI Autoscale
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
-    Autoscale
+    OCI Autoscale
   </span>
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.autoscale" class="md-nav__link">
+    <span class="md-ellipsis">
+      autoscale
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="autoscale">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.autoscale.MetricScalingPolicy" class="md-nav__link">
+    <span class="md-ellipsis">
+      MetricScalingPolicy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.autoscale.ScalingAction" class="md-nav__link">
+    <span class="md-ellipsis">
+      ScalingAction
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.autoscale.ScalingMetric" class="md-nav__link">
+    <span class="md-ellipsis">
+      ScalingMetric
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.autoscale.ScheduleEntry" class="md-nav__link">
+    <span class="md-ellipsis">
+      ScheduleEntry
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.autoscale.ScheduleScalingPolicy" class="md-nav__link">
+    <span class="md-ellipsis">
+      ScheduleScalingPolicy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.autoscale.OciLoadBalancerConfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      OciLoadBalancerConfig
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.autoscale.ScalableWorkload" class="md-nav__link">
+    <span class="md-ellipsis">
+      ScalableWorkload
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ScalableWorkload">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.autoscale.ScalableWorkload.__init__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __init__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.autoscale.ScalableWorkload.export" class="md-nav__link">
+    <span class="md-ellipsis">
+      export
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.autoscale.ScalableWorkload.get_load_balancer_ip" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_load_balancer_ip
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.autoscale.ScalableWorkload.get_instance_pool_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_instance_pool_id
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.autoscale.ScalableWorkload.get_load_balancer_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_load_balancer_id
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.autoscale.ScalableWorkload.get_ssh_public_key" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_ssh_public_key
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.autoscale.ScalableWorkload.get_ssh_private_key" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_ssh_private_key
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -3174,7 +3384,7 @@ practices:</p>
           <tr class="doc-section-item">
             <td><code><span title="cloudspells.providers.oci.autoscale.ScalableWorkload.vcn">vcn</span></code></td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="cloudspells.providers.oci.network.Vcn" href="../../blocks/vcn/#cloudspells.providers.oci.network.Vcn">Vcn</a> | <a class="autorefs autorefs-internal" title="cloudspells.providers.oci.network.VcnRef" href="../../blocks/vcn/#cloudspells.providers.oci.network.VcnRef">VcnRef</a></code>
+                  <code><a class="autorefs autorefs-internal" title="cloudspells.providers.oci.network.Vcn" href="../network/#cloudspells.providers.oci.network.Vcn">Vcn</a> | <a class="autorefs autorefs-internal" title="cloudspells.providers.oci.network.VcnRef" href="../network/#cloudspells.providers.oci.network.VcnRef">VcnRef</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -5026,7 +5236,7 @@ pulumi.export(&quot;lb_ip&quot;, pool.get_load_balancer_ip())
                 <code>vcn</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="cloudspells.providers.oci.network.Vcn" href="../../blocks/vcn/#cloudspells.providers.oci.network.Vcn">Vcn</a> | <a class="autorefs autorefs-internal" title="cloudspells.providers.oci.network.VcnRef" href="../../blocks/vcn/#cloudspells.providers.oci.network.VcnRef">VcnRef</a></code>
+                  <code><a class="autorefs autorefs-internal" title="cloudspells.providers.oci.network.Vcn" href="../network/#cloudspells.providers.oci.network.Vcn">Vcn</a> | <a class="autorefs autorefs-internal" title="cloudspells.providers.oci.network.VcnRef" href="../network/#cloudspells.providers.oci.network.VcnRef">VcnRef</a></code>
             </td>
             <td>
               <div class="doc-md-description">

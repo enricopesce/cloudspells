@@ -1182,6 +1182,8 @@
       
         
       
+        
+      
     
     
       
@@ -1318,6 +1320,27 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/abstractions/roles/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Role Abstractions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1383,11 +1406,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../blocks/vcn/" class="md-nav__link">
+      <a href="../network/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    VCN
+    OCI Network
   </span>
   
 
@@ -1404,11 +1427,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../blocks/compute/" class="md-nav__link">
+      <a href="../compute/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Compute
+    OCI Compute
   </span>
   
 
@@ -1425,11 +1448,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../blocks/oke/" class="md-nav__link">
+      <a href="../kubernetes/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    OKE (Kubernetes)
+    OCI Kubernetes (OKE)
   </span>
   
 
@@ -1443,18 +1466,133 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../blocks/bastion/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    OCI Bastion
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
-    Bastion
+    OCI Bastion
   </span>
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.bastion" class="md-nav__link">
+    <span class="md-ellipsis">
+      bastion
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="bastion">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.bastion.Bastion" class="md-nav__link">
+    <span class="md-ellipsis">
+      Bastion
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Bastion">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.bastion.Bastion.__init__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __init__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.bastion.Bastion.export" class="md-nav__link">
+    <span class="md-ellipsis">
+      export
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.bastion.Bastion.get_bastion_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_bastion_id
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.bastion.Bastion.get_bastion_endpoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_bastion_endpoint
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.bastion.Bastion.get_access_endpoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_access_endpoint
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1467,11 +1605,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../blocks/autoscale/" class="md-nav__link">
+      <a href="../autoscale/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Autoscale
+    OCI Autoscale
   </span>
   
 
@@ -2112,7 +2250,7 @@ finalised):</p>
           <tr class="doc-section-item">
             <td><code><span title="cloudspells.providers.oci.bastion.Bastion.vcn">vcn</span></code></td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="cloudspells.providers.oci.network.Vcn" href="../../blocks/vcn/#cloudspells.providers.oci.network.Vcn">Vcn</a></code>
+                  <code><a class="autorefs autorefs-internal" title="cloudspells.providers.oci.network.Vcn" href="../network/#cloudspells.providers.oci.network.Vcn">Vcn</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2657,7 +2795,7 @@ pulumi.export(&quot;bastion_endpoint&quot;, bastion.get_bastion_endpoint())
                 <code>vcn</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="cloudspells.providers.oci.network.Vcn" href="../../blocks/vcn/#cloudspells.providers.oci.network.Vcn">Vcn</a></code>
+                  <code><a class="autorefs autorefs-internal" title="cloudspells.providers.oci.network.Vcn" href="../network/#cloudspells.providers.oci.network.Vcn">Vcn</a></code>
             </td>
             <td>
               <div class="doc-md-description">
