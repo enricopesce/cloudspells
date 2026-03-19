@@ -1974,12 +1974,17 @@
 dedicated to network audit traffic and one VCN Flow Log per subnet tier.</p>
 <p><strong>Architecture</strong></p>
 <p>A single <code>oci.logging.LogGroup</code> named <code>{stack}-{name}-network-audit</code> is
-created as the common container.  Four <code>oci.logging.Log</code> resources — one
-per subnet tier (public, private, secure, management) — are created as
+created as the common container.  Up to four <code>oci.logging.Log</code> resources —
+one per subnet tier (public, private, secure, management) — are created as
 SERVICE logs against the <code>flowlogs</code> OCI service.  Each log captures all
 accepted and rejected traffic on its subnet.</p>
+<p>Secure and management flow logs are created only when those subnets are
+present — they may be absent when <code>VcnRef</code> is used and the upstream stack
+did not export those subnet IDs.</p>
 <p><strong>Retention</strong></p>
-<p>Log retention is configurable via retention_duration (default 90 days).</p>
+<p>Log retention is configurable via <code>retention_duration</code> (default 90 days).
+OCI accepts only the discrete values <code>30</code>, <code>60</code>, <code>90</code>, <code>120</code>, <code>150</code>, <code>180</code>;
+any other value raises <code>ValueError</code> at construction time.</p>
 
 
 <details class="exports" open>
@@ -2019,11 +2024,18 @@ accepted and rejected traffic on its subnet.</p>
 
 
         <p>VCN Flow Logs for all four subnet tiers collected under one Log Group.</p>
+<p>Accepts both a live <code>Vcn</code> and a cross-stack <code>VcnRef</code>.  When a <code>Vcn</code> is
+supplied, <code>finalize_network</code> is called automatically to materialise
+subnets before attaching the flow logs.  For a <code>VcnRef</code> the call is a
+no-op (the remote stack owns that lifecycle).</p>
+<p>Secure and management flow logs are created only when those subnets
+exist — they are always present for a <code>Vcn</code>, but may be absent on a
+<code>VcnRef</code> if the upstream stack did not export those subnet IDs.</p>
 <p>Creates:</p>
 <ul>
 <li>One <code>oci.logging.LogGroup</code> (<code>{stack}-{name}-network-audit</code>).</li>
-<li>Four <code>oci.logging.Log</code> resources — one per subnet tier — configured
-  as SERVICE logs against the OCI <code>flowlogs</code> service.</li>
+<li>Two to four <code>oci.logging.Log</code> resources (one per existing subnet tier)
+  configured as SERVICE logs against the OCI <code>flowlogs</code> service.</li>
 </ul>
 <p>The Log Group OCID is exported as a Pulumi stack output so it can be used
 as an audit-trail reference by other stacks or compliance tooling.</p>
@@ -2086,22 +2098,24 @@ as an audit-trail reference by other stacks or compliance tooling.</p>
           <tr class="doc-section-item">
             <td><code><span title="cloudspells.providers.oci.network_logging.VcnFlowLogs.secure_flow_log">secure_flow_log</span></code></td>
             <td>
-                  <code><span title="pulumi_oci.logging.Log">Log</span></code>
+                  <code><span title="pulumi_oci.logging.Log">Log</span> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Flow log for the secure (DB) subnet.</p>
+                <p>Flow log for the secure (DB) subnet, or <code>None</code>
+if that subnet was not exported by the upstream stack.</p>
               </div>
             </td>
           </tr>
           <tr class="doc-section-item">
             <td><code><span title="cloudspells.providers.oci.network_logging.VcnFlowLogs.management_flow_log">management_flow_log</span></code></td>
             <td>
-                  <code><span title="pulumi_oci.logging.Log">Log</span></code>
+                  <code><span title="pulumi_oci.logging.Log">Log</span> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Flow log for the management subnet.</p>
+                <p>Flow log for the management subnet, or <code>None</code>
+if that subnet was not exported by the upstream stack.</p>
               </div>
             </td>
           </tr>
@@ -2112,7 +2126,9 @@ as an audit-trail reference by other stacks or compliance tooling.</p>
 <details class="example" open>
   <summary>Example</summary>
   <pre><code class="language-python">vcn = Vcn(name=&quot;lab&quot;, compartment_id=compartment_id)
-flow_logs = VcnFlowLogs(name=&quot;lab&quot;, vcn=vcn)  # finalize_network() called automatically
+flow_logs = VcnFlowLogs(
+    name=&quot;lab&quot;, compartment_id=compartment_id, vcn=vcn
+)  # finalize_network() called automatically
 pulumi.export(&quot;log_group_id&quot;, flow_logs.log_group_id)
 </code></pre>
 </details>
@@ -2123,16 +2139,7 @@ pulumi.export(&quot;log_group_id&quot;, flow_logs.log_group_id)
 
               <details class="quote">
                 <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network_logging.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 31</span>
-<span class="normal"> 32</span>
-<span class="normal"> 33</span>
-<span class="normal"> 34</span>
-<span class="normal"> 35</span>
-<span class="normal"> 36</span>
-<span class="normal"> 37</span>
-<span class="normal"> 38</span>
-<span class="normal"> 39</span>
-<span class="normal"> 40</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 40</span>
 <span class="normal"> 41</span>
 <span class="normal"> 42</span>
 <span class="normal"> 43</span>
@@ -2283,14 +2290,80 @@ pulumi.export(&quot;log_group_id&quot;, flow_logs.log_group_id)
 <span class="normal">188</span>
 <span class="normal">189</span>
 <span class="normal">190</span>
-<span class="normal">191</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">VcnFlowLogs</span><span class="p">(</span><span class="n">BaseResource</span><span class="p">):</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">VcnFlowLogs</span><span class="p">(</span><span class="n">BaseResource</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;VCN Flow Logs for all four subnet tiers collected under one Log Group.</span>
+
+<span class="sd">    Accepts both a live `Vcn` and a cross-stack `VcnRef`.  When a `Vcn` is</span>
+<span class="sd">    supplied, `finalize_network` is called automatically to materialise</span>
+<span class="sd">    subnets before attaching the flow logs.  For a `VcnRef` the call is a</span>
+<span class="sd">    no-op (the remote stack owns that lifecycle).</span>
+
+<span class="sd">    Secure and management flow logs are created only when those subnets</span>
+<span class="sd">    exist — they are always present for a `Vcn`, but may be absent on a</span>
+<span class="sd">    `VcnRef` if the upstream stack did not export those subnet IDs.</span>
 
 <span class="sd">    Creates:</span>
 
 <span class="sd">    - One `oci.logging.LogGroup` (`{stack}-{name}-network-audit`).</span>
-<span class="sd">    - Four `oci.logging.Log` resources — one per subnet tier — configured</span>
-<span class="sd">      as SERVICE logs against the OCI `flowlogs` service.</span>
+<span class="sd">    - Two to four `oci.logging.Log` resources (one per existing subnet tier)</span>
+<span class="sd">      configured as SERVICE logs against the OCI `flowlogs` service.</span>
 
 <span class="sd">    The Log Group OCID is exported as a Pulumi stack output so it can be used</span>
 <span class="sd">    as an audit-trail reference by other stacks or compliance tooling.</span>
@@ -2300,13 +2373,17 @@ pulumi.export(&quot;log_group_id&quot;, flow_logs.log_group_id)
 <span class="sd">        log_group_id: `pulumi.Output[str]` OCID of the log group.</span>
 <span class="sd">        public_flow_log: Flow log for the public (LB) subnet.</span>
 <span class="sd">        private_flow_log: Flow log for the private (App) subnet.</span>
-<span class="sd">        secure_flow_log: Flow log for the secure (DB) subnet.</span>
-<span class="sd">        management_flow_log: Flow log for the management subnet.</span>
+<span class="sd">        secure_flow_log: Flow log for the secure (DB) subnet, or `None`</span>
+<span class="sd">            if that subnet was not exported by the upstream stack.</span>
+<span class="sd">        management_flow_log: Flow log for the management subnet, or `None`</span>
+<span class="sd">            if that subnet was not exported by the upstream stack.</span>
 
 <span class="sd">    Example:</span>
 <span class="sd">        ```python</span>
 <span class="sd">        vcn = Vcn(name=&quot;lab&quot;, compartment_id=compartment_id)</span>
-<span class="sd">        flow_logs = VcnFlowLogs(name=&quot;lab&quot;, vcn=vcn)  # finalize_network() called automatically</span>
+<span class="sd">        flow_logs = VcnFlowLogs(</span>
+<span class="sd">            name=&quot;lab&quot;, compartment_id=compartment_id, vcn=vcn</span>
+<span class="sd">        )  # finalize_network() called automatically</span>
 <span class="sd">        pulumi.export(&quot;log_group_id&quot;, flow_logs.log_group_id)</span>
 <span class="sd">        ```</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2315,13 +2392,14 @@ pulumi.export(&quot;log_group_id&quot;, flow_logs.log_group_id)
     <span class="n">log_group_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">public_flow_log</span><span class="p">:</span> <span class="n">oci</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">Log</span>
     <span class="n">private_flow_log</span><span class="p">:</span> <span class="n">oci</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">Log</span>
-    <span class="n">secure_flow_log</span><span class="p">:</span> <span class="n">oci</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">Log</span>
-    <span class="n">management_flow_log</span><span class="p">:</span> <span class="n">oci</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">Log</span>
+    <span class="n">secure_flow_log</span><span class="p">:</span> <span class="n">oci</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">Log</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">management_flow_log</span><span class="p">:</span> <span class="n">oci</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">Log</span> <span class="o">|</span> <span class="kc">None</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">vcn</span><span class="p">:</span> <span class="n">Vcn</span><span class="p">,</span>
+        <span class="n">compartment_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">vcn</span><span class="p">:</span> <span class="n">Vcn</span> <span class="o">|</span> <span class="n">VcnRef</span><span class="p">,</span>
         <span class="n">retention_duration</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">90</span><span class="p">,</span>
         <span class="n">stack_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -2330,9 +2408,12 @@ pulumi.export(&quot;log_group_id&quot;, flow_logs.log_group_id)
 
 <span class="sd">        Args:</span>
 <span class="sd">            name: Logical name for this logging component (e.g. `&quot;lab&quot;`).</span>
-<span class="sd">            vcn: The `Vcn` whose subnets will be monitored.</span>
-<span class="sd">                `Vcn.finalize_network` is called automatically if needed.</span>
-<span class="sd">                Compartment OCID is derived from vcn automatically.</span>
+<span class="sd">            compartment_id: OCID of the OCI compartment to deploy into.</span>
+<span class="sd">                Required explicitly because `VcnRef` does not carry a</span>
+<span class="sd">                compartment ID — only live `Vcn` objects do.</span>
+<span class="sd">            vcn: The `Vcn` or `VcnRef` whose subnets will be monitored.</span>
+<span class="sd">                `Vcn.finalize_network` is called automatically when a live</span>
+<span class="sd">                `Vcn` is passed; the call is a no-op for `VcnRef`.</span>
 <span class="sd">            retention_duration: Log retention in days.  Accepted values are</span>
 <span class="sd">                `30`, `60`, `90`, `120`, `150`, `180`.</span>
 <span class="sd">                Defaults to `90`.</span>
@@ -2340,11 +2421,19 @@ pulumi.export(&quot;log_group_id&quot;, flow_logs.log_group_id)
 <span class="sd">                `pulumi.get_stack()` when `None`.</span>
 <span class="sd">            opts: Pulumi resource options forwarded to the component.</span>
 
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If `retention_duration` is not one of the discrete</span>
+<span class="sd">                values accepted by OCI (`30`, `60`, `90`, `120`, `150`,</span>
+<span class="sd">                `180`).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Bridge gap: validate against OCI-accepted discrete retention values.</span>
+        <span class="k">if</span> <span class="n">retention_duration</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_VALID_RETENTION</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;retention_duration must be one of </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">_VALID_RETENTION</span><span class="p">)</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">retention_duration</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="s2">&quot;custom:network:VcnFlowLogs&quot;</span><span class="p">,</span>
             <span class="n">name</span><span class="p">,</span>
-            <span class="n">vcn</span><span class="o">.</span><span class="n">compartment_id</span><span class="p">,</span>
+            <span class="n">compartment_id</span><span class="p">,</span>
             <span class="n">stack_name</span><span class="p">,</span>
             <span class="n">opts</span><span class="p">,</span>
         <span class="p">)</span>
@@ -2353,6 +2442,11 @@ pulumi.export(&quot;log_group_id&quot;, flow_logs.log_group_id)
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_create_log_group</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_create_flow_logs</span><span class="p">()</span>
+
+        <span class="c1"># Bridge gap: register component outputs so Pulumi records log_group_id</span>
+        <span class="c1"># in state and `pulumi stack output` reflects it — consistent with every</span>
+        <span class="c1"># other CloudSpells spell that calls register_outputs() at construction.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_outputs</span><span class="p">({</span><span class="s2">&quot;log_group_id&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_group_id</span><span class="p">})</span>
 
     <span class="c1"># ------------------------------------------------------------------</span>
     <span class="c1"># Private helpers</span>
@@ -2371,20 +2465,24 @@ pulumi.export(&quot;log_group_id&quot;, flow_logs.log_group_id)
             <span class="n">freeform_tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">create_freeform_tags</span><span class="p">(</span>
                 <span class="n">lg_name</span><span class="p">,</span>
                 <span class="s2">&quot;log-group&quot;</span><span class="p">,</span>
-                <span class="p">{</span><span class="s2">&quot;LogPurpose&quot;</span><span class="p">:</span> <span class="s2">&quot;network-audit&quot;</span><span class="p">,</span> <span class="s2">&quot;Compliance&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">},</span>
+                <span class="p">{</span><span class="s2">&quot;log-purpose&quot;</span><span class="p">:</span> <span class="s2">&quot;network-audit&quot;</span><span class="p">,</span> <span class="s2">&quot;compliance&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">},</span>
             <span class="p">),</span>
             <span class="n">opts</span><span class="o">=</span><span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">),</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log_group_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_group</span><span class="o">.</span><span class="n">id</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_flow_log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tier</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">subnet</span><span class="p">:</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">Subnet</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">oci</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">Log</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_flow_log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tier</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">subnet_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">oci</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">Log</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a VCN Flow Log `oci.logging.Log` for a single subnet.</span>
+
+<span class="sd">        Accepts a plain `pulumi.Input[str]` subnet OCID so the method works</span>
+<span class="sd">        identically for both `oci.core.Subnet.id` (live `Vcn`) and</span>
+<span class="sd">        `_SubnetRef.id` (cross-stack `VcnRef`).</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            tier: Short tier label (`&quot;public&quot;`, `&quot;private&quot;`, etc.)</span>
 <span class="sd">                used in the resource name.</span>
-<span class="sd">            subnet: The `oci.core.Subnet` resource to attach the flow log</span>
-<span class="sd">                to.  Its `id` is used as the log source resource OCID.</span>
+<span class="sd">            subnet_id: The subnet OCID to attach the flow log to.</span>
+<span class="sd">                Pass `subnet.id` for both `oci.core.Subnet` and `_SubnetRef`.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            The newly created `oci.logging.Log` resource.</span>
@@ -2398,10 +2496,12 @@ pulumi.export(&quot;log_group_id&quot;, flow_logs.log_group_id)
             <span class="n">configuration</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">LogConfigurationArgs</span><span class="p">(</span>
                 <span class="n">source</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">LogConfigurationSourceArgs</span><span class="p">(</span>
                     <span class="n">category</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">,</span>
-                    <span class="n">resource</span><span class="o">=</span><span class="n">subnet</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="n">resource</span><span class="o">=</span><span class="n">subnet_id</span><span class="p">,</span>
                     <span class="n">service</span><span class="o">=</span><span class="s2">&quot;flowlogs&quot;</span><span class="p">,</span>
                     <span class="n">source_type</span><span class="o">=</span><span class="s2">&quot;OCISERVICE&quot;</span><span class="p">,</span>
                 <span class="p">),</span>
+                <span class="c1"># Explicit archiving compartment — defaults to log group</span>
+                <span class="c1"># compartment when omitted, but set here for clarity.</span>
                 <span class="n">compartment_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">compartment_id</span><span class="p">,</span>
             <span class="p">),</span>
             <span class="n">is_enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -2409,10 +2509,38 @@ pulumi.export(&quot;log_group_id&quot;, flow_logs.log_group_id)
             <span class="n">freeform_tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">create_freeform_tags</span><span class="p">(</span>
                 <span class="n">log_name</span><span class="p">,</span>
                 <span class="s2">&quot;flow-log&quot;</span><span class="p">,</span>
-                <span class="p">{</span><span class="s2">&quot;SubnetTier&quot;</span><span class="p">:</span> <span class="n">tier</span><span class="p">,</span> <span class="s2">&quot;LogPurpose&quot;</span><span class="p">:</span> <span class="s2">&quot;network-audit&quot;</span><span class="p">},</span>
+                <span class="p">{</span><span class="s2">&quot;subnet-tier&quot;</span><span class="p">:</span> <span class="n">tier</span><span class="p">,</span> <span class="s2">&quot;log-purpose&quot;</span><span class="p">:</span> <span class="s2">&quot;network-audit&quot;</span><span class="p">},</span>
             <span class="p">),</span>
             <span class="n">opts</span><span class="o">=</span><span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">depends_on</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">log_group</span><span class="p">]),</span>
         <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_create_flow_logs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create one flow log resource per existing subnet tier.</span>
+
+<span class="sd">        Calls `finalize_network` so that subnets exist before attaching logs.</span>
+<span class="sd">        For a `VcnRef` this call is a no-op (the remote stack owns subnets).</span>
+<span class="sd">        Secure and management logs are skipped when those subnets are absent</span>
+<span class="sd">        (possible for `VcnRef` when upstream did not export those IDs).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Bridge gap: finalize_network() is a no-op for VcnRef — safe to call</span>
+        <span class="c1"># unconditionally on both Vcn and VcnRef.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_vcn</span><span class="o">.</span><span class="n">finalize_network</span><span class="p">()</span>
+
+        <span class="n">pub</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vcn</span><span class="o">.</span><span class="n">public_subnet</span>
+        <span class="n">priv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vcn</span><span class="o">.</span><span class="n">private_subnet</span>
+        <span class="n">sec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vcn</span><span class="o">.</span><span class="n">secure_subnet</span>
+        <span class="n">mgmt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vcn</span><span class="o">.</span><span class="n">management_subnet</span>
+
+        <span class="k">assert</span> <span class="n">pub</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;public_subnet must exist after finalize_network&quot;</span>
+        <span class="k">assert</span> <span class="n">priv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;private_subnet must exist after finalize_network&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">public_flow_log</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_flow_log</span><span class="p">(</span><span class="s2">&quot;public&quot;</span><span class="p">,</span> <span class="n">pub</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">private_flow_log</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_flow_log</span><span class="p">(</span><span class="s2">&quot;private&quot;</span><span class="p">,</span> <span class="n">priv</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+
+        <span class="c1"># Bridge gap: secure/management may be absent on a VcnRef — guard and</span>
+        <span class="c1"># set attributes to None so callers can check before using them.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">secure_flow_log</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_flow_log</span><span class="p">(</span><span class="s2">&quot;secure&quot;</span><span class="p">,</span> <span class="n">sec</span><span class="o">.</span><span class="n">id</span><span class="p">)</span> <span class="k">if</span> <span class="n">sec</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">management_flow_log</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_flow_log</span><span class="p">(</span><span class="s2">&quot;management&quot;</span><span class="p">,</span> <span class="n">mgmt</span><span class="o">.</span><span class="n">id</span><span class="p">)</span> <span class="k">if</span> <span class="n">mgmt</span> <span class="k">else</span> <span class="kc">None</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Export the network-audit log group OCID as a Pulumi stack output.</span>
@@ -2428,22 +2556,6 @@ pulumi.export(&quot;log_group_id&quot;, flow_logs.log_group_id)
 <span class="sd">            ```</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">pulumi</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="s2">&quot;network_audit_log_group_id&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_group_id</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_create_flow_logs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create one flow log resource per subnet tier.</span>
-
-<span class="sd">        Calls `Vcn.finalize_network` automatically to ensure subnets exist.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_vcn</span><span class="o">.</span><span class="n">finalize_network</span><span class="p">()</span>
-        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vcn</span><span class="o">.</span><span class="n">public_subnet</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vcn</span><span class="o">.</span><span class="n">private_subnet</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vcn</span><span class="o">.</span><span class="n">secure_subnet</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vcn</span><span class="o">.</span><span class="n">management_subnet</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">public_flow_log</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_flow_log</span><span class="p">(</span><span class="s2">&quot;public&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vcn</span><span class="o">.</span><span class="n">public_subnet</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">private_flow_log</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_flow_log</span><span class="p">(</span><span class="s2">&quot;private&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vcn</span><span class="o">.</span><span class="n">private_subnet</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">secure_flow_log</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_flow_log</span><span class="p">(</span><span class="s2">&quot;secure&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vcn</span><span class="o">.</span><span class="n">secure_subnet</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">management_flow_log</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_flow_log</span><span class="p">(</span><span class="s2">&quot;management&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vcn</span><span class="o">.</span><span class="n">management_subnet</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -2463,7 +2575,7 @@ pulumi.export(&quot;log_group_id&quot;, flow_logs.log_group_id)
 
 
 <h4 id="cloudspells.providers.oci.network_logging.VcnFlowLogs.__init__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vcn</span><span class="p">:</span> <span class="n">Vcn</span><span class="p">,</span> <span class="n">retention_duration</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">90</span><span class="p">,</span> <span class="n">stack_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
+            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">compartment_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">vcn</span><span class="p">:</span> <span class="n">Vcn</span> <span class="o">|</span> <span class="n">VcnRef</span><span class="p">,</span> <span class="n">retention_duration</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">90</span><span class="p">,</span> <span class="n">stack_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
 
 </h4>
 
@@ -2502,16 +2614,34 @@ pulumi.export(&quot;log_group_id&quot;, flow_logs.log_group_id)
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>vcn</code>
+                <code>compartment_id</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="cloudspells.providers.oci.network.Vcn" href="../../blocks/vcn/#cloudspells.providers.oci.network.Vcn">Vcn</a></code>
+                  <code><span title="pulumi.Input">Input</span>[<span title="str">str</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The <code>Vcn</code> whose subnets will be monitored.
-<code>Vcn.finalize_network</code> is called automatically if needed.
-Compartment OCID is derived from vcn automatically.</p>
+                <p>OCID of the OCI compartment to deploy into.
+Required explicitly because <code>VcnRef</code> does not carry a
+compartment ID — only live <code>Vcn</code> objects do.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>vcn</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="cloudspells.providers.oci.network.Vcn" href="../../blocks/vcn/#cloudspells.providers.oci.network.Vcn">Vcn</a> | <a class="autorefs autorefs-internal" title="cloudspells.providers.oci.network.VcnRef" href="../../blocks/vcn/#cloudspells.providers.oci.network.VcnRef">VcnRef</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The <code>Vcn</code> or <code>VcnRef</code> whose subnets will be monitored.
+<code>Vcn.finalize_network</code> is called automatically when a live
+<code>Vcn</code> is passed; the call is a no-op for <code>VcnRef</code>.</p>
               </div>
             </td>
             <td>
@@ -2572,31 +2702,34 @@ Defaults to <code>90</code>.</p>
       </tbody>
     </table>
 
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <code>retention_duration</code> is not one of the discrete
+values accepted by OCI (<code>30</code>, <code>60</code>, <code>90</code>, <code>120</code>, <code>150</code>,
+<code>180</code>).</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network_logging.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 66</span>
-<span class="normal"> 67</span>
-<span class="normal"> 68</span>
-<span class="normal"> 69</span>
-<span class="normal"> 70</span>
-<span class="normal"> 71</span>
-<span class="normal"> 72</span>
-<span class="normal"> 73</span>
-<span class="normal"> 74</span>
-<span class="normal"> 75</span>
-<span class="normal"> 76</span>
-<span class="normal"> 77</span>
-<span class="normal"> 78</span>
-<span class="normal"> 79</span>
-<span class="normal"> 80</span>
-<span class="normal"> 81</span>
-<span class="normal"> 82</span>
-<span class="normal"> 83</span>
-<span class="normal"> 84</span>
-<span class="normal"> 85</span>
-<span class="normal"> 86</span>
-<span class="normal"> 87</span>
-<span class="normal"> 88</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 88</span>
 <span class="normal"> 89</span>
 <span class="normal"> 90</span>
 <span class="normal"> 91</span>
@@ -2608,10 +2741,50 @@ Defaults to <code>90</code>.</p>
 <span class="normal"> 97</span>
 <span class="normal"> 98</span>
 <span class="normal"> 99</span>
-<span class="normal">100</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">vcn</span><span class="p">:</span> <span class="n">Vcn</span><span class="p">,</span>
+    <span class="n">compartment_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">vcn</span><span class="p">:</span> <span class="n">Vcn</span> <span class="o">|</span> <span class="n">VcnRef</span><span class="p">,</span>
     <span class="n">retention_duration</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">90</span><span class="p">,</span>
     <span class="n">stack_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -2620,9 +2793,12 @@ Defaults to <code>90</code>.</p>
 
 <span class="sd">    Args:</span>
 <span class="sd">        name: Logical name for this logging component (e.g. `&quot;lab&quot;`).</span>
-<span class="sd">        vcn: The `Vcn` whose subnets will be monitored.</span>
-<span class="sd">            `Vcn.finalize_network` is called automatically if needed.</span>
-<span class="sd">            Compartment OCID is derived from vcn automatically.</span>
+<span class="sd">        compartment_id: OCID of the OCI compartment to deploy into.</span>
+<span class="sd">            Required explicitly because `VcnRef` does not carry a</span>
+<span class="sd">            compartment ID — only live `Vcn` objects do.</span>
+<span class="sd">        vcn: The `Vcn` or `VcnRef` whose subnets will be monitored.</span>
+<span class="sd">            `Vcn.finalize_network` is called automatically when a live</span>
+<span class="sd">            `Vcn` is passed; the call is a no-op for `VcnRef`.</span>
 <span class="sd">        retention_duration: Log retention in days.  Accepted values are</span>
 <span class="sd">            `30`, `60`, `90`, `120`, `150`, `180`.</span>
 <span class="sd">            Defaults to `90`.</span>
@@ -2630,11 +2806,19 @@ Defaults to <code>90</code>.</p>
 <span class="sd">            `pulumi.get_stack()` when `None`.</span>
 <span class="sd">        opts: Pulumi resource options forwarded to the component.</span>
 
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If `retention_duration` is not one of the discrete</span>
+<span class="sd">            values accepted by OCI (`30`, `60`, `90`, `120`, `150`,</span>
+<span class="sd">            `180`).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Bridge gap: validate against OCI-accepted discrete retention values.</span>
+    <span class="k">if</span> <span class="n">retention_duration</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_VALID_RETENTION</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;retention_duration must be one of </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">_VALID_RETENTION</span><span class="p">)</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">retention_duration</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
     <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
         <span class="s2">&quot;custom:network:VcnFlowLogs&quot;</span><span class="p">,</span>
         <span class="n">name</span><span class="p">,</span>
-        <span class="n">vcn</span><span class="o">.</span><span class="n">compartment_id</span><span class="p">,</span>
+        <span class="n">compartment_id</span><span class="p">,</span>
         <span class="n">stack_name</span><span class="p">,</span>
         <span class="n">opts</span><span class="p">,</span>
     <span class="p">)</span>
@@ -2643,6 +2827,11 @@ Defaults to <code>90</code>.</p>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">_create_log_group</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_create_flow_logs</span><span class="p">()</span>
+
+    <span class="c1"># Bridge gap: register component outputs so Pulumi records log_group_id</span>
+    <span class="c1"># in state and `pulumi stack output` reflects it — consistent with every</span>
+    <span class="c1"># other CloudSpells spell that calls register_outputs() at construction.</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">register_outputs</span><span class="p">({</span><span class="s2">&quot;log_group_id&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_group_id</span><span class="p">})</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -2674,20 +2863,20 @@ flow_logs.export()
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network_logging.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">162</span>
-<span class="normal">163</span>
-<span class="normal">164</span>
-<span class="normal">165</span>
-<span class="normal">166</span>
-<span class="normal">167</span>
-<span class="normal">168</span>
-<span class="normal">169</span>
-<span class="normal">170</span>
-<span class="normal">171</span>
-<span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span>
-<span class="normal">175</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Export the network-audit log group OCID as a Pulumi stack output.</span>
 
 <span class="sd">    Registers `network_audit_log_group_id` so other stacks and compliance</span>

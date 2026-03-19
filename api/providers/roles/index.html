@@ -1761,18 +1761,18 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#cloudspells.providers.oci.roles.INTERNET_EDGE" class="md-nav__link">
+  <a href="#cloudspells.providers.oci.roles.APP_SERVER" class="md-nav__link">
     <span class="md-ellipsis">
-      INTERNET_EDGE
+      APP_SERVER
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#cloudspells.providers.oci.roles.APP_SERVER" class="md-nav__link">
+  <a href="#cloudspells.providers.oci.roles.CACHE" class="md-nav__link">
     <span class="md-ellipsis">
-      APP_SERVER
+      CACHE
     </span>
   </a>
   
@@ -1788,9 +1788,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#cloudspells.providers.oci.roles.CACHE" class="md-nav__link">
+  <a href="#cloudspells.providers.oci.roles.INTERNET_EDGE" class="md-nav__link">
     <span class="md-ellipsis">
-      CACHE
+      INTERNET_EDGE
     </span>
   </a>
   
@@ -1922,18 +1922,18 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#cloudspells.providers.oci.roles.INTERNET_EDGE" class="md-nav__link">
+  <a href="#cloudspells.providers.oci.roles.APP_SERVER" class="md-nav__link">
     <span class="md-ellipsis">
-      INTERNET_EDGE
+      APP_SERVER
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#cloudspells.providers.oci.roles.APP_SERVER" class="md-nav__link">
+  <a href="#cloudspells.providers.oci.roles.CACHE" class="md-nav__link">
     <span class="md-ellipsis">
-      APP_SERVER
+      CACHE
     </span>
   </a>
   
@@ -1949,9 +1949,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#cloudspells.providers.oci.roles.CACHE" class="md-nav__link">
+  <a href="#cloudspells.providers.oci.roles.INTERNET_EDGE" class="md-nav__link">
     <span class="md-ellipsis">
-      CACHE
+      INTERNET_EDGE
     </span>
   </a>
   
@@ -2013,30 +2013,18 @@
 
     <div class="doc doc-contents first">
 
-        <p>Role-based security posture descriptors for CloudSpells NSGs.</p>
-<p>A <code>Role</code> captures the security posture of a class of resources — which subnet
-tier it belongs to, what ambient network access it needs, and whether it
-accepts SSH management connections from upstream resources.</p>
-<p>Predefined roles cover the most common OCI reference architectures.  They are
-designed to be passed to <code>Nsg</code> via the <code>role=</code> parameter, which
-auto-generates the correct ambient NSG rules and the corresponding subnet
-security list rules so callers never have to write boilerplate firewall
-configuration by hand.</p>
-<p>Predefined roles:</p>
-<ul>
-<li><code>INTERNET_EDGE</code> — public-facing load balancers or bastion hosts.
-  Accepts inbound TCP on explicitly declared ports from <code>0.0.0.0/0</code>.</li>
-<li><code>APP_SERVER</code> — private-tier application servers.
-  Egresses to Oracle Services and the internet (via NAT Gateway).</li>
-<li><code>DATABASE</code> — secure-tier databases.
-  Egresses to Oracle Services only; no internet path.</li>
-<li><code>CACHE</code> — private-tier caches and message brokers.
-  Same posture as <code>APP_SERVER</code>.</li>
-<li><code>MANAGEMENT</code> — management-tier monitoring agents and tooling.
-  Egresses to Oracle Services only; same isolation as <code>DATABASE</code>.</li>
-</ul>
-<p>Custom roles can be composed by instantiating <code>Role</code> directly with any
-combination of attributes.</p>
+        <p>Role-based security posture descriptors — re-exported from core abstractions.</p>
+<p><code>Role</code> and all predefined role instances are defined in
+<code>cloudspells.core.abstractions.roles</code> and re-exported here for backward
+compatibility.  Import from either location; prefer the core path in
+provider-agnostic code:</p>
+<pre><code class="language-python"># Provider-agnostic code
+from cloudspells.core.abstractions import Role, APP_SERVER
+
+# OCI-specific code (both forms work)
+from cloudspells.providers.oci import APP_SERVER
+from cloudspells.providers.oci.roles import APP_SERVER
+</code></pre>
 
 
 <details class="exports" open>
@@ -2067,49 +2055,6 @@ MANAGEMENT: Predefined role for management-tier tooling.</p>
 
 
 
-<h3 id="cloudspells.providers.oci.roles.INTERNET_EDGE" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">INTERNET_EDGE</span><span class="p">:</span> <span class="n">Role</span> <span class="o">=</span> <span class="n">Role</span><span class="p">(</span><span class="n">subnet_tier</span><span class="o">=</span><span class="n">SUBNET_PUBLIC</span><span class="p">,</span> <span class="n">egress_internet</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">egress_services</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">accept_management_ssh</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
-  </span>
-
-</h3>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Role for internet-facing load balancers and bastion hosts.</p>
-<p>Resources carrying this role are placed in the public subnet (Internet
-Gateway route).  Inbound ports are declared via the <code>ports=</code> parameter on
-<code>Nsg</code>.  ICMP path-MTU rules are added automatically to both the NSG and the
-public security list.</p>
-<p><code>accept_management_ssh=False</code> because this role is the management entry point
-— it acts as the SSH source toward private-tier resources, not as an SSH
-target from another resource.</p>
-
-
-<details class="example" open>
-  <summary>Example</summary>
-  <pre><code class="language-python">from .nsg import Nsg, HTTP, HTTPS, SSH
-from .roles import INTERNET_EDGE
-
-lb_nsg = Nsg(
-    &quot;load-balancer&quot;,
-    role=INTERNET_EDGE,
-    ports=[HTTP, HTTPS, SSH],
-    vcn=vcn,
-    compartment_id=compartment_id,
-)
-</code></pre>
-</details>    </div>
-
-</div>
-
-<div class="doc doc-object doc-attribute">
-
-
-
 <h3 id="cloudspells.providers.oci.roles.APP_SERVER" class="doc doc-heading">
             <code class="highlight language-python"><span class="n">APP_SERVER</span><span class="p">:</span> <span class="n">Role</span> <span class="o">=</span> <span class="n">Role</span><span class="p">(</span><span class="n">subnet_tier</span><span class="o">=</span><span class="n">SUBNET_PRIVATE</span><span class="p">,</span> <span class="n">egress_internet</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">egress_services</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">accept_management_ssh</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
 
@@ -2123,63 +2068,17 @@ lb_nsg = Nsg(
     <div class="doc doc-contents ">
 
         <p>Role for private-tier application servers.</p>
-<p>Resources carrying this role are placed in the private subnet (NAT Gateway +
-Service Gateway routes).  Ambient rules include:</p>
-<ul>
-<li>All-protocol egress to <code>0.0.0.0/0</code> via NAT Gateway (package updates,
-  external API calls) — added to both NSG and private security list.</li>
-<li>All-protocol egress to Oracle Services via Service Gateway — added to
-  both NSG and private security list.</li>
-<li>ICMP path-MTU ingress from <code>0.0.0.0/0</code> on the NSG.</li>
-</ul>
-<p>When an upstream resource calls <code>Nsg.serves</code> toward this role, an SSH
-management channel (port 22) is automatically included.</p>
+<p>Resources carrying this role are placed in the private subnet (NAT gateway +
+service gateway routes).  Ambient rules include outbound access to the
+internet and to provider-managed services.</p>
 
 
 <details class="example" open>
   <summary>Example</summary>
-  <pre><code class="language-python">from .nsg import Nsg
-from .roles import APP_SERVER
+  <pre><code class="language-python">from cloudspells.core.abstractions import APP_SERVER
+from cloudspells.providers.oci import Nsg
 
 web_nsg = Nsg(&quot;web-backend&quot;, role=APP_SERVER, vcn=vcn, compartment_id=compartment_id)
-</code></pre>
-</details>    </div>
-
-</div>
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h3 id="cloudspells.providers.oci.roles.DATABASE" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">DATABASE</span><span class="p">:</span> <span class="n">Role</span> <span class="o">=</span> <span class="n">Role</span><span class="p">(</span><span class="n">subnet_tier</span><span class="o">=</span><span class="n">SUBNET_SECURE</span><span class="p">,</span> <span class="n">egress_internet</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">egress_services</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">accept_management_ssh</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
-  </span>
-
-</h3>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Role for secure-tier databases.</p>
-<p>Resources carrying this role are placed in the secure subnet (Service Gateway
-only — no NAT, no internet path).  Ambient rules include:</p>
-<ul>
-<li>All-protocol egress to Oracle Services via Service Gateway — added to both
-  NSG and secure security list.</li>
-</ul>
-<p>An SSH management channel is included automatically in incoming <code>Nsg.serves</code>
-relationships.</p>
-
-
-<details class="example" open>
-  <summary>Example</summary>
-  <pre><code class="language-python">from .nsg import Nsg
-from .roles import DATABASE
-
-db_nsg = Nsg(&quot;database&quot;, role=DATABASE, vcn=vcn, compartment_id=compartment_id)
 </code></pre>
 </details>    </div>
 
@@ -2202,17 +2101,86 @@ db_nsg = Nsg(&quot;database&quot;, role=DATABASE, vcn=vcn, compartment_id=compar
     <div class="doc doc-contents ">
 
         <p>Role for private-tier caches and message brokers (Redis, Memcached, Kafka).</p>
-<p>Identical security posture to <code>APP_SERVER</code> — private subnet, NAT egress,
-Service Gateway egress.  Provided as a semantic alias so that the intent of
-each resource is clear from its role name.</p>
+<p>Identical security posture to <code>APP_SERVER</code> — private subnet, internet egress,
+service egress.  Provided as a semantic alias so that the intent of each
+resource is clear from its role name.</p>
 
 
 <details class="example" open>
   <summary>Example</summary>
-  <pre><code class="language-python">from .nsg import Nsg
-from .roles import CACHE
+  <pre><code class="language-python">from cloudspells.core.abstractions import CACHE
+from cloudspells.providers.oci import Nsg
 
 cache_nsg = Nsg(&quot;redis&quot;, role=CACHE, vcn=vcn, compartment_id=compartment_id)
+</code></pre>
+</details>    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="cloudspells.providers.oci.roles.DATABASE" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">DATABASE</span><span class="p">:</span> <span class="n">Role</span> <span class="o">=</span> <span class="n">Role</span><span class="p">(</span><span class="n">subnet_tier</span><span class="o">=</span><span class="n">SUBNET_SECURE</span><span class="p">,</span> <span class="n">egress_internet</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">egress_services</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">accept_management_ssh</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Role for secure-tier databases.</p>
+<p>Resources carrying this role are placed in the secure subnet (service gateway
+only — no NAT, no internet path).</p>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <pre><code class="language-python">from cloudspells.core.abstractions import DATABASE
+from cloudspells.providers.oci import Nsg
+
+db_nsg = Nsg(&quot;database&quot;, role=DATABASE, vcn=vcn, compartment_id=compartment_id)
+</code></pre>
+</details>    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="cloudspells.providers.oci.roles.INTERNET_EDGE" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">INTERNET_EDGE</span><span class="p">:</span> <span class="n">Role</span> <span class="o">=</span> <span class="n">Role</span><span class="p">(</span><span class="n">subnet_tier</span><span class="o">=</span><span class="n">SUBNET_PUBLIC</span><span class="p">,</span> <span class="n">egress_internet</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">egress_services</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">accept_management_ssh</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Role for internet-facing load balancers and bastion hosts.</p>
+<p>Resources carrying this role are placed in the public subnet (internet
+gateway route).  Inbound ports are declared via the provider NSG <code>ports=</code>
+parameter.</p>
+<p><code>accept_management_ssh=False</code> because this role is the management entry
+point — it acts as the SSH source toward private-tier resources, not as an
+SSH target from another resource.</p>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <pre><code class="language-python">from cloudspells.core.abstractions import INTERNET_EDGE
+from cloudspells.providers.oci import Nsg
+
+lb_nsg = Nsg(&quot;load-balancer&quot;, role=INTERNET_EDGE, ports=[HTTP, HTTPS], vcn=vcn,
+             compartment_id=compartment_id)
 </code></pre>
 </details>    </div>
 
@@ -2235,18 +2203,15 @@ cache_nsg = Nsg(&quot;redis&quot;, role=CACHE, vcn=vcn, compartment_id=compartme
     <div class="doc doc-contents ">
 
         <p>Role for management-tier monitoring agents, bastion service, and tooling.</p>
-<p>Resources carrying this role are placed in the management subnet (Service
-Gateway only — same isolation as the secure tier, but logically separated for
-operational tooling).  Ambient rules include:</p>
-<ul>
-<li>All-protocol egress to Oracle Services via Service Gateway.</li>
-</ul>
+<p>Resources carrying this role are placed in the management subnet (service
+gateway only — same isolation as the secure tier, but logically separated for
+operational tooling).</p>
 
 
 <details class="example" open>
   <summary>Example</summary>
-  <pre><code class="language-python">from .nsg import Nsg
-from .roles import MANAGEMENT
+  <pre><code class="language-python">from cloudspells.core.abstractions import MANAGEMENT
+from cloudspells.providers.oci import Nsg
 
 mgmt_nsg = Nsg(&quot;monitoring&quot;, role=MANAGEMENT, vcn=vcn, compartment_id=compartment_id)
 </code></pre>
@@ -2274,10 +2239,10 @@ mgmt_nsg = Nsg(&quot;monitoring&quot;, role=MANAGEMENT, vcn=vcn, compartment_id=
 
 
         <p>Security posture descriptor for a class of networked resources.</p>
-<p>A <code>Role</code> encodes the ambient network behaviour of an NSG — the rules that
-every resource of this type needs regardless of which peers it communicates
-with.  Directional traffic relationships are declared separately via
-<code>Nsg.serves</code>.</p>
+<p>A <code>Role</code> encodes the ambient network behaviour of a security group — the
+rules that every resource of this type needs regardless of which peers it
+communicates with.  Directional traffic relationships are declared
+separately by the provider's NSG/security-group implementation.</p>
 
 
 <p><span class="doc-section-title">Attributes:</span></p>
@@ -2293,13 +2258,13 @@ with.  Directional traffic relationships are declared separately via
           <tr class="doc-section-item">
             <td><code><span title="cloudspells.providers.oci.roles.Role.subnet_tier">subnet_tier</span></code></td>
             <td>
-                  <code><span title="cloudspells.providers.oci.network.SubnetTier">SubnetTier</span></code>
+                  <code><span title="cloudspells.core.abstractions.compute.SubnetTier">SubnetTier</span></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Which VCN tier resources carrying this role belong to.
-Used by <code>ComputeInstance</code> to infer the <code>subnet</code> placement when
-<code>nsg=</code> is supplied instead of <code>subnet=</code> and <code>nsg_ids=</code>.</p>
+                <p>Which network tier resources carrying this role belong to.
+Used by compute spells to infer subnet placement when a role is
+supplied instead of an explicit subnet.</p>
               </div>
             </td>
           </tr>
@@ -2311,10 +2276,9 @@ Used by <code>ComputeInstance</code> to infer the <code>subnet</code> placement 
             <td>
               <div class="doc-md-description">
                 <p><code>True</code> adds an all-protocol egress rule to
-<code>0.0.0.0/0</code> (outbound via NAT Gateway) to both the NSG and the
-tier's security list.  Suitable for private-tier app servers that
-need to call external APIs.  Not set for <code>DATABASE</code>, <code>MANAGEMENT</code>,
-or <code>INTERNET_EDGE</code>.</p>
+<code>0.0.0.0/0</code> (outbound via NAT Gateway or equivalent).  Suitable
+for private-tier app servers that call external APIs.  Not set for
+<code>DATABASE</code>, <code>MANAGEMENT</code>, or <code>INTERNET_EDGE</code>.</p>
               </div>
             </td>
           </tr>
@@ -2325,10 +2289,11 @@ or <code>INTERNET_EDGE</code>.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p><code>True</code> adds an all-protocol egress rule to the OCI
-Service Gateway CIDR to both the NSG and the tier's security list.
-Required for any instance that calls Oracle-managed endpoints
-(Object Storage, container registry, etc.).</p>
+                <p><code>True</code> adds an all-protocol egress rule to the cloud
+provider's managed-services endpoint (OCI Service Gateway, AWS
+VPC Gateway, GCP Private Google Access).  Required for any
+instance that calls provider-managed endpoints (object storage,
+container registry, etc.).</p>
               </div>
             </td>
           </tr>
@@ -2339,12 +2304,11 @@ Required for any instance that calls Oracle-managed endpoints
             </td>
             <td>
               <div class="doc-md-description">
-                <p><code>True</code> causes <code>Nsg.serves</code> to automatically
-include an SSH (port 22) management channel from the upstream NSG
-in addition to the application port, and to add the corresponding
-security list cross-subnet SSH rules.  Set <code>False</code> for roles where
-SSH access arrives through a separate channel (e.g. an OCI Bastion
-session).</p>
+                <p><code>True</code> causes the provider NSG implementation
+to automatically include an SSH (port 22) management channel from
+the upstream NSG in addition to the application port.  Set <code>False</code>
+for roles where SSH access arrives through a separate channel (e.g.
+a bastion service session).</p>
               </div>
             </td>
           </tr>
@@ -2354,8 +2318,8 @@ session).</p>
 
 <details class="example" open>
   <summary>Example</summary>
-  <pre><code class="language-python">from .roles import Role
-from .network import SUBNET_PRIVATE
+  <pre><code class="language-python">from cloudspells.core.abstractions import Role
+from cloudspells.core.abstractions import SUBNET_PRIVATE
 
 # Custom role: private tier, internet + service egress, no SSH from upstream.
 proxy = Role(
@@ -2364,7 +2328,6 @@ proxy = Role(
     egress_services=True,
     accept_management_ssh=False,
 )
-proxy_nsg = Nsg(&quot;proxy&quot;, role=proxy, vcn=vcn, compartment_id=compartment_id)
 </code></pre>
 </details>
 
@@ -2373,8 +2336,23 @@ proxy_nsg = Nsg(&quot;proxy&quot;, role=proxy, vcn=vcn, compartment_id=compartme
 
 
               <details class="quote">
-                <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/roles.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">51</span>
+                <summary>Source code in <code>packages/cloudspells-core/src/cloudspells/core/abstractions/roles.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
 <span class="normal">52</span>
 <span class="normal">53</span>
 <span class="normal">54</span>
@@ -2405,56 +2383,38 @@ proxy_nsg = Nsg(&quot;proxy&quot;, role=proxy, vcn=vcn, compartment_id=compartme
 <span class="normal">79</span>
 <span class="normal">80</span>
 <span class="normal">81</span>
-<span class="normal">82</span>
-<span class="normal">83</span>
-<span class="normal">84</span>
-<span class="normal">85</span>
-<span class="normal">86</span>
-<span class="normal">87</span>
-<span class="normal">88</span>
-<span class="normal">89</span>
-<span class="normal">90</span>
-<span class="normal">91</span>
-<span class="normal">92</span>
-<span class="normal">93</span>
-<span class="normal">94</span>
-<span class="normal">95</span>
-<span class="normal">96</span>
-<span class="normal">97</span>
-<span class="normal">98</span>
-<span class="normal">99</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">82</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Role</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Security posture descriptor for a class of networked resources.</span>
 
-<span class="sd">    A `Role` encodes the ambient network behaviour of an NSG — the rules that</span>
-<span class="sd">    every resource of this type needs regardless of which peers it communicates</span>
-<span class="sd">    with.  Directional traffic relationships are declared separately via</span>
-<span class="sd">    `Nsg.serves`.</span>
+<span class="sd">    A `Role` encodes the ambient network behaviour of a security group — the</span>
+<span class="sd">    rules that every resource of this type needs regardless of which peers it</span>
+<span class="sd">    communicates with.  Directional traffic relationships are declared</span>
+<span class="sd">    separately by the provider&#39;s NSG/security-group implementation.</span>
 
 <span class="sd">    Attributes:</span>
-<span class="sd">        subnet_tier: Which VCN tier resources carrying this role belong to.</span>
-<span class="sd">            Used by `ComputeInstance` to infer the `subnet` placement when</span>
-<span class="sd">            `nsg=` is supplied instead of `subnet=` and `nsg_ids=`.</span>
+<span class="sd">        subnet_tier: Which network tier resources carrying this role belong to.</span>
+<span class="sd">            Used by compute spells to infer subnet placement when a role is</span>
+<span class="sd">            supplied instead of an explicit subnet.</span>
 <span class="sd">        egress_internet: `True` adds an all-protocol egress rule to</span>
-<span class="sd">            `0.0.0.0/0` (outbound via NAT Gateway) to both the NSG and the</span>
-<span class="sd">            tier&#39;s security list.  Suitable for private-tier app servers that</span>
-<span class="sd">            need to call external APIs.  Not set for `DATABASE`, `MANAGEMENT`,</span>
-<span class="sd">            or `INTERNET_EDGE`.</span>
-<span class="sd">        egress_services: `True` adds an all-protocol egress rule to the OCI</span>
-<span class="sd">            Service Gateway CIDR to both the NSG and the tier&#39;s security list.</span>
-<span class="sd">            Required for any instance that calls Oracle-managed endpoints</span>
-<span class="sd">            (Object Storage, container registry, etc.).</span>
-<span class="sd">        accept_management_ssh: `True` causes `Nsg.serves` to automatically</span>
-<span class="sd">            include an SSH (port 22) management channel from the upstream NSG</span>
-<span class="sd">            in addition to the application port, and to add the corresponding</span>
-<span class="sd">            security list cross-subnet SSH rules.  Set `False` for roles where</span>
-<span class="sd">            SSH access arrives through a separate channel (e.g. an OCI Bastion</span>
-<span class="sd">            session).</span>
+<span class="sd">            `0.0.0.0/0` (outbound via NAT Gateway or equivalent).  Suitable</span>
+<span class="sd">            for private-tier app servers that call external APIs.  Not set for</span>
+<span class="sd">            `DATABASE`, `MANAGEMENT`, or `INTERNET_EDGE`.</span>
+<span class="sd">        egress_services: `True` adds an all-protocol egress rule to the cloud</span>
+<span class="sd">            provider&#39;s managed-services endpoint (OCI Service Gateway, AWS</span>
+<span class="sd">            VPC Gateway, GCP Private Google Access).  Required for any</span>
+<span class="sd">            instance that calls provider-managed endpoints (object storage,</span>
+<span class="sd">            container registry, etc.).</span>
+<span class="sd">        accept_management_ssh: `True` causes the provider NSG implementation</span>
+<span class="sd">            to automatically include an SSH (port 22) management channel from</span>
+<span class="sd">            the upstream NSG in addition to the application port.  Set `False`</span>
+<span class="sd">            for roles where SSH access arrives through a separate channel (e.g.</span>
+<span class="sd">            a bastion service session).</span>
 
 <span class="sd">    Example:</span>
 <span class="sd">        ```python</span>
-<span class="sd">        from .roles import Role</span>
-<span class="sd">        from .network import SUBNET_PRIVATE</span>
+<span class="sd">        from cloudspells.core.abstractions import Role</span>
+<span class="sd">        from cloudspells.core.abstractions import SUBNET_PRIVATE</span>
 
 <span class="sd">        # Custom role: private tier, internet + service egress, no SSH from upstream.</span>
 <span class="sd">        proxy = Role(</span>
@@ -2463,7 +2423,6 @@ proxy_nsg = Nsg(&quot;proxy&quot;, role=proxy, vcn=vcn, compartment_id=compartme
 <span class="sd">            egress_services=True,</span>
 <span class="sd">            accept_management_ssh=False,</span>
 <span class="sd">        )</span>
-<span class="sd">        proxy_nsg = Nsg(&quot;proxy&quot;, role=proxy, vcn=vcn, compartment_id=compartment_id)</span>
 <span class="sd">        ```</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 

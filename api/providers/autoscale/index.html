@@ -3065,9 +3065,7 @@ an HTTPS listener on port 443 in addition to HTTP on port 80.</p>
 
               <details class="quote">
                 <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/autoscale.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">50</span>
-<span class="normal">51</span>
-<span class="normal">52</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">52</span>
 <span class="normal">53</span>
 <span class="normal">54</span>
 <span class="normal">55</span>
@@ -3085,7 +3083,9 @@ an HTTPS listener on port 443 in addition to HTTP on port 80.</p>
 <span class="normal">67</span>
 <span class="normal">68</span>
 <span class="normal">69</span>
-<span class="normal">70</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">OciLoadBalancerConfig</span><span class="p">(</span><span class="n">_BaseLoadBalancerConfig</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;OCI-specific load balancer configuration extending the cloud-neutral base.</span>
 
@@ -3257,7 +3257,9 @@ supplied their own public key.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Base64-encoded cloud-init user data string, or <code>None</code>.</p>
+                <p>Base64-encoded cloud-init user data string stored internally,
+or <code>None</code>.  Pass a plain <code>str</code> or <code>bytes</code> to <code>__init__</code>; encoding
+is performed automatically.</p>
               </div>
             </td>
           </tr>
@@ -3436,9 +3438,7 @@ pulumi.export(&quot;lb_ip&quot;, pool.get_load_balancer_ip())
 
               <details class="quote">
                 <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/autoscale.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 78</span>
-<span class="normal"> 79</span>
-<span class="normal"> 80</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 80</span>
 <span class="normal"> 81</span>
 <span class="normal"> 82</span>
 <span class="normal"> 83</span>
@@ -4143,7 +4143,57 @@ pulumi.export(&quot;lb_ip&quot;, pool.get_load_balancer_ip())
 <span class="normal">782</span>
 <span class="normal">783</span>
 <span class="normal">784</span>
-<span class="normal">785</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ScalableWorkload</span><span class="p">(</span><span class="n">BaseResource</span><span class="p">,</span> <span class="n">AbstractScalableWorkload</span><span class="p">):</span>
+<span class="normal">785</span>
+<span class="normal">786</span>
+<span class="normal">787</span>
+<span class="normal">788</span>
+<span class="normal">789</span>
+<span class="normal">790</span>
+<span class="normal">791</span>
+<span class="normal">792</span>
+<span class="normal">793</span>
+<span class="normal">794</span>
+<span class="normal">795</span>
+<span class="normal">796</span>
+<span class="normal">797</span>
+<span class="normal">798</span>
+<span class="normal">799</span>
+<span class="normal">800</span>
+<span class="normal">801</span>
+<span class="normal">802</span>
+<span class="normal">803</span>
+<span class="normal">804</span>
+<span class="normal">805</span>
+<span class="normal">806</span>
+<span class="normal">807</span>
+<span class="normal">808</span>
+<span class="normal">809</span>
+<span class="normal">810</span>
+<span class="normal">811</span>
+<span class="normal">812</span>
+<span class="normal">813</span>
+<span class="normal">814</span>
+<span class="normal">815</span>
+<span class="normal">816</span>
+<span class="normal">817</span>
+<span class="normal">818</span>
+<span class="normal">819</span>
+<span class="normal">820</span>
+<span class="normal">821</span>
+<span class="normal">822</span>
+<span class="normal">823</span>
+<span class="normal">824</span>
+<span class="normal">825</span>
+<span class="normal">826</span>
+<span class="normal">827</span>
+<span class="normal">828</span>
+<span class="normal">829</span>
+<span class="normal">830</span>
+<span class="normal">831</span>
+<span class="normal">832</span>
+<span class="normal">833</span>
+<span class="normal">834</span>
+<span class="normal">835</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ScalableWorkload</span><span class="p">(</span><span class="n">BaseResource</span><span class="p">,</span> <span class="n">AbstractScalableWorkload</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;OCI Scalable Workload with load balancer, instance pool, and autoscaling.</span>
 
 <span class="sd">    Creates a complete horizontally-scalable compute tier following OCI best</span>
@@ -4170,7 +4220,9 @@ pulumi.export(&quot;lb_ip&quot;, pool.get_load_balancer_ip())
 <span class="sd">        ssh_private_key: Corresponding private key, or `None` when the caller</span>
 <span class="sd">            supplied their own public key.</span>
 <span class="sd">        image_id: OCID of the boot image resolved for the pool instances.</span>
-<span class="sd">        user_data: Base64-encoded cloud-init user data string, or `None`.</span>
+<span class="sd">        user_data: Base64-encoded cloud-init user data string stored internally,</span>
+<span class="sd">            or `None`.  Pass a plain `str` or `bytes` to `__init__`; encoding</span>
+<span class="sd">            is performed automatically.</span>
 <span class="sd">        min_instances: Minimum (floor) number of instances for autoscaling.</span>
 <span class="sd">        max_instances: Maximum (ceiling) number of instances for autoscaling.</span>
 <span class="sd">        initial_instances: Instance count when the pool is first created.</span>
@@ -4242,9 +4294,11 @@ pulumi.export(&quot;lb_ip&quot;, pool.get_load_balancer_ip())
         <span class="n">ocpus</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
         <span class="n">memory_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span>
         <span class="n">image_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">os_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;oracle&quot;</span><span class="p">,</span>
         <span class="n">ssh_public_key</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">user_data</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">user_data</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">boot_volume_size_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+        <span class="n">nsg_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="c1"># Pool configuration</span>
         <span class="n">min_instances</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
         <span class="n">max_instances</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
@@ -4253,6 +4307,7 @@ pulumi.export(&quot;lb_ip&quot;, pool.get_load_balancer_ip())
         <span class="n">load_balancer_config</span><span class="p">:</span> <span class="n">LoadBalancerConfig</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="c1"># Scaling policy (metric OR schedule, not both); pass None to disable autoscaling</span>
         <span class="n">scaling_policy</span><span class="p">:</span> <span class="n">MetricScalingPolicy</span> <span class="o">|</span> <span class="n">ScheduleScalingPolicy</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>  <span class="c1"># type: ignore[assignment]</span>
+        <span class="n">defined_tags</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a scalable workload with load balancer, instance pool, and autoscaling.</span>
@@ -4270,15 +4325,26 @@ pulumi.export(&quot;lb_ip&quot;, pool.get_load_balancer_ip())
 <span class="sd">            ocpus: Number of OCPUs per instance (default: `1`).</span>
 <span class="sd">            memory_in_gbs: RAM in GiB per instance (default: `16`).</span>
 <span class="sd">            image_id: Explicit boot image OCID.  When `None`, the latest</span>
-<span class="sd">                Oracle Linux 8 image compatible with `shape` is resolved</span>
+<span class="sd">                image compatible with `shape` and `os_name` is resolved</span>
 <span class="sd">                automatically.</span>
+<span class="sd">            os_name: Friendly OS name used to auto-discover the latest image</span>
+<span class="sd">                when `image_id` is `None`.  Supported values: `&quot;oracle&quot;`</span>
+<span class="sd">                (Oracle Linux 8, default), `&quot;ubuntu&quot;` (Canonical Ubuntu</span>
+<span class="sd">                22.04), `&quot;windows&quot;` (Windows Server 2022 Standard).</span>
+<span class="sd">                Ignored when `image_id` is provided.</span>
 <span class="sd">            ssh_public_key: OpenSSH public key to install on instances.</span>
 <span class="sd">                When `None` or empty, a key pair is auto-generated and</span>
 <span class="sd">                exported as Pulumi secrets.</span>
-<span class="sd">            user_data: Cloud-init user data script, base64-encoded.</span>
-<span class="sd">                Passed to instances via OCI instance metadata.</span>
+<span class="sd">            user_data: Cloud-init script as a plain `str` or `bytes`.</span>
+<span class="sd">                CloudSpells base64-encodes it before passing to OCI.  When</span>
+<span class="sd">                `None`, no user data is injected.</span>
 <span class="sd">            boot_volume_size_in_gbs: Boot volume size in GiB (default:</span>
 <span class="sd">                `50`).</span>
+<span class="sd">            nsg_ids: List of Network Security Group OCIDs to attach to each</span>
+<span class="sd">                pool instance VNIC.  When `None`, no NSGs are attached and</span>
+<span class="sd">                security is enforced by the subnet security list alone.</span>
+<span class="sd">                Provide NSG OCIDs (e.g. from `Nsg`) to add a second,</span>
+<span class="sd">                resource-level security layer on pool VMs.</span>
 <span class="sd">            min_instances: Minimum number of instances in the pool</span>
 <span class="sd">                (default: `1`).</span>
 <span class="sd">            max_instances: Maximum number of instances the autoscaler may</span>
@@ -4293,6 +4359,10 @@ pulumi.export(&quot;lb_ip&quot;, pool.get_load_balancer_ip())
 <span class="sd">                (cron-based), or `None` to disable autoscaling entirely.</span>
 <span class="sd">                When omitted, defaults to `MetricScalingPolicy()`</span>
 <span class="sd">                (80% CPU scale-out).</span>
+<span class="sd">            defined_tags: OCI defined tags applied to the load balancer,</span>
+<span class="sd">                instance configuration, instance pool, and autoscaling</span>
+<span class="sd">                resources, in `{&quot;namespace&quot;: {&quot;key&quot;: &quot;value&quot;}}` format.</span>
+<span class="sd">                When `None` no defined tags are applied.</span>
 <span class="sd">            opts: Pulumi resource options forwarded to the component.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;custom:compute:ScalableWorkload&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">compartment_id</span><span class="p">,</span> <span class="n">stack_name</span><span class="p">,</span> <span class="n">opts</span><span class="p">)</span>
@@ -4304,7 +4374,6 @@ pulumi.export(&quot;lb_ip&quot;, pool.get_load_balancer_ip())
         <span class="bp">self</span><span class="o">.</span><span class="n">ocpus</span> <span class="o">=</span> <span class="n">ocpus</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">memory_in_gbs</span> <span class="o">=</span> <span class="n">memory_in_gbs</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">image_id</span> <span class="o">=</span> <span class="n">image_id</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">user_data</span> <span class="o">=</span> <span class="n">user_data</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">boot_volume_size_in_gbs</span> <span class="o">=</span> <span class="n">boot_volume_size_in_gbs</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">min_instances</span> <span class="o">=</span> <span class="n">min_instances</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_instances</span> <span class="o">=</span> <span class="n">max_instances</span>
@@ -4313,6 +4382,22 @@ pulumi.export(&quot;lb_ip&quot;, pool.get_load_balancer_ip())
         <span class="bp">self</span><span class="o">.</span><span class="n">scaling_policy</span> <span class="o">=</span> <span class="n">MetricScalingPolicy</span><span class="p">()</span> <span class="k">if</span> <span class="n">scaling_policy</span> <span class="ow">is</span> <span class="n">_UNSET</span> <span class="k">else</span> <span class="n">scaling_policy</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">listeners</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">autoscaling_configuration</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># [GAP] G2: store defined_tags for propagation to all sub-resources</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_defined_tags</span> <span class="o">=</span> <span class="n">defined_tags</span>
+        <span class="c1"># [GAP] G3: store nsg_ids for pool VNIC in InstanceConfiguration</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_nsg_ids</span> <span class="o">=</span> <span class="n">nsg_ids</span> <span class="ow">or</span> <span class="p">[]</span>
+
+        <span class="c1"># [GAP] G1: base64-encode user_data (parity with ComputeInstance).</span>
+        <span class="c1"># OCI InstanceConfiguration metadata[&quot;user_data&quot;] requires base64,</span>
+        <span class="c1"># just as oci.core.Instance does.  Accept plain str/bytes and encode</span>
+        <span class="c1"># here so callers do not need to pre-encode the payload.</span>
+        <span class="k">if</span> <span class="n">user_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">raw</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">user_data</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">user_data</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="n">user_data</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">user_data</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">user_data</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># [GAP] G4: store os_name for image resolution fallback (parity with ComputeInstance)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_os_name</span> <span class="o">=</span> <span class="n">os_name</span>
 
         <span class="c1"># Handle SSH key - either use provided or auto-generate</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_setup_ssh_keys</span><span class="p">(</span><span class="n">ssh_public_key</span><span class="p">)</span>
@@ -4327,9 +4412,9 @@ pulumi.export(&quot;lb_ip&quot;, pool.get_load_balancer_ip())
         <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">public_subnet</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;VCN public subnet must exist after finalization&quot;</span>
         <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">private_subnet</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;VCN private subnet must exist after finalization&quot;</span>
 
-        <span class="c1"># Get the latest Oracle Linux 8 image if no custom image specified</span>
+        <span class="c1"># [GAP] G4: pass os_name so non-Oracle images can be resolved</span>
         <span class="n">resolved_image_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">image_id</span><span class="p">)</span> <span class="k">if</span> <span class="n">image_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">image_id</span> <span class="o">=</span> <span class="n">OciHelper</span><span class="p">()</span><span class="o">.</span><span class="n">resolve_image_id</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">compartment_id</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">shape</span><span class="p">),</span> <span class="n">resolved_image_id</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">image_id</span> <span class="o">=</span> <span class="n">OciHelper</span><span class="p">()</span><span class="o">.</span><span class="n">resolve_image_id</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">compartment_id</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">shape</span><span class="p">),</span> <span class="n">resolved_image_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_os_name</span><span class="p">)</span>
 
         <span class="c1"># Get availability domains</span>
         <span class="n">ads</span> <span class="o">=</span> <span class="n">oci</span><span class="o">.</span><span class="n">identity</span><span class="o">.</span><span class="n">get_availability_domains</span><span class="p">(</span><span class="n">compartment_id</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">compartment_id</span><span class="p">))</span>
@@ -4485,6 +4570,8 @@ pulumi.export(&quot;lb_ip&quot;, pool.get_load_balancer_ip())
             <span class="n">subnet_ids</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">public_subnet</span><span class="o">.</span><span class="n">id</span><span class="p">],</span>
             <span class="n">is_private</span><span class="o">=</span><span class="ow">not</span> <span class="n">lb_config</span><span class="o">.</span><span class="n">is_public</span><span class="p">,</span>
             <span class="n">freeform_tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">create_freeform_tags</span><span class="p">(</span><span class="n">lb_name</span><span class="p">,</span> <span class="s2">&quot;load-balancer&quot;</span><span class="p">),</span>
+            <span class="c1"># [GAP] G2: propagate defined_tags to load balancer</span>
+            <span class="n">defined_tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_defined_tags</span><span class="p">,</span>
             <span class="n">opts</span><span class="o">=</span><span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">),</span>
         <span class="p">)</span>
 
@@ -4581,8 +4668,13 @@ pulumi.export(&quot;lb_ip&quot;, pool.get_load_balancer_ip())
                     <span class="n">create_vnic_details</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">InstanceConfigurationInstanceDetailsLaunchDetailsCreateVnicDetailsArgs</span><span class="p">(</span>
                         <span class="n">assign_public_ip</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                         <span class="n">subnet_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">private_subnet</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                        <span class="c1"># [GAP] G3: wire nsg_ids into pool VNIC so instances</span>
+                        <span class="c1"># can be placed behind caller-supplied NSGs</span>
+                        <span class="n">nsg_ids</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_nsg_ids</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nsg_ids</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
                     <span class="p">),</span>
                     <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span>
+                    <span class="c1"># [GAP] G2: propagate defined_tags to instance configuration</span>
+                    <span class="n">defined_tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_defined_tags</span><span class="p">,</span>
                 <span class="p">),</span>
             <span class="p">),</span>
             <span class="n">freeform_tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">create_freeform_tags</span><span class="p">(</span><span class="n">ic_name</span><span class="p">,</span> <span class="s2">&quot;instance-configuration&quot;</span><span class="p">),</span>
@@ -4628,6 +4720,8 @@ pulumi.export(&quot;lb_ip&quot;, pool.get_load_balancer_ip())
                 <span class="p">),</span>
             <span class="p">],</span>
             <span class="n">freeform_tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">create_freeform_tags</span><span class="p">(</span><span class="n">pool_name</span><span class="p">,</span> <span class="s2">&quot;instance-pool&quot;</span><span class="p">),</span>
+            <span class="c1"># [GAP] G2: propagate defined_tags to instance pool</span>
+            <span class="n">defined_tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_defined_tags</span><span class="p">,</span>
             <span class="n">opts</span><span class="o">=</span><span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">),</span>
         <span class="p">)</span>
 
@@ -4725,6 +4819,8 @@ pulumi.export(&quot;lb_ip&quot;, pool.get_load_balancer_ip())
                 <span class="p">),</span>
             <span class="p">],</span>
             <span class="n">freeform_tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">create_freeform_tags</span><span class="p">(</span><span class="n">asc_name</span><span class="p">,</span> <span class="s2">&quot;autoscaling-configuration&quot;</span><span class="p">),</span>
+            <span class="c1"># [GAP] G2: propagate defined_tags to metric autoscaling configuration</span>
+            <span class="n">defined_tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_defined_tags</span><span class="p">,</span>
             <span class="n">opts</span><span class="o">=</span><span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">),</span>
         <span class="p">)</span>
 
@@ -4778,6 +4874,8 @@ pulumi.export(&quot;lb_ip&quot;, pool.get_load_balancer_ip())
             <span class="n">is_enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="n">policies</span><span class="o">=</span><span class="n">policies</span><span class="p">,</span>
             <span class="n">freeform_tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">create_freeform_tags</span><span class="p">(</span><span class="n">asc_name</span><span class="p">,</span> <span class="s2">&quot;autoscaling-configuration&quot;</span><span class="p">),</span>
+            <span class="c1"># [GAP] G2: propagate defined_tags to schedule autoscaling configuration</span>
+            <span class="n">defined_tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_defined_tags</span><span class="p">,</span>
             <span class="n">opts</span><span class="o">=</span><span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">),</span>
         <span class="p">)</span>
 
@@ -4870,7 +4968,7 @@ pulumi.export(&quot;lb_ip&quot;, pool.get_load_balancer_ip())
 
 
 <h4 id="cloudspells.providers.oci.autoscale.ScalableWorkload.__init__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">compartment_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">vcn</span><span class="p">:</span> <span class="n">Vcn</span> <span class="o">|</span> <span class="n">VcnRef</span><span class="p">,</span> <span class="n">stack_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">shape</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;VM.Standard.E4.Flex&#39;</span><span class="p">,</span> <span class="n">ocpus</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">memory_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span> <span class="n">image_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">ssh_public_key</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">user_data</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">boot_volume_size_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span> <span class="n">min_instances</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">max_instances</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span> <span class="n">initial_instances</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">load_balancer_config</span><span class="p">:</span> <span class="n">LoadBalancerConfig</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">scaling_policy</span><span class="p">:</span> <span class="n">MetricScalingPolicy</span> <span class="o">|</span> <span class="n">ScheduleScalingPolicy</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span> <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
+            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">compartment_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">vcn</span><span class="p">:</span> <span class="n">Vcn</span> <span class="o">|</span> <span class="n">VcnRef</span><span class="p">,</span> <span class="n">stack_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">shape</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;VM.Standard.E4.Flex&#39;</span><span class="p">,</span> <span class="n">ocpus</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">memory_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span> <span class="n">image_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">os_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;oracle&#39;</span><span class="p">,</span> <span class="n">ssh_public_key</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">user_data</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">boot_volume_size_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span> <span class="n">nsg_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">min_instances</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">max_instances</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span> <span class="n">initial_instances</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">load_balancer_config</span><span class="p">:</span> <span class="n">LoadBalancerConfig</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">scaling_policy</span><span class="p">:</span> <span class="n">MetricScalingPolicy</span> <span class="o">|</span> <span class="n">ScheduleScalingPolicy</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span> <span class="n">defined_tags</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
 
 </h4>
 
@@ -5017,12 +5115,32 @@ in the private subnet.</p>
             <td>
               <div class="doc-md-description">
                 <p>Explicit boot image OCID.  When <code>None</code>, the latest
-Oracle Linux 8 image compatible with <code>shape</code> is resolved
+image compatible with <code>shape</code> and <code>os_name</code> is resolved
 automatically.</p>
               </div>
             </td>
             <td>
                   <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>os_name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Friendly OS name used to auto-discover the latest image
+when <code>image_id</code> is <code>None</code>.  Supported values: <code>"oracle"</code>
+(Oracle Linux 8, default), <code>"ubuntu"</code> (Canonical Ubuntu
+22.04), <code>"windows"</code> (Windows Server 2022 Standard).
+Ignored when <code>image_id</code> is provided.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;oracle&#39;</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -5048,12 +5166,13 @@ exported as Pulumi secrets.</p>
                 <code>user_data</code>
             </td>
             <td>
-                  <code><span title="str">str</span> | None</code>
+                  <code><span title="str">str</span> | <span title="bytes">bytes</span> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Cloud-init user data script, base64-encoded.
-Passed to instances via OCI instance metadata.</p>
+                <p>Cloud-init script as a plain <code>str</code> or <code>bytes</code>.
+CloudSpells base64-encodes it before passing to OCI.  When
+<code>None</code>, no user data is injected.</p>
               </div>
             </td>
             <td>
@@ -5075,6 +5194,26 @@ Passed to instances via OCI instance metadata.</p>
             </td>
             <td>
                   <code>50</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>nsg_ids</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span>[<span title="pulumi.Input">Input</span>[<span title="str">str</span>]] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>List of Network Security Group OCIDs to attach to each
+pool instance VNIC.  When <code>None</code>, no NSGs are attached and
+security is enforced by the subnet security list alone.
+Provide NSG OCIDs (e.g. from <code>Nsg</code>) to add a second,
+resource-level security layer on pool VMs.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -5168,6 +5307,25 @@ When omitted, defaults to <code>MetricScalingPolicy()</code>
           </tr>
           <tr class="doc-section-item">
             <td>
+                <code>defined_tags</code>
+            </td>
+            <td>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>OCI defined tags applied to the load balancer,
+instance configuration, instance pool, and autoscaling
+resources, in <code>{"namespace": {"key": "value"}}</code> format.
+When <code>None</code> no defined tags are applied.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
                 <code>opts</code>
             </td>
             <td>
@@ -5187,11 +5345,7 @@ When omitted, defaults to <code>MetricScalingPolicy()</code>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/autoscale.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">166</span>
-<span class="normal">167</span>
-<span class="normal">168</span>
-<span class="normal">169</span>
-<span class="normal">170</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">170</span>
 <span class="normal">171</span>
 <span class="normal">172</span>
 <span class="normal">173</span>
@@ -5307,7 +5461,44 @@ When omitted, defaults to <code>MetricScalingPolicy()</code>
 <span class="normal">283</span>
 <span class="normal">284</span>
 <span class="normal">285</span>
-<span class="normal">286</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
+<span class="normal">323</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">compartment_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
@@ -5318,9 +5509,11 @@ When omitted, defaults to <code>MetricScalingPolicy()</code>
     <span class="n">ocpus</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
     <span class="n">memory_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span>
     <span class="n">image_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">os_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;oracle&quot;</span><span class="p">,</span>
     <span class="n">ssh_public_key</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">user_data</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">user_data</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">boot_volume_size_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="n">nsg_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="c1"># Pool configuration</span>
     <span class="n">min_instances</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
     <span class="n">max_instances</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
@@ -5329,6 +5522,7 @@ When omitted, defaults to <code>MetricScalingPolicy()</code>
     <span class="n">load_balancer_config</span><span class="p">:</span> <span class="n">LoadBalancerConfig</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="c1"># Scaling policy (metric OR schedule, not both); pass None to disable autoscaling</span>
     <span class="n">scaling_policy</span><span class="p">:</span> <span class="n">MetricScalingPolicy</span> <span class="o">|</span> <span class="n">ScheduleScalingPolicy</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>  <span class="c1"># type: ignore[assignment]</span>
+    <span class="n">defined_tags</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a scalable workload with load balancer, instance pool, and autoscaling.</span>
@@ -5346,15 +5540,26 @@ When omitted, defaults to <code>MetricScalingPolicy()</code>
 <span class="sd">        ocpus: Number of OCPUs per instance (default: `1`).</span>
 <span class="sd">        memory_in_gbs: RAM in GiB per instance (default: `16`).</span>
 <span class="sd">        image_id: Explicit boot image OCID.  When `None`, the latest</span>
-<span class="sd">            Oracle Linux 8 image compatible with `shape` is resolved</span>
+<span class="sd">            image compatible with `shape` and `os_name` is resolved</span>
 <span class="sd">            automatically.</span>
+<span class="sd">        os_name: Friendly OS name used to auto-discover the latest image</span>
+<span class="sd">            when `image_id` is `None`.  Supported values: `&quot;oracle&quot;`</span>
+<span class="sd">            (Oracle Linux 8, default), `&quot;ubuntu&quot;` (Canonical Ubuntu</span>
+<span class="sd">            22.04), `&quot;windows&quot;` (Windows Server 2022 Standard).</span>
+<span class="sd">            Ignored when `image_id` is provided.</span>
 <span class="sd">        ssh_public_key: OpenSSH public key to install on instances.</span>
 <span class="sd">            When `None` or empty, a key pair is auto-generated and</span>
 <span class="sd">            exported as Pulumi secrets.</span>
-<span class="sd">        user_data: Cloud-init user data script, base64-encoded.</span>
-<span class="sd">            Passed to instances via OCI instance metadata.</span>
+<span class="sd">        user_data: Cloud-init script as a plain `str` or `bytes`.</span>
+<span class="sd">            CloudSpells base64-encodes it before passing to OCI.  When</span>
+<span class="sd">            `None`, no user data is injected.</span>
 <span class="sd">        boot_volume_size_in_gbs: Boot volume size in GiB (default:</span>
 <span class="sd">            `50`).</span>
+<span class="sd">        nsg_ids: List of Network Security Group OCIDs to attach to each</span>
+<span class="sd">            pool instance VNIC.  When `None`, no NSGs are attached and</span>
+<span class="sd">            security is enforced by the subnet security list alone.</span>
+<span class="sd">            Provide NSG OCIDs (e.g. from `Nsg`) to add a second,</span>
+<span class="sd">            resource-level security layer on pool VMs.</span>
 <span class="sd">        min_instances: Minimum number of instances in the pool</span>
 <span class="sd">            (default: `1`).</span>
 <span class="sd">        max_instances: Maximum number of instances the autoscaler may</span>
@@ -5369,6 +5574,10 @@ When omitted, defaults to <code>MetricScalingPolicy()</code>
 <span class="sd">            (cron-based), or `None` to disable autoscaling entirely.</span>
 <span class="sd">            When omitted, defaults to `MetricScalingPolicy()`</span>
 <span class="sd">            (80% CPU scale-out).</span>
+<span class="sd">        defined_tags: OCI defined tags applied to the load balancer,</span>
+<span class="sd">            instance configuration, instance pool, and autoscaling</span>
+<span class="sd">            resources, in `{&quot;namespace&quot;: {&quot;key&quot;: &quot;value&quot;}}` format.</span>
+<span class="sd">            When `None` no defined tags are applied.</span>
 <span class="sd">        opts: Pulumi resource options forwarded to the component.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;custom:compute:ScalableWorkload&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">compartment_id</span><span class="p">,</span> <span class="n">stack_name</span><span class="p">,</span> <span class="n">opts</span><span class="p">)</span>
@@ -5380,7 +5589,6 @@ When omitted, defaults to <code>MetricScalingPolicy()</code>
     <span class="bp">self</span><span class="o">.</span><span class="n">ocpus</span> <span class="o">=</span> <span class="n">ocpus</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">memory_in_gbs</span> <span class="o">=</span> <span class="n">memory_in_gbs</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">image_id</span> <span class="o">=</span> <span class="n">image_id</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">user_data</span> <span class="o">=</span> <span class="n">user_data</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">boot_volume_size_in_gbs</span> <span class="o">=</span> <span class="n">boot_volume_size_in_gbs</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">min_instances</span> <span class="o">=</span> <span class="n">min_instances</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">max_instances</span> <span class="o">=</span> <span class="n">max_instances</span>
@@ -5389,6 +5597,22 @@ When omitted, defaults to <code>MetricScalingPolicy()</code>
     <span class="bp">self</span><span class="o">.</span><span class="n">scaling_policy</span> <span class="o">=</span> <span class="n">MetricScalingPolicy</span><span class="p">()</span> <span class="k">if</span> <span class="n">scaling_policy</span> <span class="ow">is</span> <span class="n">_UNSET</span> <span class="k">else</span> <span class="n">scaling_policy</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">listeners</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">autoscaling_configuration</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1"># [GAP] G2: store defined_tags for propagation to all sub-resources</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_defined_tags</span> <span class="o">=</span> <span class="n">defined_tags</span>
+    <span class="c1"># [GAP] G3: store nsg_ids for pool VNIC in InstanceConfiguration</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_nsg_ids</span> <span class="o">=</span> <span class="n">nsg_ids</span> <span class="ow">or</span> <span class="p">[]</span>
+
+    <span class="c1"># [GAP] G1: base64-encode user_data (parity with ComputeInstance).</span>
+    <span class="c1"># OCI InstanceConfiguration metadata[&quot;user_data&quot;] requires base64,</span>
+    <span class="c1"># just as oci.core.Instance does.  Accept plain str/bytes and encode</span>
+    <span class="c1"># here so callers do not need to pre-encode the payload.</span>
+    <span class="k">if</span> <span class="n">user_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">raw</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">user_data</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">user_data</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="n">user_data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_data</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_data</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1"># [GAP] G4: store os_name for image resolution fallback (parity with ComputeInstance)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_os_name</span> <span class="o">=</span> <span class="n">os_name</span>
 
     <span class="c1"># Handle SSH key - either use provided or auto-generate</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_setup_ssh_keys</span><span class="p">(</span><span class="n">ssh_public_key</span><span class="p">)</span>
@@ -5403,9 +5627,9 @@ When omitted, defaults to <code>MetricScalingPolicy()</code>
     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">public_subnet</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;VCN public subnet must exist after finalization&quot;</span>
     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">private_subnet</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;VCN private subnet must exist after finalization&quot;</span>
 
-    <span class="c1"># Get the latest Oracle Linux 8 image if no custom image specified</span>
+    <span class="c1"># [GAP] G4: pass os_name so non-Oracle images can be resolved</span>
     <span class="n">resolved_image_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">image_id</span><span class="p">)</span> <span class="k">if</span> <span class="n">image_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">image_id</span> <span class="o">=</span> <span class="n">OciHelper</span><span class="p">()</span><span class="o">.</span><span class="n">resolve_image_id</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">compartment_id</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">shape</span><span class="p">),</span> <span class="n">resolved_image_id</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">image_id</span> <span class="o">=</span> <span class="n">OciHelper</span><span class="p">()</span><span class="o">.</span><span class="n">resolve_image_id</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">compartment_id</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">shape</span><span class="p">),</span> <span class="n">resolved_image_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_os_name</span><span class="p">)</span>
 
     <span class="c1"># Get availability domains</span>
     <span class="n">ads</span> <span class="o">=</span> <span class="n">oci</span><span class="o">.</span><span class="n">identity</span><span class="o">.</span><span class="n">get_availability_domains</span><span class="p">(</span><span class="n">compartment_id</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">compartment_id</span><span class="p">))</span>
@@ -5462,28 +5686,28 @@ pool.export()
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/autoscale.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">716</span>
-<span class="normal">717</span>
-<span class="normal">718</span>
-<span class="normal">719</span>
-<span class="normal">720</span>
-<span class="normal">721</span>
-<span class="normal">722</span>
-<span class="normal">723</span>
-<span class="normal">724</span>
-<span class="normal">725</span>
-<span class="normal">726</span>
-<span class="normal">727</span>
-<span class="normal">728</span>
-<span class="normal">729</span>
-<span class="normal">730</span>
-<span class="normal">731</span>
-<span class="normal">732</span>
-<span class="normal">733</span>
-<span class="normal">734</span>
-<span class="normal">735</span>
-<span class="normal">736</span>
-<span class="normal">737</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">766</span>
+<span class="normal">767</span>
+<span class="normal">768</span>
+<span class="normal">769</span>
+<span class="normal">770</span>
+<span class="normal">771</span>
+<span class="normal">772</span>
+<span class="normal">773</span>
+<span class="normal">774</span>
+<span class="normal">775</span>
+<span class="normal">776</span>
+<span class="normal">777</span>
+<span class="normal">778</span>
+<span class="normal">779</span>
+<span class="normal">780</span>
+<span class="normal">781</span>
+<span class="normal">782</span>
+<span class="normal">783</span>
+<span class="normal">784</span>
+<span class="normal">785</span>
+<span class="normal">786</span>
+<span class="normal">787</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Export standard scalable workload stack outputs.</span>
 
 <span class="sd">    Publishes load balancer IP, load balancer OCID, and instance pool</span>
@@ -5562,20 +5786,20 @@ is <code>True</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/autoscale.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">739</span>
-<span class="normal">740</span>
-<span class="normal">741</span>
-<span class="normal">742</span>
-<span class="normal">743</span>
-<span class="normal">744</span>
-<span class="normal">745</span>
-<span class="normal">746</span>
-<span class="normal">747</span>
-<span class="normal">748</span>
-<span class="normal">749</span>
-<span class="normal">750</span>
-<span class="normal">751</span>
-<span class="normal">752</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_load_balancer_ip</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">789</span>
+<span class="normal">790</span>
+<span class="normal">791</span>
+<span class="normal">792</span>
+<span class="normal">793</span>
+<span class="normal">794</span>
+<span class="normal">795</span>
+<span class="normal">796</span>
+<span class="normal">797</span>
+<span class="normal">798</span>
+<span class="normal">799</span>
+<span class="normal">800</span>
+<span class="normal">801</span>
+<span class="normal">802</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_load_balancer_ip</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the public IP address of the load balancer.</span>
 
 <span class="sd">    Resolves the first entry in the load balancer&#39;s `ip_address_details`</span>
@@ -5633,13 +5857,13 @@ is <code>True</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/autoscale.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">754</span>
-<span class="normal">755</span>
-<span class="normal">756</span>
-<span class="normal">757</span>
-<span class="normal">758</span>
-<span class="normal">759</span>
-<span class="normal">760</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_instance_pool_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">804</span>
+<span class="normal">805</span>
+<span class="normal">806</span>
+<span class="normal">807</span>
+<span class="normal">808</span>
+<span class="normal">809</span>
+<span class="normal">810</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_instance_pool_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the OCID of the instance pool.</span>
 
 <span class="sd">    Returns:</span>
@@ -5690,13 +5914,13 @@ is <code>True</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/autoscale.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">762</span>
-<span class="normal">763</span>
-<span class="normal">764</span>
-<span class="normal">765</span>
-<span class="normal">766</span>
-<span class="normal">767</span>
-<span class="normal">768</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_load_balancer_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">812</span>
+<span class="normal">813</span>
+<span class="normal">814</span>
+<span class="normal">815</span>
+<span class="normal">816</span>
+<span class="normal">817</span>
+<span class="normal">818</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_load_balancer_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the OCID of the load balancer.</span>
 
 <span class="sd">    Returns:</span>
@@ -5747,13 +5971,13 @@ is <code>True</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/autoscale.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">770</span>
-<span class="normal">771</span>
-<span class="normal">772</span>
-<span class="normal">773</span>
-<span class="normal">774</span>
-<span class="normal">775</span>
-<span class="normal">776</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_public_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">820</span>
+<span class="normal">821</span>
+<span class="normal">822</span>
+<span class="normal">823</span>
+<span class="normal">824</span>
+<span class="normal">825</span>
+<span class="normal">826</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_public_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the SSH public key installed on pool instances.</span>
 
 <span class="sd">    Returns:</span>
@@ -5814,14 +6038,14 @@ is <code>True</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/autoscale.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">778</span>
-<span class="normal">779</span>
-<span class="normal">780</span>
-<span class="normal">781</span>
-<span class="normal">782</span>
-<span class="normal">783</span>
-<span class="normal">784</span>
-<span class="normal">785</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_private_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">828</span>
+<span class="normal">829</span>
+<span class="normal">830</span>
+<span class="normal">831</span>
+<span class="normal">832</span>
+<span class="normal">833</span>
+<span class="normal">834</span>
+<span class="normal">835</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_private_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the SSH private key if it was auto-generated.</span>
 
 <span class="sd">    Returns:</span>

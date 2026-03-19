@@ -1656,6 +1656,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.kubernetes.NodePoolConfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      NodePoolConfig
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#cloudspells.providers.oci.kubernetes.OkeCluster" class="md-nav__link">
     <span class="md-ellipsis">
       OkeCluster
@@ -1928,6 +1937,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#cloudspells.providers.oci.kubernetes.NodePoolConfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      NodePoolConfig
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#cloudspells.providers.oci.kubernetes.OkeCluster" class="md-nav__link">
     <span class="md-ellipsis">
       OkeCluster
@@ -2110,6 +2128,473 @@ Network Security Groups (NSGs) that segment traffic by component role.</p>
 
 
 
+<h3 id="cloudspells.providers.oci.kubernetes.NodePoolConfig" class="doc doc-heading">
+            <code>NodePoolConfig</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+
+        <p>Configuration for a single OKE node pool.</p>
+<p>Pass a list of <code>NodePoolConfig</code> instances to <code>OkeCluster(node_pools=[...])</code>
+to create one or more node pools on the same cluster.  Each entry produces
+one <code>oci.containerengine.NodePool</code> placed in the private subnet and spread
+across all availability domains.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.kubernetes.NodePoolConfig.name">name</span></code></td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Short identifier for this pool (e.g. <code>"system"</code>, <code>"app"</code>).
+Used as the Pulumi resource name suffix and OCI display name
+component.  Must be unique within the list.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.kubernetes.NodePoolConfig.shape">shape</span></code></td>
+            <td>
+                  <code><span title="pulumi.Input">Input</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Compute shape for worker node VMs
+(e.g. <code>"VM.Standard.E4.Flex"</code>).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.kubernetes.NodePoolConfig.image">image</span></code></td>
+            <td>
+                  <code><span title="pulumi.Input">Input</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Boot image OCID for worker nodes.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.kubernetes.NodePoolConfig.node_count">node_count</span></code></td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Number of worker nodes.  Spread evenly across all
+availability domains in the region.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.kubernetes.NodePoolConfig.ocpus">ocpus</span></code></td>
+            <td>
+                  <code><span title="pulumi.Input">Input</span>[<span title="float">float</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Number of OCPUs per worker node.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.kubernetes.NodePoolConfig.memory_in_gbs">memory_in_gbs</span></code></td>
+            <td>
+                  <code><span title="pulumi.Input">Input</span>[<span title="float">float</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>RAM in GiB per worker node.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.kubernetes.NodePoolConfig.ssh_public_key">ssh_public_key</span></code></td>
+            <td>
+                  <code><span title="pulumi.Input">Input</span>[<span title="str">str</span>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional SSH public key installed on worker nodes.
+Enables direct SSH access for debugging.  Defaults to <code>None</code>.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.kubernetes.NodePoolConfig.boot_volume_size_in_gbs">boot_volume_size_in_gbs</span></code></td>
+            <td>
+                  <code><span title="int">int</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Boot volume size in GiB for each worker
+node.  When <code>None</code> (default) OCI uses the minimum size defined
+by the image.  Must be at least 50 GiB when specified.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.kubernetes.NodePoolConfig.initial_node_labels">initial_node_labels</span></code></td>
+            <td>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="str">str</span>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Kubernetes labels applied to every node at
+join time (e.g. <code>{"role": "app"}</code>).  Used by node selectors
+and affinity rules.  Defaults to <code>None</code>.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.kubernetes.NodePoolConfig.node_metadata">node_metadata</span></code></td>
+            <td>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="str">str</span>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>OCI instance metadata key/value pairs propagated to
+every worker node.  Pass <code>{"user_data": "&lt;base64&gt;"}</code> to inject
+a cloud-init script.  Defaults to <code>None</code>.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.kubernetes.NodePoolConfig.defined_tags">defined_tags</span></code></td>
+            <td>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>OCI defined tags applied to the node pool resource
+(e.g. <code>{"Operations": {"CostCenter": "42"}}</code>).  Defaults to
+<code>None</code>.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.kubernetes.NodePoolConfig.eviction_grace_duration">eviction_grace_duration</span></code></td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>ISO 8601 duration OCI waits for workloads
+to drain before terminating a node (e.g. <code>"PT1H"</code>).  When
+<code>None</code> OCI uses its built-in default.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.kubernetes.NodePoolConfig.force_delete_after_grace">force_delete_after_grace</span></code></td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>When <code>True</code>, OCI force-deletes the node
+even if workloads remain after <code>eviction_grace_duration</code>.
+Defaults to <code>False</code>.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.kubernetes.NodePoolConfig.cycling_enabled">cycling_enabled</span></code></td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Enable rolling node replacement on pool updates.
+When <code>True</code>, OCI replaces nodes in batches controlled by
+<code>cycling_max_surge</code> and <code>cycling_max_unavailable</code>.  Defaults
+to <code>False</code>.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.kubernetes.NodePoolConfig.cycling_max_surge">cycling_max_surge</span></code></td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum extra nodes provisioned during cycling
+(e.g. <code>"1"</code> or <code>"10%"</code>).  Defaults to <code>None</code> (OCI default).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.kubernetes.NodePoolConfig.cycling_max_unavailable">cycling_max_unavailable</span></code></td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum nodes unavailable during cycling
+(e.g. <code>"0"</code> or <code>"10%"</code>).  Defaults to <code>None</code> (OCI default).</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <pre><code class="language-python">node_pools = [
+    NodePoolConfig(
+        name=&quot;system&quot;,
+        shape=&quot;VM.Standard.E4.Flex&quot;,
+        image=&quot;ocid1.image.oc1...&quot;,
+        node_count=3,
+        ocpus=2,
+        memory_in_gbs=16,
+    ),
+    NodePoolConfig(
+        name=&quot;app&quot;,
+        shape=&quot;VM.Standard.E4.Flex&quot;,
+        image=&quot;ocid1.image.oc1...&quot;,
+        node_count=5,
+        ocpus=8,
+        memory_in_gbs=64,
+    ),
+]
+cluster = OkeCluster(name=&quot;k8s&quot;, node_pools=node_pools, ...)
+</code></pre>
+</details>
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/kubernetes.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">NodePoolConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for a single OKE node pool.</span>
+
+<span class="sd">    Pass a list of `NodePoolConfig` instances to `OkeCluster(node_pools=[...])`</span>
+<span class="sd">    to create one or more node pools on the same cluster.  Each entry produces</span>
+<span class="sd">    one `oci.containerengine.NodePool` placed in the private subnet and spread</span>
+<span class="sd">    across all availability domains.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        name: Short identifier for this pool (e.g. `&quot;system&quot;`, `&quot;app&quot;`).</span>
+<span class="sd">            Used as the Pulumi resource name suffix and OCI display name</span>
+<span class="sd">            component.  Must be unique within the list.</span>
+<span class="sd">        shape: Compute shape for worker node VMs</span>
+<span class="sd">            (e.g. `&quot;VM.Standard.E4.Flex&quot;`).</span>
+<span class="sd">        image: Boot image OCID for worker nodes.</span>
+<span class="sd">        node_count: Number of worker nodes.  Spread evenly across all</span>
+<span class="sd">            availability domains in the region.</span>
+<span class="sd">        ocpus: Number of OCPUs per worker node.</span>
+<span class="sd">        memory_in_gbs: RAM in GiB per worker node.</span>
+<span class="sd">        ssh_public_key: Optional SSH public key installed on worker nodes.</span>
+<span class="sd">            Enables direct SSH access for debugging.  Defaults to `None`.</span>
+<span class="sd">        boot_volume_size_in_gbs: Boot volume size in GiB for each worker</span>
+<span class="sd">            node.  When `None` (default) OCI uses the minimum size defined</span>
+<span class="sd">            by the image.  Must be at least 50 GiB when specified.</span>
+<span class="sd">        initial_node_labels: Kubernetes labels applied to every node at</span>
+<span class="sd">            join time (e.g. `{&quot;role&quot;: &quot;app&quot;}`).  Used by node selectors</span>
+<span class="sd">            and affinity rules.  Defaults to `None`.</span>
+<span class="sd">        node_metadata: OCI instance metadata key/value pairs propagated to</span>
+<span class="sd">            every worker node.  Pass `{&quot;user_data&quot;: &quot;&lt;base64&gt;&quot;}` to inject</span>
+<span class="sd">            a cloud-init script.  Defaults to `None`.</span>
+<span class="sd">        defined_tags: OCI defined tags applied to the node pool resource</span>
+<span class="sd">            (e.g. `{&quot;Operations&quot;: {&quot;CostCenter&quot;: &quot;42&quot;}}`).  Defaults to</span>
+<span class="sd">            `None`.</span>
+<span class="sd">        eviction_grace_duration: ISO 8601 duration OCI waits for workloads</span>
+<span class="sd">            to drain before terminating a node (e.g. `&quot;PT1H&quot;`).  When</span>
+<span class="sd">            `None` OCI uses its built-in default.</span>
+<span class="sd">        force_delete_after_grace: When `True`, OCI force-deletes the node</span>
+<span class="sd">            even if workloads remain after `eviction_grace_duration`.</span>
+<span class="sd">            Defaults to `False`.</span>
+<span class="sd">        cycling_enabled: Enable rolling node replacement on pool updates.</span>
+<span class="sd">            When `True`, OCI replaces nodes in batches controlled by</span>
+<span class="sd">            `cycling_max_surge` and `cycling_max_unavailable`.  Defaults</span>
+<span class="sd">            to `False`.</span>
+<span class="sd">        cycling_max_surge: Maximum extra nodes provisioned during cycling</span>
+<span class="sd">            (e.g. `&quot;1&quot;` or `&quot;10%&quot;`).  Defaults to `None` (OCI default).</span>
+<span class="sd">        cycling_max_unavailable: Maximum nodes unavailable during cycling</span>
+<span class="sd">            (e.g. `&quot;0&quot;` or `&quot;10%&quot;`).  Defaults to `None` (OCI default).</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        ```python</span>
+<span class="sd">        node_pools = [</span>
+<span class="sd">            NodePoolConfig(</span>
+<span class="sd">                name=&quot;system&quot;,</span>
+<span class="sd">                shape=&quot;VM.Standard.E4.Flex&quot;,</span>
+<span class="sd">                image=&quot;ocid1.image.oc1...&quot;,</span>
+<span class="sd">                node_count=3,</span>
+<span class="sd">                ocpus=2,</span>
+<span class="sd">                memory_in_gbs=16,</span>
+<span class="sd">            ),</span>
+<span class="sd">            NodePoolConfig(</span>
+<span class="sd">                name=&quot;app&quot;,</span>
+<span class="sd">                shape=&quot;VM.Standard.E4.Flex&quot;,</span>
+<span class="sd">                image=&quot;ocid1.image.oc1...&quot;,</span>
+<span class="sd">                node_count=5,</span>
+<span class="sd">                ocpus=8,</span>
+<span class="sd">                memory_in_gbs=64,</span>
+<span class="sd">            ),</span>
+<span class="sd">        ]</span>
+<span class="sd">        cluster = OkeCluster(name=&quot;k8s&quot;, node_pools=node_pools, ...)</span>
+<span class="sd">        ```</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">shape</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">image</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">node_count</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">ocpus</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">memory_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">ssh_public_key</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">boot_volume_size_in_gbs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">initial_node_labels</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">node_metadata</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">defined_tags</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">eviction_grace_duration</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">force_delete_after_grace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">cycling_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">cycling_max_surge</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">cycling_max_unavailable</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
 <h3 id="cloudspells.providers.oci.kubernetes.OkeCluster" class="doc doc-heading">
             <code>OkeCluster</code>
 
@@ -2181,68 +2666,25 @@ VNIC-level segmentation:</p>
             </td>
           </tr>
           <tr class="doc-section-item">
-            <td><code><span title="cloudspells.providers.oci.kubernetes.OkeCluster.shape">shape</span></code></td>
+            <td><code><span title="cloudspells.providers.oci.kubernetes.OkeCluster.enhanced">enhanced</span></code></td>
             <td>
-                  <code><span title="pulumi.Input">Input</span>[<span title="str">str</span>]</code>
+                  <code><span title="str">str</span></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Compute shape for the node pool VMs.</p>
+                <p><code>True</code> when the cluster type is <code>ENHANCED_CLUSTER</code>.</p>
               </div>
             </td>
           </tr>
           <tr class="doc-section-item">
-            <td><code><span title="cloudspells.providers.oci.kubernetes.OkeCluster.min_nodes">min_nodes</span></code></td>
+            <td><code><span title="cloudspells.providers.oci.kubernetes.OkeCluster.endpoint_subnet">endpoint_subnet</span></code></td>
             <td>
-                  <code><span title="pulumi.Input">Input</span>[<span title="int">int</span>]</code>
+                  <code><span title="str">str</span></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Minimum (and initial) number of worker nodes.</p>
-              </div>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td><code><span title="cloudspells.providers.oci.kubernetes.OkeCluster.ocpus">ocpus</span></code></td>
-            <td>
-                  <code><span title="pulumi.Input">Input</span>[<span title="float">float</span>]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of OCPUs per worker node.</p>
-              </div>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td><code><span title="cloudspells.providers.oci.kubernetes.OkeCluster.memory_in_gbs">memory_in_gbs</span></code></td>
-            <td>
-                  <code><span title="pulumi.Input">Input</span>[<span title="float">float</span>]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>RAM in GiB per worker node.</p>
-              </div>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td><code><span title="cloudspells.providers.oci.kubernetes.OkeCluster.ssh_public_key">ssh_public_key</span></code></td>
-            <td>
-                  <code><span title="pulumi.Input">Input</span>[<span title="str">str</span>] | None</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Optional SSH public key installed on worker nodes.</p>
-              </div>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td><code><span title="cloudspells.providers.oci.kubernetes.OkeCluster.image">image</span></code></td>
-            <td>
-                  <code><span title="pulumi.Input">Input</span>[<span title="str">str</span>]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Optional explicit image OCID for worker nodes.</p>
+                <p>Subnet hosting the API endpoint VNIC; <code>None</code> means
+<code>vcn.public_subnet</code> with a public IP.</p>
               </div>
             </td>
           </tr>
@@ -2326,13 +2768,14 @@ VNIC-level segmentation:</p>
             </td>
           </tr>
           <tr class="doc-section-item">
-            <td><code><span title="cloudspells.providers.oci.kubernetes.OkeCluster.node_pool">node_pool</span></code></td>
+            <td><code><span title="cloudspells.providers.oci.kubernetes.OkeCluster.node_pools">node_pools</span></code></td>
             <td>
-                  <code><span title="pulumi_oci.containerengine.NodePool">NodePool</span></code>
+                  <code><span title="list">list</span>[<span title="pulumi_oci.containerengine.NodePool">NodePool</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The <code>oci.containerengine.NodePool</code> resource.</p>
+                <p>List of <code>oci.containerengine.NodePool</code> resources, one
+per <code>NodePoolConfig</code> passed at construction time.</p>
               </div>
             </td>
           </tr>
@@ -2360,11 +2803,17 @@ cluster = OkeCluster(
     compartment_id=comp_id,
     vcn=vcn,
     kubernetes_version=&quot;v1.30.1&quot;,
-    shape=&quot;VM.Standard.E4.Flex&quot;,
-    min_nodes=3,
-    ocpus=2,
-    memory_in_gbs=32,
     display_name=&quot;prod-k8s&quot;,
+    node_pools=[
+        NodePoolConfig(
+            name=&quot;default&quot;,
+            shape=&quot;VM.Standard.E4.Flex&quot;,
+            image=&quot;ocid1.image.oc1...&quot;,
+            node_count=3,
+            ocpus=2,
+            memory_in_gbs=32,
+        ),
+    ],
 )
 
 # Attach lb_nsg to Load Balancer services via annotation:
@@ -2379,99 +2828,7 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
 
               <details class="quote">
                 <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/kubernetes.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">  81</span>
-<span class="normal">  82</span>
-<span class="normal">  83</span>
-<span class="normal">  84</span>
-<span class="normal">  85</span>
-<span class="normal">  86</span>
-<span class="normal">  87</span>
-<span class="normal">  88</span>
-<span class="normal">  89</span>
-<span class="normal">  90</span>
-<span class="normal">  91</span>
-<span class="normal">  92</span>
-<span class="normal">  93</span>
-<span class="normal">  94</span>
-<span class="normal">  95</span>
-<span class="normal">  96</span>
-<span class="normal">  97</span>
-<span class="normal">  98</span>
-<span class="normal">  99</span>
-<span class="normal"> 100</span>
-<span class="normal"> 101</span>
-<span class="normal"> 102</span>
-<span class="normal"> 103</span>
-<span class="normal"> 104</span>
-<span class="normal"> 105</span>
-<span class="normal"> 106</span>
-<span class="normal"> 107</span>
-<span class="normal"> 108</span>
-<span class="normal"> 109</span>
-<span class="normal"> 110</span>
-<span class="normal"> 111</span>
-<span class="normal"> 112</span>
-<span class="normal"> 113</span>
-<span class="normal"> 114</span>
-<span class="normal"> 115</span>
-<span class="normal"> 116</span>
-<span class="normal"> 117</span>
-<span class="normal"> 118</span>
-<span class="normal"> 119</span>
-<span class="normal"> 120</span>
-<span class="normal"> 121</span>
-<span class="normal"> 122</span>
-<span class="normal"> 123</span>
-<span class="normal"> 124</span>
-<span class="normal"> 125</span>
-<span class="normal"> 126</span>
-<span class="normal"> 127</span>
-<span class="normal"> 128</span>
-<span class="normal"> 129</span>
-<span class="normal"> 130</span>
-<span class="normal"> 131</span>
-<span class="normal"> 132</span>
-<span class="normal"> 133</span>
-<span class="normal"> 134</span>
-<span class="normal"> 135</span>
-<span class="normal"> 136</span>
-<span class="normal"> 137</span>
-<span class="normal"> 138</span>
-<span class="normal"> 139</span>
-<span class="normal"> 140</span>
-<span class="normal"> 141</span>
-<span class="normal"> 142</span>
-<span class="normal"> 143</span>
-<span class="normal"> 144</span>
-<span class="normal"> 145</span>
-<span class="normal"> 146</span>
-<span class="normal"> 147</span>
-<span class="normal"> 148</span>
-<span class="normal"> 149</span>
-<span class="normal"> 150</span>
-<span class="normal"> 151</span>
-<span class="normal"> 152</span>
-<span class="normal"> 153</span>
-<span class="normal"> 154</span>
-<span class="normal"> 155</span>
-<span class="normal"> 156</span>
-<span class="normal"> 157</span>
-<span class="normal"> 158</span>
-<span class="normal"> 159</span>
-<span class="normal"> 160</span>
-<span class="normal"> 161</span>
-<span class="normal"> 162</span>
-<span class="normal"> 163</span>
-<span class="normal"> 164</span>
-<span class="normal"> 165</span>
-<span class="normal"> 166</span>
-<span class="normal"> 167</span>
-<span class="normal"> 168</span>
-<span class="normal"> 169</span>
-<span class="normal"> 170</span>
-<span class="normal"> 171</span>
-<span class="normal"> 172</span>
-<span class="normal"> 173</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 173</span>
 <span class="normal"> 174</span>
 <span class="normal"> 175</span>
 <span class="normal"> 176</span>
@@ -3474,7 +3831,140 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
 <span class="normal">1173</span>
 <span class="normal">1174</span>
 <span class="normal">1175</span>
-<span class="normal">1176</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">OkeCluster</span><span class="p">(</span><span class="n">BaseResource</span><span class="p">,</span> <span class="n">AbstractKubernetes</span><span class="p">):</span>
+<span class="normal">1176</span>
+<span class="normal">1177</span>
+<span class="normal">1178</span>
+<span class="normal">1179</span>
+<span class="normal">1180</span>
+<span class="normal">1181</span>
+<span class="normal">1182</span>
+<span class="normal">1183</span>
+<span class="normal">1184</span>
+<span class="normal">1185</span>
+<span class="normal">1186</span>
+<span class="normal">1187</span>
+<span class="normal">1188</span>
+<span class="normal">1189</span>
+<span class="normal">1190</span>
+<span class="normal">1191</span>
+<span class="normal">1192</span>
+<span class="normal">1193</span>
+<span class="normal">1194</span>
+<span class="normal">1195</span>
+<span class="normal">1196</span>
+<span class="normal">1197</span>
+<span class="normal">1198</span>
+<span class="normal">1199</span>
+<span class="normal">1200</span>
+<span class="normal">1201</span>
+<span class="normal">1202</span>
+<span class="normal">1203</span>
+<span class="normal">1204</span>
+<span class="normal">1205</span>
+<span class="normal">1206</span>
+<span class="normal">1207</span>
+<span class="normal">1208</span>
+<span class="normal">1209</span>
+<span class="normal">1210</span>
+<span class="normal">1211</span>
+<span class="normal">1212</span>
+<span class="normal">1213</span>
+<span class="normal">1214</span>
+<span class="normal">1215</span>
+<span class="normal">1216</span>
+<span class="normal">1217</span>
+<span class="normal">1218</span>
+<span class="normal">1219</span>
+<span class="normal">1220</span>
+<span class="normal">1221</span>
+<span class="normal">1222</span>
+<span class="normal">1223</span>
+<span class="normal">1224</span>
+<span class="normal">1225</span>
+<span class="normal">1226</span>
+<span class="normal">1227</span>
+<span class="normal">1228</span>
+<span class="normal">1229</span>
+<span class="normal">1230</span>
+<span class="normal">1231</span>
+<span class="normal">1232</span>
+<span class="normal">1233</span>
+<span class="normal">1234</span>
+<span class="normal">1235</span>
+<span class="normal">1236</span>
+<span class="normal">1237</span>
+<span class="normal">1238</span>
+<span class="normal">1239</span>
+<span class="normal">1240</span>
+<span class="normal">1241</span>
+<span class="normal">1242</span>
+<span class="normal">1243</span>
+<span class="normal">1244</span>
+<span class="normal">1245</span>
+<span class="normal">1246</span>
+<span class="normal">1247</span>
+<span class="normal">1248</span>
+<span class="normal">1249</span>
+<span class="normal">1250</span>
+<span class="normal">1251</span>
+<span class="normal">1252</span>
+<span class="normal">1253</span>
+<span class="normal">1254</span>
+<span class="normal">1255</span>
+<span class="normal">1256</span>
+<span class="normal">1257</span>
+<span class="normal">1258</span>
+<span class="normal">1259</span>
+<span class="normal">1260</span>
+<span class="normal">1261</span>
+<span class="normal">1262</span>
+<span class="normal">1263</span>
+<span class="normal">1264</span>
+<span class="normal">1265</span>
+<span class="normal">1266</span>
+<span class="normal">1267</span>
+<span class="normal">1268</span>
+<span class="normal">1269</span>
+<span class="normal">1270</span>
+<span class="normal">1271</span>
+<span class="normal">1272</span>
+<span class="normal">1273</span>
+<span class="normal">1274</span>
+<span class="normal">1275</span>
+<span class="normal">1276</span>
+<span class="normal">1277</span>
+<span class="normal">1278</span>
+<span class="normal">1279</span>
+<span class="normal">1280</span>
+<span class="normal">1281</span>
+<span class="normal">1282</span>
+<span class="normal">1283</span>
+<span class="normal">1284</span>
+<span class="normal">1285</span>
+<span class="normal">1286</span>
+<span class="normal">1287</span>
+<span class="normal">1288</span>
+<span class="normal">1289</span>
+<span class="normal">1290</span>
+<span class="normal">1291</span>
+<span class="normal">1292</span>
+<span class="normal">1293</span>
+<span class="normal">1294</span>
+<span class="normal">1295</span>
+<span class="normal">1296</span>
+<span class="normal">1297</span>
+<span class="normal">1298</span>
+<span class="normal">1299</span>
+<span class="normal">1300</span>
+<span class="normal">1301</span>
+<span class="normal">1302</span>
+<span class="normal">1303</span>
+<span class="normal">1304</span>
+<span class="normal">1305</span>
+<span class="normal">1306</span>
+<span class="normal">1307</span>
+<span class="normal">1308</span>
+<span class="normal">1309</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">OkeCluster</span><span class="p">(</span><span class="n">BaseResource</span><span class="p">,</span> <span class="n">AbstractKubernetes</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Oracle Kubernetes Engine cluster with node pool, security configuration, and NSGs.</span>
 
 <span class="sd">    Deploys a `BASIC_CLUSTER` OKE cluster with OCI VCN-native pod networking</span>
@@ -3494,12 +3984,9 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
 <span class="sd">        vcn: The `Vcn` this cluster is deployed into.</span>
 <span class="sd">        kubernetes_version: Kubernetes version string (e.g. `&quot;v1.30.1&quot;`).</span>
 <span class="sd">        display_name: Human-readable cluster display name.</span>
-<span class="sd">        shape: Compute shape for the node pool VMs.</span>
-<span class="sd">        min_nodes: Minimum (and initial) number of worker nodes.</span>
-<span class="sd">        ocpus: Number of OCPUs per worker node.</span>
-<span class="sd">        memory_in_gbs: RAM in GiB per worker node.</span>
-<span class="sd">        ssh_public_key: Optional SSH public key installed on worker nodes.</span>
-<span class="sd">        image: Optional explicit image OCID for worker nodes.</span>
+<span class="sd">        enhanced: `True` when the cluster type is `ENHANCED_CLUSTER`.</span>
+<span class="sd">        endpoint_subnet: Subnet hosting the API endpoint VNIC; `None` means</span>
+<span class="sd">            `vcn.public_subnet` with a public IP.</span>
 <span class="sd">        api_nsg: NSG attached to the Kubernetes API endpoint VNIC.</span>
 <span class="sd">        lb_nsg: NSG for OCI Load Balancers; apply via service annotation.</span>
 <span class="sd">        worker_nsg: NSG attached to every worker node VNIC.</span>
@@ -3509,7 +3996,8 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
 <span class="sd">        oke_private_security_list: Alias for the VCN&#39;s private security list</span>
 <span class="sd">            (populated with OKE rules after initialisation).</span>
 <span class="sd">        cluster: The underlying `oci.containerengine.Cluster` resource.</span>
-<span class="sd">        node_pool: The `oci.containerengine.NodePool` resource.</span>
+<span class="sd">        node_pools: List of `oci.containerengine.NodePool` resources, one</span>
+<span class="sd">            per `NodePoolConfig` passed at construction time.</span>
 <span class="sd">        id: `pulumi.Output[str]` of the cluster OCID.</span>
 
 <span class="sd">    Example:</span>
@@ -3521,11 +4009,17 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
 <span class="sd">            compartment_id=comp_id,</span>
 <span class="sd">            vcn=vcn,</span>
 <span class="sd">            kubernetes_version=&quot;v1.30.1&quot;,</span>
-<span class="sd">            shape=&quot;VM.Standard.E4.Flex&quot;,</span>
-<span class="sd">            min_nodes=3,</span>
-<span class="sd">            ocpus=2,</span>
-<span class="sd">            memory_in_gbs=32,</span>
 <span class="sd">            display_name=&quot;prod-k8s&quot;,</span>
+<span class="sd">            node_pools=[</span>
+<span class="sd">                NodePoolConfig(</span>
+<span class="sd">                    name=&quot;default&quot;,</span>
+<span class="sd">                    shape=&quot;VM.Standard.E4.Flex&quot;,</span>
+<span class="sd">                    image=&quot;ocid1.image.oc1...&quot;,</span>
+<span class="sd">                    node_count=3,</span>
+<span class="sd">                    ocpus=2,</span>
+<span class="sd">                    memory_in_gbs=32,</span>
+<span class="sd">                ),</span>
+<span class="sd">            ],</span>
 <span class="sd">        )</span>
 
 <span class="sd">        # Attach lb_nsg to Load Balancer services via annotation:</span>
@@ -3537,12 +4031,6 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
     <span class="n">vcn</span><span class="p">:</span> <span class="n">Vcn</span> <span class="o">|</span> <span class="n">VcnRef</span>
     <span class="n">kubernetes_version</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">display_name</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">shape</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
-    <span class="n">min_nodes</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
-    <span class="n">ocpus</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
-    <span class="n">memory_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
-    <span class="n">ssh_public_key</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span>
-    <span class="n">image</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">api_nsg</span><span class="p">:</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">NetworkSecurityGroup</span>
     <span class="n">lb_nsg</span><span class="p">:</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">NetworkSecurityGroup</span>
     <span class="n">worker_nsg</span><span class="p">:</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">NetworkSecurityGroup</span>
@@ -3551,7 +4039,7 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
     <span class="n">oke_public_security_list</span><span class="p">:</span> <span class="n">Any</span>
     <span class="n">oke_private_security_list</span><span class="p">:</span> <span class="n">Any</span>
     <span class="n">cluster</span><span class="p">:</span> <span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">Cluster</span>
-    <span class="n">node_pool</span><span class="p">:</span> <span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePool</span>
+    <span class="n">node_pools</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePool</span><span class="p">]</span>
     <span class="nb">id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
@@ -3559,15 +4047,13 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
         <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">compartment_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
         <span class="n">vcn</span><span class="p">:</span> <span class="n">Vcn</span> <span class="o">|</span> <span class="n">VcnRef</span><span class="p">,</span>
-        <span class="n">shape</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
         <span class="n">kubernetes_version</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
-        <span class="n">image</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
-        <span class="n">min_nodes</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
-        <span class="n">ocpus</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
-        <span class="n">memory_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
         <span class="n">display_name</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">node_pools</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">NodePoolConfig</span><span class="p">],</span>
         <span class="n">stack_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">ssh_public_key</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">enhanced</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">endpoint_subnet</span><span class="p">:</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">Subnet</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">defined_tags</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a complete OKE cluster infrastructure.</span>
@@ -3582,19 +4068,28 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
 <span class="sd">            vcn: `Vcn` instance that provides the public and private subnets.</span>
 <span class="sd">            kubernetes_version: Kubernetes version string</span>
 <span class="sd">                (e.g. `&quot;v1.32.1&quot;`).</span>
-<span class="sd">            image: Boot image OCID for worker nodes.</span>
-<span class="sd">            shape: Compute shape for worker node VMs</span>
-<span class="sd">                (e.g. `&quot;VM.Standard.E4.Flex&quot;`).</span>
-<span class="sd">            min_nodes: Number of worker nodes in the node pool.  The pool</span>
-<span class="sd">                is spread evenly across all availability domains.</span>
-<span class="sd">            ocpus: Number of OCPUs per worker node.</span>
-<span class="sd">            memory_in_gbs: RAM in GiB per worker node.</span>
-<span class="sd">            display_name: Human-readable name used for the cluster and node</span>
-<span class="sd">                pool OCI resources.</span>
+<span class="sd">            display_name: Human-readable name used for the cluster OCI</span>
+<span class="sd">                resource.</span>
+<span class="sd">            node_pools: One or more `NodePoolConfig` descriptors.  Each</span>
+<span class="sd">                entry creates a separate node pool on the cluster, enabling</span>
+<span class="sd">                mixed shapes (e.g. a small system pool and a large app pool).</span>
+<span class="sd">                At least one entry is required.</span>
 <span class="sd">            stack_name: Pulumi stack name.  Defaults to</span>
 <span class="sd">                `pulumi.get_stack()` when `None`.</span>
-<span class="sd">            ssh_public_key: Optional SSH public key to install on worker</span>
-<span class="sd">                nodes (enables direct SSH for debugging).</span>
+<span class="sd">            enhanced: When `True`, creates an `ENHANCED_CLUSTER` instead of</span>
+<span class="sd">                the default `BASIC_CLUSTER`.  Enhanced clusters support OCI</span>
+<span class="sd">                Workload Identity (pod-level OCI API auth without embedded</span>
+<span class="sd">                credentials), cluster add-on lifecycle management, and OCI</span>
+<span class="sd">                DevOps integration.  Defaults to `False`.</span>
+<span class="sd">            endpoint_subnet: Subnet where the Kubernetes API endpoint VNIC</span>
+<span class="sd">                is placed.  Defaults to `None`, which uses `vcn.public_subnet`</span>
+<span class="sd">                and assigns a public IP (reachable from the internet on 6443).</span>
+<span class="sd">                Pass `vcn.private_subnet` (or any other subnet) for a</span>
+<span class="sd">                private-only endpoint reachable only from within the VCN or</span>
+<span class="sd">                connected networks (FastConnect, VPN).</span>
+<span class="sd">            defined_tags: OCI defined tags applied to the cluster resource</span>
+<span class="sd">                (e.g. `{&quot;Operations&quot;: {&quot;CostCenter&quot;: &quot;42&quot;}}`).  Defaults</span>
+<span class="sd">                to `None`.</span>
 <span class="sd">            opts: Pulumi resource options forwarded to the component.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;custom:oke:Cluster&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">compartment_id</span><span class="p">,</span> <span class="n">stack_name</span><span class="p">,</span> <span class="n">opts</span><span class="p">)</span>
@@ -3603,13 +4098,6 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span> <span class="o">=</span> <span class="n">vcn</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">compartment_id</span> <span class="o">=</span> <span class="n">compartment_id</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">shape</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">min_nodes</span> <span class="o">=</span> <span class="n">min_nodes</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ocpus</span> <span class="o">=</span> <span class="n">ocpus</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">memory_in_gbs</span> <span class="o">=</span> <span class="n">memory_in_gbs</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ssh_public_key</span> <span class="o">=</span> <span class="n">ssh_public_key</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">image</span> <span class="o">=</span> <span class="n">image</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">kubernetes_version</span> <span class="o">=</span> <span class="n">kubernetes_version</span>
 
         <span class="c1"># Layer 1: subnet-level security list rules</span>
@@ -3626,6 +4114,8 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
         <span class="c1"># Layer 2: VNIC-level NSGs — must be created before cluster/node pool</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_create_oke_nsgs</span><span class="p">()</span>
 
+        <span class="n">child_opts</span> <span class="o">=</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">cluster</span> <span class="o">=</span> <span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">Cluster</span><span class="p">(</span>
             <span class="s2">&quot;Cluster&quot;</span><span class="p">,</span>
             <span class="n">compartment_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">compartment_id</span><span class="p">,</span>
@@ -3634,8 +4124,8 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
             <span class="n">options</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">ClusterOptionsArgs</span><span class="p">(</span>
                 <span class="n">service_lb_subnet_ids</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">public_subnet</span><span class="o">.</span><span class="n">id</span><span class="p">],</span>
                 <span class="n">kubernetes_network_config</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">ClusterOptionsKubernetesNetworkConfigArgs</span><span class="p">(</span>
-                    <span class="n">pods_cidr</span><span class="o">=</span><span class="s2">&quot;10.2.0.0/16&quot;</span><span class="p">,</span>
-                    <span class="n">services_cidr</span><span class="o">=</span><span class="s2">&quot;10.3.0.0/16&quot;</span><span class="p">,</span>
+                    <span class="n">pods_cidr</span><span class="o">=</span><span class="s2">&quot;172.16.0.0/16&quot;</span><span class="p">,</span>
+                    <span class="n">services_cidr</span><span class="o">=</span><span class="s2">&quot;172.17.0.0/16&quot;</span><span class="p">,</span>
                 <span class="p">),</span>
             <span class="p">),</span>
             <span class="n">cluster_pod_network_options</span><span class="o">=</span><span class="p">[</span>
@@ -3643,13 +4133,16 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
                     <span class="n">cni_type</span><span class="o">=</span><span class="s2">&quot;OCI_VCN_IP_NATIVE&quot;</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="p">],</span>
-            <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;BASIC_CLUSTER&quot;</span><span class="p">,</span>
+            <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;ENHANCED_CLUSTER&quot;</span> <span class="k">if</span> <span class="n">enhanced</span> <span class="k">else</span> <span class="s2">&quot;BASIC_CLUSTER&quot;</span><span class="p">,</span>
             <span class="n">vcn_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
             <span class="n">endpoint_config</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">ClusterEndpointConfigArgs</span><span class="p">(</span>
-                <span class="n">subnet_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">public_subnet</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
-                <span class="n">is_public_ip_enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">subnet_id</span><span class="o">=</span><span class="p">(</span><span class="n">endpoint_subnet</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">public_subnet</span><span class="p">)</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>  <span class="c1"># type: ignore[union-attr]</span>
+                <span class="n">is_public_ip_enabled</span><span class="o">=</span><span class="n">endpoint_subnet</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">,</span>
                 <span class="n">nsg_ids</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">api_nsg</span><span class="o">.</span><span class="n">id</span><span class="p">],</span>
             <span class="p">),</span>
+            <span class="n">freeform_tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">create_freeform_tags</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cluster-</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">display_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;oke-cluster&quot;</span><span class="p">),</span>
+            <span class="n">defined_tags</span><span class="o">=</span><span class="n">defined_tags</span><span class="p">,</span>
+            <span class="n">opts</span><span class="o">=</span><span class="n">child_opts</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cluster</span><span class="o">.</span><span class="n">id</span>
@@ -3658,30 +4151,63 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
         <span class="n">get_ad_names</span> <span class="o">=</span> <span class="n">oci</span><span class="o">.</span><span class="n">identity</span><span class="o">.</span><span class="n">get_availability_domains_output</span><span class="p">(</span><span class="n">compartment_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">compartment_id</span><span class="p">)</span>
         <span class="n">ads</span> <span class="o">=</span> <span class="n">get_ad_names</span><span class="o">.</span><span class="n">availability_domains</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">node_pool</span> <span class="o">=</span> <span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePool</span><span class="p">(</span>
-            <span class="s2">&quot;NodePool&quot;</span><span class="p">,</span>
-            <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;NodePool-</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">display_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-            <span class="n">cluster_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cluster</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
-            <span class="n">compartment_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">compartment_id</span><span class="p">,</span>
-            <span class="n">kubernetes_version</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">kubernetes_version</span><span class="p">,</span>
-            <span class="n">node_config_details</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodeConfigDetailsArgs</span><span class="p">(</span>
-                <span class="n">placement_configs</span><span class="o">=</span><span class="n">ads</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">ads_list</span><span class="p">:</span> <span class="n">h</span><span class="o">.</span><span class="n">get_ads</span><span class="p">(</span><span class="n">ads_list</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">private_subnet</span><span class="o">.</span><span class="n">id</span><span class="p">)),</span>  <span class="c1"># type: ignore[arg-type, union-attr, return-value]</span>
-                <span class="n">size</span><span class="o">=</span><span class="n">min_nodes</span><span class="p">,</span>
-                <span class="n">nsg_ids</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_nsg</span><span class="o">.</span><span class="n">id</span><span class="p">],</span>
-                <span class="n">node_pool_pod_network_option_details</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodeConfigDetailsNodePoolPodNetworkOptionDetailsArgs</span><span class="p">(</span>
-                    <span class="n">cni_type</span><span class="o">=</span><span class="s2">&quot;OCI_VCN_IP_NATIVE&quot;</span><span class="p">,</span>
-                    <span class="n">pod_subnet_ids</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">private_subnet</span><span class="o">.</span><span class="n">id</span><span class="p">],</span>  <span class="c1"># type: ignore[union-attr]</span>
-                    <span class="n">pod_nsg_ids</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pod_nsg</span><span class="o">.</span><span class="n">id</span><span class="p">],</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">node_pools</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">cfg</span> <span class="ow">in</span> <span class="n">node_pools</span><span class="p">:</span>
+            <span class="n">pool</span> <span class="o">=</span> <span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePool</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;NodePool-</span><span class="si">{</span><span class="n">cfg</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;NodePool-</span><span class="si">{</span><span class="n">cfg</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">display_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">cluster_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cluster</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="n">compartment_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">compartment_id</span><span class="p">,</span>
+                <span class="n">kubernetes_version</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">kubernetes_version</span><span class="p">,</span>
+                <span class="n">node_config_details</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodeConfigDetailsArgs</span><span class="p">(</span>
+                    <span class="n">placement_configs</span><span class="o">=</span><span class="n">ads</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">ads_list</span><span class="p">:</span> <span class="n">h</span><span class="o">.</span><span class="n">get_ads</span><span class="p">(</span><span class="n">ads_list</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">private_subnet</span><span class="o">.</span><span class="n">id</span><span class="p">)),</span>  <span class="c1"># type: ignore[arg-type, union-attr, return-value]</span>
+                    <span class="n">size</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">node_count</span><span class="p">,</span>
+                    <span class="n">nsg_ids</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_nsg</span><span class="o">.</span><span class="n">id</span><span class="p">],</span>
+                    <span class="n">node_pool_pod_network_option_details</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodeConfigDetailsNodePoolPodNetworkOptionDetailsArgs</span><span class="p">(</span>
+                        <span class="n">cni_type</span><span class="o">=</span><span class="s2">&quot;OCI_VCN_IP_NATIVE&quot;</span><span class="p">,</span>
+                        <span class="n">pod_subnet_ids</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">private_subnet</span><span class="o">.</span><span class="n">id</span><span class="p">],</span>  <span class="c1"># type: ignore[union-attr]</span>
+                        <span class="n">pod_nsg_ids</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pod_nsg</span><span class="o">.</span><span class="n">id</span><span class="p">],</span>
+                    <span class="p">),</span>
+                    <span class="n">defined_tags</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">defined_tags</span><span class="p">,</span>
                 <span class="p">),</span>
-            <span class="p">),</span>
-            <span class="n">node_shape</span><span class="o">=</span><span class="n">shape</span><span class="p">,</span>
-            <span class="n">node_shape_config</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodeShapeConfigArgs</span><span class="p">(</span><span class="n">memory_in_gbs</span><span class="o">=</span><span class="n">memory_in_gbs</span><span class="p">,</span> <span class="n">ocpus</span><span class="o">=</span><span class="n">ocpus</span><span class="p">),</span>
-            <span class="n">node_source_details</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodeSourceDetailsArgs</span><span class="p">(</span>
-                <span class="n">image_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="p">,</span>
-                <span class="n">source_type</span><span class="o">=</span><span class="s2">&quot;IMAGE&quot;</span><span class="p">,</span>
-            <span class="p">),</span>
-            <span class="n">ssh_public_key</span><span class="o">=</span><span class="n">ssh_public_key</span> <span class="k">if</span> <span class="n">ssh_public_key</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="p">)</span>
+                <span class="n">node_shape</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+                <span class="n">node_shape_config</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodeShapeConfigArgs</span><span class="p">(</span>
+                    <span class="n">memory_in_gbs</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">memory_in_gbs</span><span class="p">,</span>
+                    <span class="n">ocpus</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">ocpus</span><span class="p">,</span>
+                <span class="p">),</span>
+                <span class="n">node_source_details</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodeSourceDetailsArgs</span><span class="p">(</span>
+                    <span class="n">image_id</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">image</span><span class="p">,</span>
+                    <span class="n">source_type</span><span class="o">=</span><span class="s2">&quot;IMAGE&quot;</span><span class="p">,</span>
+                    <span class="n">boot_volume_size_in_gbs</span><span class="o">=</span><span class="p">(</span>
+                        <span class="nb">str</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">boot_volume_size_in_gbs</span><span class="p">)</span> <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">boot_volume_size_in_gbs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+                    <span class="p">),</span>
+                <span class="p">),</span>
+                <span class="n">initial_node_labels</span><span class="o">=</span><span class="p">[</span>
+                    <span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolInitialNodeLabelArgs</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="n">k</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">v</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">cfg</span><span class="o">.</span><span class="n">initial_node_labels</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                <span class="p">]</span>
+                <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">initial_node_labels</span>
+                <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="n">node_metadata</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">node_metadata</span><span class="p">,</span>
+                <span class="n">node_eviction_node_pool_settings</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodeEvictionNodePoolSettingsArgs</span><span class="p">(</span>
+                    <span class="n">eviction_grace_duration</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">eviction_grace_duration</span><span class="p">,</span>
+                    <span class="n">is_force_delete_after_grace_duration</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">force_delete_after_grace</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">eviction_grace_duration</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">cfg</span><span class="o">.</span><span class="n">force_delete_after_grace</span>
+                <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="n">node_pool_cycling_details</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodePoolCyclingDetailsArgs</span><span class="p">(</span>
+                    <span class="n">is_node_cycling_enabled</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">cycling_enabled</span><span class="p">,</span>
+                    <span class="n">maximum_surge</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">cycling_max_surge</span><span class="p">,</span>
+                    <span class="n">maximum_unavailable</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">cycling_max_unavailable</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">cycling_enabled</span>
+                <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="n">ssh_public_key</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">ssh_public_key</span> <span class="ow">or</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="n">freeform_tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">create_freeform_tags</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;NodePool-</span><span class="si">{</span><span class="n">cfg</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;oke-node-pool&quot;</span><span class="p">),</span>
+                <span class="n">defined_tags</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">defined_tags</span><span class="p">,</span>
+                <span class="n">opts</span><span class="o">=</span><span class="n">child_opts</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">node_pools</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pool</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">register_outputs</span><span class="p">({})</span>
 
@@ -3701,22 +4227,22 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
 <span class="sd">        Rules added:</span>
 
 <span class="sd">        Public subnet ingress: Kubernetes API (6443) and control-plane port</span>
-<span class="sd">        (12250) from private subnet (workers + pods); ICMP path-MTU from</span>
-<span class="sd">        private; HTTPS (443) and HTTP (80) from internet (Load Balancer);</span>
-<span class="sd">        Kubernetes API (6443) from internet (kubectl).</span>
+<span class="sd">        (12250) from private subnet (workers + pods); HTTPS (443) and HTTP (80)</span>
+<span class="sd">        from internet (Load Balancer); Kubernetes API (6443) from internet</span>
+<span class="sd">        (kubectl).</span>
 
 <span class="sd">        Public subnet egress: OCI services (telemetry, management); kubelet</span>
-<span class="sd">        (10250), ICMP, NodePort (30000-32767), and kube-proxy (10256) to</span>
-<span class="sd">        private; all traffic to private (webhooks, admission controllers).</span>
+<span class="sd">        (10250), NodePort (30000-32767), and kube-proxy (10256) to private;</span>
+<span class="sd">        all traffic to private (webhooks, admission controllers).</span>
 
 <span class="sd">        Private subnet ingress: kubelet (10250), NodePort (30000-32767), and</span>
 <span class="sd">        kube-proxy (10256) from public; all traffic from public (control plane</span>
-<span class="sd">        to pods for webhooks); ICMP from anywhere.</span>
+<span class="sd">        to pods for webhooks).</span>
 
 <span class="sd">        Private subnet egress: OCI services (OCIR, monitoring, logging);</span>
 <span class="sd">        Kubernetes API (6443) and control-plane port (12250) to public;</span>
 <span class="sd">        HTTPS (443) and HTTP (80) to internet (image pulls and pod external</span>
-<span class="sd">        API calls); ICMP to internet.</span>
+<span class="sd">        API calls).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># ═══════════════════════════════════════════════════════════════</span>
         <span class="c1"># PUBLIC SUBNET – API Endpoint + Load Balancer</span>
@@ -3724,7 +4250,7 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
 
         <span class="n">private_subnet_cidr</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">get_private_subnet_cidr</span><span class="p">()</span>
         <span class="n">public_subnet_cidr</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">get_public_subnet_cidr</span><span class="p">()</span>
-        <span class="n">svc_cidr</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">_svc_cidr_block</span>
+        <span class="n">svc_cidr</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">SVC_CIDR</span>
 
         <span class="c1"># ───────────────────────────────────────────────────────────────</span>
         <span class="c1"># PUBLIC – INGRESS</span>
@@ -4073,8 +4599,8 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Add ingress and egress rules to `api_nsg`.</span>
 
 <span class="sd">        Ingress: workers and pods reach the API server (6443) and internal</span>
-<span class="sd">        control-plane port (12250); workers send path-MTU ICMP; external</span>
-<span class="sd">        clients (kubectl) reach the API on 6443.</span>
+<span class="sd">        control-plane port (12250); external clients (kubectl) reach the API</span>
+<span class="sd">        on 6443.</span>
 
 <span class="sd">        Egress: control plane reaches OCI services (telemetry), kubelet on</span>
 <span class="sd">        workers (10250), and all ports on pods (webhooks, exec, metrics).</span>
@@ -4569,7 +5095,12 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
         <span class="n">cluster_kube_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cluster</span><span class="o">.</span><span class="n">id</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
             <span class="k">lambda</span> <span class="n">cid</span><span class="p">:</span> <span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">get_cluster_kube_config</span><span class="p">(</span><span class="n">cluster_id</span><span class="o">=</span><span class="n">cid</span><span class="p">)</span>
         <span class="p">)</span>
-        <span class="n">cluster_kube_config</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">cc</span><span class="p">:</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;w+&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">cc</span><span class="p">))</span>  <span class="c1"># type: ignore[union-attr]  # noqa: SIM115</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_write</span><span class="p">(</span><span class="n">cc</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">cc</span><span class="p">)</span>
+
+        <span class="n">cluster_kube_config</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">_write</span><span class="p">)</span>  <span class="c1"># type: ignore[union-attr]</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -4589,7 +5120,7 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
 
 
 <h4 id="cloudspells.providers.oci.kubernetes.OkeCluster.__init__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">compartment_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">vcn</span><span class="p">:</span> <span class="n">Vcn</span> <span class="o">|</span> <span class="n">VcnRef</span><span class="p">,</span> <span class="n">shape</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">kubernetes_version</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">image</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">min_nodes</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">ocpus</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">memory_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">display_name</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">stack_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">ssh_public_key</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
+            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">compartment_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">vcn</span><span class="p">:</span> <span class="n">Vcn</span> <span class="o">|</span> <span class="n">VcnRef</span><span class="p">,</span> <span class="n">kubernetes_version</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">display_name</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">node_pools</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">NodePoolConfig</span><span class="p">],</span> <span class="n">stack_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">enhanced</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">endpoint_subnet</span><span class="p">:</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">Subnet</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">defined_tags</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
 
 </h4>
 
@@ -4680,88 +5211,6 @@ then creates the Kubernetes control plane and node pool.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>image</code>
-            </td>
-            <td>
-                  <code><span title="pulumi.Input">Input</span>[<span title="str">str</span>]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Boot image OCID for worker nodes.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>shape</code>
-            </td>
-            <td>
-                  <code><span title="pulumi.Input">Input</span>[<span title="str">str</span>]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Compute shape for worker node VMs
-(e.g. <code>"VM.Standard.E4.Flex"</code>).</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>min_nodes</code>
-            </td>
-            <td>
-                  <code><span title="pulumi.Input">Input</span>[<span title="int">int</span>]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of worker nodes in the node pool.  The pool
-is spread evenly across all availability domains.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>ocpus</code>
-            </td>
-            <td>
-                  <code><span title="pulumi.Input">Input</span>[<span title="float">float</span>]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of OCPUs per worker node.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>memory_in_gbs</code>
-            </td>
-            <td>
-                  <code><span title="pulumi.Input">Input</span>[<span title="float">float</span>]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>RAM in GiB per worker node.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
                 <code>display_name</code>
             </td>
             <td>
@@ -4769,8 +5218,27 @@ is spread evenly across all availability domains.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Human-readable name used for the cluster and node
-pool OCI resources.</p>
+                <p>Human-readable name used for the cluster OCI
+resource.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>node_pools</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span>[<a class="autorefs autorefs-internal" title="cloudspells.providers.oci.kubernetes.NodePoolConfig" href="../../blocks/oke/#cloudspells.providers.oci.kubernetes.NodePoolConfig">NodePoolConfig</a>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>One or more <code>NodePoolConfig</code> descriptors.  Each
+entry creates a separate node pool on the cluster, enabling
+mixed shapes (e.g. a small system pool and a large app pool).
+At least one entry is required.</p>
               </div>
             </td>
             <td>
@@ -4796,15 +5264,57 @@ pool OCI resources.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>ssh_public_key</code>
+                <code>enhanced</code>
             </td>
             <td>
-                  <code><span title="pulumi.Input">Input</span>[<span title="str">str</span>] | None</code>
+                  <code><span title="bool">bool</span></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Optional SSH public key to install on worker
-nodes (enables direct SSH for debugging).</p>
+                <p>When <code>True</code>, creates an <code>ENHANCED_CLUSTER</code> instead of
+the default <code>BASIC_CLUSTER</code>.  Enhanced clusters support OCI
+Workload Identity (pod-level OCI API auth without embedded
+credentials), cluster add-on lifecycle management, and OCI
+DevOps integration.  Defaults to <code>False</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>endpoint_subnet</code>
+            </td>
+            <td>
+                  <code><span title="pulumi_oci.core.Subnet">Subnet</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Subnet where the Kubernetes API endpoint VNIC
+is placed.  Defaults to <code>None</code>, which uses <code>vcn.public_subnet</code>
+and assigns a public IP (reachable from the internet on 6443).
+Pass <code>vcn.private_subnet</code> (or any other subnet) for a
+private-only endpoint reachable only from within the VCN or
+connected networks (FastConnect, VPN).</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>defined_tags</code>
+            </td>
+            <td>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>OCI defined tags applied to the cluster resource
+(e.g. <code>{"Operations": {"CostCenter": "42"}}</code>).  Defaults
+to <code>None</code>.</p>
               </div>
             </td>
             <td>
@@ -4832,97 +5342,7 @@ nodes (enables direct SSH for debugging).</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/kubernetes.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">161</span>
-<span class="normal">162</span>
-<span class="normal">163</span>
-<span class="normal">164</span>
-<span class="normal">165</span>
-<span class="normal">166</span>
-<span class="normal">167</span>
-<span class="normal">168</span>
-<span class="normal">169</span>
-<span class="normal">170</span>
-<span class="normal">171</span>
-<span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span>
-<span class="normal">175</span>
-<span class="normal">176</span>
-<span class="normal">177</span>
-<span class="normal">178</span>
-<span class="normal">179</span>
-<span class="normal">180</span>
-<span class="normal">181</span>
-<span class="normal">182</span>
-<span class="normal">183</span>
-<span class="normal">184</span>
-<span class="normal">185</span>
-<span class="normal">186</span>
-<span class="normal">187</span>
-<span class="normal">188</span>
-<span class="normal">189</span>
-<span class="normal">190</span>
-<span class="normal">191</span>
-<span class="normal">192</span>
-<span class="normal">193</span>
-<span class="normal">194</span>
-<span class="normal">195</span>
-<span class="normal">196</span>
-<span class="normal">197</span>
-<span class="normal">198</span>
-<span class="normal">199</span>
-<span class="normal">200</span>
-<span class="normal">201</span>
-<span class="normal">202</span>
-<span class="normal">203</span>
-<span class="normal">204</span>
-<span class="normal">205</span>
-<span class="normal">206</span>
-<span class="normal">207</span>
-<span class="normal">208</span>
-<span class="normal">209</span>
-<span class="normal">210</span>
-<span class="normal">211</span>
-<span class="normal">212</span>
-<span class="normal">213</span>
-<span class="normal">214</span>
-<span class="normal">215</span>
-<span class="normal">216</span>
-<span class="normal">217</span>
-<span class="normal">218</span>
-<span class="normal">219</span>
-<span class="normal">220</span>
-<span class="normal">221</span>
-<span class="normal">222</span>
-<span class="normal">223</span>
-<span class="normal">224</span>
-<span class="normal">225</span>
-<span class="normal">226</span>
-<span class="normal">227</span>
-<span class="normal">228</span>
-<span class="normal">229</span>
-<span class="normal">230</span>
-<span class="normal">231</span>
-<span class="normal">232</span>
-<span class="normal">233</span>
-<span class="normal">234</span>
-<span class="normal">235</span>
-<span class="normal">236</span>
-<span class="normal">237</span>
-<span class="normal">238</span>
-<span class="normal">239</span>
-<span class="normal">240</span>
-<span class="normal">241</span>
-<span class="normal">242</span>
-<span class="normal">243</span>
-<span class="normal">244</span>
-<span class="normal">245</span>
-<span class="normal">246</span>
-<span class="normal">247</span>
-<span class="normal">248</span>
-<span class="normal">249</span>
-<span class="normal">250</span>
-<span class="normal">251</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">251</span>
 <span class="normal">252</span>
 <span class="normal">253</span>
 <span class="normal">254</span>
@@ -4961,20 +5381,146 @@ nodes (enables direct SSH for debugging).</p>
 <span class="normal">287</span>
 <span class="normal">288</span>
 <span class="normal">289</span>
-<span class="normal">290</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
+<span class="normal">323</span>
+<span class="normal">324</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span>
+<span class="normal">343</span>
+<span class="normal">344</span>
+<span class="normal">345</span>
+<span class="normal">346</span>
+<span class="normal">347</span>
+<span class="normal">348</span>
+<span class="normal">349</span>
+<span class="normal">350</span>
+<span class="normal">351</span>
+<span class="normal">352</span>
+<span class="normal">353</span>
+<span class="normal">354</span>
+<span class="normal">355</span>
+<span class="normal">356</span>
+<span class="normal">357</span>
+<span class="normal">358</span>
+<span class="normal">359</span>
+<span class="normal">360</span>
+<span class="normal">361</span>
+<span class="normal">362</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span>
+<span class="normal">366</span>
+<span class="normal">367</span>
+<span class="normal">368</span>
+<span class="normal">369</span>
+<span class="normal">370</span>
+<span class="normal">371</span>
+<span class="normal">372</span>
+<span class="normal">373</span>
+<span class="normal">374</span>
+<span class="normal">375</span>
+<span class="normal">376</span>
+<span class="normal">377</span>
+<span class="normal">378</span>
+<span class="normal">379</span>
+<span class="normal">380</span>
+<span class="normal">381</span>
+<span class="normal">382</span>
+<span class="normal">383</span>
+<span class="normal">384</span>
+<span class="normal">385</span>
+<span class="normal">386</span>
+<span class="normal">387</span>
+<span class="normal">388</span>
+<span class="normal">389</span>
+<span class="normal">390</span>
+<span class="normal">391</span>
+<span class="normal">392</span>
+<span class="normal">393</span>
+<span class="normal">394</span>
+<span class="normal">395</span>
+<span class="normal">396</span>
+<span class="normal">397</span>
+<span class="normal">398</span>
+<span class="normal">399</span>
+<span class="normal">400</span>
+<span class="normal">401</span>
+<span class="normal">402</span>
+<span class="normal">403</span>
+<span class="normal">404</span>
+<span class="normal">405</span>
+<span class="normal">406</span>
+<span class="normal">407</span>
+<span class="normal">408</span>
+<span class="normal">409</span>
+<span class="normal">410</span>
+<span class="normal">411</span>
+<span class="normal">412</span>
+<span class="normal">413</span>
+<span class="normal">414</span>
+<span class="normal">415</span>
+<span class="normal">416</span>
+<span class="normal">417</span>
+<span class="normal">418</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">compartment_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">vcn</span><span class="p">:</span> <span class="n">Vcn</span> <span class="o">|</span> <span class="n">VcnRef</span><span class="p">,</span>
-    <span class="n">shape</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">kubernetes_version</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
-    <span class="n">image</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
-    <span class="n">min_nodes</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
-    <span class="n">ocpus</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
-    <span class="n">memory_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
     <span class="n">display_name</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">node_pools</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">NodePoolConfig</span><span class="p">],</span>
     <span class="n">stack_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">ssh_public_key</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">enhanced</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">endpoint_subnet</span><span class="p">:</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">Subnet</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">defined_tags</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a complete OKE cluster infrastructure.</span>
@@ -4989,19 +5535,28 @@ nodes (enables direct SSH for debugging).</p>
 <span class="sd">        vcn: `Vcn` instance that provides the public and private subnets.</span>
 <span class="sd">        kubernetes_version: Kubernetes version string</span>
 <span class="sd">            (e.g. `&quot;v1.32.1&quot;`).</span>
-<span class="sd">        image: Boot image OCID for worker nodes.</span>
-<span class="sd">        shape: Compute shape for worker node VMs</span>
-<span class="sd">            (e.g. `&quot;VM.Standard.E4.Flex&quot;`).</span>
-<span class="sd">        min_nodes: Number of worker nodes in the node pool.  The pool</span>
-<span class="sd">            is spread evenly across all availability domains.</span>
-<span class="sd">        ocpus: Number of OCPUs per worker node.</span>
-<span class="sd">        memory_in_gbs: RAM in GiB per worker node.</span>
-<span class="sd">        display_name: Human-readable name used for the cluster and node</span>
-<span class="sd">            pool OCI resources.</span>
+<span class="sd">        display_name: Human-readable name used for the cluster OCI</span>
+<span class="sd">            resource.</span>
+<span class="sd">        node_pools: One or more `NodePoolConfig` descriptors.  Each</span>
+<span class="sd">            entry creates a separate node pool on the cluster, enabling</span>
+<span class="sd">            mixed shapes (e.g. a small system pool and a large app pool).</span>
+<span class="sd">            At least one entry is required.</span>
 <span class="sd">        stack_name: Pulumi stack name.  Defaults to</span>
 <span class="sd">            `pulumi.get_stack()` when `None`.</span>
-<span class="sd">        ssh_public_key: Optional SSH public key to install on worker</span>
-<span class="sd">            nodes (enables direct SSH for debugging).</span>
+<span class="sd">        enhanced: When `True`, creates an `ENHANCED_CLUSTER` instead of</span>
+<span class="sd">            the default `BASIC_CLUSTER`.  Enhanced clusters support OCI</span>
+<span class="sd">            Workload Identity (pod-level OCI API auth without embedded</span>
+<span class="sd">            credentials), cluster add-on lifecycle management, and OCI</span>
+<span class="sd">            DevOps integration.  Defaults to `False`.</span>
+<span class="sd">        endpoint_subnet: Subnet where the Kubernetes API endpoint VNIC</span>
+<span class="sd">            is placed.  Defaults to `None`, which uses `vcn.public_subnet`</span>
+<span class="sd">            and assigns a public IP (reachable from the internet on 6443).</span>
+<span class="sd">            Pass `vcn.private_subnet` (or any other subnet) for a</span>
+<span class="sd">            private-only endpoint reachable only from within the VCN or</span>
+<span class="sd">            connected networks (FastConnect, VPN).</span>
+<span class="sd">        defined_tags: OCI defined tags applied to the cluster resource</span>
+<span class="sd">            (e.g. `{&quot;Operations&quot;: {&quot;CostCenter&quot;: &quot;42&quot;}}`).  Defaults</span>
+<span class="sd">            to `None`.</span>
 <span class="sd">        opts: Pulumi resource options forwarded to the component.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;custom:oke:Cluster&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">compartment_id</span><span class="p">,</span> <span class="n">stack_name</span><span class="p">,</span> <span class="n">opts</span><span class="p">)</span>
@@ -5010,13 +5565,6 @@ nodes (enables direct SSH for debugging).</p>
     <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span> <span class="o">=</span> <span class="n">vcn</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">compartment_id</span> <span class="o">=</span> <span class="n">compartment_id</span>
-
-    <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">shape</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">min_nodes</span> <span class="o">=</span> <span class="n">min_nodes</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">ocpus</span> <span class="o">=</span> <span class="n">ocpus</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">memory_in_gbs</span> <span class="o">=</span> <span class="n">memory_in_gbs</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">ssh_public_key</span> <span class="o">=</span> <span class="n">ssh_public_key</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">image</span> <span class="o">=</span> <span class="n">image</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">kubernetes_version</span> <span class="o">=</span> <span class="n">kubernetes_version</span>
 
     <span class="c1"># Layer 1: subnet-level security list rules</span>
@@ -5033,6 +5581,8 @@ nodes (enables direct SSH for debugging).</p>
     <span class="c1"># Layer 2: VNIC-level NSGs — must be created before cluster/node pool</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_create_oke_nsgs</span><span class="p">()</span>
 
+    <span class="n">child_opts</span> <span class="o">=</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
     <span class="bp">self</span><span class="o">.</span><span class="n">cluster</span> <span class="o">=</span> <span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">Cluster</span><span class="p">(</span>
         <span class="s2">&quot;Cluster&quot;</span><span class="p">,</span>
         <span class="n">compartment_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">compartment_id</span><span class="p">,</span>
@@ -5041,8 +5591,8 @@ nodes (enables direct SSH for debugging).</p>
         <span class="n">options</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">ClusterOptionsArgs</span><span class="p">(</span>
             <span class="n">service_lb_subnet_ids</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">public_subnet</span><span class="o">.</span><span class="n">id</span><span class="p">],</span>
             <span class="n">kubernetes_network_config</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">ClusterOptionsKubernetesNetworkConfigArgs</span><span class="p">(</span>
-                <span class="n">pods_cidr</span><span class="o">=</span><span class="s2">&quot;10.2.0.0/16&quot;</span><span class="p">,</span>
-                <span class="n">services_cidr</span><span class="o">=</span><span class="s2">&quot;10.3.0.0/16&quot;</span><span class="p">,</span>
+                <span class="n">pods_cidr</span><span class="o">=</span><span class="s2">&quot;172.16.0.0/16&quot;</span><span class="p">,</span>
+                <span class="n">services_cidr</span><span class="o">=</span><span class="s2">&quot;172.17.0.0/16&quot;</span><span class="p">,</span>
             <span class="p">),</span>
         <span class="p">),</span>
         <span class="n">cluster_pod_network_options</span><span class="o">=</span><span class="p">[</span>
@@ -5050,13 +5600,16 @@ nodes (enables direct SSH for debugging).</p>
                 <span class="n">cni_type</span><span class="o">=</span><span class="s2">&quot;OCI_VCN_IP_NATIVE&quot;</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="p">],</span>
-        <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;BASIC_CLUSTER&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;ENHANCED_CLUSTER&quot;</span> <span class="k">if</span> <span class="n">enhanced</span> <span class="k">else</span> <span class="s2">&quot;BASIC_CLUSTER&quot;</span><span class="p">,</span>
         <span class="n">vcn_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
         <span class="n">endpoint_config</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">ClusterEndpointConfigArgs</span><span class="p">(</span>
-            <span class="n">subnet_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">public_subnet</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
-            <span class="n">is_public_ip_enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">subnet_id</span><span class="o">=</span><span class="p">(</span><span class="n">endpoint_subnet</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">public_subnet</span><span class="p">)</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>  <span class="c1"># type: ignore[union-attr]</span>
+            <span class="n">is_public_ip_enabled</span><span class="o">=</span><span class="n">endpoint_subnet</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">,</span>
             <span class="n">nsg_ids</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">api_nsg</span><span class="o">.</span><span class="n">id</span><span class="p">],</span>
         <span class="p">),</span>
+        <span class="n">freeform_tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">create_freeform_tags</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cluster-</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">display_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;oke-cluster&quot;</span><span class="p">),</span>
+        <span class="n">defined_tags</span><span class="o">=</span><span class="n">defined_tags</span><span class="p">,</span>
+        <span class="n">opts</span><span class="o">=</span><span class="n">child_opts</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cluster</span><span class="o">.</span><span class="n">id</span>
@@ -5065,30 +5618,63 @@ nodes (enables direct SSH for debugging).</p>
     <span class="n">get_ad_names</span> <span class="o">=</span> <span class="n">oci</span><span class="o">.</span><span class="n">identity</span><span class="o">.</span><span class="n">get_availability_domains_output</span><span class="p">(</span><span class="n">compartment_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">compartment_id</span><span class="p">)</span>
     <span class="n">ads</span> <span class="o">=</span> <span class="n">get_ad_names</span><span class="o">.</span><span class="n">availability_domains</span>
 
-    <span class="bp">self</span><span class="o">.</span><span class="n">node_pool</span> <span class="o">=</span> <span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePool</span><span class="p">(</span>
-        <span class="s2">&quot;NodePool&quot;</span><span class="p">,</span>
-        <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;NodePool-</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">display_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="n">cluster_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cluster</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
-        <span class="n">compartment_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">compartment_id</span><span class="p">,</span>
-        <span class="n">kubernetes_version</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">kubernetes_version</span><span class="p">,</span>
-        <span class="n">node_config_details</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodeConfigDetailsArgs</span><span class="p">(</span>
-            <span class="n">placement_configs</span><span class="o">=</span><span class="n">ads</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">ads_list</span><span class="p">:</span> <span class="n">h</span><span class="o">.</span><span class="n">get_ads</span><span class="p">(</span><span class="n">ads_list</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">private_subnet</span><span class="o">.</span><span class="n">id</span><span class="p">)),</span>  <span class="c1"># type: ignore[arg-type, union-attr, return-value]</span>
-            <span class="n">size</span><span class="o">=</span><span class="n">min_nodes</span><span class="p">,</span>
-            <span class="n">nsg_ids</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_nsg</span><span class="o">.</span><span class="n">id</span><span class="p">],</span>
-            <span class="n">node_pool_pod_network_option_details</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodeConfigDetailsNodePoolPodNetworkOptionDetailsArgs</span><span class="p">(</span>
-                <span class="n">cni_type</span><span class="o">=</span><span class="s2">&quot;OCI_VCN_IP_NATIVE&quot;</span><span class="p">,</span>
-                <span class="n">pod_subnet_ids</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">private_subnet</span><span class="o">.</span><span class="n">id</span><span class="p">],</span>  <span class="c1"># type: ignore[union-attr]</span>
-                <span class="n">pod_nsg_ids</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pod_nsg</span><span class="o">.</span><span class="n">id</span><span class="p">],</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">node_pools</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">cfg</span> <span class="ow">in</span> <span class="n">node_pools</span><span class="p">:</span>
+        <span class="n">pool</span> <span class="o">=</span> <span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePool</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;NodePool-</span><span class="si">{</span><span class="n">cfg</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;NodePool-</span><span class="si">{</span><span class="n">cfg</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">display_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">cluster_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cluster</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="n">compartment_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">compartment_id</span><span class="p">,</span>
+            <span class="n">kubernetes_version</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">kubernetes_version</span><span class="p">,</span>
+            <span class="n">node_config_details</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodeConfigDetailsArgs</span><span class="p">(</span>
+                <span class="n">placement_configs</span><span class="o">=</span><span class="n">ads</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">ads_list</span><span class="p">:</span> <span class="n">h</span><span class="o">.</span><span class="n">get_ads</span><span class="p">(</span><span class="n">ads_list</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">private_subnet</span><span class="o">.</span><span class="n">id</span><span class="p">)),</span>  <span class="c1"># type: ignore[arg-type, union-attr, return-value]</span>
+                <span class="n">size</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">node_count</span><span class="p">,</span>
+                <span class="n">nsg_ids</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_nsg</span><span class="o">.</span><span class="n">id</span><span class="p">],</span>
+                <span class="n">node_pool_pod_network_option_details</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodeConfigDetailsNodePoolPodNetworkOptionDetailsArgs</span><span class="p">(</span>
+                    <span class="n">cni_type</span><span class="o">=</span><span class="s2">&quot;OCI_VCN_IP_NATIVE&quot;</span><span class="p">,</span>
+                    <span class="n">pod_subnet_ids</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">private_subnet</span><span class="o">.</span><span class="n">id</span><span class="p">],</span>  <span class="c1"># type: ignore[union-attr]</span>
+                    <span class="n">pod_nsg_ids</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pod_nsg</span><span class="o">.</span><span class="n">id</span><span class="p">],</span>
+                <span class="p">),</span>
+                <span class="n">defined_tags</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">defined_tags</span><span class="p">,</span>
             <span class="p">),</span>
-        <span class="p">),</span>
-        <span class="n">node_shape</span><span class="o">=</span><span class="n">shape</span><span class="p">,</span>
-        <span class="n">node_shape_config</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodeShapeConfigArgs</span><span class="p">(</span><span class="n">memory_in_gbs</span><span class="o">=</span><span class="n">memory_in_gbs</span><span class="p">,</span> <span class="n">ocpus</span><span class="o">=</span><span class="n">ocpus</span><span class="p">),</span>
-        <span class="n">node_source_details</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodeSourceDetailsArgs</span><span class="p">(</span>
-            <span class="n">image_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="p">,</span>
-            <span class="n">source_type</span><span class="o">=</span><span class="s2">&quot;IMAGE&quot;</span><span class="p">,</span>
-        <span class="p">),</span>
-        <span class="n">ssh_public_key</span><span class="o">=</span><span class="n">ssh_public_key</span> <span class="k">if</span> <span class="n">ssh_public_key</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span>
+            <span class="n">node_shape</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+            <span class="n">node_shape_config</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodeShapeConfigArgs</span><span class="p">(</span>
+                <span class="n">memory_in_gbs</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">memory_in_gbs</span><span class="p">,</span>
+                <span class="n">ocpus</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">ocpus</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">node_source_details</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodeSourceDetailsArgs</span><span class="p">(</span>
+                <span class="n">image_id</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">image</span><span class="p">,</span>
+                <span class="n">source_type</span><span class="o">=</span><span class="s2">&quot;IMAGE&quot;</span><span class="p">,</span>
+                <span class="n">boot_volume_size_in_gbs</span><span class="o">=</span><span class="p">(</span>
+                    <span class="nb">str</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">boot_volume_size_in_gbs</span><span class="p">)</span> <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">boot_volume_size_in_gbs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+                <span class="p">),</span>
+            <span class="p">),</span>
+            <span class="n">initial_node_labels</span><span class="o">=</span><span class="p">[</span>
+                <span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolInitialNodeLabelArgs</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="n">k</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">v</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">cfg</span><span class="o">.</span><span class="n">initial_node_labels</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="p">]</span>
+            <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">initial_node_labels</span>
+            <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">node_metadata</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">node_metadata</span><span class="p">,</span>
+            <span class="n">node_eviction_node_pool_settings</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodeEvictionNodePoolSettingsArgs</span><span class="p">(</span>
+                <span class="n">eviction_grace_duration</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">eviction_grace_duration</span><span class="p">,</span>
+                <span class="n">is_force_delete_after_grace_duration</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">force_delete_after_grace</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">eviction_grace_duration</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">cfg</span><span class="o">.</span><span class="n">force_delete_after_grace</span>
+            <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">node_pool_cycling_details</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">NodePoolNodePoolCyclingDetailsArgs</span><span class="p">(</span>
+                <span class="n">is_node_cycling_enabled</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">cycling_enabled</span><span class="p">,</span>
+                <span class="n">maximum_surge</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">cycling_max_surge</span><span class="p">,</span>
+                <span class="n">maximum_unavailable</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">cycling_max_unavailable</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">cycling_enabled</span>
+            <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">ssh_public_key</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">ssh_public_key</span> <span class="ow">or</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">freeform_tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">create_freeform_tags</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;NodePool-</span><span class="si">{</span><span class="n">cfg</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;oke-node-pool&quot;</span><span class="p">),</span>
+            <span class="n">defined_tags</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">defined_tags</span><span class="p">,</span>
+            <span class="n">opts</span><span class="o">=</span><span class="n">child_opts</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">node_pools</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pool</span><span class="p">)</span>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">register_outputs</span><span class="p">({})</span>
 </code></pre></div></td></tr></table></div>
@@ -5129,29 +5715,29 @@ oke.export()
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/kubernetes.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1116</span>
-<span class="normal">1117</span>
-<span class="normal">1118</span>
-<span class="normal">1119</span>
-<span class="normal">1120</span>
-<span class="normal">1121</span>
-<span class="normal">1122</span>
-<span class="normal">1123</span>
-<span class="normal">1124</span>
-<span class="normal">1125</span>
-<span class="normal">1126</span>
-<span class="normal">1127</span>
-<span class="normal">1128</span>
-<span class="normal">1129</span>
-<span class="normal">1130</span>
-<span class="normal">1131</span>
-<span class="normal">1132</span>
-<span class="normal">1133</span>
-<span class="normal">1134</span>
-<span class="normal">1135</span>
-<span class="normal">1136</span>
-<span class="normal">1137</span>
-<span class="normal">1138</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1244</span>
+<span class="normal">1245</span>
+<span class="normal">1246</span>
+<span class="normal">1247</span>
+<span class="normal">1248</span>
+<span class="normal">1249</span>
+<span class="normal">1250</span>
+<span class="normal">1251</span>
+<span class="normal">1252</span>
+<span class="normal">1253</span>
+<span class="normal">1254</span>
+<span class="normal">1255</span>
+<span class="normal">1256</span>
+<span class="normal">1257</span>
+<span class="normal">1258</span>
+<span class="normal">1259</span>
+<span class="normal">1260</span>
+<span class="normal">1261</span>
+<span class="normal">1262</span>
+<span class="normal">1263</span>
+<span class="normal">1264</span>
+<span class="normal">1265</span>
+<span class="normal">1266</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Export standard OKE cluster stack outputs.</span>
 
 <span class="sd">    Publishes outputs derived from the spell&#39;s logical name:</span>
@@ -5238,16 +5824,16 @@ oke.export()
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/kubernetes.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1140</span>
-<span class="normal">1141</span>
-<span class="normal">1142</span>
-<span class="normal">1143</span>
-<span class="normal">1144</span>
-<span class="normal">1145</span>
-<span class="normal">1146</span>
-<span class="normal">1147</span>
-<span class="normal">1148</span>
-<span class="normal">1149</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_public_security_list_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1268</span>
+<span class="normal">1269</span>
+<span class="normal">1270</span>
+<span class="normal">1271</span>
+<span class="normal">1272</span>
+<span class="normal">1273</span>
+<span class="normal">1274</span>
+<span class="normal">1275</span>
+<span class="normal">1276</span>
+<span class="normal">1277</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_public_security_list_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the ID of the public security list (populated with OKE rules).</span>
 
 <span class="sd">    Returns:</span>
@@ -5321,16 +5907,16 @@ oke.export()
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/kubernetes.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1151</span>
-<span class="normal">1152</span>
-<span class="normal">1153</span>
-<span class="normal">1154</span>
-<span class="normal">1155</span>
-<span class="normal">1156</span>
-<span class="normal">1157</span>
-<span class="normal">1158</span>
-<span class="normal">1159</span>
-<span class="normal">1160</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_private_security_list_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1279</span>
+<span class="normal">1280</span>
+<span class="normal">1281</span>
+<span class="normal">1282</span>
+<span class="normal">1283</span>
+<span class="normal">1284</span>
+<span class="normal">1285</span>
+<span class="normal">1286</span>
+<span class="normal">1287</span>
+<span class="normal">1288</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_private_security_list_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the ID of the private security list (populated with OKE rules).</span>
 
 <span class="sd">    Returns:</span>
@@ -5396,21 +5982,26 @@ should be written (e.g. <code>"/tmp/kubeconfig"</code>).</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/kubernetes.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1162</span>
-<span class="normal">1163</span>
-<span class="normal">1164</span>
-<span class="normal">1165</span>
-<span class="normal">1166</span>
-<span class="normal">1167</span>
-<span class="normal">1168</span>
-<span class="normal">1169</span>
-<span class="normal">1170</span>
-<span class="normal">1171</span>
-<span class="normal">1172</span>
-<span class="normal">1173</span>
-<span class="normal">1174</span>
-<span class="normal">1175</span>
-<span class="normal">1176</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_kubeconfig</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1290</span>
+<span class="normal">1291</span>
+<span class="normal">1292</span>
+<span class="normal">1293</span>
+<span class="normal">1294</span>
+<span class="normal">1295</span>
+<span class="normal">1296</span>
+<span class="normal">1297</span>
+<span class="normal">1298</span>
+<span class="normal">1299</span>
+<span class="normal">1300</span>
+<span class="normal">1301</span>
+<span class="normal">1302</span>
+<span class="normal">1303</span>
+<span class="normal">1304</span>
+<span class="normal">1305</span>
+<span class="normal">1306</span>
+<span class="normal">1307</span>
+<span class="normal">1308</span>
+<span class="normal">1309</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_kubeconfig</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Write a kubeconfig file for this OKE cluster.</span>
 
 <span class="sd">    Fetches the cluster&#39;s kubeconfig content from the OCI API and writes</span>
@@ -5424,7 +6015,12 @@ should be written (e.g. <code>"/tmp/kubeconfig"</code>).</p>
     <span class="n">cluster_kube_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cluster</span><span class="o">.</span><span class="n">id</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
         <span class="k">lambda</span> <span class="n">cid</span><span class="p">:</span> <span class="n">oci</span><span class="o">.</span><span class="n">containerengine</span><span class="o">.</span><span class="n">get_cluster_kube_config</span><span class="p">(</span><span class="n">cluster_id</span><span class="o">=</span><span class="n">cid</span><span class="p">)</span>
     <span class="p">)</span>
-    <span class="n">cluster_kube_config</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">cc</span><span class="p">:</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;w+&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">cc</span><span class="p">))</span>  <span class="c1"># type: ignore[union-attr]  # noqa: SIM115</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_write</span><span class="p">(</span><span class="n">cc</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">cc</span><span class="p">)</span>
+
+    <span class="n">cluster_kube_config</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">_write</span><span class="p">)</span>  <span class="c1"># type: ignore[union-attr]</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

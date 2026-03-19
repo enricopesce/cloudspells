@@ -2416,6 +2416,41 @@ resources, parallel to <code>block_volumes</code>.</p>
               </div>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.compute.ComputeInstance.fault_domain">fault_domain</span></code></td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Fault domain the instance is placed in, or <code>None</code>
+when OCI auto-assigns (default spread behaviour).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.compute.ComputeInstance.hostname_label">hostname_label</span></code></td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>DNS hostname for the primary VNIC, or <code>None</code>.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="cloudspells.providers.oci.compute.ComputeInstance.preserve_boot_volume">preserve_boot_volume</span></code></td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether the boot volume is retained after
+instance termination.</p>
+              </div>
+            </td>
+          </tr>
       </tbody>
     </table>
         <p>Usage patterns:</p>
@@ -2472,8 +2507,7 @@ resources, parallel to <code>block_volumes</code>.</p>
 
               <details class="quote">
                 <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/compute.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 46</span>
-<span class="normal"> 47</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 47</span>
 <span class="normal"> 48</span>
 <span class="normal"> 49</span>
 <span class="normal"> 50</span>
@@ -3048,7 +3082,107 @@ resources, parallel to <code>block_volumes</code>.</p>
 <span class="normal">619</span>
 <span class="normal">620</span>
 <span class="normal">621</span>
-<span class="normal">622</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ComputeInstance</span><span class="p">(</span><span class="n">BaseResource</span><span class="p">,</span> <span class="n">AbstractCompute</span><span class="p">):</span>
+<span class="normal">622</span>
+<span class="normal">623</span>
+<span class="normal">624</span>
+<span class="normal">625</span>
+<span class="normal">626</span>
+<span class="normal">627</span>
+<span class="normal">628</span>
+<span class="normal">629</span>
+<span class="normal">630</span>
+<span class="normal">631</span>
+<span class="normal">632</span>
+<span class="normal">633</span>
+<span class="normal">634</span>
+<span class="normal">635</span>
+<span class="normal">636</span>
+<span class="normal">637</span>
+<span class="normal">638</span>
+<span class="normal">639</span>
+<span class="normal">640</span>
+<span class="normal">641</span>
+<span class="normal">642</span>
+<span class="normal">643</span>
+<span class="normal">644</span>
+<span class="normal">645</span>
+<span class="normal">646</span>
+<span class="normal">647</span>
+<span class="normal">648</span>
+<span class="normal">649</span>
+<span class="normal">650</span>
+<span class="normal">651</span>
+<span class="normal">652</span>
+<span class="normal">653</span>
+<span class="normal">654</span>
+<span class="normal">655</span>
+<span class="normal">656</span>
+<span class="normal">657</span>
+<span class="normal">658</span>
+<span class="normal">659</span>
+<span class="normal">660</span>
+<span class="normal">661</span>
+<span class="normal">662</span>
+<span class="normal">663</span>
+<span class="normal">664</span>
+<span class="normal">665</span>
+<span class="normal">666</span>
+<span class="normal">667</span>
+<span class="normal">668</span>
+<span class="normal">669</span>
+<span class="normal">670</span>
+<span class="normal">671</span>
+<span class="normal">672</span>
+<span class="normal">673</span>
+<span class="normal">674</span>
+<span class="normal">675</span>
+<span class="normal">676</span>
+<span class="normal">677</span>
+<span class="normal">678</span>
+<span class="normal">679</span>
+<span class="normal">680</span>
+<span class="normal">681</span>
+<span class="normal">682</span>
+<span class="normal">683</span>
+<span class="normal">684</span>
+<span class="normal">685</span>
+<span class="normal">686</span>
+<span class="normal">687</span>
+<span class="normal">688</span>
+<span class="normal">689</span>
+<span class="normal">690</span>
+<span class="normal">691</span>
+<span class="normal">692</span>
+<span class="normal">693</span>
+<span class="normal">694</span>
+<span class="normal">695</span>
+<span class="normal">696</span>
+<span class="normal">697</span>
+<span class="normal">698</span>
+<span class="normal">699</span>
+<span class="normal">700</span>
+<span class="normal">701</span>
+<span class="normal">702</span>
+<span class="normal">703</span>
+<span class="normal">704</span>
+<span class="normal">705</span>
+<span class="normal">706</span>
+<span class="normal">707</span>
+<span class="normal">708</span>
+<span class="normal">709</span>
+<span class="normal">710</span>
+<span class="normal">711</span>
+<span class="normal">712</span>
+<span class="normal">713</span>
+<span class="normal">714</span>
+<span class="normal">715</span>
+<span class="normal">716</span>
+<span class="normal">717</span>
+<span class="normal">718</span>
+<span class="normal">719</span>
+<span class="normal">720</span>
+<span class="normal">721</span>
+<span class="normal">722</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ComputeInstance</span><span class="p">(</span><span class="n">BaseResource</span><span class="p">,</span> <span class="n">AbstractCompute</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;OCI Compute Instance with one or more attached block volumes.</span>
 
 <span class="sd">    Creates a single VM in the chosen VCN subnet together with the block</span>
@@ -3075,6 +3209,11 @@ resources, parallel to <code>block_volumes</code>.</p>
 <span class="sd">            resources, parallel to `block_volumes`.</span>
 <span class="sd">        id: `pulumi.Output[str]` of the instance OCID.</span>
 <span class="sd">        auto_generated_keys: `True` when SSH keys were auto-generated.</span>
+<span class="sd">        fault_domain: Fault domain the instance is placed in, or `None`</span>
+<span class="sd">            when OCI auto-assigns (default spread behaviour).</span>
+<span class="sd">        hostname_label: DNS hostname for the primary VNIC, or `None`.</span>
+<span class="sd">        preserve_boot_volume: Whether the boot volume is retained after</span>
+<span class="sd">            instance termination.</span>
 
 <span class="sd">    Usage patterns:</span>
 
@@ -3136,6 +3275,9 @@ resources, parallel to <code>block_volumes</code>.</p>
     <span class="n">volume_attachments</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">VolumeAttachment</span><span class="p">]</span>
     <span class="nb">id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">auto_generated_keys</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">fault_domain</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">hostname_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">preserve_boot_volume</span><span class="p">:</span> <span class="nb">bool</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -3151,9 +3293,22 @@ resources, parallel to <code>block_volumes</code>.</p>
         <span class="n">os_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;oracle&quot;</span><span class="p">,</span>
         <span class="n">subnet</span><span class="p">:</span> <span class="n">SubnetTier</span> <span class="o">=</span> <span class="n">SUBNET_PRIVATE</span><span class="p">,</span>
         <span class="n">boot_volume_size_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+        <span class="n">boot_volume_vpus_per_gb</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
         <span class="n">volumes</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">VolumeSpec</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">nsg_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">nsg</span><span class="p">:</span> <span class="n">Nsg</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">user_data</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">defined_tags</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">fault_domain</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">hostname_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">private_ip</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">skip_source_dest_check</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">is_pv_encryption_in_transit</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">preserve_boot_volume</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">recovery_action</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">baseline_ocpu_utilization</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">dedicated_vm_host_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">capacity_reservation_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a compute instance with one or more attached block volumes.</span>
@@ -3203,6 +3358,47 @@ resources, parallel to <code>block_volumes</code>.</p>
 <span class="sd">                infers `subnet` from `nsg.role.subnet_tier`.  Takes</span>
 <span class="sd">                precedence over `subnet` and `nsg_ids` when both are</span>
 <span class="sd">                provided.</span>
+<span class="sd">            boot_volume_vpus_per_gb: Boot volume performance tier.  Use</span>
+<span class="sd">                `0` (low), `10` (balanced, default), `20` (high), or</span>
+<span class="sd">                `120` (ultra-high).</span>
+<span class="sd">            user_data: Cloud-init script as a plain `str` or `bytes`.</span>
+<span class="sd">                CloudSpells base64-encodes it before passing to OCI.  When</span>
+<span class="sd">                `None`, no user data is injected.</span>
+<span class="sd">            defined_tags: OCI defined tags applied to the instance and all</span>
+<span class="sd">                block volumes, in `{&quot;namespace&quot;: {&quot;key&quot;: &quot;value&quot;}}` format.</span>
+<span class="sd">                Per-volume `defined_tags` on `VolumeSpec` are merged on top</span>
+<span class="sd">                of this value (volume spec wins on conflict).</span>
+<span class="sd">            fault_domain: Explicit fault domain for placement</span>
+<span class="sd">                (e.g. `&quot;FAULT-DOMAIN-1&quot;`).  When `None`, OCI auto-assigns</span>
+<span class="sd">                and spreads instances across fault domains.</span>
+<span class="sd">            hostname_label: DNS hostname registered for the primary VNIC.</span>
+<span class="sd">                Must be unique within the subnet.  When `None`, OCI does</span>
+<span class="sd">                not assign a hostname.</span>
+<span class="sd">            private_ip: Explicit private IP address for the primary VNIC.</span>
+<span class="sd">                Must fall within the selected subnet&#39;s CIDR.  When `None`,</span>
+<span class="sd">                OCI assigns the next available IP.</span>
+<span class="sd">            skip_source_dest_check: Disable the source/destination check on</span>
+<span class="sd">                the primary VNIC.  Set to `True` for NAT instances or</span>
+<span class="sd">                software routers.  Defaults to `False`.</span>
+<span class="sd">            is_pv_encryption_in_transit: Encrypt data in transit between</span>
+<span class="sd">                the instance and paravirtualized-attached volumes.</span>
+<span class="sd">                Defaults to `False`.</span>
+<span class="sd">            preserve_boot_volume: Keep the boot volume after the instance</span>
+<span class="sd">                is terminated.  Defaults to `False` (boot volume is deleted</span>
+<span class="sd">                with the instance).</span>
+<span class="sd">            recovery_action: Live-migration recovery action.  Pass</span>
+<span class="sd">                `&quot;RESTORE_INSTANCE&quot;` (default OCI behaviour) to restart</span>
+<span class="sd">                after host maintenance, or `&quot;STOP_INSTANCE&quot;` to stop</span>
+<span class="sd">                instead.  `None` accepts the OCI account default.</span>
+<span class="sd">            baseline_ocpu_utilization: Burstable-instance CPU baseline.</span>
+<span class="sd">                One of `&quot;BASELINE_1_8&quot;` (12.5 %), `&quot;BASELINE_1_2&quot;` (50 %),</span>
+<span class="sd">                or `&quot;BASELINE_1_1&quot;` (100 % — effectively non-burstable).</span>
+<span class="sd">                `None` uses a standard (non-burstable) instance.</span>
+<span class="sd">            dedicated_vm_host_id: OCID of the dedicated VM host to place</span>
+<span class="sd">                this instance on.  When `None`, the instance runs on shared</span>
+<span class="sd">                infrastructure.</span>
+<span class="sd">            capacity_reservation_id: OCID of the capacity reservation to</span>
+<span class="sd">                consume.  When `None`, no reservation is used.</span>
 <span class="sd">            opts: Pulumi resource options forwarded to the component.</span>
 
 <span class="sd">        Raises:</span>
@@ -3234,6 +3430,9 @@ resources, parallel to <code>block_volumes</code>.</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">subnet</span> <span class="o">=</span> <span class="n">subnet</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">image_id</span> <span class="o">=</span> <span class="n">image_id</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">boot_volume_size_in_gbs</span> <span class="o">=</span> <span class="n">boot_volume_size_in_gbs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fault_domain</span> <span class="o">=</span> <span class="n">fault_domain</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hostname_label</span> <span class="o">=</span> <span class="n">hostname_label</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">preserve_boot_volume</span> <span class="o">=</span> <span class="n">preserve_boot_volume</span>
 
         <span class="c1"># Resolve volumes list.</span>
         <span class="c1"># None  → one default 100 GiB balanced-performance data volume.</span>
@@ -3280,18 +3479,33 @@ resources, parallel to <code>block_volumes</code>.</p>
         <span class="n">ads</span> <span class="o">=</span> <span class="n">oci</span><span class="o">.</span><span class="n">identity</span><span class="o">.</span><span class="n">get_availability_domains</span><span class="p">(</span><span class="n">compartment_id</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">compartment_id</span><span class="p">))</span>
         <span class="n">availability_domain</span> <span class="o">=</span> <span class="n">ads</span><span class="o">.</span><span class="n">availability_domains</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span>
 
+        <span class="c1"># ---- Encode cloud-init user data --------------------------------</span>
+        <span class="n">encoded_user_data</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">user_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">raw</span> <span class="o">=</span> <span class="n">user_data</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">user_data</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="n">user_data</span>
+            <span class="n">encoded_user_data</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+
         <span class="c1"># ---- Compute instance ------------------------------------------</span>
         <span class="n">instance_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_resource_name</span><span class="p">(</span><span class="s2">&quot;instance&quot;</span><span class="p">)</span>
+
+        <span class="n">instance_metadata</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ssh_authorized_keys&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ssh_public_key</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">encoded_user_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">instance_metadata</span><span class="p">[</span><span class="s2">&quot;user_data&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">encoded_user_data</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">instance</span> <span class="o">=</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">Instance</span><span class="p">(</span>
             <span class="n">instance_name</span><span class="p">,</span>
             <span class="n">availability_domain</span><span class="o">=</span><span class="n">availability_domain</span><span class="p">,</span>
             <span class="n">compartment_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">compartment_id</span><span class="p">,</span>
             <span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
             <span class="n">display_name</span><span class="o">=</span><span class="n">instance_name</span><span class="p">,</span>
+            <span class="n">fault_domain</span><span class="o">=</span><span class="n">fault_domain</span><span class="p">,</span>
+            <span class="n">dedicated_vm_host_id</span><span class="o">=</span><span class="n">dedicated_vm_host_id</span><span class="p">,</span>
+            <span class="n">capacity_reservation_id</span><span class="o">=</span><span class="n">capacity_reservation_id</span><span class="p">,</span>
             <span class="n">source_details</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">InstanceSourceDetailsArgs</span><span class="p">(</span>
                 <span class="n">source_type</span><span class="o">=</span><span class="s2">&quot;image&quot;</span><span class="p">,</span>
                 <span class="n">source_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">image_id</span><span class="p">,</span>
                 <span class="n">boot_volume_size_in_gbs</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">boot_volume_size_in_gbs</span><span class="p">),</span>
+                <span class="n">boot_volume_vpus_per_gb</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">boot_volume_vpus_per_gb</span><span class="p">),</span>
             <span class="p">),</span>
             <span class="n">create_vnic_details</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">InstanceCreateVnicDetailsArgs</span><span class="p">(</span>
                 <span class="n">subnet_id</span><span class="o">=</span><span class="p">(</span>
@@ -3306,12 +3520,23 @@ resources, parallel to <code>block_volumes</code>.</p>
                 <span class="n">assign_public_ip</span><span class="o">=</span><span class="s2">&quot;true&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">subnet</span> <span class="o">==</span> <span class="n">SUBNET_PUBLIC</span> <span class="k">else</span> <span class="s2">&quot;false&quot;</span><span class="p">,</span>
                 <span class="n">display_name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">instance_name</span><span class="si">}</span><span class="s2">-vnic&quot;</span><span class="p">,</span>
                 <span class="n">nsg_ids</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nsg_ids</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nsg_ids</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="n">hostname_label</span><span class="o">=</span><span class="n">hostname_label</span><span class="p">,</span>
+                <span class="n">private_ip</span><span class="o">=</span><span class="n">private_ip</span><span class="p">,</span>
+                <span class="n">skip_source_dest_check</span><span class="o">=</span><span class="n">skip_source_dest_check</span><span class="p">,</span>
             <span class="p">),</span>
-            <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ssh_authorized_keys&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ssh_public_key</span><span class="p">},</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="n">instance_metadata</span><span class="p">,</span>
             <span class="n">shape_config</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">InstanceShapeConfigArgs</span><span class="p">(</span>
                 <span class="n">ocpus</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ocpus</span><span class="p">,</span>
                 <span class="n">memory_in_gbs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_in_gbs</span><span class="p">,</span>
+                <span class="n">baseline_ocpu_utilization</span><span class="o">=</span><span class="n">baseline_ocpu_utilization</span><span class="p">,</span>
             <span class="p">),</span>
+            <span class="n">availability_config</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">InstanceAvailabilityConfigArgs</span><span class="p">(</span>
+                <span class="n">recovery_action</span><span class="o">=</span><span class="n">recovery_action</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">recovery_action</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">is_pv_encryption_in_transit_enabled</span><span class="o">=</span><span class="n">is_pv_encryption_in_transit</span><span class="p">,</span>
+            <span class="n">preserve_boot_volume</span><span class="o">=</span><span class="n">preserve_boot_volume</span><span class="p">,</span>
             <span class="n">freeform_tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">create_freeform_tags</span><span class="p">(</span>
                 <span class="n">instance_name</span><span class="p">,</span>
                 <span class="s2">&quot;compute-instance&quot;</span><span class="p">,</span>
@@ -3321,6 +3546,7 @@ resources, parallel to <code>block_volumes</code>.</p>
                     <span class="s2">&quot;MemoryGB&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">memory_in_gbs</span><span class="p">),</span>
                 <span class="p">},</span>
             <span class="p">),</span>
+            <span class="n">defined_tags</span><span class="o">=</span><span class="n">defined_tags</span><span class="p">,</span>
             <span class="n">opts</span><span class="o">=</span><span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">),</span>
         <span class="p">)</span>
 
@@ -3332,6 +3558,11 @@ resources, parallel to <code>block_volumes</code>.</p>
 
         <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">volumes_spec</span><span class="p">:</span>
             <span class="n">vol_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_resource_name</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">label</span><span class="si">}</span><span class="s2">-vol&quot;</span><span class="p">)</span>
+            <span class="c1"># Per-volume defined_tags: merge instance-level tags with</span>
+            <span class="c1"># spec-level tags; spec-level wins on key conflicts.</span>
+            <span class="n">vol_defined_tags</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">defined_tags</span>
+            <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">defined_tags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">vol_defined_tags</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="p">(</span><span class="n">defined_tags</span> <span class="ow">or</span> <span class="p">{}),</span> <span class="o">**</span><span class="n">spec</span><span class="o">.</span><span class="n">defined_tags</span><span class="p">}</span>
             <span class="n">vol</span> <span class="o">=</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">Volume</span><span class="p">(</span>
                 <span class="n">vol_name</span><span class="p">,</span>
                 <span class="n">availability_domain</span><span class="o">=</span><span class="n">availability_domain</span><span class="p">,</span>
@@ -3349,6 +3580,7 @@ resources, parallel to <code>block_volumes</code>.</p>
                         <span class="s2">&quot;AttachedTo&quot;</span><span class="p">:</span> <span class="n">instance_name</span><span class="p">,</span>
                     <span class="p">},</span>
                 <span class="p">),</span>
+                <span class="n">defined_tags</span><span class="o">=</span><span class="n">vol_defined_tags</span><span class="p">,</span>
                 <span class="n">opts</span><span class="o">=</span><span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">),</span>
             <span class="p">)</span>
             <span class="n">att_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_resource_name</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">label</span><span class="si">}</span><span class="s2">-vol-attach&quot;</span><span class="p">)</span>
@@ -3359,6 +3591,7 @@ resources, parallel to <code>block_volumes</code>.</p>
                 <span class="n">attachment_type</span><span class="o">=</span><span class="s2">&quot;paravirtualized&quot;</span><span class="p">,</span>
                 <span class="n">display_name</span><span class="o">=</span><span class="n">att_name</span><span class="p">,</span>
                 <span class="n">is_read_only</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">is_read_only</span><span class="p">,</span>
+                <span class="n">device</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
                 <span class="n">opts</span><span class="o">=</span><span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">delete_before_replace</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">block_volumes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vol</span><span class="p">)</span>
@@ -3738,7 +3971,7 @@ resources, parallel to <code>block_volumes</code>.</p>
 
 
 <h4 id="cloudspells.providers.oci.compute.ComputeInstance.__init__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">compartment_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">vcn</span><span class="p">:</span> <span class="n">Vcn</span> <span class="o">|</span> <span class="n">VcnRef</span><span class="p">,</span> <span class="n">stack_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">ssh_public_key</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">shape</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;VM.Standard.E4.Flex&#39;</span><span class="p">,</span> <span class="n">ocpus</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">memory_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span> <span class="n">image_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">os_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;oracle&#39;</span><span class="p">,</span> <span class="n">subnet</span><span class="p">:</span> <span class="n">SubnetTier</span> <span class="o">=</span> <span class="n">SUBNET_PRIVATE</span><span class="p">,</span> <span class="n">boot_volume_size_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span> <span class="n">volumes</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">VolumeSpec</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">nsg_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">nsg</span><span class="p">:</span> <span class="n">Nsg</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
+            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">compartment_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">vcn</span><span class="p">:</span> <span class="n">Vcn</span> <span class="o">|</span> <span class="n">VcnRef</span><span class="p">,</span> <span class="n">stack_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">ssh_public_key</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">shape</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;VM.Standard.E4.Flex&#39;</span><span class="p">,</span> <span class="n">ocpus</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">memory_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span> <span class="n">image_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">os_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;oracle&#39;</span><span class="p">,</span> <span class="n">subnet</span><span class="p">:</span> <span class="n">SubnetTier</span> <span class="o">=</span> <span class="n">SUBNET_PRIVATE</span><span class="p">,</span> <span class="n">boot_volume_size_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span> <span class="n">boot_volume_vpus_per_gb</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="n">volumes</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">VolumeSpec</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">nsg_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">nsg</span><span class="p">:</span> <span class="n">Nsg</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">user_data</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">defined_tags</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">fault_domain</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">hostname_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">private_ip</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">skip_source_dest_check</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">is_pv_encryption_in_transit</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">preserve_boot_volume</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">recovery_action</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">baseline_ocpu_utilization</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">dedicated_vm_host_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">capacity_reservation_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
 
 </h4>
 
@@ -4030,6 +4263,242 @@ provided.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
+                <code>boot_volume_vpus_per_gb</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Boot volume performance tier.  Use
+<code>0</code> (low), <code>10</code> (balanced, default), <code>20</code> (high), or
+<code>120</code> (ultra-high).</p>
+              </div>
+            </td>
+            <td>
+                  <code>10</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>user_data</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | <span title="bytes">bytes</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Cloud-init script as a plain <code>str</code> or <code>bytes</code>.
+CloudSpells base64-encodes it before passing to OCI.  When
+<code>None</code>, no user data is injected.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>defined_tags</code>
+            </td>
+            <td>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>OCI defined tags applied to the instance and all
+block volumes, in <code>{"namespace": {"key": "value"}}</code> format.
+Per-volume <code>defined_tags</code> on <code>VolumeSpec</code> are merged on top
+of this value (volume spec wins on conflict).</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>fault_domain</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Explicit fault domain for placement
+(e.g. <code>"FAULT-DOMAIN-1"</code>).  When <code>None</code>, OCI auto-assigns
+and spreads instances across fault domains.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>hostname_label</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>DNS hostname registered for the primary VNIC.
+Must be unique within the subnet.  When <code>None</code>, OCI does
+not assign a hostname.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>private_ip</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Explicit private IP address for the primary VNIC.
+Must fall within the selected subnet's CIDR.  When <code>None</code>,
+OCI assigns the next available IP.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>skip_source_dest_check</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Disable the source/destination check on
+the primary VNIC.  Set to <code>True</code> for NAT instances or
+software routers.  Defaults to <code>False</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>is_pv_encryption_in_transit</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Encrypt data in transit between
+the instance and paravirtualized-attached volumes.
+Defaults to <code>False</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>preserve_boot_volume</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Keep the boot volume after the instance
+is terminated.  Defaults to <code>False</code> (boot volume is deleted
+with the instance).</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>recovery_action</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Live-migration recovery action.  Pass
+<code>"RESTORE_INSTANCE"</code> (default OCI behaviour) to restart
+after host maintenance, or <code>"STOP_INSTANCE"</code> to stop
+instead.  <code>None</code> accepts the OCI account default.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>baseline_ocpu_utilization</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Burstable-instance CPU baseline.
+One of <code>"BASELINE_1_8"</code> (12.5 %), <code>"BASELINE_1_2"</code> (50 %),
+or <code>"BASELINE_1_1"</code> (100 % — effectively non-burstable).
+<code>None</code> uses a standard (non-burstable) instance.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>dedicated_vm_host_id</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>OCID of the dedicated VM host to place
+this instance on.  When <code>None</code>, the instance runs on shared
+infrastructure.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>capacity_reservation_id</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>OCID of the capacity reservation to
+consume.  When <code>None</code>, no reservation is used.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
                 <code>opts</code>
             </td>
             <td>
@@ -4082,16 +4551,7 @@ db  = ComputeInstance(&quot;db-1&quot;,  compartment_id=comp_id, vcn=vcn, nsg=db
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/compute.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">144</span>
 <span class="normal">145</span>
 <span class="normal">146</span>
 <span class="normal">147</span>
@@ -4319,7 +4779,107 @@ db  = ComputeInstance(&quot;db-1&quot;,  compartment_id=comp_id, vcn=vcn, nsg=db
 <span class="normal">369</span>
 <span class="normal">370</span>
 <span class="normal">371</span>
-<span class="normal">372</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<span class="normal">372</span>
+<span class="normal">373</span>
+<span class="normal">374</span>
+<span class="normal">375</span>
+<span class="normal">376</span>
+<span class="normal">377</span>
+<span class="normal">378</span>
+<span class="normal">379</span>
+<span class="normal">380</span>
+<span class="normal">381</span>
+<span class="normal">382</span>
+<span class="normal">383</span>
+<span class="normal">384</span>
+<span class="normal">385</span>
+<span class="normal">386</span>
+<span class="normal">387</span>
+<span class="normal">388</span>
+<span class="normal">389</span>
+<span class="normal">390</span>
+<span class="normal">391</span>
+<span class="normal">392</span>
+<span class="normal">393</span>
+<span class="normal">394</span>
+<span class="normal">395</span>
+<span class="normal">396</span>
+<span class="normal">397</span>
+<span class="normal">398</span>
+<span class="normal">399</span>
+<span class="normal">400</span>
+<span class="normal">401</span>
+<span class="normal">402</span>
+<span class="normal">403</span>
+<span class="normal">404</span>
+<span class="normal">405</span>
+<span class="normal">406</span>
+<span class="normal">407</span>
+<span class="normal">408</span>
+<span class="normal">409</span>
+<span class="normal">410</span>
+<span class="normal">411</span>
+<span class="normal">412</span>
+<span class="normal">413</span>
+<span class="normal">414</span>
+<span class="normal">415</span>
+<span class="normal">416</span>
+<span class="normal">417</span>
+<span class="normal">418</span>
+<span class="normal">419</span>
+<span class="normal">420</span>
+<span class="normal">421</span>
+<span class="normal">422</span>
+<span class="normal">423</span>
+<span class="normal">424</span>
+<span class="normal">425</span>
+<span class="normal">426</span>
+<span class="normal">427</span>
+<span class="normal">428</span>
+<span class="normal">429</span>
+<span class="normal">430</span>
+<span class="normal">431</span>
+<span class="normal">432</span>
+<span class="normal">433</span>
+<span class="normal">434</span>
+<span class="normal">435</span>
+<span class="normal">436</span>
+<span class="normal">437</span>
+<span class="normal">438</span>
+<span class="normal">439</span>
+<span class="normal">440</span>
+<span class="normal">441</span>
+<span class="normal">442</span>
+<span class="normal">443</span>
+<span class="normal">444</span>
+<span class="normal">445</span>
+<span class="normal">446</span>
+<span class="normal">447</span>
+<span class="normal">448</span>
+<span class="normal">449</span>
+<span class="normal">450</span>
+<span class="normal">451</span>
+<span class="normal">452</span>
+<span class="normal">453</span>
+<span class="normal">454</span>
+<span class="normal">455</span>
+<span class="normal">456</span>
+<span class="normal">457</span>
+<span class="normal">458</span>
+<span class="normal">459</span>
+<span class="normal">460</span>
+<span class="normal">461</span>
+<span class="normal">462</span>
+<span class="normal">463</span>
+<span class="normal">464</span>
+<span class="normal">465</span>
+<span class="normal">466</span>
+<span class="normal">467</span>
+<span class="normal">468</span>
+<span class="normal">469</span>
+<span class="normal">470</span>
+<span class="normal">471</span>
+<span class="normal">472</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">compartment_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
@@ -4333,9 +4893,22 @@ db  = ComputeInstance(&quot;db-1&quot;,  compartment_id=comp_id, vcn=vcn, nsg=db
     <span class="n">os_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;oracle&quot;</span><span class="p">,</span>
     <span class="n">subnet</span><span class="p">:</span> <span class="n">SubnetTier</span> <span class="o">=</span> <span class="n">SUBNET_PRIVATE</span><span class="p">,</span>
     <span class="n">boot_volume_size_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="n">boot_volume_vpus_per_gb</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
     <span class="n">volumes</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">VolumeSpec</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">nsg_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">nsg</span><span class="p">:</span> <span class="n">Nsg</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">user_data</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">defined_tags</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">fault_domain</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">hostname_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">private_ip</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">skip_source_dest_check</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">is_pv_encryption_in_transit</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">preserve_boot_volume</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">recovery_action</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">baseline_ocpu_utilization</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">dedicated_vm_host_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">capacity_reservation_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">opts</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a compute instance with one or more attached block volumes.</span>
@@ -4385,6 +4958,47 @@ db  = ComputeInstance(&quot;db-1&quot;,  compartment_id=comp_id, vcn=vcn, nsg=db
 <span class="sd">            infers `subnet` from `nsg.role.subnet_tier`.  Takes</span>
 <span class="sd">            precedence over `subnet` and `nsg_ids` when both are</span>
 <span class="sd">            provided.</span>
+<span class="sd">        boot_volume_vpus_per_gb: Boot volume performance tier.  Use</span>
+<span class="sd">            `0` (low), `10` (balanced, default), `20` (high), or</span>
+<span class="sd">            `120` (ultra-high).</span>
+<span class="sd">        user_data: Cloud-init script as a plain `str` or `bytes`.</span>
+<span class="sd">            CloudSpells base64-encodes it before passing to OCI.  When</span>
+<span class="sd">            `None`, no user data is injected.</span>
+<span class="sd">        defined_tags: OCI defined tags applied to the instance and all</span>
+<span class="sd">            block volumes, in `{&quot;namespace&quot;: {&quot;key&quot;: &quot;value&quot;}}` format.</span>
+<span class="sd">            Per-volume `defined_tags` on `VolumeSpec` are merged on top</span>
+<span class="sd">            of this value (volume spec wins on conflict).</span>
+<span class="sd">        fault_domain: Explicit fault domain for placement</span>
+<span class="sd">            (e.g. `&quot;FAULT-DOMAIN-1&quot;`).  When `None`, OCI auto-assigns</span>
+<span class="sd">            and spreads instances across fault domains.</span>
+<span class="sd">        hostname_label: DNS hostname registered for the primary VNIC.</span>
+<span class="sd">            Must be unique within the subnet.  When `None`, OCI does</span>
+<span class="sd">            not assign a hostname.</span>
+<span class="sd">        private_ip: Explicit private IP address for the primary VNIC.</span>
+<span class="sd">            Must fall within the selected subnet&#39;s CIDR.  When `None`,</span>
+<span class="sd">            OCI assigns the next available IP.</span>
+<span class="sd">        skip_source_dest_check: Disable the source/destination check on</span>
+<span class="sd">            the primary VNIC.  Set to `True` for NAT instances or</span>
+<span class="sd">            software routers.  Defaults to `False`.</span>
+<span class="sd">        is_pv_encryption_in_transit: Encrypt data in transit between</span>
+<span class="sd">            the instance and paravirtualized-attached volumes.</span>
+<span class="sd">            Defaults to `False`.</span>
+<span class="sd">        preserve_boot_volume: Keep the boot volume after the instance</span>
+<span class="sd">            is terminated.  Defaults to `False` (boot volume is deleted</span>
+<span class="sd">            with the instance).</span>
+<span class="sd">        recovery_action: Live-migration recovery action.  Pass</span>
+<span class="sd">            `&quot;RESTORE_INSTANCE&quot;` (default OCI behaviour) to restart</span>
+<span class="sd">            after host maintenance, or `&quot;STOP_INSTANCE&quot;` to stop</span>
+<span class="sd">            instead.  `None` accepts the OCI account default.</span>
+<span class="sd">        baseline_ocpu_utilization: Burstable-instance CPU baseline.</span>
+<span class="sd">            One of `&quot;BASELINE_1_8&quot;` (12.5 %), `&quot;BASELINE_1_2&quot;` (50 %),</span>
+<span class="sd">            or `&quot;BASELINE_1_1&quot;` (100 % — effectively non-burstable).</span>
+<span class="sd">            `None` uses a standard (non-burstable) instance.</span>
+<span class="sd">        dedicated_vm_host_id: OCID of the dedicated VM host to place</span>
+<span class="sd">            this instance on.  When `None`, the instance runs on shared</span>
+<span class="sd">            infrastructure.</span>
+<span class="sd">        capacity_reservation_id: OCID of the capacity reservation to</span>
+<span class="sd">            consume.  When `None`, no reservation is used.</span>
 <span class="sd">        opts: Pulumi resource options forwarded to the component.</span>
 
 <span class="sd">    Raises:</span>
@@ -4416,6 +5030,9 @@ db  = ComputeInstance(&quot;db-1&quot;,  compartment_id=comp_id, vcn=vcn, nsg=db
     <span class="bp">self</span><span class="o">.</span><span class="n">subnet</span> <span class="o">=</span> <span class="n">subnet</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">image_id</span> <span class="o">=</span> <span class="n">image_id</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">boot_volume_size_in_gbs</span> <span class="o">=</span> <span class="n">boot_volume_size_in_gbs</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">fault_domain</span> <span class="o">=</span> <span class="n">fault_domain</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">hostname_label</span> <span class="o">=</span> <span class="n">hostname_label</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">preserve_boot_volume</span> <span class="o">=</span> <span class="n">preserve_boot_volume</span>
 
     <span class="c1"># Resolve volumes list.</span>
     <span class="c1"># None  → one default 100 GiB balanced-performance data volume.</span>
@@ -4462,18 +5079,33 @@ db  = ComputeInstance(&quot;db-1&quot;,  compartment_id=comp_id, vcn=vcn, nsg=db
     <span class="n">ads</span> <span class="o">=</span> <span class="n">oci</span><span class="o">.</span><span class="n">identity</span><span class="o">.</span><span class="n">get_availability_domains</span><span class="p">(</span><span class="n">compartment_id</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">compartment_id</span><span class="p">))</span>
     <span class="n">availability_domain</span> <span class="o">=</span> <span class="n">ads</span><span class="o">.</span><span class="n">availability_domains</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span>
 
+    <span class="c1"># ---- Encode cloud-init user data --------------------------------</span>
+    <span class="n">encoded_user_data</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">user_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">raw</span> <span class="o">=</span> <span class="n">user_data</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">user_data</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="n">user_data</span>
+        <span class="n">encoded_user_data</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+
     <span class="c1"># ---- Compute instance ------------------------------------------</span>
     <span class="n">instance_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_resource_name</span><span class="p">(</span><span class="s2">&quot;instance&quot;</span><span class="p">)</span>
+
+    <span class="n">instance_metadata</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ssh_authorized_keys&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ssh_public_key</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">encoded_user_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">instance_metadata</span><span class="p">[</span><span class="s2">&quot;user_data&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">encoded_user_data</span>
+
     <span class="bp">self</span><span class="o">.</span><span class="n">instance</span> <span class="o">=</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">Instance</span><span class="p">(</span>
         <span class="n">instance_name</span><span class="p">,</span>
         <span class="n">availability_domain</span><span class="o">=</span><span class="n">availability_domain</span><span class="p">,</span>
         <span class="n">compartment_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">compartment_id</span><span class="p">,</span>
         <span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
         <span class="n">display_name</span><span class="o">=</span><span class="n">instance_name</span><span class="p">,</span>
+        <span class="n">fault_domain</span><span class="o">=</span><span class="n">fault_domain</span><span class="p">,</span>
+        <span class="n">dedicated_vm_host_id</span><span class="o">=</span><span class="n">dedicated_vm_host_id</span><span class="p">,</span>
+        <span class="n">capacity_reservation_id</span><span class="o">=</span><span class="n">capacity_reservation_id</span><span class="p">,</span>
         <span class="n">source_details</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">InstanceSourceDetailsArgs</span><span class="p">(</span>
             <span class="n">source_type</span><span class="o">=</span><span class="s2">&quot;image&quot;</span><span class="p">,</span>
             <span class="n">source_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">image_id</span><span class="p">,</span>
             <span class="n">boot_volume_size_in_gbs</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">boot_volume_size_in_gbs</span><span class="p">),</span>
+            <span class="n">boot_volume_vpus_per_gb</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">boot_volume_vpus_per_gb</span><span class="p">),</span>
         <span class="p">),</span>
         <span class="n">create_vnic_details</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">InstanceCreateVnicDetailsArgs</span><span class="p">(</span>
             <span class="n">subnet_id</span><span class="o">=</span><span class="p">(</span>
@@ -4488,12 +5120,23 @@ db  = ComputeInstance(&quot;db-1&quot;,  compartment_id=comp_id, vcn=vcn, nsg=db
             <span class="n">assign_public_ip</span><span class="o">=</span><span class="s2">&quot;true&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">subnet</span> <span class="o">==</span> <span class="n">SUBNET_PUBLIC</span> <span class="k">else</span> <span class="s2">&quot;false&quot;</span><span class="p">,</span>
             <span class="n">display_name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">instance_name</span><span class="si">}</span><span class="s2">-vnic&quot;</span><span class="p">,</span>
             <span class="n">nsg_ids</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nsg_ids</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nsg_ids</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">hostname_label</span><span class="o">=</span><span class="n">hostname_label</span><span class="p">,</span>
+            <span class="n">private_ip</span><span class="o">=</span><span class="n">private_ip</span><span class="p">,</span>
+            <span class="n">skip_source_dest_check</span><span class="o">=</span><span class="n">skip_source_dest_check</span><span class="p">,</span>
         <span class="p">),</span>
-        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ssh_authorized_keys&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ssh_public_key</span><span class="p">},</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="n">instance_metadata</span><span class="p">,</span>
         <span class="n">shape_config</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">InstanceShapeConfigArgs</span><span class="p">(</span>
             <span class="n">ocpus</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ocpus</span><span class="p">,</span>
             <span class="n">memory_in_gbs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_in_gbs</span><span class="p">,</span>
+            <span class="n">baseline_ocpu_utilization</span><span class="o">=</span><span class="n">baseline_ocpu_utilization</span><span class="p">,</span>
         <span class="p">),</span>
+        <span class="n">availability_config</span><span class="o">=</span><span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">InstanceAvailabilityConfigArgs</span><span class="p">(</span>
+            <span class="n">recovery_action</span><span class="o">=</span><span class="n">recovery_action</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">recovery_action</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">is_pv_encryption_in_transit_enabled</span><span class="o">=</span><span class="n">is_pv_encryption_in_transit</span><span class="p">,</span>
+        <span class="n">preserve_boot_volume</span><span class="o">=</span><span class="n">preserve_boot_volume</span><span class="p">,</span>
         <span class="n">freeform_tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">create_freeform_tags</span><span class="p">(</span>
             <span class="n">instance_name</span><span class="p">,</span>
             <span class="s2">&quot;compute-instance&quot;</span><span class="p">,</span>
@@ -4503,6 +5146,7 @@ db  = ComputeInstance(&quot;db-1&quot;,  compartment_id=comp_id, vcn=vcn, nsg=db
                 <span class="s2">&quot;MemoryGB&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">memory_in_gbs</span><span class="p">),</span>
             <span class="p">},</span>
         <span class="p">),</span>
+        <span class="n">defined_tags</span><span class="o">=</span><span class="n">defined_tags</span><span class="p">,</span>
         <span class="n">opts</span><span class="o">=</span><span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">),</span>
     <span class="p">)</span>
 
@@ -4514,6 +5158,11 @@ db  = ComputeInstance(&quot;db-1&quot;,  compartment_id=comp_id, vcn=vcn, nsg=db
 
     <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">volumes_spec</span><span class="p">:</span>
         <span class="n">vol_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_resource_name</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">label</span><span class="si">}</span><span class="s2">-vol&quot;</span><span class="p">)</span>
+        <span class="c1"># Per-volume defined_tags: merge instance-level tags with</span>
+        <span class="c1"># spec-level tags; spec-level wins on key conflicts.</span>
+        <span class="n">vol_defined_tags</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">defined_tags</span>
+        <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">defined_tags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">vol_defined_tags</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="p">(</span><span class="n">defined_tags</span> <span class="ow">or</span> <span class="p">{}),</span> <span class="o">**</span><span class="n">spec</span><span class="o">.</span><span class="n">defined_tags</span><span class="p">}</span>
         <span class="n">vol</span> <span class="o">=</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">Volume</span><span class="p">(</span>
             <span class="n">vol_name</span><span class="p">,</span>
             <span class="n">availability_domain</span><span class="o">=</span><span class="n">availability_domain</span><span class="p">,</span>
@@ -4531,6 +5180,7 @@ db  = ComputeInstance(&quot;db-1&quot;,  compartment_id=comp_id, vcn=vcn, nsg=db
                     <span class="s2">&quot;AttachedTo&quot;</span><span class="p">:</span> <span class="n">instance_name</span><span class="p">,</span>
                 <span class="p">},</span>
             <span class="p">),</span>
+            <span class="n">defined_tags</span><span class="o">=</span><span class="n">vol_defined_tags</span><span class="p">,</span>
             <span class="n">opts</span><span class="o">=</span><span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">),</span>
         <span class="p">)</span>
         <span class="n">att_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_resource_name</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">spec</span><span class="o">.</span><span class="n">label</span><span class="si">}</span><span class="s2">-vol-attach&quot;</span><span class="p">)</span>
@@ -4541,6 +5191,7 @@ db  = ComputeInstance(&quot;db-1&quot;,  compartment_id=comp_id, vcn=vcn, nsg=db
             <span class="n">attachment_type</span><span class="o">=</span><span class="s2">&quot;paravirtualized&quot;</span><span class="p">,</span>
             <span class="n">display_name</span><span class="o">=</span><span class="n">att_name</span><span class="p">,</span>
             <span class="n">is_read_only</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">is_read_only</span><span class="p">,</span>
+            <span class="n">device</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
             <span class="n">opts</span><span class="o">=</span><span class="n">pulumi</span><span class="o">.</span><span class="n">ResourceOptions</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">delete_before_replace</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">block_volumes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vol</span><span class="p">)</span>
@@ -4602,46 +5253,46 @@ instance.export()
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/compute.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">453</span>
-<span class="normal">454</span>
-<span class="normal">455</span>
-<span class="normal">456</span>
-<span class="normal">457</span>
-<span class="normal">458</span>
-<span class="normal">459</span>
-<span class="normal">460</span>
-<span class="normal">461</span>
-<span class="normal">462</span>
-<span class="normal">463</span>
-<span class="normal">464</span>
-<span class="normal">465</span>
-<span class="normal">466</span>
-<span class="normal">467</span>
-<span class="normal">468</span>
-<span class="normal">469</span>
-<span class="normal">470</span>
-<span class="normal">471</span>
-<span class="normal">472</span>
-<span class="normal">473</span>
-<span class="normal">474</span>
-<span class="normal">475</span>
-<span class="normal">476</span>
-<span class="normal">477</span>
-<span class="normal">478</span>
-<span class="normal">479</span>
-<span class="normal">480</span>
-<span class="normal">481</span>
-<span class="normal">482</span>
-<span class="normal">483</span>
-<span class="normal">484</span>
-<span class="normal">485</span>
-<span class="normal">486</span>
-<span class="normal">487</span>
-<span class="normal">488</span>
-<span class="normal">489</span>
-<span class="normal">490</span>
-<span class="normal">491</span>
-<span class="normal">492</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">553</span>
+<span class="normal">554</span>
+<span class="normal">555</span>
+<span class="normal">556</span>
+<span class="normal">557</span>
+<span class="normal">558</span>
+<span class="normal">559</span>
+<span class="normal">560</span>
+<span class="normal">561</span>
+<span class="normal">562</span>
+<span class="normal">563</span>
+<span class="normal">564</span>
+<span class="normal">565</span>
+<span class="normal">566</span>
+<span class="normal">567</span>
+<span class="normal">568</span>
+<span class="normal">569</span>
+<span class="normal">570</span>
+<span class="normal">571</span>
+<span class="normal">572</span>
+<span class="normal">573</span>
+<span class="normal">574</span>
+<span class="normal">575</span>
+<span class="normal">576</span>
+<span class="normal">577</span>
+<span class="normal">578</span>
+<span class="normal">579</span>
+<span class="normal">580</span>
+<span class="normal">581</span>
+<span class="normal">582</span>
+<span class="normal">583</span>
+<span class="normal">584</span>
+<span class="normal">585</span>
+<span class="normal">586</span>
+<span class="normal">587</span>
+<span class="normal">588</span>
+<span class="normal">589</span>
+<span class="normal">590</span>
+<span class="normal">591</span>
+<span class="normal">592</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Export standard compute instance stack outputs.</span>
 
 <span class="sd">    Publishes instance OCID, private IP, all block volume OCIDs, and SSH</span>
@@ -4725,13 +5376,13 @@ instance.export()
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/compute.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">494</span>
-<span class="normal">495</span>
-<span class="normal">496</span>
-<span class="normal">497</span>
-<span class="normal">498</span>
-<span class="normal">499</span>
-<span class="normal">500</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_private_ip</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">594</span>
+<span class="normal">595</span>
+<span class="normal">596</span>
+<span class="normal">597</span>
+<span class="normal">598</span>
+<span class="normal">599</span>
+<span class="normal">600</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_private_ip</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the private IP address of the instance.</span>
 
 <span class="sd">    Returns:</span>
@@ -4782,13 +5433,13 @@ instance.export()
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/compute.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">502</span>
-<span class="normal">503</span>
-<span class="normal">504</span>
-<span class="normal">505</span>
-<span class="normal">506</span>
-<span class="normal">507</span>
-<span class="normal">508</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_instance_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">602</span>
+<span class="normal">603</span>
+<span class="normal">604</span>
+<span class="normal">605</span>
+<span class="normal">606</span>
+<span class="normal">607</span>
+<span class="normal">608</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_instance_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the OCID of the compute instance.</span>
 
 <span class="sd">    Returns:</span>
@@ -4841,16 +5492,16 @@ instance.export()
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/compute.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">510</span>
-<span class="normal">511</span>
-<span class="normal">512</span>
-<span class="normal">513</span>
-<span class="normal">514</span>
-<span class="normal">515</span>
-<span class="normal">516</span>
-<span class="normal">517</span>
-<span class="normal">518</span>
-<span class="normal">519</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_block_volume_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">610</span>
+<span class="normal">611</span>
+<span class="normal">612</span>
+<span class="normal">613</span>
+<span class="normal">614</span>
+<span class="normal">615</span>
+<span class="normal">616</span>
+<span class="normal">617</span>
+<span class="normal">618</span>
+<span class="normal">619</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_block_volume_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the OCID of the first (primary) block volume.</span>
 
 <span class="sd">    Provided for backward compatibility.  For multi-volume setups use</span>
@@ -4964,27 +5615,27 @@ instance.export()
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/compute.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">521</span>
-<span class="normal">522</span>
-<span class="normal">523</span>
-<span class="normal">524</span>
-<span class="normal">525</span>
-<span class="normal">526</span>
-<span class="normal">527</span>
-<span class="normal">528</span>
-<span class="normal">529</span>
-<span class="normal">530</span>
-<span class="normal">531</span>
-<span class="normal">532</span>
-<span class="normal">533</span>
-<span class="normal">534</span>
-<span class="normal">535</span>
-<span class="normal">536</span>
-<span class="normal">537</span>
-<span class="normal">538</span>
-<span class="normal">539</span>
-<span class="normal">540</span>
-<span class="normal">541</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_volume_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">621</span>
+<span class="normal">622</span>
+<span class="normal">623</span>
+<span class="normal">624</span>
+<span class="normal">625</span>
+<span class="normal">626</span>
+<span class="normal">627</span>
+<span class="normal">628</span>
+<span class="normal">629</span>
+<span class="normal">630</span>
+<span class="normal">631</span>
+<span class="normal">632</span>
+<span class="normal">633</span>
+<span class="normal">634</span>
+<span class="normal">635</span>
+<span class="normal">636</span>
+<span class="normal">637</span>
+<span class="normal">638</span>
+<span class="normal">639</span>
+<span class="normal">640</span>
+<span class="normal">641</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_volume_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the OCID of the block volume with the given label.</span>
 
 <span class="sd">    Args:</span>
@@ -5105,22 +5756,22 @@ instance.export()
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/compute.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">543</span>
-<span class="normal">544</span>
-<span class="normal">545</span>
-<span class="normal">546</span>
-<span class="normal">547</span>
-<span class="normal">548</span>
-<span class="normal">549</span>
-<span class="normal">550</span>
-<span class="normal">551</span>
-<span class="normal">552</span>
-<span class="normal">553</span>
-<span class="normal">554</span>
-<span class="normal">555</span>
-<span class="normal">556</span>
-<span class="normal">557</span>
-<span class="normal">558</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_disk_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">643</span>
+<span class="normal">644</span>
+<span class="normal">645</span>
+<span class="normal">646</span>
+<span class="normal">647</span>
+<span class="normal">648</span>
+<span class="normal">649</span>
+<span class="normal">650</span>
+<span class="normal">651</span>
+<span class="normal">652</span>
+<span class="normal">653</span>
+<span class="normal">654</span>
+<span class="normal">655</span>
+<span class="normal">656</span>
+<span class="normal">657</span>
+<span class="normal">658</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_disk_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the OCID of the block volume with the given label.</span>
 
 <span class="sd">    Satisfies `AbstractCompute.get_disk_id`.  Delegates to</span>
@@ -5234,22 +5885,22 @@ instance.export()
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/compute.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">560</span>
-<span class="normal">561</span>
-<span class="normal">562</span>
-<span class="normal">563</span>
-<span class="normal">564</span>
-<span class="normal">565</span>
-<span class="normal">566</span>
-<span class="normal">567</span>
-<span class="normal">568</span>
-<span class="normal">569</span>
-<span class="normal">570</span>
-<span class="normal">571</span>
-<span class="normal">572</span>
-<span class="normal">573</span>
-<span class="normal">574</span>
-<span class="normal">575</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_volume</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">Volume</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">660</span>
+<span class="normal">661</span>
+<span class="normal">662</span>
+<span class="normal">663</span>
+<span class="normal">664</span>
+<span class="normal">665</span>
+<span class="normal">666</span>
+<span class="normal">667</span>
+<span class="normal">668</span>
+<span class="normal">669</span>
+<span class="normal">670</span>
+<span class="normal">671</span>
+<span class="normal">672</span>
+<span class="normal">673</span>
+<span class="normal">674</span>
+<span class="normal">675</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_volume</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">Volume</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the `oci.core.Volume` resource with the given label.</span>
 
 <span class="sd">    Args:</span>
@@ -5363,24 +6014,24 @@ instance.export()
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/compute.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">577</span>
-<span class="normal">578</span>
-<span class="normal">579</span>
-<span class="normal">580</span>
-<span class="normal">581</span>
-<span class="normal">582</span>
-<span class="normal">583</span>
-<span class="normal">584</span>
-<span class="normal">585</span>
-<span class="normal">586</span>
-<span class="normal">587</span>
-<span class="normal">588</span>
-<span class="normal">589</span>
-<span class="normal">590</span>
-<span class="normal">591</span>
-<span class="normal">592</span>
-<span class="normal">593</span>
-<span class="normal">594</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_volume_attachment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">VolumeAttachment</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">677</span>
+<span class="normal">678</span>
+<span class="normal">679</span>
+<span class="normal">680</span>
+<span class="normal">681</span>
+<span class="normal">682</span>
+<span class="normal">683</span>
+<span class="normal">684</span>
+<span class="normal">685</span>
+<span class="normal">686</span>
+<span class="normal">687</span>
+<span class="normal">688</span>
+<span class="normal">689</span>
+<span class="normal">690</span>
+<span class="normal">691</span>
+<span class="normal">692</span>
+<span class="normal">693</span>
+<span class="normal">694</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_volume_attachment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">oci</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">VolumeAttachment</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the `oci.core.VolumeAttachment` resource with the given label.</span>
 
 <span class="sd">    Args:</span>
@@ -5444,16 +6095,16 @@ at construction time.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/compute.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">596</span>
-<span class="normal">597</span>
-<span class="normal">598</span>
-<span class="normal">599</span>
-<span class="normal">600</span>
-<span class="normal">601</span>
-<span class="normal">602</span>
-<span class="normal">603</span>
-<span class="normal">604</span>
-<span class="normal">605</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_all_volume_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">696</span>
+<span class="normal">697</span>
+<span class="normal">698</span>
+<span class="normal">699</span>
+<span class="normal">700</span>
+<span class="normal">701</span>
+<span class="normal">702</span>
+<span class="normal">703</span>
+<span class="normal">704</span>
+<span class="normal">705</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_all_volume_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a list of OCIDs for all attached block volumes.</span>
 
 <span class="sd">    The list order matches the order of the `volumes` parameter passed</span>
@@ -5507,13 +6158,13 @@ at construction time.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/compute.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">607</span>
-<span class="normal">608</span>
-<span class="normal">609</span>
-<span class="normal">610</span>
-<span class="normal">611</span>
-<span class="normal">612</span>
-<span class="normal">613</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_public_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">707</span>
+<span class="normal">708</span>
+<span class="normal">709</span>
+<span class="normal">710</span>
+<span class="normal">711</span>
+<span class="normal">712</span>
+<span class="normal">713</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_public_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the SSH public key installed on the instance.</span>
 
 <span class="sd">    Returns:</span>
@@ -5574,14 +6225,14 @@ at construction time.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/compute.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">615</span>
-<span class="normal">616</span>
-<span class="normal">617</span>
-<span class="normal">618</span>
-<span class="normal">619</span>
-<span class="normal">620</span>
-<span class="normal">621</span>
-<span class="normal">622</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_private_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">715</span>
+<span class="normal">716</span>
+<span class="normal">717</span>
+<span class="normal">718</span>
+<span class="normal">719</span>
+<span class="normal">720</span>
+<span class="normal">721</span>
+<span class="normal">722</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_private_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the SSH private key if it was auto-generated.</span>
 
 <span class="sd">    Returns:</span>
