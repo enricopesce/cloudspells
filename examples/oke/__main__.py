@@ -8,17 +8,12 @@ sys.path.insert(0, os.path.join(_root, "packages/cloudspells-core/src"))
 sys.path.insert(0, os.path.join(_root, "packages/cloudspells-oci/src"))
 
 from cloudspells.core import Config
-from cloudspells.providers.oci.kubernetes import OkeCluster
+from cloudspells.providers.oci.kubernetes import NodePoolConfig, OkeCluster
 from cloudspells.providers.oci.network import Vcn
 
 config = Config()
 compartment_id: str = config.require("compartment_ocid")
-node_shape: str = config.require("node_shape")
 kubernetes_version: str = config.require("kubernetes_version")
-node_image_id: str = config.require("node_image_id")
-oke_min_nodes: int = config.require_int("oke_min_nodes")
-oke_ocpus: float = config.require_float("oke_ocpus")
-oke_memory_in_gbs: float = config.require_float("oke_memory_in_gbs")
 
 # Create VCN
 vcn: Vcn = Vcn(
@@ -31,13 +26,18 @@ oke: OkeCluster = OkeCluster(
     name="okeinfra",
     compartment_id=compartment_id,
     vcn=vcn,
-    shape=node_shape,
     kubernetes_version=kubernetes_version,
-    image=node_image_id,
     display_name="infra",
-    memory_in_gbs=oke_memory_in_gbs,
-    min_nodes=oke_min_nodes,
-    ocpus=oke_ocpus,
+    node_pools=[
+        NodePoolConfig(
+            name="default",
+            shape=config.require("node_shape"),
+            image=config.require("node_image_id"),
+            node_count=config.require_int("node_count"),
+            ocpus=config.require_float("oke_ocpus"),
+            memory_in_gbs=config.require_float("oke_memory_in_gbs"),
+        ),
+    ],
 )
 
 vcn.export()

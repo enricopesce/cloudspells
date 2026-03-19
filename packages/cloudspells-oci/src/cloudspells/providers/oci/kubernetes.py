@@ -66,6 +66,7 @@ Private subnet (Worker nodes + Pods):
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 import pulumi
@@ -76,6 +77,97 @@ from cloudspells.core.base import BaseResource
 from .helper import OciHelper
 from .network import Vcn, VcnRef
 from .nsg import ALL, INTERNET, SVC_CIDR, TCP, tcp_port, tcp_port_range
+
+
+@dataclass
+class NodePoolConfig:
+    """Configuration for a single OKE node pool.
+
+    Pass a list of `NodePoolConfig` instances to `OkeCluster(node_pools=[...])`
+    to create one or more node pools on the same cluster.  Each entry produces
+    one `oci.containerengine.NodePool` placed in the private subnet and spread
+    across all availability domains.
+
+    Attributes:
+        name: Short identifier for this pool (e.g. `"system"`, `"app"`).
+            Used as the Pulumi resource name suffix and OCI display name
+            component.  Must be unique within the list.
+        shape: Compute shape for worker node VMs
+            (e.g. `"VM.Standard.E4.Flex"`).
+        image: Boot image OCID for worker nodes.
+        node_count: Number of worker nodes.  Spread evenly across all
+            availability domains in the region.
+        ocpus: Number of OCPUs per worker node.
+        memory_in_gbs: RAM in GiB per worker node.
+        ssh_public_key: Optional SSH public key installed on worker nodes.
+            Enables direct SSH access for debugging.  Defaults to `None`.
+        boot_volume_size_in_gbs: Boot volume size in GiB for each worker
+            node.  When `None` (default) OCI uses the minimum size defined
+            by the image.  Must be at least 50 GiB when specified.
+        initial_node_labels: Kubernetes labels applied to every node at
+            join time (e.g. `{"role": "app"}`).  Used by node selectors
+            and affinity rules.  Defaults to `None`.
+        node_metadata: OCI instance metadata key/value pairs propagated to
+            every worker node.  Pass `{"user_data": "<base64>"}` to inject
+            a cloud-init script.  Defaults to `None`.
+        defined_tags: OCI defined tags applied to the node pool resource
+            (e.g. `{"Operations": {"CostCenter": "42"}}`).  Defaults to
+            `None`.
+        eviction_grace_duration: ISO 8601 duration OCI waits for workloads
+            to drain before terminating a node (e.g. `"PT1H"`).  When
+            `None` OCI uses its built-in default.
+        force_delete_after_grace: When `True`, OCI force-deletes the node
+            even if workloads remain after `eviction_grace_duration`.
+            Defaults to `False`.
+        cycling_enabled: Enable rolling node replacement on pool updates.
+            When `True`, OCI replaces nodes in batches controlled by
+            `cycling_max_surge` and `cycling_max_unavailable`.  Defaults
+            to `False`.
+        cycling_max_surge: Maximum extra nodes provisioned during cycling
+            (e.g. `"1"` or `"10%"`).  Defaults to `None` (OCI default).
+        cycling_max_unavailable: Maximum nodes unavailable during cycling
+            (e.g. `"0"` or `"10%"`).  Defaults to `None` (OCI default).
+
+    Example:
+        ```python
+        node_pools = [
+            NodePoolConfig(
+                name="system",
+                shape="VM.Standard.E4.Flex",
+                image="ocid1.image.oc1...",
+                node_count=3,
+                ocpus=2,
+                memory_in_gbs=16,
+            ),
+            NodePoolConfig(
+                name="app",
+                shape="VM.Standard.E4.Flex",
+                image="ocid1.image.oc1...",
+                node_count=5,
+                ocpus=8,
+                memory_in_gbs=64,
+            ),
+        ]
+        cluster = OkeCluster(name="k8s", node_pools=node_pools, ...)
+        ```
+    """
+
+    name: str
+    shape: pulumi.Input[str]
+    image: pulumi.Input[str]
+    node_count: int
+    ocpus: pulumi.Input[float]
+    memory_in_gbs: pulumi.Input[float]
+    ssh_public_key: pulumi.Input[str] | None = None
+    boot_volume_size_in_gbs: int | None = None
+    initial_node_labels: dict[str, str] | None = None
+    node_metadata: dict[str, str] | None = None
+    defined_tags: dict[str, Any] | None = None
+    eviction_grace_duration: str | None = None
+    force_delete_after_grace: bool = False
+    cycling_enabled: bool = False
+    cycling_max_surge: str | None = None
+    cycling_max_unavailable: str | None = None
 
 
 class OkeCluster(BaseResource, AbstractKubernetes):
@@ -98,12 +190,9 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         vcn: The `Vcn` this cluster is deployed into.
         kubernetes_version: Kubernetes version string (e.g. `"v1.30.1"`).
         display_name: Human-readable cluster display name.
-        shape: Compute shape for the node pool VMs.
-        min_nodes: Minimum (and initial) number of worker nodes.
-        ocpus: Number of OCPUs per worker node.
-        memory_in_gbs: RAM in GiB per worker node.
-        ssh_public_key: Optional SSH public key installed on worker nodes.
-        image: Optional explicit image OCID for worker nodes.
+        enhanced: `True` when the cluster type is `ENHANCED_CLUSTER`.
+        endpoint_subnet: Subnet hosting the API endpoint VNIC; `None` means
+            `vcn.public_subnet` with a public IP.
         api_nsg: NSG attached to the Kubernetes API endpoint VNIC.
         lb_nsg: NSG for OCI Load Balancers; apply via service annotation.
         worker_nsg: NSG attached to every worker node VNIC.
@@ -113,7 +202,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         oke_private_security_list: Alias for the VCN's private security list
             (populated with OKE rules after initialisation).
         cluster: The underlying `oci.containerengine.Cluster` resource.
-        node_pool: The `oci.containerengine.NodePool` resource.
+        node_pools: List of `oci.containerengine.NodePool` resources, one
+            per `NodePoolConfig` passed at construction time.
         id: `pulumi.Output[str]` of the cluster OCID.
 
     Example:
@@ -125,11 +215,17 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             compartment_id=comp_id,
             vcn=vcn,
             kubernetes_version="v1.30.1",
-            shape="VM.Standard.E4.Flex",
-            min_nodes=3,
-            ocpus=2,
-            memory_in_gbs=32,
             display_name="prod-k8s",
+            node_pools=[
+                NodePoolConfig(
+                    name="default",
+                    shape="VM.Standard.E4.Flex",
+                    image="ocid1.image.oc1...",
+                    node_count=3,
+                    ocpus=2,
+                    memory_in_gbs=32,
+                ),
+            ],
         )
 
         # Attach lb_nsg to Load Balancer services via annotation:
@@ -141,12 +237,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
     vcn: Vcn | VcnRef
     kubernetes_version: pulumi.Input[str]
     display_name: str
-    shape: pulumi.Input[str]
-    min_nodes: pulumi.Input[int]
-    ocpus: pulumi.Input[float]
-    memory_in_gbs: pulumi.Input[float]
-    ssh_public_key: pulumi.Input[str] | None
-    image: pulumi.Input[str]
     api_nsg: oci.core.NetworkSecurityGroup
     lb_nsg: oci.core.NetworkSecurityGroup
     worker_nsg: oci.core.NetworkSecurityGroup
@@ -155,7 +245,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
     oke_public_security_list: Any
     oke_private_security_list: Any
     cluster: oci.containerengine.Cluster
-    node_pool: oci.containerengine.NodePool
+    node_pools: list[oci.containerengine.NodePool]
     id: pulumi.Output[str]
 
     def __init__(
@@ -163,15 +253,13 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         name: str,
         compartment_id: pulumi.Input[str],
         vcn: Vcn | VcnRef,
-        shape: pulumi.Input[str],
         kubernetes_version: pulumi.Input[str],
-        image: pulumi.Input[str],
-        min_nodes: pulumi.Input[int],
-        ocpus: pulumi.Input[float],
-        memory_in_gbs: pulumi.Input[float],
         display_name: pulumi.Input[str],
+        node_pools: list[NodePoolConfig],
         stack_name: str | None = None,
-        ssh_public_key: pulumi.Input[str] | None = None,
+        enhanced: bool = False,
+        endpoint_subnet: oci.core.Subnet | None = None,
+        defined_tags: dict[str, Any] | None = None,
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
         """Create a complete OKE cluster infrastructure.
@@ -186,19 +274,28 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             vcn: `Vcn` instance that provides the public and private subnets.
             kubernetes_version: Kubernetes version string
                 (e.g. `"v1.32.1"`).
-            image: Boot image OCID for worker nodes.
-            shape: Compute shape for worker node VMs
-                (e.g. `"VM.Standard.E4.Flex"`).
-            min_nodes: Number of worker nodes in the node pool.  The pool
-                is spread evenly across all availability domains.
-            ocpus: Number of OCPUs per worker node.
-            memory_in_gbs: RAM in GiB per worker node.
-            display_name: Human-readable name used for the cluster and node
-                pool OCI resources.
+            display_name: Human-readable name used for the cluster OCI
+                resource.
+            node_pools: One or more `NodePoolConfig` descriptors.  Each
+                entry creates a separate node pool on the cluster, enabling
+                mixed shapes (e.g. a small system pool and a large app pool).
+                At least one entry is required.
             stack_name: Pulumi stack name.  Defaults to
                 `pulumi.get_stack()` when `None`.
-            ssh_public_key: Optional SSH public key to install on worker
-                nodes (enables direct SSH for debugging).
+            enhanced: When `True`, creates an `ENHANCED_CLUSTER` instead of
+                the default `BASIC_CLUSTER`.  Enhanced clusters support OCI
+                Workload Identity (pod-level OCI API auth without embedded
+                credentials), cluster add-on lifecycle management, and OCI
+                DevOps integration.  Defaults to `False`.
+            endpoint_subnet: Subnet where the Kubernetes API endpoint VNIC
+                is placed.  Defaults to `None`, which uses `vcn.public_subnet`
+                and assigns a public IP (reachable from the internet on 6443).
+                Pass `vcn.private_subnet` (or any other subnet) for a
+                private-only endpoint reachable only from within the VCN or
+                connected networks (FastConnect, VPN).
+            defined_tags: OCI defined tags applied to the cluster resource
+                (e.g. `{"Operations": {"CostCenter": "42"}}`).  Defaults
+                to `None`.
             opts: Pulumi resource options forwarded to the component.
         """
         super().__init__("custom:oke:Cluster", name, compartment_id, stack_name, opts)
@@ -207,13 +304,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         self.name = name
         self.vcn = vcn
         self.compartment_id = compartment_id
-
-        self.shape = shape
-        self.min_nodes = min_nodes
-        self.ocpus = ocpus
-        self.memory_in_gbs = memory_in_gbs
-        self.ssh_public_key = ssh_public_key
-        self.image = image
         self.kubernetes_version = kubernetes_version
 
         # Layer 1: subnet-level security list rules
@@ -230,6 +320,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         # Layer 2: VNIC-level NSGs — must be created before cluster/node pool
         self._create_oke_nsgs()
 
+        child_opts = pulumi.ResourceOptions(parent=self)
+
         self.cluster = oci.containerengine.Cluster(
             "Cluster",
             compartment_id=self.compartment_id,
@@ -238,8 +330,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             options=oci.containerengine.ClusterOptionsArgs(
                 service_lb_subnet_ids=[self.vcn.public_subnet.id],
                 kubernetes_network_config=oci.containerengine.ClusterOptionsKubernetesNetworkConfigArgs(
-                    pods_cidr="10.2.0.0/16",
-                    services_cidr="10.3.0.0/16",
+                    pods_cidr="172.16.0.0/16",
+                    services_cidr="172.17.0.0/16",
                 ),
             ),
             cluster_pod_network_options=[
@@ -247,13 +339,16 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                     cni_type="OCI_VCN_IP_NATIVE",
                 )
             ],
-            type="BASIC_CLUSTER",
+            type="ENHANCED_CLUSTER" if enhanced else "BASIC_CLUSTER",
             vcn_id=self.vcn.id,
             endpoint_config=oci.containerengine.ClusterEndpointConfigArgs(
-                subnet_id=self.vcn.public_subnet.id,
-                is_public_ip_enabled=True,
+                subnet_id=(endpoint_subnet or self.vcn.public_subnet).id,  # type: ignore[union-attr]
+                is_public_ip_enabled=endpoint_subnet is None,
                 nsg_ids=[self.api_nsg.id],
             ),
+            freeform_tags=self.create_freeform_tags(f"Cluster-{self.display_name}", "oke-cluster"),
+            defined_tags=defined_tags,
+            opts=child_opts,
         )
 
         self.id = self.cluster.id
@@ -262,30 +357,63 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         get_ad_names = oci.identity.get_availability_domains_output(compartment_id=self.compartment_id)
         ads = get_ad_names.availability_domains
 
-        self.node_pool = oci.containerengine.NodePool(
-            "NodePool",
-            name=f"NodePool-{self.display_name}",
-            cluster_id=self.cluster.id,
-            compartment_id=self.compartment_id,
-            kubernetes_version=self.kubernetes_version,
-            node_config_details=oci.containerengine.NodePoolNodeConfigDetailsArgs(
-                placement_configs=ads.apply(lambda ads_list: h.get_ads(ads_list, self.vcn.private_subnet.id)),  # type: ignore[arg-type, union-attr, return-value]
-                size=min_nodes,
-                nsg_ids=[self.worker_nsg.id],
-                node_pool_pod_network_option_details=oci.containerengine.NodePoolNodeConfigDetailsNodePoolPodNetworkOptionDetailsArgs(
-                    cni_type="OCI_VCN_IP_NATIVE",
-                    pod_subnet_ids=[self.vcn.private_subnet.id],  # type: ignore[union-attr]
-                    pod_nsg_ids=[self.pod_nsg.id],
+        self.node_pools = []
+        for cfg in node_pools:
+            pool = oci.containerengine.NodePool(
+                f"NodePool-{cfg.name}",
+                name=f"NodePool-{cfg.name}-{self.display_name}",
+                cluster_id=self.cluster.id,
+                compartment_id=self.compartment_id,
+                kubernetes_version=self.kubernetes_version,
+                node_config_details=oci.containerengine.NodePoolNodeConfigDetailsArgs(
+                    placement_configs=ads.apply(lambda ads_list: h.get_ads(ads_list, self.vcn.private_subnet.id)),  # type: ignore[arg-type, union-attr, return-value]
+                    size=cfg.node_count,
+                    nsg_ids=[self.worker_nsg.id],
+                    node_pool_pod_network_option_details=oci.containerengine.NodePoolNodeConfigDetailsNodePoolPodNetworkOptionDetailsArgs(
+                        cni_type="OCI_VCN_IP_NATIVE",
+                        pod_subnet_ids=[self.vcn.private_subnet.id],  # type: ignore[union-attr]
+                        pod_nsg_ids=[self.pod_nsg.id],
+                    ),
+                    defined_tags=cfg.defined_tags,
                 ),
-            ),
-            node_shape=shape,
-            node_shape_config=oci.containerengine.NodePoolNodeShapeConfigArgs(memory_in_gbs=memory_in_gbs, ocpus=ocpus),
-            node_source_details=oci.containerengine.NodePoolNodeSourceDetailsArgs(
-                image_id=self.image,
-                source_type="IMAGE",
-            ),
-            ssh_public_key=ssh_public_key if ssh_public_key else None,
-        )
+                node_shape=cfg.shape,
+                node_shape_config=oci.containerengine.NodePoolNodeShapeConfigArgs(
+                    memory_in_gbs=cfg.memory_in_gbs,
+                    ocpus=cfg.ocpus,
+                ),
+                node_source_details=oci.containerengine.NodePoolNodeSourceDetailsArgs(
+                    image_id=cfg.image,
+                    source_type="IMAGE",
+                    boot_volume_size_in_gbs=(
+                        str(cfg.boot_volume_size_in_gbs) if cfg.boot_volume_size_in_gbs is not None else None
+                    ),
+                ),
+                initial_node_labels=[
+                    oci.containerengine.NodePoolInitialNodeLabelArgs(key=k, value=v)
+                    for k, v in cfg.initial_node_labels.items()
+                ]
+                if cfg.initial_node_labels
+                else None,
+                node_metadata=cfg.node_metadata,
+                node_eviction_node_pool_settings=oci.containerengine.NodePoolNodeEvictionNodePoolSettingsArgs(
+                    eviction_grace_duration=cfg.eviction_grace_duration,
+                    is_force_delete_after_grace_duration=cfg.force_delete_after_grace,
+                )
+                if cfg.eviction_grace_duration is not None or cfg.force_delete_after_grace
+                else None,
+                node_pool_cycling_details=oci.containerengine.NodePoolNodePoolCyclingDetailsArgs(
+                    is_node_cycling_enabled=cfg.cycling_enabled,
+                    maximum_surge=cfg.cycling_max_surge,
+                    maximum_unavailable=cfg.cycling_max_unavailable,
+                )
+                if cfg.cycling_enabled
+                else None,
+                ssh_public_key=cfg.ssh_public_key or None,
+                freeform_tags=self.create_freeform_tags(f"NodePool-{cfg.name}", "oke-node-pool"),
+                defined_tags=cfg.defined_tags,
+                opts=child_opts,
+            )
+            self.node_pools.append(pool)
 
         self.register_outputs({})
 
@@ -305,22 +433,22 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         Rules added:
 
         Public subnet ingress: Kubernetes API (6443) and control-plane port
-        (12250) from private subnet (workers + pods); ICMP path-MTU from
-        private; HTTPS (443) and HTTP (80) from internet (Load Balancer);
-        Kubernetes API (6443) from internet (kubectl).
+        (12250) from private subnet (workers + pods); HTTPS (443) and HTTP (80)
+        from internet (Load Balancer); Kubernetes API (6443) from internet
+        (kubectl).
 
         Public subnet egress: OCI services (telemetry, management); kubelet
-        (10250), ICMP, NodePort (30000-32767), and kube-proxy (10256) to
-        private; all traffic to private (webhooks, admission controllers).
+        (10250), NodePort (30000-32767), and kube-proxy (10256) to private;
+        all traffic to private (webhooks, admission controllers).
 
         Private subnet ingress: kubelet (10250), NodePort (30000-32767), and
         kube-proxy (10256) from public; all traffic from public (control plane
-        to pods for webhooks); ICMP from anywhere.
+        to pods for webhooks).
 
         Private subnet egress: OCI services (OCIR, monitoring, logging);
         Kubernetes API (6443) and control-plane port (12250) to public;
         HTTPS (443) and HTTP (80) to internet (image pulls and pod external
-        API calls); ICMP to internet.
+        API calls).
         """
         # ═══════════════════════════════════════════════════════════════
         # PUBLIC SUBNET – API Endpoint + Load Balancer
@@ -328,7 +456,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
 
         private_subnet_cidr: pulumi.Input[str] = self.vcn.get_private_subnet_cidr()
         public_subnet_cidr: pulumi.Input[str] = self.vcn.get_public_subnet_cidr()
-        svc_cidr: pulumi.Output[str] = self.vcn._svc_cidr_block
+        svc_cidr: pulumi.Output[str] = SVC_CIDR
 
         # ───────────────────────────────────────────────────────────────
         # PUBLIC – INGRESS
@@ -677,8 +805,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         """Add ingress and egress rules to `api_nsg`.
 
         Ingress: workers and pods reach the API server (6443) and internal
-        control-plane port (12250); workers send path-MTU ICMP; external
-        clients (kubectl) reach the API on 6443.
+        control-plane port (12250); external clients (kubectl) reach the API
+        on 6443.
 
         Egress: control plane reaches OCI services (telemetry), kubelet on
         workers (10250), and all ports on pods (webhooks, exec, metrics).
@@ -1173,7 +1301,12 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         cluster_kube_config = self.cluster.id.apply(
             lambda cid: oci.containerengine.get_cluster_kube_config(cluster_id=cid)
         )
-        cluster_kube_config.content.apply(lambda cc: open(filename, "w+").write(cc))  # type: ignore[union-attr]  # noqa: SIM115
+
+        def _write(cc: str) -> None:
+            with open(filename, "w") as f:
+                f.write(cc)
+
+        cluster_kube_config.content.apply(_write)  # type: ignore[union-attr]
 
 
-__all__ = ["OkeCluster"]
+__all__ = ["NodePoolConfig", "OkeCluster"]
