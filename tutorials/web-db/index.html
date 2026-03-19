@@ -2176,7 +2176,7 @@ db_nsg  = Nsg(&quot;database&quot;,      role=DATABASE,                         
 </tr>
 </tbody>
 </table>
-<p>Ambient NSG rules (ICMP path-MTU, service egress) are generated automatically. You declare only application ports.</p>
+<p>Ambient NSG rules (service egress) are generated automatically. You declare only application ports.</p>
 <h3 id="2c-wire-the-traffic-hops">2c. Wire the traffic hops</h3>
 <pre><code class="language-python">lb_nsg.serves(web_nsg, port=app_port)   # LB  → web: app port + SSH mgmt
 web_nsg.serves(db_nsg, port=db_port)    # web → DB:  db port  + SSH mgmt

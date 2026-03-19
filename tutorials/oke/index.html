@@ -2122,7 +2122,7 @@
 │  Nodes spread across all Availability Domains      │
 └────────────────────────────────────────────────────┘
 </code></pre>
-<p><strong>What gets created:</strong> 1 VCN (4 subnets + 3 gateways), 1 OKE BASIC_CLUSTER, 1 node pool spread across all ADs, 4 NSGs with 36 NSG rules, all required security list rules.</p>
+<p><strong>What gets created:</strong> 1 VCN (4 subnets + 3 gateways), 1 OKE BASIC_CLUSTER, 1 node pool spread across all ADs, 4 NSGs with 32 NSG rules, all required security list rules.</p>
 <hr />
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
@@ -2185,7 +2185,7 @@ oke.create_kubeconfig(&quot;kubeconfig&quot;)
 </code></pre>
 <p><code>OkeCluster</code> handles all the complexity:</p>
 <ul>
-<li>Adds 24 security list rules covering the Kubernetes control plane (6443), kubelet (10250), NodePort range (30000-32767), kube-proxy (10256), and ICMP path-MTU</li>
+<li>Adds 19 security list rules covering the Kubernetes control plane (6443), kubelet (10250), NodePort range (30000-32767), and kube-proxy (10256)</li>
 <li>Creates 4 NSGs (<code>api_nsg</code>, <code>lb_nsg</code>, <code>worker_nsg</code>, <code>pod_nsg</code>) with 36 VNIC-level rules for fine-grained segmentation</li>
 <li>Places the API endpoint in the public subnet and worker/pod VNICs in the private subnet</li>
 <li>Configures <code>OCI_VCN_IP_NATIVE</code> CNI so every pod gets a real VCN subnet IP</li>

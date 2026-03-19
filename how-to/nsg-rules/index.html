@@ -2073,7 +2073,7 @@ db_nsg  = Nsg(&quot;database&quot;,      role=DATABASE,
 </code></pre>
 <p>When you pass <code>role=</code>, CloudSpells automatically:</p>
 <ul>
-<li>Adds ambient ingress/egress rules to the NSG (ICMP path-MTU, service egress, NAT egress — depending on role)</li>
+<li>Adds ambient ingress/egress rules to the NSG (service egress, NAT egress — depending on role)</li>
 <li>Accumulates the matching rules into the VCN's security list for that subnet tier</li>
 <li>Records the subnet tier so <code>ComputeInstance</code> can infer subnet placement without an explicit <code>subnet=</code> argument</li>
 </ul>
@@ -2207,14 +2207,6 @@ proxy_nsg = Nsg(&quot;proxy&quot;, role=proxy_role, vcn=vcn, compartment_id=comp
 <tr>
 <td><code>allow_to_services(name)</code></td>
 <td>Egress to Oracle Services CIDR</td>
-</tr>
-<tr>
-<td><code>allow_icmp_path_mtu_in(name)</code></td>
-<td>ICMP type 3 code 4 inbound</td>
-</tr>
-<tr>
-<td><code>allow_icmp_path_mtu_out(name)</code></td>
-<td>ICMP type 3 code 4 outbound</td>
 </tr>
 </tbody>
 </table>

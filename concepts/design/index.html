@@ -2069,7 +2069,7 @@ Every knob exposed           Only essential identifiers
 <p>OCI enforces network rules at two levels: <strong>Security Lists</strong> (subnet-level, stateful) and <strong>NSGs</strong> (VNIC-level, stateful). CloudSpells populates both automatically so they are always consistent.</p>
 <p>When you declare an NSG with a role:</p>
 <ol>
-<li>The NSG gets the correct ambient VNIC-level rules (ICMP path-MTU, egress to services or internet depending on tier)</li>
+<li>The NSG gets the correct ambient VNIC-level rules (egress to services or internet depending on tier)</li>
 <li>The VCN security list for that subnet tier gets the corresponding subnet-level rules</li>
 </ol>
 <p>When you call <code>nsg.serves(target, port)</code>:</p>

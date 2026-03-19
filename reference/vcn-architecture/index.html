@@ -2723,42 +2723,42 @@
 <p>If <code>flow_logs=True</code> was passed to <code>__init__</code>, a <code>VcnFlowLogs</code> component is also created inside <code>finalize_network</code> and accessible via <code>vcn.flow_logs</code>.</p>
 <h3 id="baseline-security-rules">Baseline security rules</h3>
 <p>Before creating the security lists, <code>finalize_network</code> injects a fixed set of baseline rules that are always present regardless of which spells have contributed their own rules.</p>
-<p><strong>Applied to all four tiers (ingress and egress):</strong></p>
+<p><strong>Applied to the private tier (egress):</strong></p>
 <table>
 <thead>
 <tr>
 <th>Protocol</th>
-<th>Type / Code</th>
+<th>Destination</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>ICMP</td>
-<td>Type 3 Code 4</td>
-<td>Path-MTU Discovery (RFC 1191) — required to prevent silent TCP hangs when payload exceeds the path MTU</td>
+<td>ALL</td>
+<td>NAT Gateway</td>
+<td>Outbound-only internet egress for image pulls and external API calls</td>
+</tr>
+<tr>
+<td>ALL</td>
+<td><code>&lt;services CIDR&gt;</code></td>
+<td>Oracle service plane egress (OCIR, Monitoring, Logging)</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Applied to the public tier only (ingress):</strong></p>
+<p><strong>Applied to the private, secure, and management tiers (egress):</strong></p>
 <table>
 <thead>
 <tr>
 <th>Protocol</th>
-<th>Type / Code</th>
+<th>Destination</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>ICMP</td>
-<td>Type 3 (all codes)</td>
-<td>Destination Unreachable from internet — covers all PMTUD variants and routing failures</td>
-</tr>
-<tr>
-<td>ICMP</td>
-<td>Type 8</td>
-<td>Echo Request (ping) — required by OCI load balancer health-check probes</td>
+<td>ALL</td>
+<td><code>&lt;services CIDR&gt;</code></td>
+<td>Oracle service plane egress without internet transit</td>
 </tr>
 </tbody>
 </table>

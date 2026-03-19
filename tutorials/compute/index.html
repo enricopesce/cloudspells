@@ -2119,7 +2119,7 @@ web_nsg = Nsg(
     compartment_id=compartment_id,
 )
 </code></pre>
-<p><code>INTERNET_EDGE</code> is a semantic role constant. It tells CloudSpells that this resource lives in the <strong>public subnet</strong> and communicates directly with the internet. CloudSpells automatically adds ICMP path-MTU rules in both directions — you only declare the application ports.</p>
+<p><code>INTERNET_EDGE</code> is a semantic role constant. It tells CloudSpells that this resource lives in the <strong>public subnet</strong> and communicates directly with the internet. You only declare the application ports.</p>
 <h3 id="2c-create-the-compute-instance">2c. Create the compute instance</h3>
 <pre><code class="language-python">from cloudspells.providers.oci.compute import ComputeInstance
 from cloudspells.providers.oci.volume import VolumeSpec
