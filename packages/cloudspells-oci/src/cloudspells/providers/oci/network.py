@@ -49,10 +49,17 @@ from __future__ import annotations
 
 import ipaddress
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any
 
 import pulumi
 import pulumi_oci as oci
+from cloudspells.core.abstractions.compute import (
+    SUBNET_MANAGEMENT,
+    SUBNET_PRIVATE,
+    SUBNET_PUBLIC,
+    SUBNET_SECURE,
+    SubnetTier,
+)
 from cloudspells.core.abstractions.network import (
     AbstractNetwork,
     AbstractNetworkRef,
@@ -69,15 +76,6 @@ _PROTOCOL_MAP: dict[str, str] = {
     "icmp": "1",
     "all": "all",
 }
-
-
-# Subnet tier identifiers — use these constants instead of bare strings.
-SubnetTier = Literal["public", "private", "secure", "management"]
-
-SUBNET_PUBLIC: Literal["public"] = "public"
-SUBNET_PRIVATE: Literal["private"] = "private"
-SUBNET_SECURE: Literal["secure"] = "secure"
-SUBNET_MANAGEMENT: Literal["management"] = "management"
 
 
 class _SubnetRef:
@@ -107,11 +105,15 @@ class SubnetConfig:
             IPs); `False` for a private subnet.
         dns_label: Short DNS label prefix passed to
             `BaseResource.create_dns_label`.
+        ipv6_cidr: IPv6 `/64` CIDR to assign to the subnet, or `None` for
+            IPv4-only.  Set automatically by `Vcn._create_subnets` when
+            `ipv6_enabled=True` was passed to `Vcn.__init__`.
     """
 
     cidr: str
     is_public: bool
     dns_label: str
+    ipv6_cidr: pulumi.Input[str] | None = None
 
 
 @dataclass
@@ -218,10 +220,10 @@ class Vcn(BaseResource, AbstractNetwork):
         ```
     """
 
-    SUBNET_PUBLIC: Literal["public"] = "public"
-    SUBNET_PRIVATE: Literal["private"] = "private"
-    SUBNET_SECURE: Literal["secure"] = "secure"
-    SUBNET_MANAGEMENT: Literal["management"] = "management"
+    SUBNET_PUBLIC: SubnetTier = "public"
+    SUBNET_PRIVATE: SubnetTier = "private"
+    SUBNET_SECURE: SubnetTier = "secure"
+    SUBNET_MANAGEMENT: SubnetTier = "management"
 
     cidr_block: pulumi.Input[str]
     vcn: oci.core.Vcn
@@ -252,10 +254,16 @@ class Vcn(BaseResource, AbstractNetwork):
         stack_name: str | None = None,
         opts: pulumi.ResourceOptions | None = None,
         cidr_block: pulumi.Input[str] | None = None,
+        additional_cidr_blocks: list[pulumi.Input[str]] | None = None,
+        ipv6_enabled: bool = False,
         flow_logs: bool = False,
         flow_logs_retention: int = 90,
         drg: bool = False,
         on_premise_cidrs: list[str] | None = None,
+        nat_public_ip_id: pulumi.Input[str] | None = None,
+        nat_block_traffic: bool = False,
+        dhcp_options_id: pulumi.Input[str] | None = None,
+        defined_tags: pulumi.Input[dict[str, pulumi.Input[str]]] | None = None,
     ) -> None:
         """Create a VCN with gateways and route tables.
 
@@ -278,6 +286,18 @@ class Vcn(BaseResource, AbstractNetwork):
                 management 12.5 % each (prefix+3).  See the module
                 docstring for a full example table across common prefix
                 lengths.
+            additional_cidr_blocks: Extra IPv4 CIDRs to attach to the VCN
+                (e.g. `["172.16.0.0/24"]`).  OCI supports multiple
+                non-overlapping CIDRs on a single VCN — useful when the
+                primary CIDR overlaps with a VCN peer.  Only `cidr_block`
+                drives subnet subdivision; additional CIDRs are attached to
+                the VCN resource only.  Defaults to `None` (single-CIDR
+                VCN).
+            ipv6_enabled: When `True`, enables IPv6 on the VCN and assigns
+                each subnet a `/64` block derived from the OCI-assigned
+                `/56` prefix.  Tier slot assignments mirror the IPv4 layout
+                — private gets `/64[0]`, secure `/64[1]`, public `/64[2]`,
+                management `/64[3]`.  Defaults to `False`.
             flow_logs: When `True`, a `VcnFlowLogs` component is created
                 automatically inside `finalize_network`, capturing accepted
                 and rejected traffic on all four subnet tiers.  Defaults
@@ -299,13 +319,46 @@ class Vcn(BaseResource, AbstractNetwork):
                 but no static routes are injected — use this when routing
                 will be handled dynamically by BGP (FastConnect) or static
                 routes configured on the VPN gateway side.
+            nat_public_ip_id: OCID of a reserved public IP to assign to
+                the NAT Gateway.  When `None` (the default) OCI allocates
+                an ephemeral public IP automatically.  Supply a reserved IP
+                when a predictable, static egress address is required — for
+                example, to whitelist the VCN's outbound traffic at a
+                customer firewall or third-party API allow-list.
+            nat_block_traffic: When `True`, the NAT Gateway blocks all
+                outbound traffic without being deleted.  Defaults to
+                `False`.  Use this to temporarily cut egress during a
+                security incident or maintenance window — the gateway and
+                its reserved IP are preserved so traffic can be restored
+                instantly by re-deploying with `nat_block_traffic=False`.
+            dhcp_options_id: OCID of a custom DHCP options set to attach
+                to all four subnet tiers.  When `None` (the default) OCI
+                uses the VCN's built-in defaults, which resolve DNS via the
+                internet and the VCN resolver.  Supply a custom DHCP
+                options set to redirect DNS queries to a private resolver —
+                required for split-horizon DNS in hybrid (on-premise +
+                cloud) environments.
+            defined_tags: OCI defined tags to apply to every resource in
+                this VCN (VCN, gateways, route tables, security lists, and
+                subnets).  Defined tags are namespace-qualified key/value
+                pairs managed by OCI Tag Namespaces and are required for
+                enterprise cost tracking, policy enforcement, and
+                governance.  When `None` (the default) no defined tags are
+                applied.  Example:
+                `{"Operations.CostCenter": "42", "Project.Env": "prod"}`.
         """
         super().__init__("custom:network:Vcn", name, compartment_id, stack_name, opts)
         self.cidr_block = cidr_block or "10.0.0.0/18"
+        self._additional_cidr_blocks: list[pulumi.Input[str]] = additional_cidr_blocks or []
+        self._ipv6_enabled = ipv6_enabled
         self._flow_logs_enabled = flow_logs
         self._flow_logs_retention = flow_logs_retention
         self._drg_enabled = drg
         self._on_premise_cidrs: list[str] = on_premise_cidrs or []
+        self._nat_public_ip_id = nat_public_ip_id
+        self._nat_block_traffic = nat_block_traffic
+        self._dhcp_options_id = dhcp_options_id
+        self._defined_tags = defined_tags
 
         # Initialize the subnet and optional gateway properties
         self.public_subnet = None
@@ -421,6 +474,35 @@ class Vcn(BaseResource, AbstractNetwork):
             management=str(management),
         )
 
+    def _compute_ipv6_subnet_cidr(self, idx: int) -> pulumi.Output[str]:
+        """Derive the `idx`-th `/64` block from the VCN's OCI-assigned IPv6 `/56`.
+
+        Called by `_create_subnets` when `ipv6_enabled=True`.  Tier slot
+        assignments are stable:
+
+        ```text
+        0 → private   (mirrors the IPv4 lower-half convention)
+        1 → secure
+        2 → public
+        3 → management
+        ```
+
+        Args:
+            idx: Zero-based index into the `/56` subnet list.  Must be in
+                `[0, 255]` (a `/56` contains 256 `/64` blocks).
+
+        Returns:
+            A `pulumi.Output[str]` resolving to the IPv6 CIDR after the VCN
+            has been created and OCI has assigned its IPv6 prefix.
+
+        Raises:
+            AssertionError: If called when `ipv6_enabled=False`.
+        """
+        assert self._ipv6_enabled, "_compute_ipv6_subnet_cidr called with ipv6_enabled=False"
+        return self.vcn.ipv6cidr_blocks.apply(
+            lambda blocks: str(list(ipaddress.ip_network(blocks[0]).subnets(new_prefix=64))[idx])
+        )
+
     # ------------------------------------------------------------------
     # Private infrastructure creation helpers
     # ------------------------------------------------------------------
@@ -441,10 +523,12 @@ class Vcn(BaseResource, AbstractNetwork):
         self.vcn = oci.core.Vcn(
             resource_name,
             compartment_id=self.compartment_id,
-            cidr_blocks=[self.cidr_block],
+            cidr_blocks=[self.cidr_block, *self._additional_cidr_blocks],
+            is_ipv6enabled=self._ipv6_enabled,
             display_name=resource_name,
             dns_label=self.create_dns_label("vcn"),
             freeform_tags=self.create_freeform_tags(resource_name, "vcn", {"NetworkTier": "core"}),
+            defined_tags=self._defined_tags,
             opts=pulumi.ResourceOptions(parent=self),
         )
         self.id = self.vcn.id
@@ -453,13 +537,16 @@ class Vcn(BaseResource, AbstractNetwork):
         # traffic rules.  OCI attaches it to every subnet automatically;
         # overriding it with empty rule sets prevents it from shadowing the
         # per-tier lists we manage via the builder pattern.
+        sl_default_name = self.create_resource_name("sl-default")
         self.default_security_list = oci.core.DefaultSecurityList(
-            self.create_resource_name("sl-default"),
+            sl_default_name,
             compartment_id=self.compartment_id,
             manage_default_resource_id=self.vcn.default_security_list_id,
             ingress_security_rules=[],
             egress_security_rules=[],
-            display_name=self.create_resource_name("sl-default"),
+            display_name=sl_default_name,
+            freeform_tags=self.create_network_resource_tags(sl_default_name, "security-list", "default", "default"),
+            defined_tags=self._defined_tags,
             opts=pulumi.ResourceOptions(parent=self, depends_on=[self.vcn]),
         )
 
@@ -474,6 +561,7 @@ class Vcn(BaseResource, AbstractNetwork):
             display_name=igw_name,
             enabled=True,
             freeform_tags=self.create_gateway_tags(igw_name, "internet"),
+            defined_tags=self._defined_tags,
             opts=pulumi.ResourceOptions(parent=self),
         )
 
@@ -484,7 +572,10 @@ class Vcn(BaseResource, AbstractNetwork):
             compartment_id=self.compartment_id,
             vcn_id=self.vcn.id,
             display_name=natgw_name,
+            block_traffic=self._nat_block_traffic,
+            public_ip_id=self._nat_public_ip_id,
             freeform_tags=self.create_gateway_tags(natgw_name, "nat"),
+            defined_tags=self._defined_tags,
             opts=pulumi.ResourceOptions(parent=self),
         )
 
@@ -497,6 +588,7 @@ class Vcn(BaseResource, AbstractNetwork):
             services=[oci.core.ServiceGatewayServiceArgs(service_id=self._svc_service_id)],
             display_name=svcgw_name,
             freeform_tags=self.create_gateway_tags(svcgw_name, "service"),
+            defined_tags=self._defined_tags,
             opts=pulumi.ResourceOptions(parent=self),
         )
 
@@ -508,6 +600,7 @@ class Vcn(BaseResource, AbstractNetwork):
                 compartment_id=self.compartment_id,
                 display_name=drg_name,
                 freeform_tags=self.create_gateway_tags(drg_name, "drg"),
+                defined_tags=self._defined_tags,
                 opts=pulumi.ResourceOptions(parent=self),
             )
 
@@ -548,6 +641,7 @@ class Vcn(BaseResource, AbstractNetwork):
                 ingress_security_rules=ingress,
                 egress_security_rules=egress,
                 freeform_tags=self.create_network_resource_tags(name, "security-list", tier, tier),
+                defined_tags=self._defined_tags,
                 opts=pulumi.ResourceOptions(parent=self),
             )
 
@@ -629,6 +723,7 @@ class Vcn(BaseResource, AbstractNetwork):
                 display_name=name,
                 route_rules=rules,
                 freeform_tags=self.create_network_resource_tags(name, "route-table", tier, tier),
+                defined_tags=self._defined_tags,
                 opts=pulumi.ResourceOptions(parent=self),
             )
 
@@ -667,13 +762,18 @@ class Vcn(BaseResource, AbstractNetwork):
             security_list_ids=[security_list.id],
             vcn_id=self.vcn.id,
             cidr_block=config.cidr,
+            # IPv6 CIDR is None for IPv4-only VCNs; Pulumi ignores None args.
+            ipv6cidr_block=config.ipv6_cidr,
             display_name=subnet_name,
             dns_label=self.create_dns_label(config.dns_label),
             prohibit_public_ip_on_vnic=not config.is_public,
+            prohibit_internet_ingress=not config.is_public,
             route_table_id=route_table.id,
+            dhcp_options_id=self._dhcp_options_id,
             freeform_tags=self.create_network_resource_tags(
                 subnet_name, "subnet", tier, tier, {"CidrRange": config.cidr}
             ),
+            defined_tags=self._defined_tags,
             opts=pulumi.ResourceOptions(parent=self),
         )
 
@@ -690,11 +790,34 @@ class Vcn(BaseResource, AbstractNetwork):
             subnet_cidrs.management,
         )
 
+        # IPv6 slot assignments mirror the IPv4 tier layout: private=0
+        # (largest tier), secure=1, public=2, management=3.  Stable indices
+        # ensure subnets always get the same /64 on re-plan.
         subnet_configs: dict[tuple[str, str], SubnetConfig] = {
-            ("public", "public"): SubnetConfig(public_cidr, True, "pub"),
-            ("private", "private"): SubnetConfig(private_cidr, False, "priv"),
-            ("secure", "secure"): SubnetConfig(secure_cidr, False, "sec"),
-            ("management", "management"): SubnetConfig(management_cidr, False, "mgmt"),
+            ("public", "public"): SubnetConfig(
+                public_cidr,
+                True,
+                "pub",
+                self._compute_ipv6_subnet_cidr(2) if self._ipv6_enabled else None,
+            ),
+            ("private", "private"): SubnetConfig(
+                private_cidr,
+                False,
+                "priv",
+                self._compute_ipv6_subnet_cidr(0) if self._ipv6_enabled else None,
+            ),
+            ("secure", "secure"): SubnetConfig(
+                secure_cidr,
+                False,
+                "sec",
+                self._compute_ipv6_subnet_cidr(1) if self._ipv6_enabled else None,
+            ),
+            ("management", "management"): SubnetConfig(
+                management_cidr,
+                False,
+                "mgmt",
+                self._compute_ipv6_subnet_cidr(3) if self._ipv6_enabled else None,
+            ),
         }
 
         for (short_name, attr_name), config in subnet_configs.items():
@@ -1085,8 +1208,10 @@ class Vcn(BaseResource, AbstractNetwork):
         if self._flow_logs_enabled:
             from .network_logging import VcnFlowLogs  # lazy import avoids circular dependency
 
+            assert self.compartment_id is not None, "Vcn requires a compartment_id"
             self.flow_logs = VcnFlowLogs(
                 name=self.name,
+                compartment_id=self.compartment_id,
                 vcn=self,
                 retention_duration=self._flow_logs_retention,
                 stack_name=self.stack_name,
