@@ -1,45 +1,48 @@
 """Deploy services into a VCN managed by another Pulumi stack.
 
-Uses :class:`~blocks.vcn.network.VcnRef` to import a VCN from a separately-
-managed stack (e.g. ``examples/vcn``) and then deploys a compute instance
-into it.
+Uses `VcnRef` to import a VCN from a separately-managed stack
+(e.g. `examples/vcn`) and then deploys a compute instance into it.
 
 No network resources are created or modified here.
 
-.. warning::
+> **Note:** Security rules required by the services deployed here (Compute,
+> etc.) must already exist in the source VCN stack.  `VcnRef` does not add or
+> modify security lists.
 
-    Security rules required by the services deployed here (Compute, etc.)
-    must already exist in the source VCN stack.  ``VcnRef`` does not add or
-    modify security lists.
+## Prerequisites
 
-Prerequisites
--------------
-The referenced VCN stack must already have run ``pulumi up`` and export:
+The referenced VCN stack must already have run `pulumi up` and export:
 
-- ``vcn_id``
-- ``cidr_block``
-- ``public_subnet_id``
-- ``private_subnet_id``
-- ``public_subnet_cidr``
-- ``private_subnet_cidr``
-- ``public_security_list_id``
-- ``private_security_list_id``
+- `vcn_id`
+- `cidr_block`
+- `public_subnet_id`
+- `private_subnet_id`
+- `secure_subnet_id`
+- `management_subnet_id`
+- `public_subnet_cidr`
+- `private_subnet_cidr`
+- `secure_subnet_cidr`
+- `management_subnet_cidr`
+- `public_security_list_id`
+- `private_security_list_id`
+- `secure_security_list_id`
+- `management_security_list_id`
 
-All eight values are exported by the ``examples/vcn`` stack.
+All fourteen values are exported by `examples/vcn` via `vcn.export()`.
 
-Quick start
------------
-.. code-block:: bash
+## Quick start
 
-    cd examples/import-vcn
-    pulumi stack init <stack-name>
-    pulumi config set compartment_ocid  <COMPARTMENT_OCID>
-    pulumi config set vcn_stack         <STACK_REFERENCE>
+```bash
+cd examples/import-vcn
+pulumi stack init <stack-name>
+pulumi config set compartment_ocid  <COMPARTMENT_OCID>
+pulumi config set vcn_stack         <STACK_REFERENCE>
+```
 
-Stack reference format
-----------------------
-- Pulumi Cloud:       ``"<organization>/<project>/<stack>"``
-- Local file backend: ``"<project>/<stack>"``
+## Stack reference format
+
+- Pulumi Cloud: `"<organization>/<project>/<stack>"`
+- Local file backend: `"<project>/<stack>"`
 """
 
 import os

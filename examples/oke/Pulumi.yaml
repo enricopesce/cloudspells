@@ -20,9 +20,9 @@ config:
   node_image_id:
     type: string
     description: OCID of the boot image for worker nodes
-  oke_min_nodes:
+  node_count:
     type: string
-    description: Starting number of worker nodes
+    description: Number of worker nodes in the pool
     default: "2"
   oke_ocpus:
     type: string

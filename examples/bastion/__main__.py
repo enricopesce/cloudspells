@@ -1,33 +1,32 @@
 """VCN + private ComputeInstance + Bastion — secure SSH access to a private instance.
 
-Architecture
-============
+## Architecture
 
-.. code-block:: text
+```
+Internet
+   │  (OCI Bastion service — no public IP on instance)
+   ▼
+┌─────────────────────────────────────────────────────┐
+│ Private subnet (/17) — NAT GW + Service GW routes   │
+│  web-server  [app-nsg · APP_SERVER]                 │
+│  mgmt bastion  ← OCI Bastion service                │
+└─────────────────────────────────────────────────────┘
+```
 
-    Internet
-       │  (OCI Bastion service — no public IP on instance)
-       ▼
-    ┌─────────────────────────────────────────────────────┐
-    │ Private subnet (/17) — NAT GW + Service GW routes   │
-    │  web-server  [app-nsg · APP_SERVER]                 │
-    │  mgmt bastion  ← OCI Bastion service                │
-    └─────────────────────────────────────────────────────┘
-
-The ``APP_SERVER`` role places the instance in the private subnet and
+The `APP_SERVER` role places the instance in the private subnet and
 auto-generates service + internet egress rules.  SSH management access is
 provided entirely through the OCI Bastion service; no SSH ingress from an
 upstream NSG is needed.
 
-Configuration
--------------
+## Configuration
+
 Required:
 
-    ``compartment_ocid``   OCID of the target compartment.
+- `compartment_ocid` — OCID of the target compartment.
 
 Optional:
 
-    ``ssh_key``            SSH public key installed on the VM.
+- `ssh_key` — SSH public key installed on the VM.
 """
 
 import os

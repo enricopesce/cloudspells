@@ -18,10 +18,10 @@ pulumi destroy   # tear down
 | `compute/` | `Vcn`, `ComputeInstance`, `Nsg` | NSG roles, role-inferred subnet placement, volumes |
 | `autoscale/` | `Vcn`, `ScalableWorkload` | LB + instance pool + CPU autoscaling, cloud-init user data |
 | `oke/` | `Vcn`, `OkeCluster` | Kubernetes on OCI, kubeconfig generation |
-| `bastion/` | `Vcn`, `Bastion` | Bastion access pattern, client CIDR allow lists |
-| `web-db/` | `Vcn`, `Nsg` ×3, `ComputeInstance` ×2 | 3-tier: INTERNET_EDGE → APP_SERVER → DATABASE; `nsg.serves()` |
+| `bastion/` | `Vcn`, `ComputeInstance`, `Nsg`, `Bastion` | Private-subnet instance + OCI Bastion for SSH access |
+| `web-db/` | `Vcn`, `Nsg` ×3, `ComputeInstance` ×5 | 3-tier: INTERNET_EDGE → APP_SERVER → DATABASE; `nsg.serves()` |
 | `import-vcn/` | `VcnRef` | Cross-stack VCN reference via `VcnRef.from_stack_reference()` |
-| `secure-vcn/` | `Vcn`, `VcnFlowLogs` | Flow logs, advanced security rules |
+| `secure-vcn/` | `Vcn` (with `flow_logs=True`), `Nsg` ×4 | Flow logs, four-tier NSGs, management-tier SSH controls |
 
 ## Config (Pulumi.\<stack\>.yaml)
 

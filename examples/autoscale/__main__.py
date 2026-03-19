@@ -7,8 +7,6 @@ _root = os.path.join(os.path.dirname(__file__), "../..")
 sys.path.insert(0, os.path.join(_root, "packages/cloudspells-core/src"))
 sys.path.insert(0, os.path.join(_root, "packages/cloudspells-oci/src"))
 
-import base64
-
 from cloudspells.core import Config
 from cloudspells.providers.oci.autoscale import ScalableWorkload
 from cloudspells.providers.oci.network import Vcn
@@ -47,8 +45,6 @@ cat > /usr/share/nginx/html/index.html <<EOF
 EOF
 """
 
-user_data_encoded = base64.b64encode(user_data_script.encode()).decode()
-
 # Create VCN
 vcn: Vcn = Vcn(
     name="scalable",
@@ -64,7 +60,7 @@ scalable_pool: ScalableWorkload = ScalableWorkload(
     compartment_id=compartment_id,
     vcn=vcn,
     ssh_public_key=config.get("ssh_key"),
-    user_data=user_data_encoded,
+    user_data=user_data_script,
     max_instances=3,
 )
 

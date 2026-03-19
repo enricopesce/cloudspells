@@ -1,30 +1,29 @@
 """VCN + ComputeInstance example — deploys an internet-facing VM with block volumes.
 
-Architecture
-============
+## Architecture
 
-.. code-block:: text
+```
+Internet
+   │  HTTP 80 / HTTPS 443 / SSH 22
+   ▼
+┌─────────────────────────────────────────────────────┐
+│ Public subnet (/19)  — Internet GW route            │
+│  web-server  [web-nsg · INTERNET_EDGE]              │
+└─────────────────────────────────────────────────────┘
+```
 
-    Internet
-       │  HTTP 80 / HTTPS 443 / SSH 22
-       ▼
-    ┌─────────────────────────────────────────────────────┐
-    │ Public subnet (/19)  — Internet GW route            │
-    │  web-server  [web-nsg · INTERNET_EDGE]              │
-    └─────────────────────────────────────────────────────┘
-
-The ``INTERNET_EDGE`` role registers the inbound TCP security list rules for
+The `INTERNET_EDGE` role registers the inbound TCP security list rules for
 the public subnet.  No manual security list or NSG rule calls needed.
 
-Configuration
--------------
+## Configuration
+
 Required:
 
-    ``compartment_ocid``   OCID of the target compartment.
+- `compartment_ocid` — OCID of the target compartment.
 
 Optional:
 
-    ``ssh_key``            SSH public key installed on the VM.
+- `ssh_key` — SSH public key installed on the VM.
 """
 
 import os

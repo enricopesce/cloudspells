@@ -1,66 +1,63 @@
 """Load balancer + 2 web backends + 2 database VMs — role-based security.
 
-Architecture
-============
+## Architecture
 
-.. code-block:: text
+```
+Internet
+   │  HTTP 80 / HTTPS 443 / SSH 22
+   ▼
+┌─────────────────────────────────────────────────────┐
+│ Public subnet (/19)  — Internet GW route            │
+│  load-balancer  [lb-nsg  · INTERNET_EDGE]           │
+└──────────────────────┬──────────────────────────────┘
+                       │ TCP {app_port} + SSH 22
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│ Private subnet (/17) — NAT GW + Service GW routes   │
+│  web-backend-1  [web-nsg · APP_SERVER]              │
+│  web-backend-2  [web-nsg · APP_SERVER]              │
+└──────────────────────┬──────────────────────────────┘
+                       │ TCP {db_port} + SSH 22
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│ Secure subnet (/18)  — Service GW only (no NAT)     │
+│  db-1  [db-nsg · DATABASE]                          │
+│  db-2  [db-nsg · DATABASE]                          │
+└─────────────────────────────────────────────────────┘
 
-    Internet
-       │  HTTP 80 / HTTPS 443 / SSH 22
-       ▼
-    ┌─────────────────────────────────────────────────────┐
-    │ Public subnet (/19)  — Internet GW route            │
-    │  load-balancer  [lb-nsg  · INTERNET_EDGE]           │
-    └──────────────────────┬──────────────────────────────┘
-                           │ TCP {app_port} + SSH 22
-                           ▼
-    ┌─────────────────────────────────────────────────────┐
-    │ Private subnet (/17) — NAT GW + Service GW routes   │
-    │  web-backend-1  [web-nsg · APP_SERVER]              │
-    │  web-backend-2  [web-nsg · APP_SERVER]              │
-    └──────────────────────┬──────────────────────────────┘
-                           │ TCP {db_port} + SSH 22
-                           ▼
-    ┌─────────────────────────────────────────────────────┐
-    │ Secure subnet (/18)  — Service GW only (no NAT)     │
-    │  db-1  [db-nsg · DATABASE]                          │
-    │  db-2  [db-nsg · DATABASE]                          │
-    └─────────────────────────────────────────────────────┘
+## Security model
 
-Security model
---------------
 Each NSG is assigned a **role** that declares its security posture.  The
 role auto-generates:
 
-* Ambient NSG rules (service/internet egress) for the VNIC.
-* The matching subnet Security List rules so OCI's two enforcement layers
-  align — no manual :func:`~providers.oci.network.Vcn.add_security_rules`
-  call is needed.
+- Ambient NSG rules (service/internet egress) for the VNIC.
+- The matching subnet Security List rules so OCI's two enforcement layers
+  align — no manual `Vcn.add_security_rules` call is needed.
 
-``lb_nsg.serves(web_nsg, port=app_port)`` generates four rules in one line:
+`lb_nsg.serves(web_nsg, port=app_port)` generates four rules in one line:
 
-* lb-nsg  → EGRESS  → web-nsg  on {app_port}  (NSG-to-NSG)
-* web-nsg ← INGRESS ← lb-nsg   on {app_port}  (NSG-to-NSG)
-* lb-nsg  → EGRESS  → web-nsg  on 22 (SSH management)
-* web-nsg ← INGRESS ← lb-nsg   on 22 (SSH management)
+- lb-nsg  → EGRESS  → web-nsg  on {app_port}  (NSG-to-NSG)
+- web-nsg ← INGRESS ← lb-nsg   on {app_port}  (NSG-to-NSG)
+- lb-nsg  → EGRESS  → web-nsg  on 22 (SSH management)
+- web-nsg ← INGRESS ← lb-nsg   on 22 (SSH management)
 
-… plus the corresponding cross-subnet Security List rules.
+…plus the corresponding cross-subnet Security List rules.
 
 Adding a third web backend requires **zero NSG changes** — just attach the
-same ``web_nsg.id`` to the new ``ComputeInstance``.
+same `web_nsg.id` to the new `ComputeInstance`.
 
-Configuration
--------------
+## Configuration
+
 Required:
 
-    ``compartment_ocid``   OCID of the target compartment.
+- `compartment_ocid` — OCID of the target compartment.
 
 Optional:
 
-    ``ssh_key``            SSH public key installed on all VMs.
-    ``vcn_cidr``           VCN CIDR block (default: ``10.0.0.0/16``).
-    ``app_port``           Backend app TCP port (default: ``8080``).
-    ``db_port``            Database TCP port (default: ``5432``).
+- `ssh_key` — SSH public key installed on all VMs.
+- `vcn_cidr` — VCN CIDR block (default: `10.0.0.0/16`).
+- `app_port` — Backend app TCP port (default: `8080`).
+- `db_port` — Database TCP port (default: `5432`).
 """
 
 import os

@@ -1,7 +1,7 @@
 """Standalone VCN — deploys only a VCN with subnets and gateways.
 
-All outputs are consumed by ``examples/import-vcn`` via
-``VcnRef.from_stack_reference()``.
+All outputs are consumed by `examples/import-vcn` via
+`VcnRef.from_stack_reference()`.
 """
 
 import os

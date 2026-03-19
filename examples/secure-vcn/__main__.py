@@ -1,93 +1,89 @@
 """Highly secure, monitored OCI VCN — production-ready reference deployment.
 
-Architecture
-============
+## Architecture
+
 This example deploys the complete CloudSpells secure-network stack:
 
-.. code-block:: text
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  VCN  10.0.0.0/16                                               │
+│                                                                 │
+│  ┌─────────────────┐  ┌──────────────────────────────────────┐  │
+│  │ Public /19      │  │ Private /17                          │  │
+│  │ (LB tier)       │  │ (App tier)                           │  │
+│  │ IGW route       │  │ NAT GW + Service GW routes           │  │
+│  │ lb-nsg ──────────┼──► app-nsg                             │  │
+│  └─────────────────┘  └──────────────────┬───────────────────┘  │
+│                                          │ TCP {db_port}        │
+│  ┌────────────────────────────────────────▼───────────────────┐  │
+│  │ Secure /18 (DB tier)                                       │  │
+│  │ Service GW route only — NO internet path                   │  │
+│  │ db-nsg                                                     │  │
+│  └────────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │ Management /19                                             │  │
+│  │ Service GW route only                                      │  │
+│  │ mgmt-nsg ──► SSH to LB + app + DB tiers                   │  │
+│  └────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-    ┌─────────────────────────────────────────────────────────────────┐
-    │  VCN  10.0.0.0/16                                               │
-    │                                                                 │
-    │  ┌─────────────────┐  ┌──────────────────────────────────────┐  │
-    │  │ Public /19      │  │ Private /17                          │  │
-    │  │ (LB tier)       │  │ (App tier)                           │  │
-    │  │ IGW route       │  │ NAT GW + Service GW routes           │  │
-    │  │ lb-nsg ──────────┼──► app-nsg                             │  │
-    │  └─────────────────┘  └──────────────────┬───────────────────┘  │
-    │                                          │ TCP {db_port}        │
-    │  ┌────────────────────────────────────────▼───────────────────┐  │
-    │  │ Secure /18 (DB tier)                                       │  │
-    │  │ Service GW route only — NO internet path                   │  │
-    │  │ db-nsg                                                     │  │
-    │  └────────────────────────────────────────────────────────────┘  │
-    │                                                                 │
-    │  ┌────────────────────────────────────────────────────────────┐  │
-    │  │ Management /19                                             │  │
-    │  │ Service GW route only                                      │  │
-    │  │ mgmt-nsg ──► SSH to LB + app + DB tiers                   │  │
-    │  └────────────────────────────────────────────────────────────┘  │
-    └─────────────────────────────────────────────────────────────────┘
+## Security model
 
-Security model
---------------
 Each NSG is assigned a **role** that declares its security posture.  The
 role auto-generates:
 
-* Ambient NSG rules (service / internet egress) for the VNIC.
-* The matching subnet Security List rules so OCI's two enforcement layers
-  align — no manual ``add_rule`` boilerplate needed.
+- Ambient NSG rules (service / internet egress) for the VNIC.
+- The matching subnet Security List rules so OCI's two enforcement layers
+  align — no manual `add_rule` boilerplate needed.
 
-``lb_nsg.serves(app_nsg, port=app_port)`` generates four rules in one line:
+`lb_nsg.serves(app_nsg, port=app_port)` generates four rules in one line:
 
-* lb-nsg  → EGRESS  → app-nsg on {app_port}  (NSG-to-NSG)
-* app-nsg ← INGRESS ← lb-nsg  on {app_port}  (NSG-to-NSG)
-* lb-nsg  → EGRESS  → app-nsg on 22 (SSH management)
-* app-nsg ← INGRESS ← lb-nsg  on 22 (SSH management)
+- lb-nsg  → EGRESS  → app-nsg on {app_port}  (NSG-to-NSG)
+- app-nsg ← INGRESS ← lb-nsg  on {app_port}  (NSG-to-NSG)
+- lb-nsg  → EGRESS  → app-nsg on 22 (SSH management)
+- app-nsg ← INGRESS ← lb-nsg  on 22 (SSH management)
 
-… plus the corresponding cross-subnet Security List rules.
+…plus the corresponding cross-subnet Security List rules.
 
-Zero Trust tagging
-------------------
-Every NSG is tagged with ``ZprLabel=tier:<name>``.  Enable **Zero Trust
+## Zero Trust tagging
+
+Every NSG is tagged with `ZprLabel=tier:<name>`.  Enable **Zero Trust
 Packet Routing (ZPR)** in your tenancy and create a ZPR policy referencing
 these labels to enforce identity-based traffic filtering at the OCI control
 plane level — a guarantee that no misconfigured VNIC attachment can bypass
-the NSG rules::
+the NSG rules:
 
-    Define policy "network-zpr-policy" as
-      allow private-nsg to connect to secure-nsg on TCP port 1521
-      where target.security-attribute.ZprLabel = 'tier:secure'
+```
+Define policy "network-zpr-policy" as
+  allow private-nsg to connect to secure-nsg on TCP port 1521
+  where target.security-attribute.ZprLabel = 'tier:secure'
+```
 
-Configuration
--------------
-Required Pulumi config values (set with ``pulumi config set``):
+## Configuration
 
-    ``compartment_ocid``
-        OCID of the OCI compartment to deploy into.
+Required Pulumi config values (set with `pulumi config set`):
+
+- `compartment_ocid` — OCID of the OCI compartment to deploy into.
 
 Optional:
 
-    ``vcn_cidr``
-        VCN IPv4 CIDR block (default: ``10.0.0.0/16``).
-    ``management_ingress_cidr``
-        CIDR allowed to SSH into the management tier
-        (default: ``0.0.0.0/0`` — **restrict before go-live**).
-    ``app_port``
-        TCP port the app-tier listens on (default: ``8080``).
-    ``db_port``
-        Database TCP port (default: ``1521``).
-    ``log_retention_days``
-        Flow-log retention in days: 30/60/90/120/150/180 (default: ``90``).
+- `vcn_cidr` — VCN IPv4 CIDR block (default: `10.0.0.0/16`).
+- `management_ingress_cidr` — CIDR allowed to SSH into the management tier
+  (default: `0.0.0.0/0` — **restrict before go-live**).
+- `app_port` — TCP port the app-tier listens on (default: `8080`).
+- `db_port` — Database TCP port (default: `1521`).
+- `log_retention_days` — Flow-log retention in days: 30/60/90/120/150/180 (default: `90`).
 
-Stack outputs
--------------
-``vcn_id``                    VCN OCID
-``public_subnet_id``          Public (LB) subnet OCID
-``private_subnet_id``         Private (App) subnet OCID
-``secure_subnet_id``          Secure (DB) subnet OCID
-``management_subnet_id``      Management subnet OCID
-``network_audit_log_group_id`` Log Group OCID for network audit logs
+## Stack outputs
+
+- `vcn_id` — VCN OCID
+- `public_subnet_id` — Public (LB) subnet OCID
+- `private_subnet_id` — Private (App) subnet OCID
+- `secure_subnet_id` — Secure (DB) subnet OCID
+- `management_subnet_id` — Management subnet OCID
+- `network_audit_log_group_id` — Log Group OCID for network audit logs
 """
 
 import os
