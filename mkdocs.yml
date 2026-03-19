@@ -61,12 +61,13 @@ nav:
       - api/core/abstractions/kubernetes.md
       - api/core/abstractions/bastion.md
       - api/core/abstractions/autoscale.md
+      - api/core/abstractions/roles.md
     - Spells:
-      - api/blocks/vcn.md
-      - api/blocks/compute.md
-      - api/blocks/oke.md
-      - api/blocks/bastion.md
-      - api/blocks/autoscale.md
+      - api/providers/network.md
+      - api/providers/compute.md
+      - api/providers/kubernetes.md
+      - api/providers/bastion.md
+      - api/providers/autoscale.md
     - OCI Provider:
       - api/providers/network.md
       - api/providers/compute.md

@@ -181,11 +181,7 @@ The subnet OCIDs are normal Pulumi stack outputs. A downstream service stack can
 ```python
 from cloudspells.providers.oci.network import VcnRef
 
-vcn = VcnRef.from_stack_reference(
-    stack_ref=pulumi.StackReference("org/secure-network/dev"),
-    name="lab",
-    compartment_id=compartment_id,
-)
+vcn = VcnRef.from_stack_reference("org/secure-network/dev")
 ```
 
 See [Share a VCN Across Stacks](../how-to/vcnref.md) for the full pattern.

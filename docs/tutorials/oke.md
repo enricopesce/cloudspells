@@ -101,7 +101,7 @@ oke.create_kubeconfig("kubeconfig")
 `OkeCluster` handles all the complexity:
 
 - Adds 19 security list rules covering the Kubernetes control plane (6443), kubelet (10250), NodePort range (30000-32767), and kube-proxy (10256)
-- Creates 4 NSGs (`api_nsg`, `lb_nsg`, `worker_nsg`, `pod_nsg`) with 36 VNIC-level rules for fine-grained segmentation
+- Creates 4 NSGs (`api_nsg`, `lb_nsg`, `worker_nsg`, `pod_nsg`) with 34 VNIC-level rules for fine-grained segmentation
 - Places the API endpoint in the public subnet and worker/pod VNICs in the private subnet
 - Configures `OCI_VCN_IP_NATIVE` CNI so every pod gets a real VCN subnet IP
 - Spreads nodes across all Availability Domains automatically

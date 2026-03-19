@@ -55,19 +55,17 @@ Open `examples/autoscale/__main__.py`.
 
 ### 2a. Prepare a cloud-init script
 
-The example uses a base64-encoded cloud-init script to install nginx and create a health check endpoint:
+The example passes a plain cloud-init script to install nginx and create a health check endpoint:
 
 ```python
-import base64
-
 user_data_script = """#!/bin/bash
 yum install -y nginx
 systemctl enable nginx && systemctl start nginx
 echo "OK" > /usr/share/nginx/html/health
 """
-
-user_data_encoded = base64.b64encode(user_data_script.encode()).decode()
 ```
+
+CloudSpells base64-encodes `user_data` internally before passing it to OCI — pass the plain string or bytes directly.
 
 The load balancer health check polls `/health` on port 80. Instances that fail health checks are removed from the rotation.
 
@@ -87,7 +85,7 @@ scalable_pool = ScalableWorkload(
     compartment_id=compartment_id,
     vcn=vcn,
     ssh_public_key=config.get("ssh_key"),
-    user_data=user_data_encoded,
+    user_data=user_data_script,
     max_instances=3,
 )
 ```

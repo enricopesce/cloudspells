@@ -131,5 +131,10 @@ If you delete or rename a VCN output that a service stack depends on, `pulumi pr
 | `private_subnet_cidr` | Security rule generation |
 | `secure_subnet_cidr` | Security rule generation |
 | `management_subnet_cidr` | Security rule generation |
+| `public_security_list_id` | Security list attach points |
+| `private_security_list_id` | Security list attach points |
+| `secure_security_list_id` | Security list attach points |
+| `management_security_list_id` | Security list attach points |
+| `drg_id` | DRG attach points (optional — `None` when no DRG) |
 
-All eight CIDR/ID values must exist in the source stack or `VcnRef.from_stack_reference()` will fail.
+All fourteen outputs must exist in the source stack (except `drg_id`, which is `None` when no DRG is attached) or `VcnRef.from_stack_reference()` will fail. All are exported automatically by `vcn.export()`.
