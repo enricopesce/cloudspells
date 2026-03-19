@@ -202,18 +202,18 @@ If `flow_logs=True` was passed to `__init__`, a `VcnFlowLogs` component is also 
 
 Before creating the security lists, `finalize_network` injects a fixed set of baseline rules that are always present regardless of which spells have contributed their own rules.
 
-**Applied to all four tiers (ingress and egress):**
+**Applied to the private tier (egress):**
 
-| Protocol | Type / Code | Description |
+| Protocol | Destination | Description |
 |---|---|---|
-| ICMP | Type 3 Code 4 | Path-MTU Discovery (RFC 1191) — required to prevent silent TCP hangs when payload exceeds the path MTU |
+| ALL | NAT Gateway | Outbound-only internet egress for image pulls and external API calls |
+| ALL | `<services CIDR>` | Oracle service plane egress (OCIR, Monitoring, Logging) |
 
-**Applied to the public tier only (ingress):**
+**Applied to the private, secure, and management tiers (egress):**
 
-| Protocol | Type / Code | Description |
+| Protocol | Destination | Description |
 |---|---|---|
-| ICMP | Type 3 (all codes) | Destination Unreachable from internet — covers all PMTUD variants and routing failures |
-| ICMP | Type 8 | Echo Request (ping) — required by OCI load balancer health-check probes |
+| ALL | `<services CIDR>` | Oracle service plane egress without internet transit |
 
 **Secure-tier segmentation (ingress):**
 

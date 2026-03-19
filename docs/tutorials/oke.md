@@ -23,7 +23,7 @@ kubectl (port 6443)
 └────────────────────────────────────────────────────┘
 ```
 
-**What gets created:** 1 VCN (4 subnets + 3 gateways), 1 OKE BASIC_CLUSTER, 1 node pool spread across all ADs, 4 NSGs with 36 NSG rules, all required security list rules.
+**What gets created:** 1 VCN (4 subnets + 3 gateways), 1 OKE BASIC_CLUSTER, 1 node pool spread across all ADs, 4 NSGs with 32 NSG rules, all required security list rules.
 
 ---
 
@@ -100,7 +100,7 @@ oke.create_kubeconfig("kubeconfig")
 
 `OkeCluster` handles all the complexity:
 
-- Adds 24 security list rules covering the Kubernetes control plane (6443), kubelet (10250), NodePort range (30000-32767), kube-proxy (10256), and ICMP path-MTU
+- Adds 19 security list rules covering the Kubernetes control plane (6443), kubelet (10250), NodePort range (30000-32767), and kube-proxy (10256)
 - Creates 4 NSGs (`api_nsg`, `lb_nsg`, `worker_nsg`, `pod_nsg`) with 36 VNIC-level rules for fine-grained segmentation
 - Places the API endpoint in the public subnet and worker/pod VNICs in the private subnet
 - Configures `OCI_VCN_IP_NATIVE` CNI so every pod gets a real VCN subnet IP

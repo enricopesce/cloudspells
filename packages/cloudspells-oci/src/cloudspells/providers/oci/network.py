@@ -71,64 +71,6 @@ _PROTOCOL_MAP: dict[str, str] = {
 }
 
 
-def _icmp_ingress_rule(
-    icmp_type: int,
-    icmp_code: int | None,
-    description: str,
-    source: str = "0.0.0.0/0",
-) -> oci.core.SecurityListIngressSecurityRuleArgs:
-    """Build an ICMP ingress `SecurityListIngressSecurityRuleArgs`.
-
-    Args:
-        icmp_type: ICMP type number (e.g. `3` for Destination Unreachable).
-        icmp_code: ICMP code number, or `None` to match all codes of the type.
-        description: Human-readable description for the OCI rule.
-        source: Source CIDR.  Defaults to `"0.0.0.0/0"`.
-
-    Returns:
-        A ready-to-use ingress rule argument object.
-    """
-    icmp_kwargs: dict[str, int] = {"type": icmp_type}
-    if icmp_code is not None:
-        icmp_kwargs["code"] = icmp_code
-    return oci.core.SecurityListIngressSecurityRuleArgs(
-        protocol="1",
-        source=source,
-        source_type="CIDR_BLOCK",
-        icmp_options=oci.core.SecurityListIngressSecurityRuleIcmpOptionsArgs(**icmp_kwargs),
-        description=description,
-    )
-
-
-def _icmp_egress_rule(
-    icmp_type: int,
-    icmp_code: int | None,
-    description: str,
-    destination: str = "0.0.0.0/0",
-) -> oci.core.SecurityListEgressSecurityRuleArgs:
-    """Build an ICMP egress `SecurityListEgressSecurityRuleArgs`.
-
-    Args:
-        icmp_type: ICMP type number (e.g. `3` for Destination Unreachable).
-        icmp_code: ICMP code number, or `None` to match all codes of the type.
-        description: Human-readable description for the OCI rule.
-        destination: Destination CIDR.  Defaults to `"0.0.0.0/0"`.
-
-    Returns:
-        A ready-to-use egress rule argument object.
-    """
-    icmp_kwargs: dict[str, int] = {"type": icmp_type}
-    if icmp_code is not None:
-        icmp_kwargs["code"] = icmp_code
-    return oci.core.SecurityListEgressSecurityRuleArgs(
-        protocol="1",
-        destination=destination,
-        destination_type="CIDR_BLOCK",
-        icmp_options=oci.core.SecurityListEgressSecurityRuleIcmpOptionsArgs(**icmp_kwargs),
-        description=description,
-    )
-
-
 # Subnet tier identifiers — use these constants instead of bare strings.
 SubnetTier = Literal["public", "private", "secure", "management"]
 
@@ -773,71 +715,48 @@ class Vcn(BaseResource, AbstractNetwork):
         rules are always present regardless of which spells have contributed
         their own rules.
 
-        **ICMP rules — all four tiers (ingress and egress):**
+        **NAT Gateway egress — private tier:**
 
-        - ICMP Type 3, Code 4 — *Fragmentation Needed / DF set* (RFC 1191).
-          Required for Path MTU Discovery.  Without this rule, TCP connections
-          cross-subnet or to the internet hang silently when payload size
-          exceeds the actual path MTU.
+        - All protocols to `0.0.0.0/0`.  Required so that instances in the
+          private subnet can reach the internet via the NAT Gateway.  OCI
+          security lists are whitelist-only — without this rule, packets are
+          dropped before they ever reach the gateway even though the route
+          table is correctly wired.
 
-        **ICMP rules — public tier only (ingress):**
+        **Service Gateway egress — private / secure / management tiers:**
 
-        - ICMP Type 3, all codes — internet-sourced *Destination Unreachable*
-          messages, covering all PMTUD variants and routing failures.
-        - ICMP Type 8 — *Echo Request* (ping).  Required by OCI load balancer
-          health-check probes.
+        - All protocols to the OCI service CIDR (`SERVICE_CIDR_BLOCK`).
+          Required so that instances on all internal tiers can reach OCI
+          services (Object Storage, Monitoring, Logging, Container Registry,
+          etc.) through the Service Gateway without a public internet path.
+          Without this rule, those packets are dropped despite the Service
+          Gateway being present and the route rule pointing at it.
 
-        **Secure-tier segmentation:**
-
-        The secure subnet is the data tier (databases, secrets stores).
-        Only the private (application) subnet is permitted to initiate
-        connections into it.  Public and management subnets are implicitly
-        denied by the security-list whitelist model (no matching rule → deny).
-
-        - TCP ingress from the private subnet CIDR.  OCI stateful tracking
-          handles return packets — no matching egress rule is required.
-
-        This baseline does not restrict which ports are accessible inside
-        the private→secure path; individual spells (database, vault) add
-        port-specific rules on top via `add_security_list_rules`.
         """
-        pmtud_ingress = _icmp_ingress_rule(3, 4, "PMTUD: fragmentation needed (RFC 1191)")
-        pmtud_egress = _icmp_egress_rule(3, 4, "PMTUD: fragmentation needed (RFC 1191)")
-
-        # PMTUD on all four tiers, both directions — no exceptions.
-        self.add_security_list_rules(
-            public_ingress=[pmtud_ingress],
-            public_egress=[pmtud_egress],
-            private_ingress=[pmtud_ingress],
-            private_egress=[pmtud_egress],
-            secure_ingress=[pmtud_ingress],
-            secure_egress=[pmtud_egress],
-            management_ingress=[pmtud_ingress],
-            management_egress=[pmtud_egress],
+        # NAT Gateway: allow all outbound from the private subnet.
+        # Without this the security list drops packets before they reach the
+        # gateway, even though the route table is correctly wired.
+        nat_egress = oci.core.SecurityListEgressSecurityRuleArgs(
+            protocol="all",
+            destination="0.0.0.0/0",
+            destination_type="CIDR_BLOCK",
+            description="Egress to internet via NAT Gateway",
         )
 
-        # Public subnet: all ICMP Type 3 codes from the internet (unreachables)
-        # and echo requests for health checks.
-        self.add_security_list_rules(
-            public_ingress=[
-                _icmp_ingress_rule(3, None, "ICMP destination unreachable (all codes) from internet"),
-                _icmp_ingress_rule(8, None, "ICMP echo request (ping) from internet"),
-            ],
+        # Service Gateway: allow all outbound to the OCI service CIDR from
+        # every internal tier.  Required so instances can reach OCI services
+        # (Object Storage, Monitoring, Logging, etc.) without a public path.
+        svc_egress = oci.core.SecurityListEgressSecurityRuleArgs(
+            protocol="all",
+            destination=self._svc_cidr_block,
+            destination_type="SERVICE_CIDR_BLOCK",
+            description="Egress to OCI services via Service Gateway",
         )
 
-        # Secure tier: baseline ingress from the private subnet only.
-        # All other sources (public, management, internet) remain denied.
-        private_cidr: str = self._subnet_cidrs.private
         self.add_security_list_rules(
-            secure_ingress=[
-                oci.core.SecurityListIngressSecurityRuleArgs(
-                    protocol="6",
-                    source=private_cidr,
-                    source_type="CIDR_BLOCK",
-                    stateless=False,
-                    description="Baseline: allow TCP from private tier to secure tier",
-                ),
-            ],
+            private_egress=[nat_egress, svc_egress],
+            secure_egress=[svc_egress],
+            management_egress=[svc_egress],
         )
 
     # ------------------------------------------------------------------
@@ -1046,13 +965,6 @@ class Vcn(BaseResource, AbstractNetwork):
                     min=rule.port_min or 1,
                     max=rule.port_max or 65535,
                 )
-            if rule.protocol == "icmp":
-                icmp_kwargs: dict[str, int] = {}
-                if rule.icmp_type is not None:
-                    icmp_kwargs["type"] = rule.icmp_type
-                if rule.icmp_code is not None:
-                    icmp_kwargs["code"] = rule.icmp_code
-                kwargs["icmp_options"] = oci.core.SecurityListIngressSecurityRuleIcmpOptionsArgs(**icmp_kwargs)
             return oci.core.SecurityListIngressSecurityRuleArgs(**kwargs)
 
         def _translate_egress(
@@ -1077,13 +989,6 @@ class Vcn(BaseResource, AbstractNetwork):
                     min=rule.port_min or 1,
                     max=rule.port_max or 65535,
                 )
-            if rule.protocol == "icmp":
-                icmp_kwargs: dict[str, int] = {}
-                if rule.icmp_type is not None:
-                    icmp_kwargs["type"] = rule.icmp_type
-                if rule.icmp_code is not None:
-                    icmp_kwargs["code"] = rule.icmp_code
-                kwargs["icmp_options"] = oci.core.SecurityListEgressSecurityRuleIcmpOptionsArgs(**icmp_kwargs)
             return oci.core.SecurityListEgressSecurityRuleArgs(**kwargs)
 
         self.add_security_list_rules(

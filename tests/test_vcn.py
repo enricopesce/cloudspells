@@ -226,77 +226,72 @@ class TestVcn(unittest.TestCase):
         self.assertIsNone(vcn.flow_logs, "flow_logs must be None before finalize_network")
 
     # ------------------------------------------------------------------
-    # Baseline ICMP tests
+    # Baseline gateway egress tests
     # ------------------------------------------------------------------
 
     @pulumi.runtime.test
-    def test_baseline_pmtud_rule_on_all_tiers(self):
-        """ICMP Type 3 Code 4 (PMTUD) must appear in all four security lists."""
-        vcn = Vcn(name="test-vcn", compartment_id="ocid1.compartment.test")
-        vcn.finalize_network()
+    def test_baseline_private_egress_enables_nat(self):
+        """Private security list must have an all-protocol egress rule to 0.0.0.0/0.
 
-        def has_pmtud(rules):
-            return any(
-                r.get("icmp_options", {}).get("type") == 3 and r.get("icmp_options", {}).get("code") == 4
-                for r in (rules or [])
-            )
-
-        def check_ingress(args):
-            pub, priv, sec, mgmt = args
-            for tier, rules in (("public", pub), ("private", priv), ("secure", sec), ("management", mgmt)):
-                self.assertTrue(has_pmtud(rules), f"{tier} ingress must have PMTUD rule (Type 3 Code 4)")
-
-        def check_egress(args):
-            pub, priv, sec, mgmt = args
-            for tier, rules in (("public", pub), ("private", priv), ("secure", sec), ("management", mgmt)):
-                self.assertTrue(has_pmtud(rules), f"{tier} egress must have PMTUD rule (Type 3 Code 4)")
-
-        ingress = pulumi.Output.all(
-            vcn.public_security_list.ingress_security_rules,
-            vcn.private_security_list.ingress_security_rules,
-            vcn.secure_security_list.ingress_security_rules,
-            vcn.management_security_list.ingress_security_rules,
-        ).apply(check_ingress)
-
-        egress = pulumi.Output.all(
-            vcn.public_security_list.egress_security_rules,
-            vcn.private_security_list.egress_security_rules,
-            vcn.secure_security_list.egress_security_rules,
-            vcn.management_security_list.egress_security_rules,
-        ).apply(check_egress)
-
-        return pulumi.Output.all(ingress, egress)
-
-    @pulumi.runtime.test
-    def test_baseline_icmp_public_extras(self):
-        """Public security list must have ICMP Type 3 all-codes and Type 8 ingress rules."""
+        Without this rule the security list drops packets before they reach
+        the NAT Gateway, even though the route table is correctly wired.
+        """
         vcn = Vcn(name="test-vcn", compartment_id="ocid1.compartment.test")
         vcn.finalize_network()
 
         def check(rules):
-            types = {r.get("icmp_options", {}).get("type") for r in (rules or [])}
-            self.assertIn(3, types, "Public ingress must have ICMP Type 3 (unreachable)")
-            self.assertIn(8, types, "Public ingress must have ICMP Type 8 (echo request)")
+            has_nat = any(
+                r.get("destination") == "0.0.0.0/0" and r.get("protocol") == "all"
+                for r in (rules or [])
+            )
+            self.assertTrue(has_nat, "Private egress must have all-protocol rule to 0.0.0.0/0 for NAT gateway")
 
-        return vcn.public_security_list.ingress_security_rules.apply(check)
+        return vcn.private_security_list.egress_security_rules.apply(check)
 
     @pulumi.runtime.test
-    def test_baseline_icmp_not_on_private_egress_type8(self):
-        """ICMP Type 8 (echo request) must NOT appear in private/secure/management security lists."""
+    def test_baseline_service_gw_egress_on_internal_tiers(self):
+        """Private, secure, and management egress must have a SERVICE_CIDR_BLOCK rule.
+
+        Required so instances on internal tiers can reach OCI services
+        (Object Storage, Monitoring, Logging, etc.) via the Service Gateway.
+        """
         vcn = Vcn(name="test-vcn", compartment_id="ocid1.compartment.test")
         vcn.finalize_network()
 
         def check(args):
             priv, sec, mgmt = args
             for tier, rules in (("private", priv), ("secure", sec), ("management", mgmt)):
-                types = {r.get("icmp_options", {}).get("type") for r in (rules or [])}
-                self.assertNotIn(8, types, f"{tier} ingress must not have ICMP Type 8")
+                has_svc = any(
+                    r.get("destination_type") == "SERVICE_CIDR_BLOCK"
+                    for r in (rules or [])
+                )
+                self.assertTrue(has_svc, f"{tier} egress must have SERVICE_CIDR_BLOCK rule for Service Gateway")
 
         return pulumi.Output.all(
-            vcn.private_security_list.ingress_security_rules,
-            vcn.secure_security_list.ingress_security_rules,
-            vcn.management_security_list.ingress_security_rules,
+            vcn.private_security_list.egress_security_rules,
+            vcn.secure_security_list.egress_security_rules,
+            vcn.management_security_list.egress_security_rules,
         ).apply(check)
+
+    @pulumi.runtime.test
+    def test_baseline_public_has_no_nat_or_svc_egress(self):
+        """Public security list must NOT have NAT or SERVICE_CIDR_BLOCK egress rules.
+
+        Public subnet routes via the Internet Gateway only; adding these
+        rules would be misleading since the route table does not point to
+        NAT or Service Gateway for that tier.
+        """
+        vcn = Vcn(name="test-vcn", compartment_id="ocid1.compartment.test")
+        vcn.finalize_network()
+
+        def check(rules):
+            has_svc = any(
+                r.get("destination_type") == "SERVICE_CIDR_BLOCK"
+                for r in (rules or [])
+            )
+            self.assertFalse(has_svc, "Public egress must not have SERVICE_CIDR_BLOCK rule")
+
+        return vcn.public_security_list.egress_security_rules.apply(check)
 
     # ------------------------------------------------------------------
     # DRG tests

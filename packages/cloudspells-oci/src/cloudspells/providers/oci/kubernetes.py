@@ -49,7 +49,6 @@ Security list rules added by this spell:
 Public subnet (API endpoint + Load Balancer):
 
 - Ingress: Kubernetes API (6443) and control-plane port (12250) from private.
-- Ingress: ICMP path-MTU discovery from private subnet.
 - Ingress: HTTPS (443) and HTTP (80) from internet (Load Balancer).
 - Ingress: Kubernetes API (6443) from internet (kubectl).
 - Egress: OCI services (cluster management and telemetry).
@@ -60,11 +59,9 @@ Private subnet (Worker nodes + Pods):
 
 - Ingress: Kubelet (10250), NodePort (30000-32767), kube-proxy (10256) from public.
 - Ingress: All traffic from public subnet (control plane to pods: webhooks).
-- Ingress: ICMP path-MTU discovery from anywhere.
 - Egress: OCI services (OCIR image pulls, monitoring, logging).
 - Egress: Kubernetes API (6443) and control-plane port (12250) to public subnet.
 - Egress: HTTPS (443) and HTTP (80) to internet (image pulls + pod external API calls).
-- Egress: ICMP to internet (path-MTU discovery).
 """
 
 from __future__ import annotations
@@ -78,7 +75,7 @@ from cloudspells.core.base import BaseResource
 
 from .helper import OciHelper
 from .network import Vcn, VcnRef
-from .nsg import ALL, ICMP, INTERNET, SVC_CIDR, TCP, icmp_opts, tcp_port, tcp_port_range
+from .nsg import ALL, INTERNET, SVC_CIDR, TCP, tcp_port, tcp_port_range
 
 
 class OkeCluster(BaseResource, AbstractKubernetes):
@@ -359,17 +356,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                     max=12250,
                 ),
             ),
-            # ICMP path-MTU from private subnet
-            oci.core.SecurityListIngressSecurityRuleArgs(
-                description="ICMP path discovery from private subnet to optimize network packet size",
-                protocol="1",  # ICMP
-                source=private_subnet_cidr,
-                source_type="CIDR_BLOCK",
-                icmp_options=oci.core.SecurityListIngressSecurityRuleIcmpOptionsArgs(
-                    type=3,
-                    code=4,
-                ),
-            ),
             # External clients (kubectl) → API server
             oci.core.SecurityListIngressSecurityRuleArgs(
                 description="Allow external access to Kubernetes API for kubectl and cluster management tools",
@@ -416,17 +402,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 destination=svc_cidr,
                 destination_type="SERVICE_CIDR_BLOCK",
             ),
-            # ICMP path-MTU to OCI services
-            oci.core.SecurityListEgressSecurityRuleArgs(
-                description="ICMP path discovery to OCI services for optimal network performance",
-                protocol="1",  # ICMP
-                destination=svc_cidr,
-                destination_type="SERVICE_CIDR_BLOCK",
-                icmp_options=oci.core.SecurityListEgressSecurityRuleIcmpOptionsArgs(
-                    type=3,
-                    code=4,
-                ),
-            ),
             # Control plane → kubelet API on worker nodes
             oci.core.SecurityListEgressSecurityRuleArgs(
                 description="Control plane manages worker nodes via kubelet for pod operations and health monitoring",
@@ -436,17 +411,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
                     min=10250,
                     max=10250,
-                ),
-            ),
-            # ICMP path-MTU to private subnet
-            oci.core.SecurityListEgressSecurityRuleArgs(
-                description="ICMP path discovery to private subnet for network optimization",
-                protocol="1",  # ICMP
-                destination=private_subnet_cidr,
-                destination_type="CIDR_BLOCK",
-                icmp_options=oci.core.SecurityListEgressSecurityRuleIcmpOptionsArgs(
-                    type=3,
-                    code=4,
                 ),
             ),
             # LB → NodePort range on worker nodes
@@ -530,17 +494,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 source=public_subnet_cidr,
                 source_type="CIDR_BLOCK",
             ),
-            # ICMP path-MTU from anywhere
-            oci.core.SecurityListIngressSecurityRuleArgs(
-                description="ICMP path discovery to private subnet for optimal network packet size from any source",
-                protocol="1",  # ICMP
-                source="0.0.0.0/0",
-                source_type="CIDR_BLOCK",
-                icmp_options=oci.core.SecurityListIngressSecurityRuleIcmpOptionsArgs(
-                    type=3,
-                    code=4,
-                ),
-            ),
         ]
 
         # ───────────────────────────────────────────────────────────────
@@ -596,17 +549,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
                     min=80,
                     max=80,
-                ),
-            ),
-            # ICMP path-MTU to internet
-            oci.core.SecurityListEgressSecurityRuleArgs(
-                description="ICMP path discovery from private subnet to internet for network optimization",
-                protocol="1",  # ICMP
-                destination="0.0.0.0/0",
-                destination_type="CIDR_BLOCK",
-                icmp_options=oci.core.SecurityListEgressSecurityRuleIcmpOptionsArgs(
-                    type=3,
-                    code=4,
                 ),
             ),
         ]
@@ -792,17 +734,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkeApiNsgIngress-worker-icmp",
-            nsg,
-            direction="INGRESS",
-            protocol=ICMP,
-            source=self.worker_nsg.id,
-            source_type="NETWORK_SECURITY_GROUP",
-            icmp_options=icmp_opts(3, 4),
-            description="Path-MTU discovery from worker nodes",
-            opts=opts,
-        )
-        self._r(
             "OkeApiNsgIngress-kubectl",
             nsg,
             direction="INGRESS",
@@ -826,17 +757,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkeApiNsgEgress-services-icmp",
-            nsg,
-            direction="EGRESS",
-            protocol=ICMP,
-            destination=SVC_CIDR,
-            destination_type="SERVICE_CIDR_BLOCK",
-            icmp_options=icmp_opts(3, 4),
-            description="Path-MTU discovery to OCI services",
-            opts=opts,
-        )
-        self._r(
             "OkeApiNsgEgress-worker-kubelet",
             nsg,
             direction="EGRESS",
@@ -845,17 +765,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             destination_type="NETWORK_SECURITY_GROUP",
             tcp_options=tcp_port(10250),
             description="Control plane calls kubelet on worker nodes for pod lifecycle operations",
-            opts=opts,
-        )
-        self._r(
-            "OkeApiNsgEgress-worker-icmp",
-            nsg,
-            direction="EGRESS",
-            protocol=ICMP,
-            destination=self.worker_nsg.id,
-            destination_type="NETWORK_SECURITY_GROUP",
-            icmp_options=icmp_opts(3, 4),
-            description="Path-MTU discovery to worker nodes",
             opts=opts,
         )
         self._r(
@@ -935,12 +844,11 @@ class OkeCluster(BaseResource, AbstractKubernetes):
 
         Ingress: API endpoint reaches kubelet (10250); load balancer reaches
         NodePort range and kube-proxy health; pods reach workers (OCI CNI VNIC
-        communication); nodes reach each other (pod traffic across nodes);
-        ICMP path-MTU from anywhere.
+        communication); nodes reach each other (pod traffic across nodes).
 
         Egress: workers reach the API server (6443, 12250); OCI services (OCIR,
         monitoring); pods (OCI CNI); other workers (node-to-node); internet on
-        HTTPS (443) and HTTP (80) for image pulls; ICMP path-MTU.
+        HTTPS (443) and HTTP (80) for image pulls.
 
         Args:
             opts: Pulumi resource options applied to every rule resource.
@@ -957,17 +865,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             source_type="NETWORK_SECURITY_GROUP",
             tcp_options=tcp_port(10250),
             description="Control plane calls kubelet for pod lifecycle, logs, and exec",
-            opts=opts,
-        )
-        self._r(
-            "OkeWorkerNsgIngress-api-icmp",
-            nsg,
-            direction="INGRESS",
-            protocol=ICMP,
-            source=self.api_nsg.id,
-            source_type="NETWORK_SECURITY_GROUP",
-            icmp_options=icmp_opts(3, 4),
-            description="Path-MTU discovery from control plane",
             opts=opts,
         )
         self._r(
@@ -1012,18 +909,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             description="Node-to-node traffic for OCI CNI pod communication across availability domains",
             opts=opts,
         )
-        self._r(
-            "OkeWorkerNsgIngress-icmp",
-            nsg,
-            direction="INGRESS",
-            protocol=ICMP,
-            source=INTERNET,
-            source_type="CIDR_BLOCK",
-            icmp_options=icmp_opts(3, 4),
-            description="Path-MTU discovery from any source",
-            opts=opts,
-        )
-
         # ── EGRESS ─────────────────────────────────────────────────────
         self._r(
             "OkeWorkerNsgEgress-api-6443",
@@ -1099,17 +984,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             description="Workers pull images from HTTP registries and access OCI pre-authenticated URLs",
             opts=opts,
         )
-        self._r(
-            "OkeWorkerNsgEgress-icmp",
-            nsg,
-            direction="EGRESS",
-            protocol=ICMP,
-            destination=INTERNET,
-            destination_type="CIDR_BLOCK",
-            icmp_options=icmp_opts(3, 4),
-            description="Path-MTU discovery to internet",
-            opts=opts,
-        )
 
     def _add_pod_nsg_rules(self, opts: pulumi.ResourceOptions) -> None:
         """Add ingress and egress rules to `pod_nsg`.
@@ -1120,7 +994,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
 
         Egress: pods reach each other; pods reach worker VNICs (OCI CNI);
         pods reach the API server (6443, 12250); OCI services (OCIR,
-        monitoring); internet on HTTPS (443) and HTTP (80); ICMP path-MTU.
+        monitoring); internet on HTTPS (443) and HTTP (80).
 
         Args:
             opts: Pulumi resource options applied to every rule resource.
@@ -1232,17 +1106,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             destination_type="CIDR_BLOCK",
             tcp_options=tcp_port(80),
             description="Pods access HTTP endpoints and OCI pre-authenticated URLs",
-            opts=opts,
-        )
-        self._r(
-            "OkePodNsgEgress-icmp",
-            nsg,
-            direction="EGRESS",
-            protocol=ICMP,
-            destination=INTERNET,
-            destination_type="CIDR_BLOCK",
-            icmp_options=icmp_opts(3, 4),
-            description="Path-MTU discovery to internet",
             opts=opts,
         )
 

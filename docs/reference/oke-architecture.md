@@ -15,7 +15,7 @@ Complete technical reference for the `OkeCluster` spell. This page covers the cl
 | `oci.containerengine.Cluster` | 1 | `BASIC_CLUSTER` type |
 | `oci.containerengine.NodePool` | 1 | Spread across all ADs |
 | `oci.core.NetworkSecurityGroup` | 4 | api, lb, worker, pod |
-| `oci.core.NetworkSecurityGroupSecurityRule` | 29 | See NSG rules section |
+| `oci.core.NetworkSecurityGroupSecurityRule` | 32 | See NSG rules section |
 
 Security lists are not created by `OkeCluster` — rules are accumulated into the parent `Vcn` via `add_security_list_rules`, which creates them when `finalize_network` is called.
 
@@ -138,7 +138,7 @@ The total node count (`size`) is divided as evenly as possible across ADs by the
 
 Security lists enforce coarse-grained, subnet-to-subnet routing policy. They are evaluated on every packet entering or leaving a subnet. `OkeCluster` calls `vcn.add_security_list_rules()` with a complete set of public and private subnet rules before calling `vcn.finalize_network()`.
 
-In addition to the OKE-specific rules documented below, `finalize_network` always injects a set of **VCN baseline rules** before materialising the security lists. These include ICMP Path-MTU Discovery rules on all four tiers and a TCP ingress rule permitting the private subnet to initiate connections into the secure subnet. See [Baseline security rules](vcn-architecture.md#baseline-security-rules) in the VCN Architecture reference for the full list.
+In addition to the OKE-specific rules documented below, `finalize_network` always injects a set of **VCN baseline rules** before materialising the security lists. These include NAT Gateway egress for the private tier, Service Gateway egress for the private/secure/management tiers, and a TCP ingress rule permitting the private subnet to initiate connections into the secure subnet. See [Baseline security rules](vcn-architecture.md#baseline-security-rules) in the VCN Architecture reference for the full list.
 
 Because the security list is shared (one list per subnet, accumulated from all spells), the rules written here establish the minimum necessary subnet-level connectivity. Within-subnet traffic (pod-to-pod, node-to-node) that stays inside the same CIDR block is **not** governed by security lists — it is governed exclusively by NSGs.
 
@@ -183,7 +183,6 @@ The following rules are added to the shared VCN security lists by `OkeCluster._a
 |---|---|---|---|
 | TCP | Private subnet CIDR | 6443 | Workers and pods reach the Kubernetes API server |
 | TCP | Private subnet CIDR | 12250 | Workers and pods reach the control-plane internal port |
-| ICMP | Private subnet CIDR | Type 3 Code 4 | Path-MTU discovery from private subnet |
 | TCP | `0.0.0.0/0` | 6443 | External `kubectl` and CI tooling reach the API |
 | TCP | `0.0.0.0/0` | 443 | Load balancer receives HTTPS from the internet |
 | TCP | `0.0.0.0/0` | 80 | Load balancer receives HTTP from the internet |
@@ -193,9 +192,7 @@ The following rules are added to the shared VCN security lists by `OkeCluster._a
 | Protocol | Destination | Port / Type | Description |
 |---|---|---|---|
 | TCP | `<services CIDR>` (SERVICE_CIDR_BLOCK) | all | Control plane telemetry and management to OCI services |
-| ICMP | `<services CIDR>` (SERVICE_CIDR_BLOCK) | Type 3 Code 4 | Path-MTU discovery to OCI services |
 | TCP | Private subnet CIDR | 10250 | Control plane calls kubelet for pod lifecycle operations |
-| ICMP | Private subnet CIDR | Type 3 Code 4 | Path-MTU discovery to private subnet |
 | TCP | Private subnet CIDR | 30000–32767 | Load balancer forwards to worker nodes via NodePort |
 | TCP | Private subnet CIDR | 10256 | Load balancer health-checks via kube-proxy |
 | ALL | Private subnet CIDR | all | Control plane reaches pods on arbitrary ports (webhooks, admission controllers, metrics) |
@@ -208,7 +205,6 @@ The following rules are added to the shared VCN security lists by `OkeCluster._a
 | TCP | Public subnet CIDR | 30000–32767 | Load balancer forwards traffic via NodePort |
 | TCP | Public subnet CIDR | 10256 | Load balancer health-checks via kube-proxy |
 | ALL | Public subnet CIDR | all | Control plane reaches pods for webhooks and admission controllers |
-| ICMP | `0.0.0.0/0` | Type 3 Code 4 | Path-MTU discovery from any source |
 
 ### Private subnet — Egress
 
@@ -219,9 +215,8 @@ The following rules are added to the shared VCN security lists by `OkeCluster._a
 | TCP | Public subnet CIDR | 12250 | Workers and pods reach the control-plane internal port |
 | TCP | `0.0.0.0/0` | 443 | Workers pull container images; pods call external APIs via HTTPS |
 | TCP | `0.0.0.0/0` | 80 | Workers pull images from HTTP registries; OCI pre-authenticated URLs |
-| ICMP | `0.0.0.0/0` | Type 3 Code 4 | Path-MTU discovery to internet |
 
-**Total security list rules added:** 6 public ingress + 7 public egress + 5 private ingress + 6 private egress = **24 rules**.
+**Total security list rules added:** 5 public ingress + 5 public egress + 4 private ingress + 5 private egress = **19 rules**.
 
 ---
 
@@ -239,7 +234,6 @@ NSG rules use NSG OCIDs as source/destination (not CIDRs), providing VNIC-level 
 | TCP | `worker_nsg` | 12250 | Worker nodes reach the control-plane internal port |
 | TCP | `pod_nsg` | 6443 | Pods reach the Kubernetes API server |
 | TCP | `pod_nsg` | 12250 | Pods reach the control-plane internal port |
-| ICMP | `worker_nsg` | Type 3 Code 4 | Path-MTU discovery from worker nodes |
 | TCP | `0.0.0.0/0` (CIDR) | 6443 | External `kubectl` and CI tooling |
 
 #### Egress
@@ -247,9 +241,7 @@ NSG rules use NSG OCIDs as source/destination (not CIDRs), providing VNIC-level 
 | Protocol | Destination | Port / Type | Description |
 |---|---|---|---|
 | ALL | `<services CIDR>` (SERVICE_CIDR_BLOCK) | all | Control plane telemetry and management |
-| ICMP | `<services CIDR>` (SERVICE_CIDR_BLOCK) | Type 3 Code 4 | Path-MTU discovery to OCI services |
 | TCP | `worker_nsg` | 10250 | Control plane calls kubelet on worker nodes |
-| ICMP | `worker_nsg` | Type 3 Code 4 | Path-MTU discovery to worker nodes |
 | ALL | `pod_nsg` | all | Control plane reaches pods on arbitrary ports (webhooks, exec, metrics) |
 
 ### `lb_nsg` rules
@@ -275,12 +267,10 @@ NSG rules use NSG OCIDs as source/destination (not CIDRs), providing VNIC-level 
 | Protocol | Source (NSG / CIDR) | Port / Type | Description |
 |---|---|---|---|
 | TCP | `api_nsg` | 10250 | Control plane calls kubelet for pod lifecycle, logs, exec |
-| ICMP | `api_nsg` | Type 3 Code 4 | Path-MTU discovery from control plane |
 | TCP | `lb_nsg` | 30000–32767 | Load balancer forwards requests via NodePort |
 | TCP | `lb_nsg` | 10256 | Load balancer health-checks via kube-proxy |
 | ALL | `pod_nsg` | all | Pods communicate with worker VNIC (OCI CNI VNIC-native) |
 | ALL | `worker_nsg` | all | Node-to-node traffic for OCI CNI pod traffic across ADs |
-| ICMP | `0.0.0.0/0` (CIDR) | Type 3 Code 4 | Path-MTU discovery from any source |
 
 #### Egress
 
@@ -293,7 +283,6 @@ NSG rules use NSG OCIDs as source/destination (not CIDRs), providing VNIC-level 
 | ALL | `worker_nsg` | all | Node-to-node traffic for OCI CNI across ADs |
 | TCP | `0.0.0.0/0` (CIDR) | 443 | Workers pull container images via HTTPS; pods call external APIs |
 | TCP | `0.0.0.0/0` (CIDR) | 80 | Workers pull images from HTTP registries; OCI pre-authenticated URLs |
-| ICMP | `0.0.0.0/0` (CIDR) | Type 3 Code 4 | Path-MTU discovery to internet |
 
 ### `pod_nsg` rules
 
@@ -316,9 +305,8 @@ NSG rules use NSG OCIDs as source/destination (not CIDRs), providing VNIC-level 
 | ALL | `<services CIDR>` (SERVICE_CIDR_BLOCK) | all | Pods reach OCI services (object storage, monitoring, logging) |
 | TCP | `0.0.0.0/0` (CIDR) | 443 | Pods call external APIs and download dependencies via HTTPS |
 | TCP | `0.0.0.0/0` (CIDR) | 80 | Pods access HTTP endpoints and OCI pre-authenticated URLs |
-| ICMP | `0.0.0.0/0` (CIDR) | Type 3 Code 4 | Path-MTU discovery to internet |
 
-**Total NSG rules created:** 6 api_nsg + 4 lb_nsg + 7 worker_nsg ingress + 8 worker_nsg egress + 3 pod_nsg ingress + 8 pod_nsg egress = **36 rules** (the `_r` helper creates one `NetworkSecurityGroupSecurityRule` resource per rule).
+**Total NSG rules created:** 5 api_nsg + 4 lb_nsg + 6 worker_nsg ingress + 7 worker_nsg egress + 3 pod_nsg ingress + 7 pod_nsg egress = **32 rules** (the `_r` helper creates one `NetworkSecurityGroupSecurityRule` resource per rule).
 
 ---
 
@@ -402,7 +390,6 @@ API endpoint:ephemeral → pod VNIC:webhook_port (arbitrary)
 | 30000–32767 | TCP | kube-proxy / host | inbound | NodePort service range |
 | 443 | TCP | internet | outbound | Image pulls (OCIR, Docker Hub); external API calls |
 | 80 | TCP | internet | outbound | HTTP image registries; OCI pre-authenticated URLs |
-| ICMP 3/4 | ICMP | various | both | Path-MTU discovery (required to avoid silent packet drops) |
 
 ---
 
@@ -456,7 +443,7 @@ OkeCluster.__init__()
   │                                   private_ingress, private_egress)
   │
   ├─ vcn.finalize_network()
-  │    ├─ _inject_baseline_rules()   ← PMTUD (all tiers) + private→secure TCP
+  │    ├─ _inject_baseline_rules()   ← NAT/Service GW egress + private→secure TCP
   │    ├─ _create_security_lists()   ← materialises all accumulated rules
   │    └─ _create_subnets()          ← creates 4 subnets
   │
@@ -503,7 +490,7 @@ cluster = OkeCluster(
 cluster.export()
 ```
 
-This creates the complete stack: 1 VCN, 4 subnets, 3 gateways, 4 route tables, 4 security lists (with 24 rules), 4 NSGs (with 36 rules), 1 OKE cluster, 1 node pool.
+This creates the complete stack: 1 VCN, 4 subnets, 3 gateways, 4 route tables, 4 security lists (with 19 rules), 4 NSGs (with 32 rules), 1 OKE cluster, 1 node pool.
 
 ---
 

@@ -11,8 +11,7 @@ Typical usage:
 ```python
 from cloudspells.core.abstractions.network import (
     SecurityRules, INTERNET, CLOUD_SERVICES,
-    tcp_ingress, icmp_path_mtu_ingress,
-    all_egress, icmp_path_mtu_egress,
+    tcp_ingress, all_egress,
 )
 from cloudspells.core.ports import HTTPS, HTTP, SSH, POSTGRES
 
@@ -21,9 +20,7 @@ vcn.add_security_rules(SecurityRules(
         tcp_ingress(HTTPS, INTERNET),
         tcp_ingress(HTTP,  INTERNET),
         tcp_ingress(SSH,   INTERNET),
-        icmp_path_mtu_ingress(),
     ],
-    public_egress=[icmp_path_mtu_egress()],
     private_ingress=[
         tcp_ingress(app_port, vcn.get_public_subnet_cidr()),
         tcp_ingress(SSH,      vcn.get_public_subnet_cidr()),
@@ -49,10 +46,8 @@ Exports:
     AbstractNetwork: Builder interface for cloud networks.
     AbstractNetworkRef: Read-only reference to a network in another stack.
     tcp_ingress: Build a TCP ingress rule from any source (CIDR, subnet ref, or INTERNET).
-    icmp_path_mtu_ingress: Build an ICMP Path-MTU ingress rule.
     tcp_egress: Build a TCP egress rule to any destination.
     all_egress: Build an all-protocol egress rule to any destination.
-    icmp_path_mtu_egress: Build an ICMP Path-MTU egress rule.
 """
 
 from __future__ import annotations
@@ -77,17 +72,13 @@ class IngressRule:
       list, or GCP Private Service Access range.
 
     Attributes:
-        protocol: Transport protocol: `"tcp"`, `"udp"`, `"icmp"`,
-            or `"all"`.
+        protocol: Transport protocol: `"tcp"`, `"udp"`, or `"all"`.
         source: Source CIDR block or symbolic name.
         port_min: First TCP/UDP port in the allowed range (inclusive).
             `None` means no port restriction.
         port_max: Last TCP/UDP port in the allowed range (inclusive).
             `None` means no port restriction.
         description: Human-readable description of the rule's purpose.
-        icmp_type: ICMP type code.  Only relevant when
-            `protocol="icmp"`.
-        icmp_code: ICMP code.  Only relevant when `protocol="icmp"`.
 
     Example:
         ```python
@@ -99,15 +90,6 @@ class IngressRule:
             port_max=22,
             description="SSH from bastion host",
         )
-
-        # Allow ICMP path-MTU discovery from anywhere
-        mtu_rule = IngressRule(
-            protocol="icmp",
-            source="0.0.0.0/0",
-            description="ICMP path-MTU discovery",
-            icmp_type=3,
-            icmp_code=4,
-        )
         ```
     """
 
@@ -116,8 +98,6 @@ class IngressRule:
     port_min: int | None = None
     port_max: int | None = None
     description: str = ""
-    icmp_type: int | None = None
-    icmp_code: int | None = None
 
 
 @dataclass
@@ -128,17 +108,13 @@ class EgressRule:
     field supports the same symbolic names as `IngressRule.source`.
 
     Attributes:
-        protocol: Transport protocol: `"tcp"`, `"udp"`, `"icmp"`,
-            or `"all"`.
+        protocol: Transport protocol: `"tcp"`, `"udp"`, or `"all"`.
         destination: Destination CIDR block or symbolic name.
         port_min: First TCP/UDP port in the allowed range (inclusive).
             `None` means no port restriction.
         port_max: Last TCP/UDP port in the allowed range (inclusive).
             `None` means no port restriction.
         description: Human-readable description of the rule's purpose.
-        icmp_type: ICMP type code.  Only relevant when
-            `protocol="icmp"`.
-        icmp_code: ICMP code.  Only relevant when `protocol="icmp"`.
 
     Example:
         ```python
@@ -158,8 +134,6 @@ class EgressRule:
     port_min: int | None = None
     port_max: int | None = None
     description: str = ""
-    icmp_type: int | None = None
-    icmp_code: int | None = None
 
 
 @dataclass
@@ -262,33 +236,6 @@ def tcp_ingress(
     )
 
 
-def icmp_path_mtu_ingress(description: str = "") -> IngressRule:
-    """Build an ICMP type 3 code 4 (Path MTU Discovery) ingress rule.
-
-    OCI recommends this on every security list to allow proper MTU
-    negotiation for TCP connections.
-
-    Args:
-        description: Human-readable description.  Defaults to
-            `"ICMP Path-MTU inbound"`.
-
-    Returns:
-        `IngressRule` configured for ICMP 3/4 from the internet.
-
-    Example:
-        ```python
-        icmp_path_mtu_ingress()
-        ```
-    """
-    return IngressRule(
-        protocol="icmp",
-        source="internet",
-        icmp_type=3,
-        icmp_code=4,
-        description=description or "ICMP Path-MTU inbound",
-    )
-
-
 def tcp_egress(
     port: int,
     destination: pulumi.Input[str],
@@ -350,33 +297,6 @@ def all_egress(
         protocol="all",
         destination=destination,
         description=description or "All traffic egress",
-    )
-
-
-def icmp_path_mtu_egress(description: str = "") -> EgressRule:
-    """Build an ICMP type 3 code 4 (Path MTU Discovery) egress rule.
-
-    OCI recommends this on every security list to allow proper MTU
-    negotiation for TCP connections.
-
-    Args:
-        description: Human-readable description.  Defaults to
-            `"ICMP Path-MTU outbound"`.
-
-    Returns:
-        `EgressRule` configured for ICMP 3/4 to the internet.
-
-    Example:
-        ```python
-        icmp_path_mtu_egress()
-        ```
-    """
-    return EgressRule(
-        protocol="icmp",
-        destination="internet",
-        icmp_type=3,
-        icmp_code=4,
-        description=description or "ICMP Path-MTU outbound",
     )
 
 
@@ -530,8 +450,6 @@ __all__ = [
     "IngressRule",
     "SecurityRules",
     "all_egress",
-    "icmp_path_mtu_egress",
-    "icmp_path_mtu_ingress",
     "tcp_egress",
     "tcp_ingress",
 ]

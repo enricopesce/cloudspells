@@ -32,7 +32,7 @@ db_nsg  = Nsg("database",      role=DATABASE,
 
 When you pass `role=`, CloudSpells automatically:
 
-- Adds ambient ingress/egress rules to the NSG (ICMP path-MTU, service egress, NAT egress — depending on role)
+- Adds ambient ingress/egress rules to the NSG (service egress, NAT egress — depending on role)
 - Accumulates the matching rules into the VCN's security list for that subnet tier
 - Records the subnet tier so `ComputeInstance` can infer subnet placement without an explicit `subnet=` argument
 
@@ -176,8 +176,6 @@ For cases that `serves()` does not cover, use the individual allow methods direc
 | `allow_from_nsg(name, nsg, port)` | Inbound TCP from another NSG |
 | `allow_to_nsg(name, nsg, port)` | Outbound TCP to another NSG |
 | `allow_to_services(name)` | Egress to Oracle Services CIDR |
-| `allow_icmp_path_mtu_in(name)` | ICMP type 3 code 4 inbound |
-| `allow_icmp_path_mtu_out(name)` | ICMP type 3 code 4 outbound |
 
 ```python
 from cloudspells.providers.oci.nsg import INTERNET

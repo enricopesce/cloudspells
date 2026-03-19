@@ -16,7 +16,7 @@ Typical usage:
 from .nsg import (
     Nsg, TCP, ALL, SVC_CIDR, INTERNET,
     HTTP, HTTPS, SSH, POSTGRES,
-    tcp_port, icmp_opts,
+    tcp_port,
 )
 
 # One NSG per service role
@@ -27,9 +27,7 @@ db_nsg  = Nsg("database",      vcn=vcn, compartment_id=compartment_id)
 # Internet edge — INTERNET constant replaces hard-coded "0.0.0.0/0"
 lb_nsg.allow_from_cidr("https-in", HTTPS, INTERNET)
 lb_nsg.allow_from_cidr("http-in",  HTTP,  INTERNET)
-lb_nsg.allow_icmp_path_mtu_in("icmp-in")
 lb_nsg.allow_to_nsg("app-out", web_nsg, 8080)
-lb_nsg.allow_icmp_path_mtu_out("icmp-out")
 
 web_nsg.allow_from_nsg("app-in", lb_nsg, 8080)
 web_nsg.allow_from_nsg("ssh-in", lb_nsg, SSH)
@@ -53,9 +51,9 @@ combo = ComputeInstance("app", ..., nsg_ids=[web_nsg.id, db_nsg.id])
 ```
 
 Exports:
-    `Nsg`, `TCP`, `UDP`, `ICMP`, `ALL`, `SVC_CIDR`,
+    `Nsg`, `TCP`, `UDP`, `ALL`, `SVC_CIDR`,
     `HTTP`, `HTTPS`, `SSH`, `MYSQL`, `POSTGRES`, `ORACLE_DB`, `REDIS`,
-    `tcp_port`, `tcp_port_range`, `icmp_opts`
+    `tcp_port`, `tcp_port_range`
 """
 
 from __future__ import annotations
@@ -100,9 +98,6 @@ TCP: str = "6"
 
 UDP: str = "17"
 """OCI protocol number for UDP."""
-
-ICMP: str = "1"
-"""OCI protocol number for ICMP."""
 
 ALL: str = "all"
 """OCI wildcard accepting all protocols."""
@@ -202,27 +197,6 @@ def tcp_port_range(min_port: int, max_port: int) -> oci.core.NetworkSecurityGrou
     )
 
 
-def icmp_opts(icmp_type: int, icmp_code: int) -> oci.core.NetworkSecurityGroupSecurityRuleIcmpOptionsArgs:
-    """Return ICMP options for a specific type/code pair.
-
-    Args:
-        icmp_type: ICMP type number (e.g. `3` for Destination Unreachable).
-        icmp_code: ICMP code number (e.g. `4` for Fragmentation Needed).
-
-    Returns:
-        `NetworkSecurityGroupSecurityRuleIcmpOptionsArgs`.
-
-    Example:
-        ```python
-        nsg.add_rule("icmp-mtu", ..., protocol=ICMP, icmp_options=icmp_opts(3, 4))
-        ```
-    """
-    return oci.core.NetworkSecurityGroupSecurityRuleIcmpOptionsArgs(
-        type=icmp_type,
-        code=icmp_code,
-    )
-
-
 # ── Security-list rule builders (private helpers used by role/serves) ─────────
 # These translate the role and relationship declarations into OCI SecurityList
 # args so that nsg.py does not need to import from network.py's translation
@@ -277,28 +251,6 @@ def _sl_egress_all_internet() -> oci.core.SecurityListEgressSecurityRuleArgs:
         destination="0.0.0.0/0",
         destination_type="CIDR_BLOCK",
         description="All outbound traffic via NAT Gateway",
-    )
-
-
-def _sl_ingress_icmp_mtu() -> oci.core.SecurityListIngressSecurityRuleArgs:
-    """Build an ICMP type 3 code 4 (Path MTU Discovery) ingress rule."""
-    return oci.core.SecurityListIngressSecurityRuleArgs(
-        protocol="1",
-        source="0.0.0.0/0",
-        source_type="CIDR_BLOCK",
-        icmp_options=oci.core.SecurityListIngressSecurityRuleIcmpOptionsArgs(type=3, code=4),
-        description="ICMP Path-MTU inbound",
-    )
-
-
-def _sl_egress_icmp_mtu() -> oci.core.SecurityListEgressSecurityRuleArgs:
-    """Build an ICMP type 3 code 4 (Path MTU Discovery) egress rule."""
-    return oci.core.SecurityListEgressSecurityRuleArgs(
-        protocol="1",
-        destination="0.0.0.0/0",
-        destination_type="CIDR_BLOCK",
-        icmp_options=oci.core.SecurityListEgressSecurityRuleIcmpOptionsArgs(type=3, code=4),
-        description="ICMP Path-MTU outbound",
     )
 
 
@@ -498,9 +450,9 @@ class Nsg(BaseResource):
         NSG rules created per role:
 
         - **INTERNET_EDGE** (`subnet_tier == SUBNET_PUBLIC`): TCP ingress from
-          `0.0.0.0/0` on each declared port + ICMP path-MTU in/out.
+          `0.0.0.0/0` on each declared port.
         - **APP_SERVER / CACHE** (`egress_internet=True`): all-protocol egress
-          to `0.0.0.0/0` and to Oracle Services + ICMP path-MTU ingress.
+          to `0.0.0.0/0` and to Oracle Services.
         - **DATABASE / MANAGEMENT** (`egress_services=True` only): all-protocol
           egress to Oracle Services only (no internet).
 
@@ -521,11 +473,6 @@ class Nsg(BaseResource):
         if is_internet_edge:
             for port in ports:
                 self.allow_from_cidr(f"internet-in-{port}", port, INTERNET)
-            self.allow_icmp_path_mtu_in("icmp-in")
-            self.allow_icmp_path_mtu_out("icmp-out")
-        else:
-            # All non-public roles accept ICMP path-MTU for inbound connections
-            self.allow_icmp_path_mtu_in("icmp-in")
 
         if role.egress_services:
             self.allow_to_services("svc-out")
@@ -542,14 +489,6 @@ class Nsg(BaseResource):
                     f"public-ingress-tcp-{port}",
                     public_ingress=[_sl_ingress_tcp(port, "0.0.0.0/0", f"TCP {port} from internet")],
                 )
-            self._vcn._add_unique_security_list_rules(
-                "public-ingress-icmp-mtu",
-                public_ingress=[_sl_ingress_icmp_mtu()],
-            )
-            self._vcn._add_unique_security_list_rules(
-                "public-egress-icmp-mtu",
-                public_egress=[_sl_egress_icmp_mtu()],
-            )
 
         if role.egress_services:
             self._sl_for_tier(f"{tier}-egress-all-services", tier, egress=[_sl_egress_all_services()])
@@ -910,78 +849,11 @@ class Nsg(BaseResource):
             description=description or f"All traffic to {cidr}",
         )
 
-    def allow_icmp_path_mtu_in(
-        self,
-        label: str,
-        description: str = "",
-    ) -> oci.core.NetworkSecurityGroupSecurityRule:
-        """Add an INGRESS ICMP type 3 code 4 (Path MTU Discovery) rule.
-
-        OCI recommends this rule on every NSG to allow proper MTU negotiation
-        for TCP connections.
-
-        Args:
-            label: Unique label for this rule within the NSG.
-            description: Optional human-readable description.  Defaults to
-                `"ICMP Path-MTU inbound"`.
-
-        Returns:
-            The `oci.core.NetworkSecurityGroupSecurityRule` resource.
-
-        Example:
-            ```python
-            lb_nsg.allow_icmp_path_mtu_in("icmp-in")
-            ```
-        """
-        return self.add_rule(
-            label,
-            direction="INGRESS",
-            protocol=ICMP,
-            source="0.0.0.0/0",
-            source_type="CIDR_BLOCK",
-            icmp_options=icmp_opts(3, 4),
-            description=description or "ICMP Path-MTU inbound",
-        )
-
-    def allow_icmp_path_mtu_out(
-        self,
-        label: str,
-        description: str = "",
-    ) -> oci.core.NetworkSecurityGroupSecurityRule:
-        """Add an EGRESS ICMP type 3 code 4 (Path MTU Discovery) rule.
-
-        OCI recommends this rule on every NSG to allow proper MTU negotiation
-        for TCP connections.
-
-        Args:
-            label: Unique label for this rule within the NSG.
-            description: Optional human-readable description.  Defaults to
-                `"ICMP Path-MTU outbound"`.
-
-        Returns:
-            The `oci.core.NetworkSecurityGroupSecurityRule` resource.
-
-        Example:
-            ```python
-            lb_nsg.allow_icmp_path_mtu_out("icmp-out")
-            ```
-        """
-        return self.add_rule(
-            label,
-            direction="EGRESS",
-            protocol=ICMP,
-            destination="0.0.0.0/0",
-            destination_type="CIDR_BLOCK",
-            icmp_options=icmp_opts(3, 4),
-            description=description or "ICMP Path-MTU outbound",
-        )
-
 
 __all__ = [
     "Nsg",
     "TCP",
     "UDP",
-    "ICMP",
     "ALL",
     "SVC_CIDR",
     "INTERNET",
@@ -1018,7 +890,6 @@ __all__ = [
     "DNS",
     "tcp_port",
     "tcp_port_range",
-    "icmp_opts",
     # Role system (re-exported for convenience — canonical source is providers.oci.roles)
     "Role",
 ]

@@ -26,8 +26,7 @@ compartment_id = config.require("compartment_ocid")
 # all gateways, and correct routing — from a single call.
 vcn = Vcn("lab", compartment_id=compartment_id)
 
-# An NSG role — places this resource in the public subnet, opens HTTP/HTTPS/SSH,
-# and adds ICMP path-MTU rules automatically.
+# An NSG role — places this resource in the public subnet and opens HTTP/HTTPS/SSH.
 web_nsg = Nsg("web", role=INTERNET_EDGE, ports=[HTTP, HTTPS, SSH],
               vcn=vcn, compartment_id=compartment_id)
 

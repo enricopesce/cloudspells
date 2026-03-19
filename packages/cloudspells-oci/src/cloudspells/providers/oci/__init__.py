@@ -53,7 +53,7 @@ from .network import (
     VcnRef,
 )
 from .network_logging import VcnFlowLogs
-from .nsg import ALL, ICMP, SVC_CIDR, TCP, UDP, Nsg, icmp_opts, tcp_port, tcp_port_range
+from .nsg import ALL, SVC_CIDR, TCP, UDP, Nsg, tcp_port, tcp_port_range
 from .roles import APP_SERVER, CACHE, DATABASE, INTERNET_EDGE, MANAGEMENT, Role
 from .volume import VolumeSpec
 
@@ -72,12 +72,10 @@ __all__ = [
     "Nsg",
     "TCP",
     "UDP",
-    "ICMP",
     "ALL",
     "SVC_CIDR",
     "tcp_port",
     "tcp_port_range",
-    "icmp_opts",
     # Security — Roles
     "Role",
     "INTERNET_EDGE",

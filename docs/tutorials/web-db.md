@@ -95,7 +95,7 @@ Each `role` constant encodes a security posture:
 | `APP_SERVER` | Private | NAT GW + Oracle Services |
 | `DATABASE` | Secure | Oracle Services only — no internet path |
 
-Ambient NSG rules (ICMP path-MTU, service egress) are generated automatically. You declare only application ports.
+Ambient NSG rules (service egress) are generated automatically. You declare only application ports.
 
 ### 2c. Wire the traffic hops
 

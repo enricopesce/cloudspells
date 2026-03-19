@@ -71,7 +71,7 @@ OCI enforces network rules at two levels: **Security Lists** (subnet-level, stat
 
 When you declare an NSG with a role:
 
-1. The NSG gets the correct ambient VNIC-level rules (ICMP path-MTU, egress to services or internet depending on tier)
+1. The NSG gets the correct ambient VNIC-level rules (egress to services or internet depending on tier)
 2. The VCN security list for that subnet tier gets the corresponding subnet-level rules
 
 When you call `nsg.serves(target, port)`:

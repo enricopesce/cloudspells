@@ -32,7 +32,7 @@ Security model
 Each NSG is assigned a **role** that declares its security posture.  The
 role auto-generates:
 
-* Ambient NSG rules (ICMP path-MTU, service/internet egress) for the VNIC.
+* Ambient NSG rules (service/internet egress) for the VNIC.
 * The matching subnet Security List rules so OCI's two enforcement layers
   align — no manual :func:`~providers.oci.network.Vcn.add_security_rules`
   call is needed.

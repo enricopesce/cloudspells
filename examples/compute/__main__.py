@@ -13,9 +13,8 @@ Architecture
     │  web-server  [web-nsg · INTERNET_EDGE]              │
     └─────────────────────────────────────────────────────┘
 
-The ``INTERNET_EDGE`` role auto-generates ICMP path-MTU rules and registers
-the inbound TCP security list rules for the public subnet.  No manual
-security list or NSG rule calls needed.
+The ``INTERNET_EDGE`` role registers the inbound TCP security list rules for
+the public subnet.  No manual security list or NSG rule calls needed.
 
 Configuration
 -------------
@@ -56,7 +55,6 @@ vcn: Vcn = Vcn(
 # ── Step 2 — NSG role ─────────────────────────────────────────────────────────
 #
 # INTERNET_EDGE: public subnet, accepts HTTP/HTTPS/SSH from 0.0.0.0/0.
-# Ambient ICMP path-MTU in/out rules added automatically.
 
 web_nsg: Nsg = Nsg(
     "web-server",

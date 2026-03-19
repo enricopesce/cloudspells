@@ -100,8 +100,8 @@ All four CloudSpells role constants are represented here:
 
 | Role | Subnet | Egress | Ambient rules |
 |------|--------|--------|---------------|
-| `INTERNET_EDGE` | Public | Internet GW | ICMP path-MTU, accepts declared ports from `0.0.0.0/0` |
-| `APP_SERVER` | Private | NAT GW + Oracle Services | ICMP path-MTU |
+| `INTERNET_EDGE` | Public | Internet GW | Accepts declared ports from `0.0.0.0/0` |
+| `APP_SERVER` | Private | NAT GW + Oracle Services | none |
 | `DATABASE` | Secure | Oracle Services only | No internet egress |
 | `MANAGEMENT` | Management | Oracle Services only | No internet egress |
 

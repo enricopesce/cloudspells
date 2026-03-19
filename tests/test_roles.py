@@ -130,14 +130,11 @@ class TestNsgWithRole(unittest.TestCase):
         vcn = self._make_vcn("ie-sl")
         _nsg = Nsg("lb", role=INTERNET_EDGE, ports=[80, 443, 22], vcn=vcn, compartment_id=COMP_ID)
 
-        # The VCN accumulator should have received at least the three port rules
-        # + ICMP in + ICMP out fingerprints.
+        # The VCN accumulator should have received the three port rules.
         fingerprints = vcn._applied_ambient_rule_fingerprints
         self.assertIn("public-ingress-tcp-80", fingerprints)
         self.assertIn("public-ingress-tcp-443", fingerprints)
         self.assertIn("public-ingress-tcp-22", fingerprints)
-        self.assertIn("public-ingress-icmp-mtu", fingerprints)
-        self.assertIn("public-egress-icmp-mtu", fingerprints)
 
     @pulumi.runtime.test
     def test_app_server_registers_sl_rules(self) -> None:

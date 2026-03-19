@@ -12,3 +12,4 @@ dist
 *passphrase*
 .vscode
 **/.pulumi/
+*.tmp
