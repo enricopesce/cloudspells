@@ -3505,15 +3505,12 @@ OkeCluster.__init__()
 <p><code>finalize_network</code> is idempotent — only the first call creates resources. If <code>OkeCluster</code> is combined with <code>ComputeInstance</code> or <code>ScalableWorkload</code>, each spell adds its rules before the first call to <code>finalize_network</code> completes, and subsequent calls from other spells are no-ops.</p>
 <hr />
 <h2 id="minimum-viable-example">Minimum viable example</h2>
-<pre><code class="language-python">import pulumi
-import pulumi_oci as oci
-
+<pre><code class="language-python">from cloudspells.core import Config
 from cloudspells.providers.oci.network import Vcn
-from cloudspells.providers.oci.kubernetes import OkeCluster
+from cloudspells.providers.oci.kubernetes import NodePoolConfig, OkeCluster
 
-config = pulumi.Config()
+config = Config()
 compartment_id = config.require(&quot;compartment_ocid&quot;)
-image_id = config.require(&quot;node_image_id&quot;)
 
 vcn = Vcn(name=&quot;lab&quot;, compartment_id=compartment_id)
 
@@ -3522,12 +3519,17 @@ cluster = OkeCluster(
     compartment_id=compartment_id,
     vcn=vcn,
     kubernetes_version=&quot;v1.32.1&quot;,
-    image=image_id,
-    shape=&quot;VM.Standard.A1.Flex&quot;,
-    min_nodes=3,
-    ocpus=2,
-    memory_in_gbs=12,
     display_name=&quot;lab-k8s&quot;,
+    node_pools=[
+        NodePoolConfig(
+            name=&quot;default&quot;,
+            shape=&quot;VM.Standard.A1.Flex&quot;,
+            image=config.require(&quot;node_image_id&quot;),
+            node_count=3,
+            ocpus=2,
+            memory_in_gbs=12,
+        ),
+    ],
 )
 
 cluster.export()

@@ -1232,6 +1232,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#optional-constructor-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Optional constructor parameters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#cidr-sizing-guide" class="md-nav__link">
     <span class="md-ellipsis">
       CIDR sizing guide
@@ -2225,6 +2234,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#optional-constructor-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Optional constructor parameters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#cidr-sizing-guide" class="md-nav__link">
     <span class="md-ellipsis">
       CIDR sizing guide
@@ -2765,6 +2783,87 @@
 vcn.export()
 </code></pre>
 <p>Exported keys match the table in the <code>VcnRef</code> section above, plus <code>network_audit_log_group_id</code> when flow logs are enabled.</p>
+<hr />
+<h2 id="optional-constructor-parameters">Optional constructor parameters</h2>
+<p>The following <code>Vcn.__init__</code> parameters are all optional. The required parameters are <code>name</code> and <code>compartment_id</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cidr_block</code></td>
+<td><code>str</code></td>
+<td><code>"10.0.0.0/18"</code></td>
+<td>VCN IPv4 CIDR</td>
+</tr>
+<tr>
+<td><code>additional_cidr_blocks</code></td>
+<td><code>list[str]</code></td>
+<td><code>None</code></td>
+<td>Extra secondary CIDRs attached to the VCN</td>
+</tr>
+<tr>
+<td><code>ipv6_enabled</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Enable OCI-assigned IPv6 on the VCN</td>
+</tr>
+<tr>
+<td><code>flow_logs</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Enable <code>VcnFlowLogs</code> for all four subnets</td>
+</tr>
+<tr>
+<td><code>flow_logs_retention</code></td>
+<td><code>int</code></td>
+<td><code>90</code></td>
+<td>Flow-log retention in days: 30 / 60 / 90 / 120 / 150 / 180</td>
+</tr>
+<tr>
+<td><code>drg</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Attach a Dynamic Routing Gateway (FastConnect / IPSec VPN)</td>
+</tr>
+<tr>
+<td><code>on_premise_cidrs</code></td>
+<td><code>list[str]</code></td>
+<td><code>None</code></td>
+<td>On-premises CIDRs routed via the DRG (requires <code>drg=True</code>)</td>
+</tr>
+<tr>
+<td><code>nat_public_ip_id</code></td>
+<td><code>str</code></td>
+<td><code>None</code></td>
+<td>Reserved public IP OCID to assign to the NAT Gateway</td>
+</tr>
+<tr>
+<td><code>nat_block_traffic</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Block all NAT Gateway egress without deleting the gateway</td>
+</tr>
+<tr>
+<td><code>dhcp_options_id</code></td>
+<td><code>str</code></td>
+<td><code>None</code></td>
+<td>Custom DHCP options OCID — overrides the VCN default</td>
+</tr>
+<tr>
+<td><code>defined_tags</code></td>
+<td><code>dict[str, str]</code></td>
+<td><code>None</code></td>
+<td>OCI defined tags applied to the VCN and all child resources</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h2 id="cidr-sizing-guide">CIDR sizing guide</h2>
 <table>

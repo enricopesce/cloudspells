@@ -2042,32 +2042,64 @@ proxy_nsg = Nsg(&quot;proxy&quot;, role=proxy_role, vcn=vcn, compartment_id=comp
 <thead>
 <tr>
 <th>Method</th>
+<th>Signature</th>
 <th>Purpose</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>allow_from_cidr(name, port, cidr)</code></td>
+<td><code>allow_from_cidr</code></td>
+<td><code>(label, port, cidr)</code></td>
 <td>Inbound TCP from a CIDR</td>
 </tr>
 <tr>
-<td><code>allow_to_cidr(name, port, cidr)</code></td>
+<td><code>allow_to_cidr</code></td>
+<td><code>(label, port, cidr)</code></td>
 <td>Outbound TCP to a CIDR</td>
 </tr>
 <tr>
-<td><code>allow_from_nsg(name, nsg, port)</code></td>
+<td><code>allow_from_nsg</code></td>
+<td><code>(label, nsg, port)</code></td>
 <td>Inbound TCP from another NSG</td>
 </tr>
 <tr>
-<td><code>allow_to_nsg(name, nsg, port)</code></td>
+<td><code>allow_to_nsg</code></td>
+<td><code>(label, nsg, port)</code></td>
 <td>Outbound TCP to another NSG</td>
 </tr>
 <tr>
-<td><code>allow_to_services(name)</code></td>
-<td>Egress to Oracle Services CIDR</td>
+<td><code>allow_to_services</code></td>
+<td><code>(label)</code></td>
+<td>Egress to Oracle Services CIDR (all protocols)</td>
+</tr>
+<tr>
+<td><code>allow_to_internet</code></td>
+<td><code>(label)</code></td>
+<td>Egress to <code>0.0.0.0/0</code> (all protocols)</td>
+</tr>
+<tr>
+<td><code>allow_icmp_from_cidr</code></td>
+<td><code>(label, icmp_type, cidr)</code></td>
+<td>Inbound ICMP from a CIDR</td>
+</tr>
+<tr>
+<td><code>allow_icmp_to_cidr</code></td>
+<td><code>(label, icmp_type, cidr)</code></td>
+<td>Outbound ICMP to a CIDR</td>
+</tr>
+<tr>
+<td><code>served_by</code></td>
+<td><code>(other_nsg, port, *, with_ssh)</code></td>
+<td>Inverse of <code>serves()</code> — <code>other_nsg</code> sends to this NSG</td>
+</tr>
+<tr>
+<td><code>add_rule</code></td>
+<td><code>(label, *, direction, protocol, ...)</code></td>
+<td>Raw rule — full protocol/direction control</td>
 </tr>
 </tbody>
 </table>
+<p>All methods accept an optional <code>description</code> keyword argument for the OCI Console label.</p>
 <pre><code class="language-python">from cloudspells.providers.oci.nsg import INTERNET
 
 # Allow inbound HTTPS from any IP
@@ -2075,6 +2107,18 @@ my_nsg.allow_from_cidr(&quot;https-in&quot;, HTTPS, INTERNET)
 
 # Allow outbound to a specific CIDR (on-premises VPN)
 my_nsg.allow_to_cidr(&quot;vpn-out&quot;, 443, &quot;192.168.100.0/24&quot;)
+
+# Allow ICMP type 3 code 4 (path-MTU discovery) from the internet
+my_nsg.allow_icmp_from_cidr(&quot;pmtu-in&quot;, 3, INTERNET, code=4)
+
+# Raw rule — UDP DNS egress (not covered by any convenience helper)
+from cloudspells.providers.oci.nsg import UDP, udp_port, DNS
+my_nsg.add_rule(
+    &quot;dns-out&quot;,
+    direction=&quot;EGRESS&quot;, protocol=UDP,
+    destination=&quot;0.0.0.0/0&quot;, destination_type=&quot;CIDR_BLOCK&quot;,
+    udp_options=udp_port(DNS),
+)
 </code></pre>
 
 

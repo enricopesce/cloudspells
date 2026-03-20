@@ -2000,25 +2000,21 @@ pulumi config set node_image_id    ocid1.image.oc1..aaaa...
 <p>Additional values with defaults — override only what you need:</p>
 <pre><code class="language-bash">pulumi config set kubernetes_version v1.32.1
 pulumi config set node_shape        VM.Standard.A1.Flex   # ARM — cost-effective
-pulumi config set oke_min_nodes     3
+pulumi config set node_count        3
 pulumi config set oke_ocpus         2
 pulumi config set oke_memory_in_gbs 12
 </code></pre>
 <hr />
 <h2 id="step-2-walk-through-the-code">Step 2 — Walk through the code</h2>
 <p>Open <code>examples/oke/__main__.py</code>.</p>
-<pre><code class="language-python">from cloudspells.core import Config
-from cloudspells.providers.oci.kubernetes import OkeCluster
+<pre><code class="language-python">import os
+from cloudspells.core import Config
+from cloudspells.providers.oci.kubernetes import NodePoolConfig, OkeCluster
 from cloudspells.providers.oci.network import Vcn
 
 config = Config()
-compartment_id    = config.require(&quot;compartment_ocid&quot;)
-node_shape        = config.require(&quot;node_shape&quot;)
+compartment_id     = config.require(&quot;compartment_ocid&quot;)
 kubernetes_version = config.require(&quot;kubernetes_version&quot;)
-node_image_id     = config.require(&quot;node_image_id&quot;)
-oke_min_nodes     = config.require_int(&quot;oke_min_nodes&quot;)
-oke_ocpus         = config.require_float(&quot;oke_ocpus&quot;)
-oke_memory_in_gbs = config.require_float(&quot;oke_memory_in_gbs&quot;)
 
 vcn = Vcn(name=&quot;lab&quot;, compartment_id=compartment_id)
 
@@ -2027,24 +2023,30 @@ oke = OkeCluster(
     compartment_id=compartment_id,
     vcn=vcn,
     kubernetes_version=kubernetes_version,
-    image=node_image_id,
-    shape=node_shape,
-    min_nodes=oke_min_nodes,
-    ocpus=oke_ocpus,
-    memory_in_gbs=oke_memory_in_gbs,
     display_name=&quot;infra&quot;,
+    node_pools=[
+        NodePoolConfig(
+            name=&quot;default&quot;,
+            shape=config.require(&quot;node_shape&quot;),
+            image=config.require(&quot;node_image_id&quot;),
+            node_count=config.require_int(&quot;node_count&quot;),
+            ocpus=config.require_float(&quot;oke_ocpus&quot;),
+            memory_in_gbs=config.require_float(&quot;oke_memory_in_gbs&quot;),
+        ),
+    ],
 )
 
 vcn.export()
 oke.export()
 
 # Write kubeconfig to the example directory for isolated kubectl access
-oke.create_kubeconfig(&quot;kubeconfig&quot;)
+oke.create_kubeconfig(os.path.join(os.path.dirname(__file__), &quot;kubeconfig&quot;))
 </code></pre>
 <p><code>OkeCluster</code> handles all the complexity:</p>
 <ul>
+<li>Accepts one or more <code>NodePoolConfig</code> descriptors — each produces an independent OCI node pool, enabling mixed shapes (e.g. system pool + GPU pool)</li>
 <li>Adds 19 security list rules covering the Kubernetes control plane (6443), kubelet (10250), NodePort range (30000-32767), and kube-proxy (10256)</li>
-<li>Creates 4 NSGs (<code>api_nsg</code>, <code>lb_nsg</code>, <code>worker_nsg</code>, <code>pod_nsg</code>) with 34 VNIC-level rules for fine-grained segmentation</li>
+<li>Creates 4 NSGs (<code>api_nsg</code>, <code>lb_nsg</code>, <code>worker_nsg</code>, <code>pod_nsg</code>) with 32 VNIC-level rules for fine-grained segmentation</li>
 <li>Places the API endpoint in the public subnet and worker/pod VNICs in the private subnet</li>
 <li>Configures <code>OCI_VCN_IP_NATIVE</code> CNI so every pod gets a real VCN subnet IP</li>
 <li>Spreads nodes across all Availability Domains automatically</li>
@@ -2188,25 +2190,25 @@ kubectl get nodes
 <tr>
 <td><code>node_shape</code></td>
 <td>yes</td>
-<td>—</td>
+<td><code>VM.Standard.A1.Flex</code></td>
 <td>e.g. <code>VM.Standard.A1.Flex</code> (ARM) or <code>VM.Standard.E4.Flex</code> (x86)</td>
 </tr>
 <tr>
-<td><code>oke_min_nodes</code></td>
+<td><code>node_count</code></td>
 <td>yes</td>
-<td>—</td>
-<td>Worker node count (spread evenly across ADs)</td>
+<td><code>2</code></td>
+<td>Worker node count (spread evenly across ADs by OCI)</td>
 </tr>
 <tr>
 <td><code>oke_ocpus</code></td>
 <td>yes</td>
-<td>—</td>
+<td><code>2</code></td>
 <td>OCPUs per node</td>
 </tr>
 <tr>
 <td><code>oke_memory_in_gbs</code></td>
 <td>yes</td>
-<td>—</td>
+<td><code>12</code></td>
 <td>RAM in GiB per node</td>
 </tr>
 </tbody>
