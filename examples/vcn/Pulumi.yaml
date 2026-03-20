@@ -1,0 +1,12 @@
+name: blocks-vcn
+runtime:
+  name: python
+  options:
+    virtualenv: ../../.venv
+    pythonpath: ../../src
+description: Standalone VCN test program
+config:
+  vcn_cidr_block:
+    type: string
+    description: The network CIDR for the VCN
+    default: "10.0.0.0/16"

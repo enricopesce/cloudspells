@@ -1,0 +1,89 @@
+name: Bug Report
+description: Report a defect in CloudSpells
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill in as much detail as possible.
+
+  - type: input
+    id: version
+    attributes:
+      label: CloudSpells version
+      description: Git commit SHA or tag
+      placeholder: "e.g. fe67556 or v0.3.0"
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      placeholder: "e.g. 3.11.4"
+    validations:
+      required: true
+
+  - type: input
+    id: pulumi-version
+    attributes:
+      label: Pulumi version
+      placeholder: "e.g. 3.204.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected spell / component
+      options:
+        - VCN
+        - OkeCluster
+        - ComputeInstance
+        - Bastion
+        - ScalableWorkload
+        - NSG
+        - Roles
+        - Core / BaseResource
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. Create a Vcn with ...\n2. Call finalize_network()\n3. Run pulumi preview\n4. See error"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro-code
+    attributes:
+      label: Minimal reproduction code
+      render: python
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error output / logs
+      render: shell
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context

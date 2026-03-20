@@ -1,0 +1,15 @@
+name: blocks-import-vcn
+runtime:
+  name: python
+  options:
+    virtualenv: ../../.venv
+    pythonpath: ../../src
+description: Import an existing VCN from another Pulumi project stack
+config:
+  vcn_stack:
+    type: string
+    description: >
+      Pulumi stack reference for the VCN stack.
+      Format: "<organization>/<project>/<stack>" for Pulumi Cloud,
+              "<project>/<stack>" for local file backend.
+      Example: "acme/blocks-vcn/prod"

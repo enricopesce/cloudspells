@@ -1,0 +1,8 @@
+{
+  "include": ["packages", "tests", "examples"],
+  "extraPaths": ["packages/cloudspells-core/src", "packages/cloudspells-oci/src"],
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "basic"
+}

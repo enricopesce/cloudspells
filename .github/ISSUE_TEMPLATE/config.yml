@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussion / Q&A
+    url: https://github.com/enricopesce/ociblocks/discussions
+    about: Ask questions and discuss CloudSpells usage
+  - name: Security Vulnerability
+    url: https://github.com/enricopesce/ociblocks/security/advisories/new
+    about: Report a security vulnerability privately

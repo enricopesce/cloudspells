@@ -1,0 +1,15 @@
+.venv
+__pycache__
+id_dsa.key.pub
+Pulumi.*.yaml
+notes.md
+kubeconfig
+Pulumi.dev.yaml
+oci-stack-statefile
+**/oci-stack-statefile
+dist
+.pulumi-passphrase
+*passphrase*
+.vscode
+**/.pulumi/
+*.tmp

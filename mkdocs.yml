@@ -1,0 +1,75 @@
+site_name: CloudSpells
+site_description: High-level Pulumi spells for Oracle Cloud Infrastructure
+repo_url: https://github.com/enricopesce/cloudspells
+repo_name: enricopesce/cloudspells
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.indexes
+    - navigation.top
+    - search.highlight
+  palette:
+    - scheme: default
+      primary: red
+      accent: red
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [packages/cloudspells-core/src, packages/cloudspells-oci/src]
+          options:
+            docstring_style: google
+            show_source: true
+            show_signature_annotations: true
+            members_order: source
+            show_root_heading: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - First Deploy: getting-started/first-deploy.md
+  - Tutorials:
+    - Compute Instance: tutorials/compute.md
+    - OKE Cluster: tutorials/oke.md
+    - Scalable Workload: tutorials/autoscale.md
+    - 3-Tier Web Application: tutorials/web-db.md
+    - Secure Monitored Network: tutorials/secure-vcn.md
+  - How-to Guides:
+    - Share a VCN Across Stacks: how-to/vcnref.md
+    - Configure NSG Rules: how-to/nsg-rules.md
+    - Use a Bastion: how-to/bastion.md
+  - Concepts:
+    - Design Philosophy: concepts/design.md
+    - Network Topology: concepts/network-topology.md
+  - Reference:
+    - VCN Architecture: reference/vcn-architecture.md
+    - OKE Architecture: reference/oke-architecture.md
+  - API Reference:
+    - Core:
+      - api/core/base.md
+      - api/core/naming.md
+      - api/core/tagging.md
+      - api/core/helper.md
+    - Abstractions:
+      - api/core/abstractions/network.md
+      - api/core/abstractions/compute.md
+      - api/core/abstractions/kubernetes.md
+      - api/core/abstractions/bastion.md
+      - api/core/abstractions/autoscale.md
+      - api/core/abstractions/roles.md
+    - OCI Provider:
+      - api/providers/network.md
+      - api/providers/compute.md
+      - api/providers/kubernetes.md
+      - api/providers/bastion.md
+      - api/providers/autoscale.md
+      - api/providers/nsg.md
+      - api/providers/volume.md
+      - api/providers/roles.md
+      - api/providers/helper.md
+      - api/providers/network_logging.md
