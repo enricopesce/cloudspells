@@ -5,12 +5,12 @@ This guide deploys a Virtual Cloud Network (VCN) — the foundation for every Cl
 ## What gets created
 
 ```
-VCN  10.0.0.0/16
+VCN  10.0.0.0/18
 │
-├── private     10.0.0.0/17    ← NAT GW + Service GW  (app servers, K8s nodes)
-├── secure      10.0.128.0/18  ← Service GW only       (databases, secrets)
-├── public      10.0.192.0/19  ← Internet GW           (load balancers)
-└── management  10.0.224.0/19  ← Service GW only       (monitoring, bastion)
+├── private     10.0.0.0/19    ← NAT GW + Service GW  (app servers, K8s nodes)
+├── secure      10.0.32.0/20   ← Service GW only       (databases, secrets)
+├── public      10.0.48.0/21   ← Internet GW           (load balancers)
+└── management  10.0.56.0/21   ← Service GW only       (monitoring, bastion)
 ```
 
 Three gateways (Internet, NAT, Service), four route tables, four security lists, four subnets.
@@ -35,7 +35,7 @@ pulumi stack init dev
 pulumi config set compartment_ocid ocid1.compartment.oc1..aaaa...
 ```
 
-That is the only required value. The VCN CIDR defaults to `10.0.0.0/16`. To use a different range:
+That is the only required value. The VCN CIDR defaults to `10.0.0.0/18`. To use a different range:
 
 ```bash
 pulumi config set vcn_cidr_block 10.10.0.0/16

@@ -442,18 +442,18 @@ class Vcn(BaseResource, AbstractNetwork):
                 (e.g. `"10.0.0.0/16"`).
 
         Returns:
-            `[public_cidr, private_cidr, secure_cidr, management_cidr]`
-            matching the index convention used elsewhere in this class.
+            `_SubnetCidrs` with named fields `public`, `private`, `secure`,
+            and `management`, each a CIDR string for the corresponding tier.
 
         Example:
             ```python
             Vcn._split_tiers("10.0.0.0/16")
-            # → ["10.0.192.0/19", "10.0.0.0/17", "10.0.128.0/18", "10.0.224.0/19"]
-            #     public           private          secure           management
+            # _SubnetCidrs(public="10.0.192.0/19", private="10.0.0.0/17",
+            #              secure="10.0.128.0/18", management="10.0.224.0/19")
 
             Vcn._split_tiers("172.16.0.0/20")
-            # → ["172.16.12.0/23", "172.16.0.0/21", "172.16.8.0/22", "172.16.14.0/23"]
-            #     public            private           secure           management
+            # _SubnetCidrs(public="172.16.12.0/23", private="172.16.0.0/21",
+            #              secure="172.16.8.0/22",  management="172.16.14.0/23")
             ```
         """
         net = ipaddress.ip_network(cidr, strict=True)
@@ -1133,7 +1133,8 @@ class Vcn(BaseResource, AbstractNetwork):
         their security rules.
 
         Returns:
-            Public subnet CIDR (e.g. `"10.0.0.0/17"`).
+            Public subnet CIDR (e.g. `"10.0.48.0/21"` for the default
+            `10.0.0.0/18` VCN).
         """
         return self._subnet_cidrs.public
 
@@ -1145,7 +1146,8 @@ class Vcn(BaseResource, AbstractNetwork):
         their security rules.
 
         Returns:
-            Private subnet CIDR (e.g. `"10.0.128.0/17"`).
+            Private subnet CIDR (e.g. `"10.0.0.0/19"` for the default
+            `10.0.0.0/18` VCN).
         """
         return self._subnet_cidrs.private
 
@@ -1157,15 +1159,21 @@ class Vcn(BaseResource, AbstractNetwork):
         their security rules.
 
         Returns:
-            Secure subnet CIDR (e.g. `"10.0.128.0/18"`).
+            Secure subnet CIDR (e.g. `"10.0.32.0/20"` for the default
+            `10.0.0.0/18` VCN).
         """
         return self._subnet_cidrs.secure
 
     def get_management_subnet_cidr(self) -> pulumi.Input[str]:
         """Return the management subnet CIDR.
 
+        Available immediately after construction (before
+        `finalize_network`), so other spells can use it when building
+        their security rules.
+
         Returns:
-            Management subnet CIDR (e.g. `"10.0.56.0/21"`).
+            Management subnet CIDR (e.g. `"10.0.56.0/21"` for the default
+            `10.0.0.0/18` VCN).
         """
         return self._subnet_cidrs.management
 
@@ -1318,10 +1326,11 @@ class VcnRef(AbstractNetworkRef):
             public_subnet_id: OCID of the existing public subnet.
             private_subnet_id: OCID of the existing private subnet.
             public_subnet_cidr: IPv4 CIDR of the public subnet
-                (e.g. `"10.0.0.0/17"`).  Used by spells when building
-                security rules — must match the actual subnet CIDR.
+                (e.g. `"10.0.48.0/21"` for a default `10.0.0.0/18` VCN).
+                Used by spells when building security rules — must match
+                the actual subnet CIDR.
             private_subnet_cidr: IPv4 CIDR of the private subnet
-                (e.g. `"10.0.128.0/17"`).
+                (e.g. `"10.0.0.0/19"` for a default `10.0.0.0/18` VCN).
             cidr_block: IPv4 CIDR of the VCN itself (e.g. `"10.0.0.0/18"`).
                 Exported as `cidr_block` by every CloudSpells VCN stack.
                 Required — omitting it raises `ValueError`.
@@ -1330,14 +1339,14 @@ class VcnRef(AbstractNetworkRef):
             private_security_list_id: OCID of the private security list.
             secure_subnet_id: OCID of the existing secure subnet, if present.
             secure_subnet_cidr: IPv4 CIDR of the secure subnet
-                (e.g. `"10.0.192.0/18"`). Required when `secure_subnet_id`
-                is provided.
+                (e.g. `"10.0.32.0/20"` for a default `10.0.0.0/18` VCN).
+                Required when `secure_subnet_id` is provided.
             secure_security_list_id: OCID of the secure security list.
             management_subnet_id: OCID of the existing management subnet,
                 if present.
             management_subnet_cidr: IPv4 CIDR of the management subnet
-                (e.g. `"10.0.224.0/18"`). Required when
-                `management_subnet_id` is provided.
+                (e.g. `"10.0.56.0/21"` for a default `10.0.0.0/18` VCN).
+                Required when `management_subnet_id` is provided.
             management_security_list_id: OCID of the management security list.
             drg_id: OCID of the Dynamic Routing Gateway attached to the
                 referenced VCN, if one exists.  Informational only — used

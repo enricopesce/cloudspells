@@ -113,7 +113,7 @@ src/providers/aws/         — future
 src/providers/gcp/         — future
 ```
 
-Adding a new provider means implementing the abstractions under a new `src/providers/<cloud>/` directory. No changes to the core layer or to user-facing code are needed. A user who writes `from providers.oci.network import Vcn` today will import `from providers.aws.network import Vpc` tomorrow — same calling convention, same mental model.
+Adding a new provider means implementing the abstractions under a new `src/providers/<cloud>/` directory. No changes to the core layer or to user-facing code are needed. A user who writes `from cloudspells.providers.oci.network import Vcn` today will import `from cloudspells.providers.aws.network import Vpc` tomorrow — same calling convention, same mental model.
 
 ---
 

@@ -9,20 +9,20 @@ Internet
    │  HTTP 80 / HTTPS 443 / SSH 22
    ▼
 ┌─────────────────────────────────────────────────────┐
-│ Public subnet (/19)  — Internet Gateway route       │
+│ Public subnet (/21)  — Internet Gateway route       │
 │  load-balancer  [INTERNET_EDGE]                     │
 └──────────────────────┬──────────────────────────────┘
                        │ TCP 8080 + SSH 22
                        ▼
 ┌─────────────────────────────────────────────────────┐
-│ Private subnet (/17) — NAT GW + Service GW routes   │
+│ Private subnet (/19) — NAT GW + Service GW routes   │
 │  web-backend-1  [APP_SERVER]                        │
 │  web-backend-2  [APP_SERVER]                        │
 └──────────────────────┬──────────────────────────────┘
                        │ TCP 5432 + SSH 22
                        ▼
 ┌─────────────────────────────────────────────────────┐
-│ Secure subnet (/18)  — Service GW only (no NAT)     │
+│ Secure subnet (/20)  — Service GW only (no NAT)     │
 │  db-1  [DATABASE]  — 200 GB high-performance volume │
 │  db-2  [DATABASE]  — 200 GB high-performance volume │
 └─────────────────────────────────────────────────────┘

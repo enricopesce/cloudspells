@@ -13,7 +13,7 @@ matches its role.
 Typical usage:
 
 ```python
-from .nsg import (
+from cloudspells.providers.oci.nsg import (
     Nsg, TCP, ALL, SVC_CIDR, INTERNET,
     HTTP, HTTPS, SSH, POSTGRES,
     tcp_port,
@@ -404,7 +404,7 @@ class Nsg(BaseResource):
 
     Example:
         ```python
-        from .nsg import Nsg, TCP, ALL, SVC_CIDR, tcp_port
+        from cloudspells.providers.oci.nsg import Nsg, TCP, ALL, SVC_CIDR, tcp_port
 
         lb_nsg  = Nsg("load-balancer", vcn=vcn, compartment_id=compartment_id)
         web_nsg = Nsg("web-backend",   vcn=vcn, compartment_id=compartment_id)
@@ -497,8 +497,8 @@ class Nsg(BaseResource):
 
         Example:
             ```python
-            from .roles import INTERNET_EDGE, APP_SERVER, DATABASE
-            from .nsg import Nsg, HTTP, HTTPS, SSH
+            from cloudspells.providers.oci import INTERNET_EDGE, APP_SERVER, DATABASE
+            from cloudspells.providers.oci.nsg import Nsg, HTTP, HTTPS, SSH
 
             lb_nsg  = Nsg("load-balancer", role=INTERNET_EDGE, ports=[HTTP, HTTPS, SSH],
                           vcn=vcn, compartment_id=compartment_id)

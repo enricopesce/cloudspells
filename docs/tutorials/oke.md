@@ -215,7 +215,7 @@ Key outputs (prefix `okeinfra_` matches the `name="okeinfra"` argument):
 
 ## CIDR sizing note
 
-With VCN-native CNI, a 100-node cluster with 30 pods per node consumes ~3 000 IPs in the private subnet. The default `/16` VCN gives the private tier a `/17` (32 766 usable IPs), which is sufficient for very large clusters. For smaller deployments a `/18` or `/20` VCN is fine.
+With VCN-native CNI, a 100-node cluster with 30 pods per node consumes ~3 100 IPs in the private subnet. The default `/18` VCN gives the private tier a `/19` (8 190 usable IPs), which is sufficient for moderate clusters. For larger deployments use a `/16` or `/17` VCN.
 
 See [VCN Architecture → CIDR sizing guide](../reference/vcn-architecture.md#cidr-sizing-guide) for a full sizing table.
 

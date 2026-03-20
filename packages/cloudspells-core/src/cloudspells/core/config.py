@@ -24,7 +24,7 @@ class Config:
 
     Example:
         ```python
-        from providers.oci import Config
+        from cloudspells.providers.oci import Config
 
         config = Config()
         compartment_id = config.require("compartment_ocid")

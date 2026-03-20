@@ -72,7 +72,7 @@ class DiskSpec:
 
     Example:
         ```python
-        from core.abstractions.compute import DiskSpec
+        from cloudspells.core.abstractions.compute import DiskSpec
 
         data_disk = DiskSpec(size_in_gbs=200, label="data",
                              performance_tier="high")
