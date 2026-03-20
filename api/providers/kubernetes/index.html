@@ -2524,29 +2524,6 @@ VNIC-level segmentation:</p>
             </td>
           </tr>
           <tr class="doc-section-item">
-            <td><code><span title="cloudspells.providers.oci.kubernetes.OkeCluster.enhanced">enhanced</span></code></td>
-            <td>
-                  <code><span title="str">str</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p><code>True</code> when the cluster type is <code>ENHANCED_CLUSTER</code>.</p>
-              </div>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td><code><span title="cloudspells.providers.oci.kubernetes.OkeCluster.endpoint_subnet">endpoint_subnet</span></code></td>
-            <td>
-                  <code><span title="str">str</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Subnet hosting the API endpoint VNIC; <code>None</code> means
-<code>vcn.public_subnet</code> with a public IP.</p>
-              </div>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
             <td><code><span title="cloudspells.providers.oci.kubernetes.OkeCluster.api_nsg">api_nsg</span></code></td>
             <td>
                   <code><span title="pulumi_oci.core.NetworkSecurityGroup">NetworkSecurityGroup</span></code>
@@ -3819,10 +3796,7 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
 <span class="normal">1303</span>
 <span class="normal">1304</span>
 <span class="normal">1305</span>
-<span class="normal">1306</span>
-<span class="normal">1307</span>
-<span class="normal">1308</span>
-<span class="normal">1309</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">OkeCluster</span><span class="p">(</span><span class="n">BaseResource</span><span class="p">,</span> <span class="n">AbstractKubernetes</span><span class="p">):</span>
+<span class="normal">1306</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">OkeCluster</span><span class="p">(</span><span class="n">BaseResource</span><span class="p">,</span> <span class="n">AbstractKubernetes</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Oracle Kubernetes Engine cluster with node pool, security configuration, and NSGs.</span>
 
 <span class="sd">    Deploys a `BASIC_CLUSTER` OKE cluster with OCI VCN-native pod networking</span>
@@ -3842,9 +3816,6 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
 <span class="sd">        vcn: The `Vcn` this cluster is deployed into.</span>
 <span class="sd">        kubernetes_version: Kubernetes version string (e.g. `&quot;v1.30.1&quot;`).</span>
 <span class="sd">        display_name: Human-readable cluster display name.</span>
-<span class="sd">        enhanced: `True` when the cluster type is `ENHANCED_CLUSTER`.</span>
-<span class="sd">        endpoint_subnet: Subnet hosting the API endpoint VNIC; `None` means</span>
-<span class="sd">            `vcn.public_subnet` with a public IP.</span>
 <span class="sd">        api_nsg: NSG attached to the Kubernetes API endpoint VNIC.</span>
 <span class="sd">        lb_nsg: NSG for OCI Load Balancers; apply via service annotation.</span>
 <span class="sd">        worker_nsg: NSG attached to every worker node VNIC.</span>
@@ -4909,7 +4880,7 @@ cluster.create_kubeconfig(&quot;/tmp/kubeconfig&quot;)
 <span class="sd">            ```python</span>
 <span class="sd">            oke = OkeCluster(name=&quot;okeinfra&quot;, ...)</span>
 <span class="sd">            oke.export()</span>
-<span class="sd">            # Exports: okeinfra_cluster_id, okeinfra_lb_nsg_id</span>
+<span class="sd">            # Exports: okeinfra_cluster_id, okeinfra_kubernetes_version, okeinfra_lb_nsg_id</span>
 <span class="sd">            ```</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span>
@@ -5200,7 +5171,10 @@ to <code>None</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/kubernetes.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">251</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
 <span class="normal">252</span>
 <span class="normal">253</span>
 <span class="normal">254</span>
@@ -5364,10 +5338,7 @@ to <code>None</code>.</p>
 <span class="normal">412</span>
 <span class="normal">413</span>
 <span class="normal">414</span>
-<span class="normal">415</span>
-<span class="normal">416</span>
-<span class="normal">417</span>
-<span class="normal">418</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<span class="normal">415</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">compartment_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
@@ -5568,12 +5539,15 @@ to <code>None</code>.</p>
   <summary>Example</summary>
   <pre><code class="language-python">oke = OkeCluster(name=&quot;okeinfra&quot;, ...)
 oke.export()
-# Exports: okeinfra_cluster_id, okeinfra_lb_nsg_id
+# Exports: okeinfra_cluster_id, okeinfra_kubernetes_version, okeinfra_lb_nsg_id
 </code></pre>
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/kubernetes.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1244</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1241</span>
+<span class="normal">1242</span>
+<span class="normal">1243</span>
+<span class="normal">1244</span>
 <span class="normal">1245</span>
 <span class="normal">1246</span>
 <span class="normal">1247</span>
@@ -5592,10 +5566,7 @@ oke.export()
 <span class="normal">1260</span>
 <span class="normal">1261</span>
 <span class="normal">1262</span>
-<span class="normal">1263</span>
-<span class="normal">1264</span>
-<span class="normal">1265</span>
-<span class="normal">1266</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">1263</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Export standard OKE cluster stack outputs.</span>
 
 <span class="sd">    Publishes outputs derived from the spell&#39;s logical name:</span>
@@ -5611,7 +5582,7 @@ oke.export()
 <span class="sd">        ```python</span>
 <span class="sd">        oke = OkeCluster(name=&quot;okeinfra&quot;, ...)</span>
 <span class="sd">        oke.export()</span>
-<span class="sd">        # Exports: okeinfra_cluster_id, okeinfra_lb_nsg_id</span>
+<span class="sd">        # Exports: okeinfra_cluster_id, okeinfra_kubernetes_version, okeinfra_lb_nsg_id</span>
 <span class="sd">        ```</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span>
@@ -5682,16 +5653,16 @@ oke.export()
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/kubernetes.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1268</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1265</span>
+<span class="normal">1266</span>
+<span class="normal">1267</span>
+<span class="normal">1268</span>
 <span class="normal">1269</span>
 <span class="normal">1270</span>
 <span class="normal">1271</span>
 <span class="normal">1272</span>
 <span class="normal">1273</span>
-<span class="normal">1274</span>
-<span class="normal">1275</span>
-<span class="normal">1276</span>
-<span class="normal">1277</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_public_security_list_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="normal">1274</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_public_security_list_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the ID of the public security list (populated with OKE rules).</span>
 
 <span class="sd">    Returns:</span>
@@ -5765,16 +5736,16 @@ oke.export()
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/kubernetes.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1279</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1276</span>
+<span class="normal">1277</span>
+<span class="normal">1278</span>
+<span class="normal">1279</span>
 <span class="normal">1280</span>
 <span class="normal">1281</span>
 <span class="normal">1282</span>
 <span class="normal">1283</span>
 <span class="normal">1284</span>
-<span class="normal">1285</span>
-<span class="normal">1286</span>
-<span class="normal">1287</span>
-<span class="normal">1288</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_private_security_list_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="normal">1285</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_private_security_list_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the ID of the private security list (populated with OKE rules).</span>
 
 <span class="sd">    Returns:</span>
@@ -5840,7 +5811,10 @@ should be written (e.g. <code>"/tmp/kubeconfig"</code>).</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/kubernetes.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1290</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1287</span>
+<span class="normal">1288</span>
+<span class="normal">1289</span>
+<span class="normal">1290</span>
 <span class="normal">1291</span>
 <span class="normal">1292</span>
 <span class="normal">1293</span>
@@ -5856,10 +5830,7 @@ should be written (e.g. <code>"/tmp/kubeconfig"</code>).</p>
 <span class="normal">1303</span>
 <span class="normal">1304</span>
 <span class="normal">1305</span>
-<span class="normal">1306</span>
-<span class="normal">1307</span>
-<span class="normal">1308</span>
-<span class="normal">1309</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_kubeconfig</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">1306</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_kubeconfig</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Write a kubeconfig file for this OKE cluster.</span>
 
 <span class="sd">    Fetches the cluster&#39;s kubeconfig content from the OCI API and writes</span>

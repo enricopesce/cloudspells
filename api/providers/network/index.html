@@ -4054,14 +4054,14 @@ cluster = OkeCluster(vcn=vcn, ...)   # calls finalize_network internally</p>
 <span class="sd">                options set to redirect DNS queries to a private resolver —</span>
 <span class="sd">                required for split-horizon DNS in hybrid (on-premise +</span>
 <span class="sd">                cloud) environments.</span>
-<span class="sd">            defined_tags: OCI defined tags to apply to every resource in</span>
+<span class="sd">            defined_tags: OCI defined tags applied to every resource in</span>
 <span class="sd">                this VCN (VCN, gateways, route tables, security lists, and</span>
-<span class="sd">                subnets).  Defined tags are namespace-qualified key/value</span>
-<span class="sd">                pairs managed by OCI Tag Namespaces and are required for</span>
-<span class="sd">                enterprise cost tracking, policy enforcement, and</span>
-<span class="sd">                governance.  When `None` (the default) no defined tags are</span>
-<span class="sd">                applied.  Example:</span>
-<span class="sd">                `{&quot;Operations.CostCenter&quot;: &quot;42&quot;, &quot;Project.Env&quot;: &quot;prod&quot;}`.</span>
+<span class="sd">                subnets), in `{&quot;namespace&quot;: {&quot;key&quot;: &quot;value&quot;}}` format.</span>
+<span class="sd">                Defined tags are namespace-qualified key/value pairs managed</span>
+<span class="sd">                by OCI Tag Namespaces and are required for enterprise cost</span>
+<span class="sd">                tracking, policy enforcement, and governance.  When `None`</span>
+<span class="sd">                (the default) no defined tags are applied.  Example:</span>
+<span class="sd">                `{&quot;Operations&quot;: {&quot;CostCenter&quot;: &quot;42&quot;}, &quot;Project&quot;: {&quot;Env&quot;: &quot;prod&quot;}}`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;custom:network:Vcn&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">compartment_id</span><span class="p">,</span> <span class="n">stack_name</span><span class="p">,</span> <span class="n">opts</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cidr_block</span> <span class="o">=</span> <span class="n">cidr_block</span> <span class="ow">or</span> <span class="s2">&quot;10.0.0.0/18&quot;</span>
@@ -5278,14 +5278,14 @@ cloud) environments.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>OCI defined tags to apply to every resource in
+                <p>OCI defined tags applied to every resource in
 this VCN (VCN, gateways, route tables, security lists, and
-subnets).  Defined tags are namespace-qualified key/value
-pairs managed by OCI Tag Namespaces and are required for
-enterprise cost tracking, policy enforcement, and
-governance.  When <code>None</code> (the default) no defined tags are
-applied.  Example:
-<code>{"Operations.CostCenter": "42", "Project.Env": "prod"}</code>.</p>
+subnets), in <code>{"namespace": {"key": "value"}}</code> format.
+Defined tags are namespace-qualified key/value pairs managed
+by OCI Tag Namespaces and are required for enterprise cost
+tracking, policy enforcement, and governance.  When <code>None</code>
+(the default) no defined tags are applied.  Example:
+<code>{"Operations": {"CostCenter": "42"}, "Project": {"Env": "prod"}}</code>.</p>
               </div>
             </td>
             <td>
@@ -5548,14 +5548,14 @@ applied.  Example:
 <span class="sd">            options set to redirect DNS queries to a private resolver —</span>
 <span class="sd">            required for split-horizon DNS in hybrid (on-premise +</span>
 <span class="sd">            cloud) environments.</span>
-<span class="sd">        defined_tags: OCI defined tags to apply to every resource in</span>
+<span class="sd">        defined_tags: OCI defined tags applied to every resource in</span>
 <span class="sd">            this VCN (VCN, gateways, route tables, security lists, and</span>
-<span class="sd">            subnets).  Defined tags are namespace-qualified key/value</span>
-<span class="sd">            pairs managed by OCI Tag Namespaces and are required for</span>
-<span class="sd">            enterprise cost tracking, policy enforcement, and</span>
-<span class="sd">            governance.  When `None` (the default) no defined tags are</span>
-<span class="sd">            applied.  Example:</span>
-<span class="sd">            `{&quot;Operations.CostCenter&quot;: &quot;42&quot;, &quot;Project.Env&quot;: &quot;prod&quot;}`.</span>
+<span class="sd">            subnets), in `{&quot;namespace&quot;: {&quot;key&quot;: &quot;value&quot;}}` format.</span>
+<span class="sd">            Defined tags are namespace-qualified key/value pairs managed</span>
+<span class="sd">            by OCI Tag Namespaces and are required for enterprise cost</span>
+<span class="sd">            tracking, policy enforcement, and governance.  When `None`</span>
+<span class="sd">            (the default) no defined tags are applied.  Example:</span>
+<span class="sd">            `{&quot;Operations&quot;: {&quot;CostCenter&quot;: &quot;42&quot;}, &quot;Project&quot;: {&quot;Env&quot;: &quot;prod&quot;}}`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;custom:network:Vcn&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">compartment_id</span><span class="p">,</span> <span class="n">stack_name</span><span class="p">,</span> <span class="n">opts</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">cidr_block</span> <span class="o">=</span> <span class="n">cidr_block</span> <span class="ow">or</span> <span class="s2">&quot;10.0.0.0/18&quot;</span>
@@ -7251,7 +7251,10 @@ cluster = OkeCluster(name=&quot;app&quot;, vcn=vcn, compartment_id=comp_id, ...)
 <span class="normal">1504</span>
 <span class="normal">1505</span>
 <span class="normal">1506</span>
-<span class="normal">1507</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">VcnRef</span><span class="p">(</span><span class="n">AbstractNetworkRef</span><span class="p">):</span>
+<span class="normal">1507</span>
+<span class="normal">1508</span>
+<span class="normal">1509</span>
+<span class="normal">1510</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">VcnRef</span><span class="p">(</span><span class="n">AbstractNetworkRef</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Read-only reference to a VCN managed by another Pulumi stack.</span>
 
 <span class="sd">    Lets you deploy CloudSpells services (OKE, Compute, ScalableWorkload) into a</span>
@@ -7443,30 +7446,33 @@ cluster = OkeCluster(name=&quot;app&quot;, vcn=vcn, compartment_id=comp_id, ...)
         <span class="n">management_ingress</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">management_egress</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Raises `RuntimeError` — security rules must be applied in the source CloudSpells stack.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reject any non-empty rule list — security rules must live in the source stack.</span>
 
 <span class="sd">        `VcnRef` is a read-only handle to a VCN managed by another CloudSpells</span>
 <span class="sd">        stack.  Security lists in that stack are already finalised; this stack</span>
 <span class="sd">        cannot modify them.  Any spell that calls this method (OKE, Compute,</span>
-<span class="sd">        ScalableWorkload) requires those rules to exist **before** you deploy</span>
-<span class="sd">        here.</span>
+<span class="sd">        ScalableWorkload) requires those rules to exist **before** you deploy here.</span>
 
-<span class="sd">        **How to fix:** open the source CloudSpells stack, deploy the same</span>
-<span class="sd">        spell there first so its rules are written to the VCN security lists,</span>
-<span class="sd">        then re-run this stack.</span>
+<span class="sd">        When all arguments are `None` or empty the call is silently accepted as a</span>
+<span class="sd">        no-op (spells call this unconditionally; the no-op keeps spell code</span>
+<span class="sd">        branch-free).</span>
+
+<span class="sd">        **How to fix:** open the source CloudSpells stack, deploy the same spell</span>
+<span class="sd">        there first so its rules are written to the VCN security lists, then</span>
+<span class="sd">        re-run this stack.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            public_ingress: Rules that cannot be applied.</span>
-<span class="sd">            public_egress: Rules that cannot be applied.</span>
-<span class="sd">            private_ingress: Rules that cannot be applied.</span>
-<span class="sd">            private_egress: Rules that cannot be applied.</span>
-<span class="sd">            secure_ingress: Rules that cannot be applied.</span>
-<span class="sd">            secure_egress: Rules that cannot be applied.</span>
-<span class="sd">            management_ingress: Rules that cannot be applied.</span>
-<span class="sd">            management_egress: Rules that cannot be applied.</span>
+<span class="sd">            public_ingress: Rules that cannot be applied (must be `None` or empty).</span>
+<span class="sd">            public_egress: Rules that cannot be applied (must be `None` or empty).</span>
+<span class="sd">            private_ingress: Rules that cannot be applied (must be `None` or empty).</span>
+<span class="sd">            private_egress: Rules that cannot be applied (must be `None` or empty).</span>
+<span class="sd">            secure_ingress: Rules that cannot be applied (must be `None` or empty).</span>
+<span class="sd">            secure_egress: Rules that cannot be applied (must be `None` or empty).</span>
+<span class="sd">            management_ingress: Rules that cannot be applied (must be `None` or empty).</span>
+<span class="sd">            management_egress: Rules that cannot be applied (must be `None` or empty).</span>
 
 <span class="sd">        Raises:</span>
-<span class="sd">            RuntimeError: Always, when any non-empty rule list is passed.</span>
+<span class="sd">            RuntimeError: When any argument is a non-empty list.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">requested</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;public_ingress&quot;</span><span class="p">:</span> <span class="n">public_ingress</span><span class="p">,</span>
@@ -8152,15 +8158,17 @@ virtual circuits.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Raises <code>RuntimeError</code> — security rules must be applied in the source CloudSpells stack.</p>
+        <p>Reject any non-empty rule list — security rules must live in the source stack.</p>
 <p><code>VcnRef</code> is a read-only handle to a VCN managed by another CloudSpells
 stack.  Security lists in that stack are already finalised; this stack
 cannot modify them.  Any spell that calls this method (OKE, Compute,
-ScalableWorkload) requires those rules to exist <strong>before</strong> you deploy
-here.</p>
-<p><strong>How to fix:</strong> open the source CloudSpells stack, deploy the same
-spell there first so its rules are written to the VCN security lists,
-then re-run this stack.</p>
+ScalableWorkload) requires those rules to exist <strong>before</strong> you deploy here.</p>
+<p>When all arguments are <code>None</code> or empty the call is silently accepted as a
+no-op (spells call this unconditionally; the no-op keeps spell code
+branch-free).</p>
+<p><strong>How to fix:</strong> open the source CloudSpells stack, deploy the same spell
+there first so its rules are written to the VCN security lists, then
+re-run this stack.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -8183,7 +8191,7 @@ then re-run this stack.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Rules that cannot be applied.</p>
+                <p>Rules that cannot be applied (must be <code>None</code> or empty).</p>
               </div>
             </td>
             <td>
@@ -8199,7 +8207,7 @@ then re-run this stack.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Rules that cannot be applied.</p>
+                <p>Rules that cannot be applied (must be <code>None</code> or empty).</p>
               </div>
             </td>
             <td>
@@ -8215,7 +8223,7 @@ then re-run this stack.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Rules that cannot be applied.</p>
+                <p>Rules that cannot be applied (must be <code>None</code> or empty).</p>
               </div>
             </td>
             <td>
@@ -8231,7 +8239,7 @@ then re-run this stack.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Rules that cannot be applied.</p>
+                <p>Rules that cannot be applied (must be <code>None</code> or empty).</p>
               </div>
             </td>
             <td>
@@ -8247,7 +8255,7 @@ then re-run this stack.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Rules that cannot be applied.</p>
+                <p>Rules that cannot be applied (must be <code>None</code> or empty).</p>
               </div>
             </td>
             <td>
@@ -8263,7 +8271,7 @@ then re-run this stack.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Rules that cannot be applied.</p>
+                <p>Rules that cannot be applied (must be <code>None</code> or empty).</p>
               </div>
             </td>
             <td>
@@ -8279,7 +8287,7 @@ then re-run this stack.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Rules that cannot be applied.</p>
+                <p>Rules that cannot be applied (must be <code>None</code> or empty).</p>
               </div>
             </td>
             <td>
@@ -8295,7 +8303,7 @@ then re-run this stack.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Rules that cannot be applied.</p>
+                <p>Rules that cannot be applied (must be <code>None</code> or empty).</p>
               </div>
             </td>
             <td>
@@ -8321,7 +8329,7 @@ then re-run this stack.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Always, when any non-empty rule list is passed.</p>
+                <p>When any argument is a non-empty list.</p>
               </div>
             </td>
           </tr>
@@ -8382,7 +8390,10 @@ then re-run this stack.</p>
 <span class="normal">1469</span>
 <span class="normal">1470</span>
 <span class="normal">1471</span>
-<span class="normal">1472</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_security_list_rules</span><span class="p">(</span>
+<span class="normal">1472</span>
+<span class="normal">1473</span>
+<span class="normal">1474</span>
+<span class="normal">1475</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_security_list_rules</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">public_ingress</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">public_egress</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -8393,30 +8404,33 @@ then re-run this stack.</p>
     <span class="n">management_ingress</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">management_egress</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Raises `RuntimeError` — security rules must be applied in the source CloudSpells stack.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reject any non-empty rule list — security rules must live in the source stack.</span>
 
 <span class="sd">    `VcnRef` is a read-only handle to a VCN managed by another CloudSpells</span>
 <span class="sd">    stack.  Security lists in that stack are already finalised; this stack</span>
 <span class="sd">    cannot modify them.  Any spell that calls this method (OKE, Compute,</span>
-<span class="sd">    ScalableWorkload) requires those rules to exist **before** you deploy</span>
-<span class="sd">    here.</span>
+<span class="sd">    ScalableWorkload) requires those rules to exist **before** you deploy here.</span>
 
-<span class="sd">    **How to fix:** open the source CloudSpells stack, deploy the same</span>
-<span class="sd">    spell there first so its rules are written to the VCN security lists,</span>
-<span class="sd">    then re-run this stack.</span>
+<span class="sd">    When all arguments are `None` or empty the call is silently accepted as a</span>
+<span class="sd">    no-op (spells call this unconditionally; the no-op keeps spell code</span>
+<span class="sd">    branch-free).</span>
+
+<span class="sd">    **How to fix:** open the source CloudSpells stack, deploy the same spell</span>
+<span class="sd">    there first so its rules are written to the VCN security lists, then</span>
+<span class="sd">    re-run this stack.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        public_ingress: Rules that cannot be applied.</span>
-<span class="sd">        public_egress: Rules that cannot be applied.</span>
-<span class="sd">        private_ingress: Rules that cannot be applied.</span>
-<span class="sd">        private_egress: Rules that cannot be applied.</span>
-<span class="sd">        secure_ingress: Rules that cannot be applied.</span>
-<span class="sd">        secure_egress: Rules that cannot be applied.</span>
-<span class="sd">        management_ingress: Rules that cannot be applied.</span>
-<span class="sd">        management_egress: Rules that cannot be applied.</span>
+<span class="sd">        public_ingress: Rules that cannot be applied (must be `None` or empty).</span>
+<span class="sd">        public_egress: Rules that cannot be applied (must be `None` or empty).</span>
+<span class="sd">        private_ingress: Rules that cannot be applied (must be `None` or empty).</span>
+<span class="sd">        private_egress: Rules that cannot be applied (must be `None` or empty).</span>
+<span class="sd">        secure_ingress: Rules that cannot be applied (must be `None` or empty).</span>
+<span class="sd">        secure_egress: Rules that cannot be applied (must be `None` or empty).</span>
+<span class="sd">        management_ingress: Rules that cannot be applied (must be `None` or empty).</span>
+<span class="sd">        management_egress: Rules that cannot be applied (must be `None` or empty).</span>
 
 <span class="sd">    Raises:</span>
-<span class="sd">        RuntimeError: Always, when any non-empty rule list is passed.</span>
+<span class="sd">        RuntimeError: When any argument is a non-empty list.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">requested</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;public_ingress&quot;</span><span class="p">:</span> <span class="n">public_ingress</span><span class="p">,</span>
@@ -8479,13 +8493,13 @@ then re-run this stack.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1474</span>
-<span class="normal">1475</span>
-<span class="normal">1476</span>
-<span class="normal">1477</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1477</span>
 <span class="normal">1478</span>
 <span class="normal">1479</span>
-<span class="normal">1480</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_public_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="normal">1480</span>
+<span class="normal">1481</span>
+<span class="normal">1482</span>
+<span class="normal">1483</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_public_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the public subnet CIDR.</span>
 
 <span class="sd">    Returns:</span>
@@ -8536,13 +8550,13 @@ then re-run this stack.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1482</span>
-<span class="normal">1483</span>
-<span class="normal">1484</span>
-<span class="normal">1485</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1485</span>
 <span class="normal">1486</span>
 <span class="normal">1487</span>
-<span class="normal">1488</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_private_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="normal">1488</span>
+<span class="normal">1489</span>
+<span class="normal">1490</span>
+<span class="normal">1491</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_private_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the private subnet CIDR.</span>
 
 <span class="sd">    Returns:</span>
@@ -8593,13 +8607,13 @@ then re-run this stack.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1490</span>
-<span class="normal">1491</span>
-<span class="normal">1492</span>
-<span class="normal">1493</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1493</span>
 <span class="normal">1494</span>
 <span class="normal">1495</span>
-<span class="normal">1496</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_secure_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="normal">1496</span>
+<span class="normal">1497</span>
+<span class="normal">1498</span>
+<span class="normal">1499</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_secure_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the secure subnet CIDR.</span>
 
 <span class="sd">    Returns:</span>
@@ -8650,13 +8664,13 @@ then re-run this stack.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1498</span>
-<span class="normal">1499</span>
-<span class="normal">1500</span>
-<span class="normal">1501</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1501</span>
 <span class="normal">1502</span>
 <span class="normal">1503</span>
-<span class="normal">1504</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_management_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="normal">1504</span>
+<span class="normal">1505</span>
+<span class="normal">1506</span>
+<span class="normal">1507</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_management_subnet_cidr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the management subnet CIDR.</span>
 
 <span class="sd">    Returns:</span>
@@ -8684,8 +8698,8 @@ then re-run this stack.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1506</span>
-<span class="normal">1507</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">finalize_network</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1509</span>
+<span class="normal">1510</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">finalize_network</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;No-op — the referenced VCN network is already finalized.&quot;&quot;&quot;</span>
 </code></pre></div></td></tr></table></div>
             </details>

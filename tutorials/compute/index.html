@@ -2030,8 +2030,24 @@ ssh -i ~/.ssh/oci_web opc@$(pulumi stack output web_server_public_ip)
 <td>Public IP of the instance</td>
 </tr>
 <tr>
+<td><code>web_server_private_ip</code></td>
+<td>Private IP of the instance</td>
+</tr>
+<tr>
 <td><code>web_server_id</code></td>
 <td>Instance OCID</td>
+</tr>
+<tr>
+<td><code>web_server_data_volume_id</code></td>
+<td>OCID of the 100 GB data volume</td>
+</tr>
+<tr>
+<td><code>web_server_logs_volume_id</code></td>
+<td>OCID of the 200 GB logs volume</td>
+</tr>
+<tr>
+<td><code>web_server_ssh_public_key</code></td>
+<td>SSH public key installed on the instance</td>
 </tr>
 <tr>
 <td><code>web_server_ssh_private_key</code></td>

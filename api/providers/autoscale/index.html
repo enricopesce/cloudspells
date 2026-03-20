@@ -2830,8 +2830,9 @@ value.</p>
 
 
         <p>OCI-specific load balancer configuration extending the cloud-neutral base.</p>
-<p>Adds OCI flexible-shape bandwidth parameters to the base
-<code>LoadBalancerConfig</code>.</p>
+<p>Adds OCI flexible-shape bandwidth parameters to the base <code>LoadBalancerConfig</code>.
+Use this class instead of <code>LoadBalancerConfig</code> when deploying <code>ScalableWorkload</code>
+on OCI and you need to control the LB's minimum or maximum bandwidth allocation.</p>
 
 
 <p><span class="doc-section-title">Attributes:</span></p>
@@ -2851,7 +2852,8 @@ value.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Port on backend instances to receive traffic and health checks.</p>
+                <p><code>int</code>. Port on backend instances to receive forwarded traffic
+and health-check probes.  Default: <code>80</code>.</p>
               </div>
             </td>
           </tr>
@@ -2862,7 +2864,8 @@ value.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>URL path for HTTP health checks.</p>
+                <p><code>str</code>. HTTP path used for backend health checks.
+Default: <code>"/health"</code>.</p>
               </div>
             </td>
           </tr>
@@ -2873,7 +2876,8 @@ value.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Whether the load balancer has a public IP.</p>
+                <p><code>bool</code>. Whether the load balancer is assigned a public IP.
+Default: <code>True</code>.</p>
               </div>
             </td>
           </tr>
@@ -2884,8 +2888,9 @@ value.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Minimum bandwidth for the OCI flexible LB shape.
-Default: <code>10</code>.</p>
+                <p><code>int</code>. Minimum bandwidth allocated to the OCI flexible
+load-balancer shape in Mbps.  OCI will not reduce below this value even
+when traffic is idle.  Default: <code>10</code>.</p>
               </div>
             </td>
           </tr>
@@ -2896,8 +2901,8 @@ Default: <code>10</code>.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Maximum bandwidth for the OCI flexible LB shape.
-Default: <code>100</code>.</p>
+                <p><code>int</code>. Maximum bandwidth the OCI flexible load-balancer
+shape may burst to in Mbps.  Default: <code>100</code>.</p>
               </div>
             </td>
           </tr>
@@ -2908,14 +2913,29 @@ Default: <code>100</code>.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>SSL certificate name for HTTPS.  If set, creates
-an HTTPS listener on port 443 in addition to HTTP on port 80.</p>
+                <p><code>str | None</code>. Name of a certificate object already
+uploaded to the load balancer.  When set, an HTTPS listener on port 443
+is created alongside the HTTP listener on port 80.
+Default: <code>None</code> (HTTP only).</p>
               </div>
             </td>
           </tr>
       </tbody>
     </table>
 
+
+<details class="example" open>
+  <summary>Example</summary>
+  <pre><code class="language-python">from cloudspells.providers.oci.autoscale import OciLoadBalancerConfig
+
+lb_cfg = OciLoadBalancerConfig(
+    backend_port=8080,
+    health_check_path=&quot;/api/health&quot;,
+    min_bandwidth_mbps=100,
+    max_bandwidth_mbps=500,
+)
+</code></pre>
+</details>
 
 
 
@@ -2943,23 +2963,61 @@ an HTTPS listener on port 443 in addition to HTTP on port 80.</p>
 <span class="normal">69</span>
 <span class="normal">70</span>
 <span class="normal">71</span>
-<span class="normal">72</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span>
+<span class="normal">89</span>
+<span class="normal">90</span>
+<span class="normal">91</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">OciLoadBalancerConfig</span><span class="p">(</span><span class="n">_BaseLoadBalancerConfig</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;OCI-specific load balancer configuration extending the cloud-neutral base.</span>
 
-<span class="sd">    Adds OCI flexible-shape bandwidth parameters to the base</span>
-<span class="sd">    `LoadBalancerConfig`.</span>
+<span class="sd">    Adds OCI flexible-shape bandwidth parameters to the base `LoadBalancerConfig`.</span>
+<span class="sd">    Use this class instead of `LoadBalancerConfig` when deploying `ScalableWorkload`</span>
+<span class="sd">    on OCI and you need to control the LB&#39;s minimum or maximum bandwidth allocation.</span>
 
 <span class="sd">    Attributes:</span>
-<span class="sd">        backend_port: Port on backend instances to receive traffic and health checks.</span>
-<span class="sd">        health_check_path: URL path for HTTP health checks.</span>
-<span class="sd">        is_public: Whether the load balancer has a public IP.</span>
-<span class="sd">        min_bandwidth_mbps: Minimum bandwidth for the OCI flexible LB shape.</span>
-<span class="sd">            Default: `10`.</span>
-<span class="sd">        max_bandwidth_mbps: Maximum bandwidth for the OCI flexible LB shape.</span>
-<span class="sd">            Default: `100`.</span>
-<span class="sd">        ssl_certificate_name: SSL certificate name for HTTPS.  If set, creates</span>
-<span class="sd">            an HTTPS listener on port 443 in addition to HTTP on port 80.</span>
+<span class="sd">        backend_port: `int`. Port on backend instances to receive forwarded traffic</span>
+<span class="sd">            and health-check probes.  Default: `80`.</span>
+<span class="sd">        health_check_path: `str`. HTTP path used for backend health checks.</span>
+<span class="sd">            Default: `&quot;/health&quot;`.</span>
+<span class="sd">        is_public: `bool`. Whether the load balancer is assigned a public IP.</span>
+<span class="sd">            Default: `True`.</span>
+<span class="sd">        min_bandwidth_mbps: `int`. Minimum bandwidth allocated to the OCI flexible</span>
+<span class="sd">            load-balancer shape in Mbps.  OCI will not reduce below this value even</span>
+<span class="sd">            when traffic is idle.  Default: `10`.</span>
+<span class="sd">        max_bandwidth_mbps: `int`. Maximum bandwidth the OCI flexible load-balancer</span>
+<span class="sd">            shape may burst to in Mbps.  Default: `100`.</span>
+<span class="sd">        ssl_certificate_name: `str | None`. Name of a certificate object already</span>
+<span class="sd">            uploaded to the load balancer.  When set, an HTTPS listener on port 443</span>
+<span class="sd">            is created alongside the HTTP listener on port 80.</span>
+<span class="sd">            Default: `None` (HTTP only).</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        ```python</span>
+<span class="sd">        from cloudspells.providers.oci.autoscale import OciLoadBalancerConfig</span>
+
+<span class="sd">        lb_cfg = OciLoadBalancerConfig(</span>
+<span class="sd">            backend_port=8080,</span>
+<span class="sd">            health_check_path=&quot;/api/health&quot;,</span>
+<span class="sd">            min_bandwidth_mbps=100,</span>
+<span class="sd">            max_bandwidth_mbps=500,</span>
+<span class="sd">        )</span>
+<span class="sd">        ```</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">min_bandwidth_mbps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
@@ -3296,26 +3354,7 @@ pulumi.export(&quot;lb_ip&quot;, pool.get_load_balancer_ip())
 
               <details class="quote">
                 <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/autoscale.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 80</span>
-<span class="normal"> 81</span>
-<span class="normal"> 82</span>
-<span class="normal"> 83</span>
-<span class="normal"> 84</span>
-<span class="normal"> 85</span>
-<span class="normal"> 86</span>
-<span class="normal"> 87</span>
-<span class="normal"> 88</span>
-<span class="normal"> 89</span>
-<span class="normal"> 90</span>
-<span class="normal"> 91</span>
-<span class="normal"> 92</span>
-<span class="normal"> 93</span>
-<span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
-<span class="normal"> 97</span>
-<span class="normal"> 98</span>
-<span class="normal"> 99</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 99</span>
 <span class="normal">100</span>
 <span class="normal">101</span>
 <span class="normal">102</span>
@@ -4051,7 +4090,26 @@ pulumi.export(&quot;lb_ip&quot;, pool.get_load_balancer_ip())
 <span class="normal">832</span>
 <span class="normal">833</span>
 <span class="normal">834</span>
-<span class="normal">835</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ScalableWorkload</span><span class="p">(</span><span class="n">BaseResource</span><span class="p">,</span> <span class="n">AbstractScalableWorkload</span><span class="p">):</span>
+<span class="normal">835</span>
+<span class="normal">836</span>
+<span class="normal">837</span>
+<span class="normal">838</span>
+<span class="normal">839</span>
+<span class="normal">840</span>
+<span class="normal">841</span>
+<span class="normal">842</span>
+<span class="normal">843</span>
+<span class="normal">844</span>
+<span class="normal">845</span>
+<span class="normal">846</span>
+<span class="normal">847</span>
+<span class="normal">848</span>
+<span class="normal">849</span>
+<span class="normal">850</span>
+<span class="normal">851</span>
+<span class="normal">852</span>
+<span class="normal">853</span>
+<span class="normal">854</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ScalableWorkload</span><span class="p">(</span><span class="n">BaseResource</span><span class="p">,</span> <span class="n">AbstractScalableWorkload</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;OCI Scalable Workload with load balancer, instance pool, and autoscaling.</span>
 
 <span class="sd">    Creates a complete horizontally-scalable compute tier following OCI best</span>
@@ -5203,26 +5261,7 @@ When <code>None</code> no defined tags are applied.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/autoscale.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">170</span>
-<span class="normal">171</span>
-<span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span>
-<span class="normal">175</span>
-<span class="normal">176</span>
-<span class="normal">177</span>
-<span class="normal">178</span>
-<span class="normal">179</span>
-<span class="normal">180</span>
-<span class="normal">181</span>
-<span class="normal">182</span>
-<span class="normal">183</span>
-<span class="normal">184</span>
-<span class="normal">185</span>
-<span class="normal">186</span>
-<span class="normal">187</span>
-<span class="normal">188</span>
-<span class="normal">189</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">189</span>
 <span class="normal">190</span>
 <span class="normal">191</span>
 <span class="normal">192</span>
@@ -5356,7 +5395,26 @@ When <code>None</code> no defined tags are applied.</p>
 <span class="normal">320</span>
 <span class="normal">321</span>
 <span class="normal">322</span>
-<span class="normal">323</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<span class="normal">323</span>
+<span class="normal">324</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">compartment_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
@@ -5544,28 +5602,28 @@ pool.export()
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/autoscale.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">766</span>
-<span class="normal">767</span>
-<span class="normal">768</span>
-<span class="normal">769</span>
-<span class="normal">770</span>
-<span class="normal">771</span>
-<span class="normal">772</span>
-<span class="normal">773</span>
-<span class="normal">774</span>
-<span class="normal">775</span>
-<span class="normal">776</span>
-<span class="normal">777</span>
-<span class="normal">778</span>
-<span class="normal">779</span>
-<span class="normal">780</span>
-<span class="normal">781</span>
-<span class="normal">782</span>
-<span class="normal">783</span>
-<span class="normal">784</span>
-<span class="normal">785</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">785</span>
 <span class="normal">786</span>
-<span class="normal">787</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">787</span>
+<span class="normal">788</span>
+<span class="normal">789</span>
+<span class="normal">790</span>
+<span class="normal">791</span>
+<span class="normal">792</span>
+<span class="normal">793</span>
+<span class="normal">794</span>
+<span class="normal">795</span>
+<span class="normal">796</span>
+<span class="normal">797</span>
+<span class="normal">798</span>
+<span class="normal">799</span>
+<span class="normal">800</span>
+<span class="normal">801</span>
+<span class="normal">802</span>
+<span class="normal">803</span>
+<span class="normal">804</span>
+<span class="normal">805</span>
+<span class="normal">806</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Export standard scalable workload stack outputs.</span>
 
 <span class="sd">    Publishes load balancer IP, load balancer OCID, and instance pool</span>
@@ -5644,20 +5702,20 @@ is <code>True</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/autoscale.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">789</span>
-<span class="normal">790</span>
-<span class="normal">791</span>
-<span class="normal">792</span>
-<span class="normal">793</span>
-<span class="normal">794</span>
-<span class="normal">795</span>
-<span class="normal">796</span>
-<span class="normal">797</span>
-<span class="normal">798</span>
-<span class="normal">799</span>
-<span class="normal">800</span>
-<span class="normal">801</span>
-<span class="normal">802</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_load_balancer_ip</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">808</span>
+<span class="normal">809</span>
+<span class="normal">810</span>
+<span class="normal">811</span>
+<span class="normal">812</span>
+<span class="normal">813</span>
+<span class="normal">814</span>
+<span class="normal">815</span>
+<span class="normal">816</span>
+<span class="normal">817</span>
+<span class="normal">818</span>
+<span class="normal">819</span>
+<span class="normal">820</span>
+<span class="normal">821</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_load_balancer_ip</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the public IP address of the load balancer.</span>
 
 <span class="sd">    Resolves the first entry in the load balancer&#39;s `ip_address_details`</span>
@@ -5715,13 +5773,13 @@ is <code>True</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/autoscale.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">804</span>
-<span class="normal">805</span>
-<span class="normal">806</span>
-<span class="normal">807</span>
-<span class="normal">808</span>
-<span class="normal">809</span>
-<span class="normal">810</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_instance_pool_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">823</span>
+<span class="normal">824</span>
+<span class="normal">825</span>
+<span class="normal">826</span>
+<span class="normal">827</span>
+<span class="normal">828</span>
+<span class="normal">829</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_instance_pool_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the OCID of the instance pool.</span>
 
 <span class="sd">    Returns:</span>
@@ -5772,13 +5830,13 @@ is <code>True</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/autoscale.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">812</span>
-<span class="normal">813</span>
-<span class="normal">814</span>
-<span class="normal">815</span>
-<span class="normal">816</span>
-<span class="normal">817</span>
-<span class="normal">818</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_load_balancer_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">831</span>
+<span class="normal">832</span>
+<span class="normal">833</span>
+<span class="normal">834</span>
+<span class="normal">835</span>
+<span class="normal">836</span>
+<span class="normal">837</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_load_balancer_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the OCID of the load balancer.</span>
 
 <span class="sd">    Returns:</span>
@@ -5829,13 +5887,13 @@ is <code>True</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/autoscale.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">820</span>
-<span class="normal">821</span>
-<span class="normal">822</span>
-<span class="normal">823</span>
-<span class="normal">824</span>
-<span class="normal">825</span>
-<span class="normal">826</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_public_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">839</span>
+<span class="normal">840</span>
+<span class="normal">841</span>
+<span class="normal">842</span>
+<span class="normal">843</span>
+<span class="normal">844</span>
+<span class="normal">845</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_public_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the SSH public key installed on pool instances.</span>
 
 <span class="sd">    Returns:</span>
@@ -5896,14 +5954,14 @@ is <code>True</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/autoscale.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">828</span>
-<span class="normal">829</span>
-<span class="normal">830</span>
-<span class="normal">831</span>
-<span class="normal">832</span>
-<span class="normal">833</span>
-<span class="normal">834</span>
-<span class="normal">835</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_private_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">847</span>
+<span class="normal">848</span>
+<span class="normal">849</span>
+<span class="normal">850</span>
+<span class="normal">851</span>
+<span class="normal">852</span>
+<span class="normal">853</span>
+<span class="normal">854</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_private_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the SSH private key if it was auto-generated.</span>
 
 <span class="sd">    Returns:</span>

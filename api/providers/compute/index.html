@@ -3193,10 +3193,10 @@ instance termination.</p>
 <span class="sd">                (Windows Server 2022 Standard).</span>
 <span class="sd">            subnet: Which VCN tier to place the instance in.  Use the</span>
 <span class="sd">                constants `SUBNET_PRIVATE` (default), `SUBNET_PUBLIC`,</span>
-<span class="sd">                `SUBNET_SECURE`, or `SUBNET_MANAGEMENT` imported from</span>
-<span class="sd">                `blocks.vcn`.  Ignored when `nsg` is supplied and the</span>
-<span class="sd">                NSG has a `Role` — the role&#39;s `subnet_tier` takes</span>
-<span class="sd">                precedence.</span>
+<span class="sd">                `SUBNET_SECURE`, or `SUBNET_MANAGEMENT` from</span>
+<span class="sd">                `cloudspells.providers.oci.network`.  Ignored when `nsg`</span>
+<span class="sd">                is supplied and the NSG has a `Role` — the role&#39;s</span>
+<span class="sd">                `subnet_tier` takes precedence.</span>
 <span class="sd">            boot_volume_size_in_gbs: Boot volume size in GiB (default:</span>
 <span class="sd">                `50`).</span>
 <span class="sd">            volumes: Ordered list of `VolumeSpec` objects describing the</span>
@@ -4030,10 +4030,10 @@ image when <code>image_id</code> is <code>None</code>.  Supported values:
               <div class="doc-md-description">
                 <p>Which VCN tier to place the instance in.  Use the
 constants <code>SUBNET_PRIVATE</code> (default), <code>SUBNET_PUBLIC</code>,
-<code>SUBNET_SECURE</code>, or <code>SUBNET_MANAGEMENT</code> imported from
-<code>blocks.vcn</code>.  Ignored when <code>nsg</code> is supplied and the
-NSG has a <code>Role</code> — the role's <code>subnet_tier</code> takes
-precedence.</p>
+<code>SUBNET_SECURE</code>, or <code>SUBNET_MANAGEMENT</code> from
+<code>cloudspells.providers.oci.network</code>.  Ignored when <code>nsg</code>
+is supplied and the NSG has a <code>Role</code> — the role's
+<code>subnet_tier</code> takes precedence.</p>
               </div>
             </td>
             <td>
@@ -4793,10 +4793,10 @@ db  = ComputeInstance(&quot;db-1&quot;,  compartment_id=comp_id, vcn=vcn, nsg=db
 <span class="sd">            (Windows Server 2022 Standard).</span>
 <span class="sd">        subnet: Which VCN tier to place the instance in.  Use the</span>
 <span class="sd">            constants `SUBNET_PRIVATE` (default), `SUBNET_PUBLIC`,</span>
-<span class="sd">            `SUBNET_SECURE`, or `SUBNET_MANAGEMENT` imported from</span>
-<span class="sd">            `blocks.vcn`.  Ignored when `nsg` is supplied and the</span>
-<span class="sd">            NSG has a `Role` — the role&#39;s `subnet_tier` takes</span>
-<span class="sd">            precedence.</span>
+<span class="sd">            `SUBNET_SECURE`, or `SUBNET_MANAGEMENT` from</span>
+<span class="sd">            `cloudspells.providers.oci.network`.  Ignored when `nsg`</span>
+<span class="sd">            is supplied and the NSG has a `Role` — the role&#39;s</span>
+<span class="sd">            `subnet_tier` takes precedence.</span>
 <span class="sd">        boot_volume_size_in_gbs: Boot volume size in GiB (default:</span>
 <span class="sd">            `50`).</span>
 <span class="sd">        volumes: Ordered list of `VolumeSpec` objects describing the</span>
