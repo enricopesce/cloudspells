@@ -1,7 +1,7 @@
 """Resource naming utilities for CloudSpells.
 
 Provides `ResourceNamer`, which generates consistent, predictable names
-for every OCI resource created by an CloudSpells component. All names follow
+for every OCI resource created by a CloudSpells component. All names follow
 the pattern:
 
 ```

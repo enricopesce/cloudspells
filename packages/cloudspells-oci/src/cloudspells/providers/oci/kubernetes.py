@@ -190,9 +190,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         vcn: The `Vcn` this cluster is deployed into.
         kubernetes_version: Kubernetes version string (e.g. `"v1.30.1"`).
         display_name: Human-readable cluster display name.
-        enhanced: `True` when the cluster type is `ENHANCED_CLUSTER`.
-        endpoint_subnet: Subnet hosting the API endpoint VNIC; `None` means
-            `vcn.public_subnet` with a public IP.
         api_nsg: NSG attached to the Kubernetes API endpoint VNIC.
         lb_nsg: NSG for OCI Load Balancers; apply via service annotation.
         worker_nsg: NSG attached to every worker node VNIC.
@@ -1257,7 +1254,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             ```python
             oke = OkeCluster(name="okeinfra", ...)
             oke.export()
-            # Exports: okeinfra_cluster_id, okeinfra_lb_nsg_id
+            # Exports: okeinfra_cluster_id, okeinfra_kubernetes_version, okeinfra_lb_nsg_id
             ```
         """
         prefix = self.name.replace("-", "_")

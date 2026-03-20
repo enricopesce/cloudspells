@@ -51,8 +51,9 @@ pulumi config set compartment_ocid ocid1.compartment.oc1..aaaa...
 Optionally override defaults:
 
 ```bash
-pulumi config set app_port 8080     # port the web backends listen on (default: 8080)
-pulumi config set db_port 5432      # database port (default: 5432)
+pulumi config set vcn_cidr 10.0.0.0/18   # VCN CIDR block (default: 10.0.0.0/18)
+pulumi config set app_port 8080          # port the web backends listen on (default: 8080)
+pulumi config set db_port 5432           # database port (default: 5432)
 pulumi config set ssh_key "$(cat ~/.ssh/id_rsa.pub)"
 ```
 

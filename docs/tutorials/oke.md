@@ -203,13 +203,13 @@ Key outputs (prefix `okeinfra_` matches the `name="okeinfra"` argument):
 
 ## Required configuration reference
 
-| Parameter | Required | Default | Notes |
+| Parameter | Required | Suggested value | Notes |
 |---|---|---|---|
 | `compartment_ocid` | yes | — | OCI compartment OCID |
 | `node_image_id` | yes | — | OKE-compatible Oracle Linux image OCID |
 | `kubernetes_version` | yes | — | e.g. `v1.32.1` — check OCI console for supported versions |
 | `node_shape` | yes | `VM.Standard.A1.Flex` | e.g. `VM.Standard.A1.Flex` (ARM) or `VM.Standard.E4.Flex` (x86) |
-| `node_count` | yes | `2` | Worker node count (spread evenly across ADs by OCI) |
+| `node_count` | yes | `3` | Worker node count (spread evenly across ADs by OCI) |
 | `oke_ocpus` | yes | `2` | OCPUs per node |
 | `oke_memory_in_gbs` | yes | `12` | RAM in GiB per node |
 

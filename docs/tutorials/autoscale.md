@@ -17,7 +17,7 @@ Internet (HTTP port 80)
 ┌─────────────────────────────────────────────────────┐
 │ Private subnet  ← NAT GW + Service GW               │
 │  Instance pool (1–3 nginx VMs)                       │
-│  Autoscales on CPU: out >70%, in <30%                │
+│  Autoscales on CPU: out >80%, in <20%                │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -59,8 +59,10 @@ The example passes a plain cloud-init script to install nginx and create a healt
 
 ```python
 user_data_script = """#!/bin/bash
-yum install -y nginx
+set -e
+yum install -y --disablerepo='*' --enablerepo='ol8_appstream,ol8_baseos_latest' nginx
 systemctl enable nginx && systemctl start nginx
+firewall-cmd --permanent --add-service=http && firewall-cmd --reload
 echo "OK" > /usr/share/nginx/html/health
 """
 ```
@@ -94,7 +96,7 @@ scalable_pool = ScalableWorkload(
 
 - Load balancer in the **public subnet**, listening on port 80
 - Instance pool in the **private subnet**, bootstrapped with your `user_data`
-- CPU autoscaling: scale out when CPU > 70%, scale in when CPU < 30%
+- CPU autoscaling: scale out when CPU > 80%, scale in when CPU < 20%
 - 300-second cooldown between scaling events
 - Defaults to `VM.Standard.E4.Flex` with 1 OCPU / 16 GB RAM
 - Minimum 1 instance; set `max_instances` to control the ceiling
@@ -115,7 +117,7 @@ Deployment takes 5–10 minutes (instance pool provisioning is the slow step).
 ## Step 4 — Test the load balancer
 
 ```bash
-LB_IP=$(pulumi stack output lb_ip)
+LB_IP=$(pulumi stack output web_pool_lb_ip)
 curl http://$LB_IP/
 ```
 
@@ -140,10 +142,10 @@ Key outputs:
 
 | Output | Description |
 |--------|-------------|
-| `lb_ip` | Public IP of the load balancer |
-| `lb_id` | Load balancer OCID |
-| `pool_id` | Instance pool OCID |
-| `ssh_private_key` | _(secret)_ Only present when auto-generated |
+| `web_pool_lb_ip` | Public IP of the load balancer |
+| `web_pool_lb_id` | Load balancer OCID |
+| `web_pool_pool_id` | Instance pool OCID |
+| `web_pool_ssh_private_key` | _(secret)_ Only present when auto-generated |
 
 ---
 
@@ -151,8 +153,8 @@ Key outputs:
 
 | Metric | Threshold | Action |
 |--------|-----------|--------|
-| CPU utilisation | > 70% | Add 1 instance |
-| CPU utilisation | < 30% | Remove 1 instance |
+| CPU utilisation | > 80% | Add 1 instance |
+| CPU utilisation | < 20% | Remove 1 instance |
 | Cooldown | — | 300 seconds between events |
 | Min instances | — | 1 |
 | Max instances | — | Set via `max_instances` |

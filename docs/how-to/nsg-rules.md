@@ -10,7 +10,7 @@ The fastest path is to use a predefined role constant. Roles encode which subnet
 
 | Constant | Subnet tier | Egress | Typical use |
 |----------|-------------|--------|-------------|
-| `INTERNET_EDGE` | Public | None (entry point) | Load balancers, internet-facing VMs |
+| `INTERNET_EDGE` | Public | Internet GW (via route table; no ambient NSG egress rules) | Load balancers, internet-facing VMs |
 | `APP_SERVER` | Private | NAT + Services | Application servers, APIs |
 | `DATABASE` | Secure | Services only | Databases, secret stores |
 | `CACHE` | Private | NAT + Services | Redis, Kafka, Memcached |
@@ -172,14 +172,11 @@ For cases that `serves()` does not cover, use the individual allow methods direc
 | Method | Signature | Purpose |
 |--------|-----------|---------|
 | `allow_from_cidr` | `(label, port, cidr)` | Inbound TCP from a CIDR |
-| `allow_to_cidr` | `(label, port, cidr)` | Outbound TCP to a CIDR |
+| `allow_to_cidr` | `(label, cidr)` | Outbound all-protocol egress to a CIDR |
 | `allow_from_nsg` | `(label, nsg, port)` | Inbound TCP from another NSG |
 | `allow_to_nsg` | `(label, nsg, port)` | Outbound TCP to another NSG |
 | `allow_to_services` | `(label)` | Egress to Oracle Services CIDR (all protocols) |
-| `allow_to_internet` | `(label)` | Egress to `0.0.0.0/0` (all protocols) |
-| `allow_icmp_from_cidr` | `(label, icmp_type, cidr)` | Inbound ICMP from a CIDR |
-| `allow_icmp_to_cidr` | `(label, icmp_type, cidr)` | Outbound ICMP to a CIDR |
-| `served_by` | `(other_nsg, port, *, with_ssh)` | Inverse of `serves()` — `other_nsg` sends to this NSG |
+| `allow_icmp_from_cidr` | `(label, cidr, icmp_type, code)` | Inbound ICMP from a CIDR |
 | `add_rule` | `(label, *, direction, protocol, ...)` | Raw rule — full protocol/direction control |
 
 All methods accept an optional `description` keyword argument for the OCI Console label.
@@ -190,11 +187,11 @@ from cloudspells.providers.oci.nsg import INTERNET
 # Allow inbound HTTPS from any IP
 my_nsg.allow_from_cidr("https-in", HTTPS, INTERNET)
 
-# Allow outbound to a specific CIDR (on-premises VPN)
-my_nsg.allow_to_cidr("vpn-out", 443, "192.168.100.0/24")
+# Allow all-protocol outbound to a specific CIDR (on-premises VPN)
+my_nsg.allow_to_cidr("vpn-out", "192.168.100.0/24")
 
 # Allow ICMP type 3 code 4 (path-MTU discovery) from the internet
-my_nsg.allow_icmp_from_cidr("pmtu-in", 3, INTERNET, code=4)
+my_nsg.allow_icmp_from_cidr("pmtu-in", INTERNET, icmp_type=3, code=4)
 
 # Raw rule — UDP DNS egress (not covered by any convenience helper)
 from cloudspells.providers.oci.nsg import UDP, udp_port, DNS

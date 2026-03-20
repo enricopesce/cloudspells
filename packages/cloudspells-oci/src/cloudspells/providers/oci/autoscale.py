@@ -53,19 +53,38 @@ _UNSET: object = object()
 class OciLoadBalancerConfig(_BaseLoadBalancerConfig):
     """OCI-specific load balancer configuration extending the cloud-neutral base.
 
-    Adds OCI flexible-shape bandwidth parameters to the base
-    `LoadBalancerConfig`.
+    Adds OCI flexible-shape bandwidth parameters to the base `LoadBalancerConfig`.
+    Use this class instead of `LoadBalancerConfig` when deploying `ScalableWorkload`
+    on OCI and you need to control the LB's minimum or maximum bandwidth allocation.
 
     Attributes:
-        backend_port: Port on backend instances to receive traffic and health checks.
-        health_check_path: URL path for HTTP health checks.
-        is_public: Whether the load balancer has a public IP.
-        min_bandwidth_mbps: Minimum bandwidth for the OCI flexible LB shape.
-            Default: `10`.
-        max_bandwidth_mbps: Maximum bandwidth for the OCI flexible LB shape.
-            Default: `100`.
-        ssl_certificate_name: SSL certificate name for HTTPS.  If set, creates
-            an HTTPS listener on port 443 in addition to HTTP on port 80.
+        backend_port: `int`. Port on backend instances to receive forwarded traffic
+            and health-check probes.  Default: `80`.
+        health_check_path: `str`. HTTP path used for backend health checks.
+            Default: `"/health"`.
+        is_public: `bool`. Whether the load balancer is assigned a public IP.
+            Default: `True`.
+        min_bandwidth_mbps: `int`. Minimum bandwidth allocated to the OCI flexible
+            load-balancer shape in Mbps.  OCI will not reduce below this value even
+            when traffic is idle.  Default: `10`.
+        max_bandwidth_mbps: `int`. Maximum bandwidth the OCI flexible load-balancer
+            shape may burst to in Mbps.  Default: `100`.
+        ssl_certificate_name: `str | None`. Name of a certificate object already
+            uploaded to the load balancer.  When set, an HTTPS listener on port 443
+            is created alongside the HTTP listener on port 80.
+            Default: `None` (HTTP only).
+
+    Example:
+        ```python
+        from cloudspells.providers.oci.autoscale import OciLoadBalancerConfig
+
+        lb_cfg = OciLoadBalancerConfig(
+            backend_port=8080,
+            health_check_path="/api/health",
+            min_bandwidth_mbps=100,
+            max_bandwidth_mbps=500,
+        )
+        ```
     """
 
     min_bandwidth_mbps: int = 10

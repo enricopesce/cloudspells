@@ -197,10 +197,10 @@ class ComputeInstance(BaseResource, AbstractCompute):
                 (Windows Server 2022 Standard).
             subnet: Which VCN tier to place the instance in.  Use the
                 constants `SUBNET_PRIVATE` (default), `SUBNET_PUBLIC`,
-                `SUBNET_SECURE`, or `SUBNET_MANAGEMENT` imported from
-                `blocks.vcn`.  Ignored when `nsg` is supplied and the
-                NSG has a `Role` — the role's `subnet_tier` takes
-                precedence.
+                `SUBNET_SECURE`, or `SUBNET_MANAGEMENT` from
+                `cloudspells.providers.oci.network`.  Ignored when `nsg`
+                is supplied and the NSG has a `Role` — the role's
+                `subnet_tier` takes precedence.
             boot_volume_size_in_gbs: Boot volume size in GiB (default:
                 `50`).
             volumes: Ordered list of `VolumeSpec` objects describing the

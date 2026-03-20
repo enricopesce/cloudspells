@@ -278,6 +278,7 @@ The source stack must export the following keys (all emitted automatically by `V
 | `private_security_list_id` | `str` | Private security list OCID |
 | `secure_security_list_id` | `str` | Secure security list OCID |
 | `management_security_list_id` | `str` | Management security list OCID |
+| `drg_id` | `str \| None` | DRG OCID (optional — `None` when no DRG is attached) |
 
 ### Constructing a `VcnRef` manually
 

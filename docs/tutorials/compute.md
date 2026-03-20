@@ -142,7 +142,11 @@ Key outputs:
 | Output | Description |
 |--------|-------------|
 | `web_server_public_ip` | Public IP of the instance |
+| `web_server_private_ip` | Private IP of the instance |
 | `web_server_id` | Instance OCID |
+| `web_server_data_volume_id` | OCID of the 100 GB data volume |
+| `web_server_logs_volume_id` | OCID of the 200 GB logs volume |
+| `web_server_ssh_public_key` | SSH public key installed on the instance |
 | `web_server_ssh_private_key` | _(secret)_ Only present when auto-generated |
 
 ---

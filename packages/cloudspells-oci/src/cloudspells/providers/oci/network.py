@@ -338,14 +338,14 @@ class Vcn(BaseResource, AbstractNetwork):
                 options set to redirect DNS queries to a private resolver —
                 required for split-horizon DNS in hybrid (on-premise +
                 cloud) environments.
-            defined_tags: OCI defined tags to apply to every resource in
+            defined_tags: OCI defined tags applied to every resource in
                 this VCN (VCN, gateways, route tables, security lists, and
-                subnets).  Defined tags are namespace-qualified key/value
-                pairs managed by OCI Tag Namespaces and are required for
-                enterprise cost tracking, policy enforcement, and
-                governance.  When `None` (the default) no defined tags are
-                applied.  Example:
-                `{"Operations.CostCenter": "42", "Project.Env": "prod"}`.
+                subnets), in `{"namespace": {"key": "value"}}` format.
+                Defined tags are namespace-qualified key/value pairs managed
+                by OCI Tag Namespaces and are required for enterprise cost
+                tracking, policy enforcement, and governance.  When `None`
+                (the default) no defined tags are applied.  Example:
+                `{"Operations": {"CostCenter": "42"}, "Project": {"Env": "prod"}}`.
         """
         super().__init__("custom:network:Vcn", name, compartment_id, stack_name, opts)
         self.cidr_block = cidr_block or "10.0.0.0/18"
@@ -1428,30 +1428,33 @@ class VcnRef(AbstractNetworkRef):
         management_ingress: list[Any] | None = None,
         management_egress: list[Any] | None = None,
     ) -> None:
-        """Raises `RuntimeError` — security rules must be applied in the source CloudSpells stack.
+        """Reject any non-empty rule list — security rules must live in the source stack.
 
         `VcnRef` is a read-only handle to a VCN managed by another CloudSpells
         stack.  Security lists in that stack are already finalised; this stack
         cannot modify them.  Any spell that calls this method (OKE, Compute,
-        ScalableWorkload) requires those rules to exist **before** you deploy
-        here.
+        ScalableWorkload) requires those rules to exist **before** you deploy here.
 
-        **How to fix:** open the source CloudSpells stack, deploy the same
-        spell there first so its rules are written to the VCN security lists,
-        then re-run this stack.
+        When all arguments are `None` or empty the call is silently accepted as a
+        no-op (spells call this unconditionally; the no-op keeps spell code
+        branch-free).
+
+        **How to fix:** open the source CloudSpells stack, deploy the same spell
+        there first so its rules are written to the VCN security lists, then
+        re-run this stack.
 
         Args:
-            public_ingress: Rules that cannot be applied.
-            public_egress: Rules that cannot be applied.
-            private_ingress: Rules that cannot be applied.
-            private_egress: Rules that cannot be applied.
-            secure_ingress: Rules that cannot be applied.
-            secure_egress: Rules that cannot be applied.
-            management_ingress: Rules that cannot be applied.
-            management_egress: Rules that cannot be applied.
+            public_ingress: Rules that cannot be applied (must be `None` or empty).
+            public_egress: Rules that cannot be applied (must be `None` or empty).
+            private_ingress: Rules that cannot be applied (must be `None` or empty).
+            private_egress: Rules that cannot be applied (must be `None` or empty).
+            secure_ingress: Rules that cannot be applied (must be `None` or empty).
+            secure_egress: Rules that cannot be applied (must be `None` or empty).
+            management_ingress: Rules that cannot be applied (must be `None` or empty).
+            management_egress: Rules that cannot be applied (must be `None` or empty).
 
         Raises:
-            RuntimeError: Always, when any non-empty rule list is passed.
+            RuntimeError: When any argument is a non-empty list.
         """
         requested = {
             "public_ingress": public_ingress,
