@@ -401,6 +401,11 @@ class Nsg(BaseResource):
         id: `pulumi.Output[str]` OCID of this NSG.  Pass this to
             `ComputeInstance` via `nsg_ids` or reference it in another
             NSG's rule as `source` / `destination`.
+        role: The `Role` that governs this NSG's ambient rules and subnet
+            tier placement, or `None` when the NSG was created without a
+            role and all rules are managed manually.  Read by `serves` to
+            determine the SSH management channel and cross-subnet security
+            list rules.
 
     Example:
         ```python

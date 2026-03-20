@@ -205,8 +205,8 @@ class BaseResource(pulumi.ComponentResource):
             additional_tags: Optional extra tags to merge.
 
         Returns:
-            `dict[str, str]` including `NetworkType` (and optionally
-            `SubnetGroup`) keys alongside the baseline tags.
+            `dict[str, str]` including `network-type` (and optionally
+            `subnet-group`) keys alongside the baseline tags.
         """
         return self.tagger.create_network_resource_tags(
             resource_name,
@@ -233,7 +233,7 @@ class BaseResource(pulumi.ComponentResource):
             additional_tags: Optional extra tags to merge.
 
         Returns:
-            `dict[str, str]` including the `GatewayType` key alongside
+            `dict[str, str]` including the `gateway-type` key alongside
             the baseline tags.
         """
         return self.tagger.create_gateway_tags(resource_name, gateway_type, additional_tags)
@@ -309,9 +309,14 @@ class BaseResource(pulumi.ComponentResource):
             not exist.
 
         Example:
-            >>> vcn = Vcn(name="my-vcn", compartment_id="...", stack_name="prod")
-            >>> vcn.finalize_network()
-            >>> public_subnet = vcn.get_resource("public_subnet")
-            >>> nat_gateway   = vcn.get_resource("nat_gateway")
+            ```python
+            from cloudspells.providers.oci import Vcn
+
+            vcn = Vcn(name="my-vcn", compartment_id="ocid1.compartment...",
+                      stack_name="prod")
+            vcn.finalize_network()
+            public_subnet = vcn.get_resource("public_subnet")
+            nat_gateway   = vcn.get_resource("nat_gateway")
+            ```
         """
         return getattr(self, resource_name, None)

@@ -412,7 +412,9 @@ class AbstractNetworkRef(ABC):
 
     Example:
         ```python
-        vcn_ref = OciVcnRef.from_stack_reference("org/platform/prod")
+        from cloudspells.providers.oci import VcnRef, OkeCluster
+
+        vcn_ref = VcnRef.from_stack_reference("org/platform/prod")
         cluster = OkeCluster(name="app", vcn=vcn_ref, ...)
         ```
     """

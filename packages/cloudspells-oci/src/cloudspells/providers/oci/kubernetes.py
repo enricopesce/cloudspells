@@ -195,9 +195,13 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         worker_nsg: NSG attached to every worker node VNIC.
         pod_nsg: NSG attached to every pod VNIC (OCI CNI).
         oke_public_security_list: Alias for the VCN's public security list
-            (populated with OKE rules after initialisation).
+            (populated with OKE rules after initialisation), or `None` when
+            using `VcnRef` and the source stack did not export
+            `public_security_list_id`.
         oke_private_security_list: Alias for the VCN's private security list
-            (populated with OKE rules after initialisation).
+            (populated with OKE rules after initialisation), or `None` when
+            using `VcnRef` and the source stack did not export
+            `private_security_list_id`.
         cluster: The underlying `oci.containerengine.Cluster` resource.
         node_pools: List of `oci.containerengine.NodePool` resources, one
             per `NodePoolConfig` passed at construction time.
@@ -273,10 +277,11 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 (e.g. `"v1.32.1"`).
             display_name: Human-readable name used for the cluster OCI
                 resource.
-            node_pools: One or more `NodePoolConfig` descriptors.  Each
-                entry creates a separate node pool on the cluster, enabling
-                mixed shapes (e.g. a small system pool and a large app pool).
-                At least one entry is required.
+            node_pools: List of `NodePoolConfig` descriptors.  Each entry
+                creates a separate node pool on the cluster, enabling mixed
+                shapes (e.g. a small system pool and a large app pool).
+                Pass an empty list to create a cluster with no node pools
+                (useful when pools are managed separately).
             stack_name: Pulumi stack name.  Defaults to
                 `pulumi.get_stack()` when `None`.
             enhanced: When `True`, creates an `ENHANCED_CLUSTER` instead of
