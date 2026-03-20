@@ -24,8 +24,9 @@ OCI-specific helpers:
 - `VolumeSpec`: OCI block-volume descriptor with `vpus_per_gb` performance tier.
 - `OciLoadBalancerConfig`: OCI load balancer configuration with flexible-shape
   bandwidth fields.
-- `OciHelper`: OCI API utilities: image resolution and availability-domain
-  mapping.
+- `NodePoolConfig`: Configuration descriptor for a single OKE node pool.
+  Required when creating an `OkeCluster`.  Import from
+  `cloudspells.providers.oci.kubernetes`.
 """
 
 from cloudspells.core.config import Config

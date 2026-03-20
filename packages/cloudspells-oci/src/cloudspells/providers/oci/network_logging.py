@@ -240,7 +240,9 @@ class VcnFlowLogs(BaseResource):
 
         Example:
             ```python
-            flow_logs = VcnFlowLogs(name="lab", vcn=vcn)
+            flow_logs = VcnFlowLogs(
+                name="lab", compartment_id=compartment_id, vcn=vcn
+            )
             flow_logs.export()
             # Stack output: network_audit_log_group_id = ocid1.loggroup...
             ```

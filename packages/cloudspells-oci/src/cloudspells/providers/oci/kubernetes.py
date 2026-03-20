@@ -1268,7 +1268,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         pulumi.export(f"{prefix}_lb_nsg_id", self.lb_nsg.id)
 
     def get_public_security_list_ids(self) -> list[pulumi.Output[str]]:
-        """Return the ID of the public security list (populated with OKE rules).
+        """Return the OCIDs of the public security lists populated with OKE rules.
 
         Returns:
             Single-element list containing the VCN public security list OCID
@@ -1279,7 +1279,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         return [sl.id] if sl is not None else []
 
     def get_private_security_list_ids(self) -> list[pulumi.Output[str]]:
-        """Return the ID of the private security list (populated with OKE rules).
+        """Return the OCIDs of the private security lists populated with OKE rules.
 
         Returns:
             Single-element list containing the VCN private security list OCID
@@ -1299,6 +1299,11 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         Args:
             filename: Absolute or relative path where the kubeconfig file
                 should be written (e.g. `"/tmp/kubeconfig"`).
+
+        Raises:
+            OSError: If `filename` cannot be created or written to (e.g.
+                the parent directory does not exist or the process lacks
+                write permission).
         """
         cluster_kube_config = self.cluster.id.apply(
             lambda cid: oci.containerengine.get_cluster_kube_config(cluster_id=cid)

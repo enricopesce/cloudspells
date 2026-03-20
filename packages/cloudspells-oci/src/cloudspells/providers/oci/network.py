@@ -1352,6 +1352,10 @@ class VcnRef(AbstractNetworkRef):
                 referenced VCN, if one exists.  Informational only — used
                 by dependent stacks to attach VPN connections or FastConnect
                 virtual circuits.
+
+        Raises:
+            ValueError: If `cidr_block` is `None`.  Every CloudSpells VCN
+                stack exports `cidr_block`; pass that value here.
         """
         self.id = pulumi.Output.from_input(vcn_id)
         if cidr_block is None:
@@ -1494,7 +1498,10 @@ class VcnRef(AbstractNetworkRef):
         """Return the secure subnet CIDR.
 
         Returns:
-            Secure subnet CIDR as a `pulumi.Input[str]`.
+            Secure subnet CIDR as a `pulumi.Input[str]`, or an empty string
+            `""` when `secure_subnet_id` was not provided at construction.
+            Check `self.secure_subnet is not None` before using the result
+            in security rules.
         """
         return self._secure_subnet_cidr
 
@@ -1502,7 +1509,10 @@ class VcnRef(AbstractNetworkRef):
         """Return the management subnet CIDR.
 
         Returns:
-            Management subnet CIDR as a `pulumi.Input[str]`.
+            Management subnet CIDR as a `pulumi.Input[str]`, or an empty
+            string `""` when `management_subnet_id` was not provided at
+            construction.  Check `self.management_subnet is not None` before
+            using the result in security rules.
         """
         return self._management_subnet_cidr
 
