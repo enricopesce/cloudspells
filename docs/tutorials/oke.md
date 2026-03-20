@@ -51,7 +51,7 @@ Additional values with defaults — override only what you need:
 ```bash
 pulumi config set kubernetes_version v1.32.1
 pulumi config set node_shape        VM.Standard.A1.Flex   # ARM — cost-effective
-pulumi config set oke_min_nodes     3
+pulumi config set node_count        3
 pulumi config set oke_ocpus         2
 pulumi config set oke_memory_in_gbs 12
 ```
@@ -63,18 +63,14 @@ pulumi config set oke_memory_in_gbs 12
 Open `examples/oke/__main__.py`.
 
 ```python
+import os
 from cloudspells.core import Config
-from cloudspells.providers.oci.kubernetes import OkeCluster
+from cloudspells.providers.oci.kubernetes import NodePoolConfig, OkeCluster
 from cloudspells.providers.oci.network import Vcn
 
 config = Config()
-compartment_id    = config.require("compartment_ocid")
-node_shape        = config.require("node_shape")
+compartment_id     = config.require("compartment_ocid")
 kubernetes_version = config.require("kubernetes_version")
-node_image_id     = config.require("node_image_id")
-oke_min_nodes     = config.require_int("oke_min_nodes")
-oke_ocpus         = config.require_float("oke_ocpus")
-oke_memory_in_gbs = config.require_float("oke_memory_in_gbs")
 
 vcn = Vcn(name="lab", compartment_id=compartment_id)
 
@@ -83,25 +79,31 @@ oke = OkeCluster(
     compartment_id=compartment_id,
     vcn=vcn,
     kubernetes_version=kubernetes_version,
-    image=node_image_id,
-    shape=node_shape,
-    min_nodes=oke_min_nodes,
-    ocpus=oke_ocpus,
-    memory_in_gbs=oke_memory_in_gbs,
     display_name="infra",
+    node_pools=[
+        NodePoolConfig(
+            name="default",
+            shape=config.require("node_shape"),
+            image=config.require("node_image_id"),
+            node_count=config.require_int("node_count"),
+            ocpus=config.require_float("oke_ocpus"),
+            memory_in_gbs=config.require_float("oke_memory_in_gbs"),
+        ),
+    ],
 )
 
 vcn.export()
 oke.export()
 
 # Write kubeconfig to the example directory for isolated kubectl access
-oke.create_kubeconfig("kubeconfig")
+oke.create_kubeconfig(os.path.join(os.path.dirname(__file__), "kubeconfig"))
 ```
 
 `OkeCluster` handles all the complexity:
 
+- Accepts one or more `NodePoolConfig` descriptors — each produces an independent OCI node pool, enabling mixed shapes (e.g. system pool + GPU pool)
 - Adds 19 security list rules covering the Kubernetes control plane (6443), kubelet (10250), NodePort range (30000-32767), and kube-proxy (10256)
-- Creates 4 NSGs (`api_nsg`, `lb_nsg`, `worker_nsg`, `pod_nsg`) with 34 VNIC-level rules for fine-grained segmentation
+- Creates 4 NSGs (`api_nsg`, `lb_nsg`, `worker_nsg`, `pod_nsg`) with 32 VNIC-level rules for fine-grained segmentation
 - Places the API endpoint in the public subnet and worker/pod VNICs in the private subnet
 - Configures `OCI_VCN_IP_NATIVE` CNI so every pod gets a real VCN subnet IP
 - Spreads nodes across all Availability Domains automatically
@@ -206,10 +208,10 @@ Key outputs (prefix `okeinfra_` matches the `name="okeinfra"` argument):
 | `compartment_ocid` | yes | — | OCI compartment OCID |
 | `node_image_id` | yes | — | OKE-compatible Oracle Linux image OCID |
 | `kubernetes_version` | yes | — | e.g. `v1.32.1` — check OCI console for supported versions |
-| `node_shape` | yes | — | e.g. `VM.Standard.A1.Flex` (ARM) or `VM.Standard.E4.Flex` (x86) |
-| `oke_min_nodes` | yes | — | Worker node count (spread evenly across ADs) |
-| `oke_ocpus` | yes | — | OCPUs per node |
-| `oke_memory_in_gbs` | yes | — | RAM in GiB per node |
+| `node_shape` | yes | `VM.Standard.A1.Flex` | e.g. `VM.Standard.A1.Flex` (ARM) or `VM.Standard.E4.Flex` (x86) |
+| `node_count` | yes | `2` | Worker node count (spread evenly across ADs by OCI) |
+| `oke_ocpus` | yes | `2` | OCPUs per node |
+| `oke_memory_in_gbs` | yes | `12` | RAM in GiB per node |
 
 ---
 

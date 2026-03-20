@@ -13,7 +13,7 @@ from cloudspells.providers.oci.network import Vcn
 
 config = Config()
 compartment_id: str = config.require("compartment_ocid")
-vcn_cidr_block: str = config.get("vcn_cidr_block") or "10.0.0.0/16"
+vcn_cidr_block: str = config.get("vcn_cidr_block") or "10.0.0.0/18"
 
 # Cloud-init script to install and start nginx (Oracle Linux 8)
 user_data_script = """#!/bin/bash

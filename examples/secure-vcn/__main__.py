@@ -6,23 +6,23 @@ This example deploys the complete CloudSpells secure-network stack:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  VCN  10.0.0.0/16                                               │
+│  VCN  10.0.0.0/18  (default)                                    │
 │                                                                 │
 │  ┌─────────────────┐  ┌──────────────────────────────────────┐  │
-│  │ Public /19      │  │ Private /17                          │  │
+│  │ Public /21      │  │ Private /19                          │  │
 │  │ (LB tier)       │  │ (App tier)                           │  │
 │  │ IGW route       │  │ NAT GW + Service GW routes           │  │
 │  │ lb-nsg ──────────┼──► app-nsg                             │  │
 │  └─────────────────┘  └──────────────────┬───────────────────┘  │
 │                                          │ TCP {db_port}        │
 │  ┌────────────────────────────────────────▼───────────────────┐  │
-│  │ Secure /18 (DB tier)                                       │  │
+│  │ Secure /20 (DB tier)                                       │  │
 │  │ Service GW route only — NO internet path                   │  │
 │  │ db-nsg                                                     │  │
 │  └────────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  ┌────────────────────────────────────────────────────────────┐  │
-│  │ Management /19                                             │  │
+│  │ Management /21                                             │  │
 │  │ Service GW route only                                      │  │
 │  │ mgmt-nsg ──► SSH to LB + app + DB tiers                   │  │
 │  └────────────────────────────────────────────────────────────┘  │
@@ -69,7 +69,7 @@ Required Pulumi config values (set with `pulumi config set`):
 
 Optional:
 
-- `vcn_cidr` — VCN IPv4 CIDR block (default: `10.0.0.0/16`).
+- `vcn_cidr` — VCN IPv4 CIDR block (default: `10.0.0.0/18`).
 - `management_ingress_cidr` — CIDR allowed to SSH into the management tier
   (default: `0.0.0.0/0` — **restrict before go-live**).
 - `app_port` — TCP port the app-tier listens on (default: `8080`).
@@ -103,7 +103,7 @@ from cloudspells.providers.oci.roles import APP_SERVER, DATABASE, INTERNET_EDGE,
 config = Config()
 
 compartment_id: str = config.require("compartment_ocid")
-vcn_cidr: str = config.get("vcn_cidr") or "10.0.0.0/16"
+vcn_cidr: str = config.get("vcn_cidr") or "10.0.0.0/18"
 management_ingress_cidr: str = config.get("management_ingress_cidr") or "0.0.0.0/0"
 app_port: int = config.get_int("app_port") or 8080
 db_port: int = config.get_int("db_port") or 1521

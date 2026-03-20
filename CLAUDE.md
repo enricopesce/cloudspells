@@ -108,7 +108,7 @@ New provider = implement the abstractions under a new `packages/cloudspells-<clo
   - Public (12.5%) → Internet GW. Private (50%) → NAT + Service GW. Secure (25%) → Service GW only. Management (12.5%) → Service GW only.
   - CIDR split: private=prefix+1, secure=prefix+2, public=prefix+3, management=prefix+3.
   - `VcnRef`: read-only handle to a VCN owned by another stack. All spells accept `Vcn | VcnRef`.
-- **`kubernetes.py`** — `OkeCluster`: BASIC_CLUSTER, OCI_VCN_IP_NATIVE CNI, fixed pod/service CIDRs, nodes spread across all ADs.
+- **`kubernetes.py`** — `OkeCluster` + `NodePoolConfig`: BASIC_CLUSTER (or ENHANCED_CLUSTER via `enhanced=True`), OCI_VCN_IP_NATIVE CNI, fixed pod/service CIDRs, nodes spread across all ADs. Pass one or more `NodePoolConfig` instances to `node_pools=` (supports mixed shapes).
 - **`compute.py`** — `ComputeInstance`: single instance, auto SSH keys, block volumes, any subnet tier.
 - **`bastion.py`** — `Bastion`: OCI Bastion service in the private subnet.
 - **`autoscale.py`** — `ScalableWorkload`: LB in public subnet, instance pool in private, CPU autoscaling by default.

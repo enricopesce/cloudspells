@@ -7,20 +7,20 @@ Internet
    │  HTTP 80 / HTTPS 443 / SSH 22
    ▼
 ┌─────────────────────────────────────────────────────┐
-│ Public subnet (/19)  — Internet GW route            │
+│ Public subnet (/21)  — Internet GW route            │
 │  load-balancer  [lb-nsg  · INTERNET_EDGE]           │
 └──────────────────────┬──────────────────────────────┘
                        │ TCP {app_port} + SSH 22
                        ▼
 ┌─────────────────────────────────────────────────────┐
-│ Private subnet (/17) — NAT GW + Service GW routes   │
+│ Private subnet (/19) — NAT GW + Service GW routes   │
 │  web-backend-1  [web-nsg · APP_SERVER]              │
 │  web-backend-2  [web-nsg · APP_SERVER]              │
 └──────────────────────┬──────────────────────────────┘
                        │ TCP {db_port} + SSH 22
                        ▼
 ┌─────────────────────────────────────────────────────┐
-│ Secure subnet (/18)  — Service GW only (no NAT)     │
+│ Secure subnet (/20)  — Service GW only (no NAT)     │
 │  db-1  [db-nsg · DATABASE]                          │
 │  db-2  [db-nsg · DATABASE]                          │
 └─────────────────────────────────────────────────────┘
@@ -55,7 +55,7 @@ Required:
 Optional:
 
 - `ssh_key` — SSH public key installed on all VMs.
-- `vcn_cidr` — VCN CIDR block (default: `10.0.0.0/16`).
+- `vcn_cidr` — VCN CIDR block (default: `10.0.0.0/18`).
 - `app_port` — Backend app TCP port (default: `8080`).
 - `db_port` — Database TCP port (default: `5432`).
 """
@@ -79,7 +79,7 @@ from cloudspells.providers.oci.volume import VolumeSpec
 config = Config()
 compartment_id: str = config.require("compartment_ocid")
 ssh_key: str | None = config.get("ssh_key")
-vcn_cidr: str = config.get("vcn_cidr") or "10.0.0.0/16"
+vcn_cidr: str = config.get("vcn_cidr") or "10.0.0.0/18"
 app_port: int = config.get_int("app_port") or 8080
 db_port: int = config.get_int("db_port") or 5432
 

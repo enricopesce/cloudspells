@@ -317,6 +317,26 @@ Exported keys match the table in the `VcnRef` section above, plus `network_audit
 
 ---
 
+## Optional constructor parameters
+
+The following `Vcn.__init__` parameters are all optional. The required parameters are `name` and `compartment_id`.
+
+| Parameter | Type | Default | Purpose |
+|---|---|---|---|
+| `cidr_block` | `str` | `"10.0.0.0/18"` | VCN IPv4 CIDR |
+| `additional_cidr_blocks` | `list[str]` | `None` | Extra secondary CIDRs attached to the VCN |
+| `ipv6_enabled` | `bool` | `False` | Enable OCI-assigned IPv6 on the VCN |
+| `flow_logs` | `bool` | `False` | Enable `VcnFlowLogs` for all four subnets |
+| `flow_logs_retention` | `int` | `90` | Flow-log retention in days: 30 / 60 / 90 / 120 / 150 / 180 |
+| `drg` | `bool` | `False` | Attach a Dynamic Routing Gateway (FastConnect / IPSec VPN) |
+| `on_premise_cidrs` | `list[str]` | `None` | On-premises CIDRs routed via the DRG (requires `drg=True`) |
+| `nat_public_ip_id` | `str` | `None` | Reserved public IP OCID to assign to the NAT Gateway |
+| `nat_block_traffic` | `bool` | `False` | Block all NAT Gateway egress without deleting the gateway |
+| `dhcp_options_id` | `str` | `None` | Custom DHCP options OCID — overrides the VCN default |
+| `defined_tags` | `dict[str, str]` | `None` | OCI defined tags applied to the VCN and all child resources |
+
+---
+
 ## CIDR sizing guide
 
 | Deployment scale | Recommended VCN CIDR | Private subnet | Usable IPs |

@@ -462,15 +462,12 @@ OkeCluster.__init__()
 ## Minimum viable example
 
 ```python
-import pulumi
-import pulumi_oci as oci
-
+from cloudspells.core import Config
 from cloudspells.providers.oci.network import Vcn
-from cloudspells.providers.oci.kubernetes import OkeCluster
+from cloudspells.providers.oci.kubernetes import NodePoolConfig, OkeCluster
 
-config = pulumi.Config()
+config = Config()
 compartment_id = config.require("compartment_ocid")
-image_id = config.require("node_image_id")
 
 vcn = Vcn(name="lab", compartment_id=compartment_id)
 
@@ -479,12 +476,17 @@ cluster = OkeCluster(
     compartment_id=compartment_id,
     vcn=vcn,
     kubernetes_version="v1.32.1",
-    image=image_id,
-    shape="VM.Standard.A1.Flex",
-    min_nodes=3,
-    ocpus=2,
-    memory_in_gbs=12,
     display_name="lab-k8s",
+    node_pools=[
+        NodePoolConfig(
+            name="default",
+            shape="VM.Standard.A1.Flex",
+            image=config.require("node_image_id"),
+            node_count=3,
+            ocpus=2,
+            memory_in_gbs=12,
+        ),
+    ],
 )
 
 cluster.export()

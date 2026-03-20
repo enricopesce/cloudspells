@@ -169,13 +169,20 @@ proxy_nsg = Nsg("proxy", role=proxy_role, vcn=vcn, compartment_id=compartment_id
 
 For cases that `serves()` does not cover, use the individual allow methods directly:
 
-| Method | Purpose |
-|--------|---------|
-| `allow_from_cidr(name, port, cidr)` | Inbound TCP from a CIDR |
-| `allow_to_cidr(name, port, cidr)` | Outbound TCP to a CIDR |
-| `allow_from_nsg(name, nsg, port)` | Inbound TCP from another NSG |
-| `allow_to_nsg(name, nsg, port)` | Outbound TCP to another NSG |
-| `allow_to_services(name)` | Egress to Oracle Services CIDR |
+| Method | Signature | Purpose |
+|--------|-----------|---------|
+| `allow_from_cidr` | `(label, port, cidr)` | Inbound TCP from a CIDR |
+| `allow_to_cidr` | `(label, port, cidr)` | Outbound TCP to a CIDR |
+| `allow_from_nsg` | `(label, nsg, port)` | Inbound TCP from another NSG |
+| `allow_to_nsg` | `(label, nsg, port)` | Outbound TCP to another NSG |
+| `allow_to_services` | `(label)` | Egress to Oracle Services CIDR (all protocols) |
+| `allow_to_internet` | `(label)` | Egress to `0.0.0.0/0` (all protocols) |
+| `allow_icmp_from_cidr` | `(label, icmp_type, cidr)` | Inbound ICMP from a CIDR |
+| `allow_icmp_to_cidr` | `(label, icmp_type, cidr)` | Outbound ICMP to a CIDR |
+| `served_by` | `(other_nsg, port, *, with_ssh)` | Inverse of `serves()` — `other_nsg` sends to this NSG |
+| `add_rule` | `(label, *, direction, protocol, ...)` | Raw rule — full protocol/direction control |
+
+All methods accept an optional `description` keyword argument for the OCI Console label.
 
 ```python
 from cloudspells.providers.oci.nsg import INTERNET
@@ -185,4 +192,16 @@ my_nsg.allow_from_cidr("https-in", HTTPS, INTERNET)
 
 # Allow outbound to a specific CIDR (on-premises VPN)
 my_nsg.allow_to_cidr("vpn-out", 443, "192.168.100.0/24")
+
+# Allow ICMP type 3 code 4 (path-MTU discovery) from the internet
+my_nsg.allow_icmp_from_cidr("pmtu-in", 3, INTERNET, code=4)
+
+# Raw rule — UDP DNS egress (not covered by any convenience helper)
+from cloudspells.providers.oci.nsg import UDP, udp_port, DNS
+my_nsg.add_rule(
+    "dns-out",
+    direction="EGRESS", protocol=UDP,
+    destination="0.0.0.0/0", destination_type="CIDR_BLOCK",
+    udp_options=udp_port(DNS),
+)
 ```
