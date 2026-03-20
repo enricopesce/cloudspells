@@ -515,8 +515,12 @@ class ComputeInstance(BaseResource, AbstractCompute):
         from the private subnet CIDR.
 
         For **public** subnet instances: allows TCP port 22 from anywhere
-        (`0.0.0.0/0`).
+        (`0.0.0.0/0`).  Uses the same fingerprint (`"public-ingress-tcp-22"`)
+        as `Nsg._apply_role_ambient_rules` so that when an `INTERNET_EDGE`
+        NSG with `SSH` in `ports` has already registered the rule, this call
+        is silently ignored and no duplicate is created in the security list.
         """
+        assert isinstance(self.vcn, Vcn)
         ssh_rule = oci.core.SecurityListIngressSecurityRuleArgs(
             protocol="6",
             source_type="CIDR_BLOCK",
@@ -538,13 +542,23 @@ class ComputeInstance(BaseResource, AbstractCompute):
         )
 
         if self.subnet == SUBNET_PRIVATE:
-            self.vcn.add_security_list_rules(private_ingress=[ssh_rule])
+            self.vcn._add_unique_security_list_rules(
+                "compute-private-ingress-tcp-22", private_ingress=[ssh_rule]
+            )
         elif self.subnet == SUBNET_SECURE:
-            self.vcn.add_security_list_rules(secure_ingress=[ssh_rule])
+            self.vcn._add_unique_security_list_rules(
+                "compute-secure-ingress-tcp-22", secure_ingress=[ssh_rule]
+            )
         elif self.subnet == SUBNET_MANAGEMENT:
-            self.vcn.add_security_list_rules(management_ingress=[ssh_rule])
+            self.vcn._add_unique_security_list_rules(
+                "compute-management-ingress-tcp-22", management_ingress=[ssh_rule]
+            )
         else:
-            self.vcn.add_security_list_rules(public_ingress=[ssh_rule])
+            # Use the same fingerprint as Nsg._apply_role_ambient_rules so the
+            # rule is deduplicated when an INTERNET_EDGE NSG already added it.
+            self.vcn._add_unique_security_list_rules(
+                "public-ingress-tcp-22", public_ingress=[ssh_rule]
+            )
 
     # ------------------------------------------------------------------
     # Public accessors

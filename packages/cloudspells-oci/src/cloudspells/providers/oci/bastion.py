@@ -123,13 +123,27 @@ class Bastion(BaseResource, AbstractBastion):
         if client_cidr_block_allow_list is None:
             client_cidr_block_allow_list = ["0.0.0.0/0"]
 
-        # Add SSH ingress rule and finalise only when the network has not yet
-        # been finalised.  When used alongside ComputeInstance or
-        # ScalableWorkload (which already add an SSH rule and finalise), skip
-        # rule-addition and use the existing finalised network directly.
-        if not self.vcn._security_lists_finalized:
-            self._add_bastion_security_rules()
-            self.vcn.finalize_network()
+        # Register the Bastion SSH rule before finalising.  OCI Bastion sessions
+        # originate from randomly-assigned managed IPs, so the rule must allow
+        # 0.0.0.0/0 on port 22 — categorically different from the SSH rule that
+        # ComputeInstance adds (which uses the public-subnet CIDR).  Silently
+        # skipping would leave the private security list without the required rule
+        # and break all Bastion sessions.  Raise early with a clear message if the
+        # network was already finalised before this Bastion was constructed.
+        if isinstance(self.vcn, Vcn):
+            if self.vcn._security_lists_finalized:
+                if "bastion-private-ingress-tcp-22" not in self.vcn._applied_ambient_rule_fingerprints:
+                    raise RuntimeError(
+                        "Bastion must be constructed before any spell that finalizes "
+                        "the VCN network (ComputeInstance, ScalableWorkload, OkeCluster). "
+                        "Bastion requires SSH from 0.0.0.0/0 on the private security list "
+                        "for OCI Bastion sessions, and that rule can only be registered "
+                        "before Vcn.finalize_network() is called."
+                    )
+                # Rule already applied by an earlier Bastion — no-op.
+            else:
+                self._add_bastion_security_rules()
+        self.vcn.finalize_network()
 
         assert self.vcn.private_subnet is not None, (
             "VCN private subnet must exist. Construct ComputeInstance or "
@@ -165,11 +179,17 @@ class Bastion(BaseResource, AbstractBastion):
         IPs, so the rule must allow `0.0.0.0/0` on port 22.  Client access
         is restricted at the Bastion level via `client_cidr_block_allow_list`.
 
+        Uses fingerprint `"bastion-private-ingress-tcp-22"` so that a second
+        `Bastion` constructed against the same VCN is deduplicated rather than
+        producing a duplicate rule.
+
         Must be called before `Vcn.finalize_network`.  Constructing `Bastion`
         before any spell that triggers finalisation (e.g. `ComputeInstance`)
         ensures the correct ordering.
         """
-        self.vcn.add_security_list_rules(
+        assert isinstance(self.vcn, Vcn)
+        self.vcn._add_unique_security_list_rules(
+            "bastion-private-ingress-tcp-22",
             private_ingress=[
                 oci.core.SecurityListIngressSecurityRuleArgs(
                     description="SSH access from OCI Bastion service to private subnet instances",
@@ -181,7 +201,7 @@ class Bastion(BaseResource, AbstractBastion):
                         max=22,
                     ),
                 ),
-            ]
+            ],
         )
 
     # ------------------------------------------------------------------

@@ -66,7 +66,25 @@ app_nsg: Nsg = Nsg(
     compartment_id=compartment_id,
 )
 
-# ── 3. Compute instance (private subnet inferred from APP_SERVER role) ────────
+# ── 3. Bastion (OCI managed service, attached to private subnet) ──────────────
+#
+# Constructed before ComputeInstance so its SSH rule (0.0.0.0/0 → port 22 on
+# the private security list) is registered before finalize_network() is called.
+# OCI Bastion sessions originate from randomly-assigned managed IPs, so the
+# rule must allow 0.0.0.0/0 — the public-subnet-CIDR rule that ComputeInstance
+# would add is not sufficient.
+
+bastion: Bastion = Bastion(
+    name="mgmt",
+    compartment_id=compartment_id,
+    vcn=vcn,
+    max_session_ttl_in_seconds=10800,
+    client_cidr_block_allow_list=["0.0.0.0/0"],
+)
+
+# ── 4. Compute instance (private subnet inferred from APP_SERVER role) ────────
+#
+# ComputeInstance triggers finalize_network(). Bastion must come first (above).
 
 instance: ComputeInstance = ComputeInstance(
     name="web-server",
@@ -79,22 +97,9 @@ instance: ComputeInstance = ComputeInstance(
     nsg=app_nsg,  # subnet=SUBNET_PRIVATE inferred from role
 )
 
-# ── 4. Bastion (OCI managed service, attached to private subnet) ──────────────
-#
-# Constructed after ComputeInstance so the VCN is already finalized and the
-# private subnet exists. Bastion reuses the SSH rule added by ComputeInstance.
-
-bastion: Bastion = Bastion(
-    name="mgmt",
-    compartment_id=compartment_id,
-    vcn=vcn,
-    max_session_ttl_in_seconds=10800,
-    client_cidr_block_allow_list=["0.0.0.0/0"],
-)
-
 vcn.export()
-instance.export()
 bastion.export()
+instance.export()
 
 # Sessions are ephemeral (max 3 h TTL) and created on demand via the OCI CLI:
 #
