@@ -987,8 +987,6 @@
       
         
       
-        
-      
     
     
       
@@ -1503,6 +1501,16 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
     
       
@@ -1520,7 +1528,7 @@
             
   
   <span class="md-ellipsis">
-    Spells
+    OCI Provider
   </span>
   
 
@@ -1529,179 +1537,6 @@
         
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7_3">
-            <span class="md-nav__icon md-icon"></span>
-            Spells
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../providers/network/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    OCI Network
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../providers/compute/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    OCI Compute
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../providers/kubernetes/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    OCI Kubernetes (OKE)
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../providers/bastion/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    OCI Bastion
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../providers/autoscale/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    OCI Autoscale
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    
-    
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-      
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_4" >
-        
-          
-          <label class="md-nav__link" for="__nav_7_4" id="__nav_7_4_label" tabindex="0">
-            
-  
-  <span class="md-ellipsis">
-    OCI Provider
-  </span>
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7_4">
             <span class="md-nav__icon md-icon"></span>
             OCI Provider
           </label>
@@ -2237,7 +2072,7 @@ be unique within the instance's disk list.</p>
 
 <details class="example" open>
   <summary>Example</summary>
-  <pre><code class="language-python">from core.abstractions.compute import DiskSpec
+  <pre><code class="language-python">from cloudspells.core.abstractions.compute import DiskSpec
 
 data_disk = DiskSpec(size_in_gbs=200, label=&quot;data&quot;,
                      performance_tier=&quot;high&quot;)
@@ -2318,7 +2153,7 @@ log_disk  = DiskSpec(size_in_gbs=50, label=&quot;logs&quot;)
 
 <span class="sd">    Example:</span>
 <span class="sd">        ```python</span>
-<span class="sd">        from core.abstractions.compute import DiskSpec</span>
+<span class="sd">        from cloudspells.core.abstractions.compute import DiskSpec</span>
 
 <span class="sd">        data_disk = DiskSpec(size_in_gbs=200, label=&quot;data&quot;,</span>
 <span class="sd">                             performance_tier=&quot;high&quot;)</span>

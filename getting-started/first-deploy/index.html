@@ -1118,8 +1118,6 @@
       
         
       
-        
-      
     
     
       
@@ -1496,6 +1494,16 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
     
       
@@ -1513,7 +1521,7 @@
             
   
   <span class="md-ellipsis">
-    Spells
+    OCI Provider
   </span>
   
 
@@ -1522,179 +1530,6 @@
         
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7_3">
-            <span class="md-nav__icon md-icon"></span>
-            Spells
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/providers/network/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    OCI Network
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/providers/compute/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    OCI Compute
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/providers/kubernetes/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    OCI Kubernetes (OKE)
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/providers/bastion/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    OCI Bastion
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/providers/autoscale/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    OCI Autoscale
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    
-    
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-      
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_4" >
-        
-          
-          <label class="md-nav__link" for="__nav_7_4" id="__nav_7_4_label" tabindex="0">
-            
-  
-  <span class="md-ellipsis">
-    OCI Provider
-  </span>
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7_4">
             <span class="md-nav__icon md-icon"></span>
             OCI Provider
           </label>
@@ -2062,12 +1897,12 @@
 <h1 id="first-deploy">First Deploy</h1>
 <p>This guide deploys a Virtual Cloud Network (VCN) — the foundation for every CloudSpells architecture. You will end up with a fully-wired 4-tier network in OCI: public, private, secure, and management subnets, all gateways, and correct routing — from a single Python call.</p>
 <h2 id="what-gets-created">What gets created</h2>
-<pre><code>VCN  10.0.0.0/16
+<pre><code>VCN  10.0.0.0/18
 │
-├── private     10.0.0.0/17    ← NAT GW + Service GW  (app servers, K8s nodes)
-├── secure      10.0.128.0/18  ← Service GW only       (databases, secrets)
-├── public      10.0.192.0/19  ← Internet GW           (load balancers)
-└── management  10.0.224.0/19  ← Service GW only       (monitoring, bastion)
+├── private     10.0.0.0/19    ← NAT GW + Service GW  (app servers, K8s nodes)
+├── secure      10.0.32.0/20   ← Service GW only       (databases, secrets)
+├── public      10.0.48.0/21   ← Internet GW           (load balancers)
+└── management  10.0.56.0/21   ← Service GW only       (monitoring, bastion)
 </code></pre>
 <p>Three gateways (Internet, NAT, Service), four route tables, four security lists, four subnets.</p>
 <h2 id="step-1-find-your-compartment-ocid">Step 1 — Find your compartment OCID</h2>
@@ -2081,7 +1916,7 @@ pulumi stack init dev
 <h2 id="step-3-set-required-configuration">Step 3 — Set required configuration</h2>
 <pre><code class="language-bash">pulumi config set compartment_ocid ocid1.compartment.oc1..aaaa...
 </code></pre>
-<p>That is the only required value. The VCN CIDR defaults to <code>10.0.0.0/16</code>. To use a different range:</p>
+<p>That is the only required value. The VCN CIDR defaults to <code>10.0.0.0/18</code>. To use a different range:</p>
 <pre><code class="language-bash">pulumi config set vcn_cidr_block 10.10.0.0/16
 </code></pre>
 <p>The CIDR must be an RFC 1918 range with a prefix length between <code>/16</code> and <code>/20</code>.</p>

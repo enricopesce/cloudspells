@@ -1151,8 +1151,6 @@
       
         
       
-        
-      
     
     
       
@@ -1529,6 +1527,16 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
     
       
@@ -1546,7 +1554,7 @@
             
   
   <span class="md-ellipsis">
-    Spells
+    OCI Provider
   </span>
   
 
@@ -1555,179 +1563,6 @@
         
         <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7_3">
-            <span class="md-nav__icon md-icon"></span>
-            Spells
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/providers/network/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    OCI Network
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/providers/compute/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    OCI Compute
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/providers/kubernetes/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    OCI Kubernetes (OKE)
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/providers/bastion/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    OCI Bastion
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/providers/autoscale/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    OCI Autoscale
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    
-    
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-      
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_4" >
-        
-          
-          <label class="md-nav__link" for="__nav_7_4" id="__nav_7_4_label" tabindex="0">
-            
-  
-  <span class="md-ellipsis">
-    OCI Provider
-  </span>
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7_4">
             <span class="md-nav__icon md-icon"></span>
             OCI Provider
           </label>
@@ -2378,7 +2213,7 @@ kubectl get nodes
 </table>
 <hr />
 <h2 id="cidr-sizing-note">CIDR sizing note</h2>
-<p>With VCN-native CNI, a 100-node cluster with 30 pods per node consumes ~3 000 IPs in the private subnet. The default <code>/16</code> VCN gives the private tier a <code>/17</code> (32 766 usable IPs), which is sufficient for very large clusters. For smaller deployments a <code>/18</code> or <code>/20</code> VCN is fine.</p>
+<p>With VCN-native CNI, a 100-node cluster with 30 pods per node consumes ~3 100 IPs in the private subnet. The default <code>/18</code> VCN gives the private tier a <code>/19</code> (8 190 usable IPs), which is sufficient for moderate clusters. For larger deployments use a <code>/16</code> or <code>/17</code> VCN.</p>
 <p>See <a href="../../reference/vcn-architecture/#cidr-sizing-guide">VCN Architecture → CIDR sizing guide</a> for a full sizing table.</p>
 <hr />
 <h2 id="teardown">Teardown</h2>
