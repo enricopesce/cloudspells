@@ -258,11 +258,6 @@ def udp_port_range(min_port: int, max_port: int) -> oci.core.NetworkSecurityGrou
     )
 
 
-# GAP BRIDGE: icmp_opts — convenience constructor for ICMP type/code options.
-# The Pulumi provider accepts icmp_options in add_rule but there was no helper
-# to build the args object, forcing callers to use raw oci.core.* constructors.
-
-
 def icmp_opts(
     icmp_type: int,
     code: int = -1,
@@ -280,8 +275,7 @@ def icmp_opts(
 
     Example:
         ```python
-        # Path-MTU discovery (Type 3, Code 4)
-        nsg.add_rule("pmtu-in", direction="INGRESS", protocol=ICMP,
+        nsg.add_rule("icmp-unreachable", direction="INGRESS", protocol=ICMP,
                      source="0.0.0.0/0", source_type="CIDR_BLOCK",
                      icmp_options=icmp_opts(3, 4))
         ```
@@ -326,39 +320,6 @@ def _sl_egress_tcp(
         destination_type="CIDR_BLOCK",
         tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(min=port, max=port),
         description=description or f"TCP {port} egress",
-    )
-
-
-# GAP BRIDGE: _sl_ingress_icmp_pmtu — security list counterpart to the NSG
-# ICMP path-MTU ambient rule.  The original code had no ICMP security list
-# helper, leaving cross-subnet PMTUD broken at the security list layer even
-# after NSG rules were added.
-
-
-def _sl_ingress_icmp_pmtu(
-    source: pulumi.Input[str],
-    description: str = "",
-) -> oci.core.SecurityListIngressSecurityRuleArgs:
-    """Build an ICMP Type 3 Code 4 ingress rule for path-MTU discovery.
-
-    Required on any subnet that receives traffic from a different MTU domain
-    (e.g. the public internet via Internet Gateway, or cross-subnet via NAT).
-    Without this rule TCP connections stall silently when the path MTU is
-    smaller than the local MTU.
-
-    Args:
-        source: Source CIDR for the rule (typically `"0.0.0.0/0"`).
-        description: Optional description override.
-
-    Returns:
-        `SecurityListIngressSecurityRuleArgs` for ICMP Type 3, Code 4.
-    """
-    return oci.core.SecurityListIngressSecurityRuleArgs(
-        protocol="1",  # ICMP
-        source=source,
-        source_type="CIDR_BLOCK",
-        icmp_options=oci.core.SecurityListIngressSecurityRuleIcmpOptionsArgs(type=3, code=4),
-        description=description or "ICMP path-MTU discovery (Type 3 Code 4)",
     )
 
 
@@ -591,11 +552,9 @@ class Nsg(BaseResource):
         NSG rules created per role:
 
         - **INTERNET_EDGE** (`subnet_tier == SUBNET_PUBLIC`): TCP ingress from
-          `0.0.0.0/0` on each declared port, plus ICMP Type 3 Code 4 ingress
-          from `0.0.0.0/0` for path-MTU discovery.
+          `0.0.0.0/0` on each declared port.
         - **APP_SERVER / CACHE** (`egress_internet=True`): all-protocol egress
-          to `0.0.0.0/0` and to Oracle Services, plus ICMP Type 3 Code 4
-          ingress from `0.0.0.0/0` for path-MTU discovery.
+          to `0.0.0.0/0` and to Oracle Services.
         - **DATABASE / MANAGEMENT** (`egress_services=True` only): all-protocol
           egress to Oracle Services only (no internet).
 
@@ -616,22 +575,11 @@ class Nsg(BaseResource):
         if is_internet_edge:
             for port in ports:
                 self.allow_from_cidr(f"internet-in-{port}", port, INTERNET)
-            # GAP BRIDGE: ICMP path-MTU discovery ingress for INTERNET_EDGE.
-            # Documented in the role's docstring but previously absent from the
-            # implementation.  TCP connections from the internet stall silently
-            # when the return path MTU is smaller than the instance MTU without
-            # this rule.
-            self.allow_icmp_from_cidr("pmtu-in", INTERNET, icmp_type=3, code=4)
 
         if role.egress_services:
             self.allow_to_services("svc-out")
         if role.egress_internet:
             self.allow_to_cidr("inet-out", INTERNET)
-            # GAP BRIDGE: ICMP path-MTU discovery ingress for NAT-egress roles.
-            # APP_SERVER and CACHE route outbound via NAT Gateway; the return
-            # path MTU may differ.  Documented in the APP_SERVER docstring as
-            # "ICMP path-MTU ingress from 0.0.0.0/0 on the NSG".
-            self.allow_icmp_from_cidr("pmtu-in", INTERNET, icmp_type=3, code=4)
 
         # -- Security list rules (only for live Vcn, not VcnRef) --------------
         if not isinstance(self._vcn, Vcn):
@@ -643,26 +591,11 @@ class Nsg(BaseResource):
                     f"public-ingress-tcp-{port}",
                     public_ingress=[_sl_ingress_tcp(port, "0.0.0.0/0", f"TCP {port} from internet")],
                 )
-            # GAP BRIDGE: ICMP path-MTU security list rule for the public subnet.
-            # Mirrors the NSG rule registered above so that the public security
-            # list also permits ICMP Type 3 Code 4 from the internet.
-            self._sl_for_tier(
-                "public-ingress-icmp-pmtu",
-                SUBNET_PUBLIC,
-                ingress=[_sl_ingress_icmp_pmtu("0.0.0.0/0", "ICMP path-MTU discovery from internet")],
-            )
 
         if role.egress_services:
             self._sl_for_tier(f"{tier}-egress-all-services", tier, egress=[_sl_egress_all_services()])
         if role.egress_internet:
             self._sl_for_tier(f"{tier}-egress-all-internet", tier, egress=[_sl_egress_all_internet()])
-            # GAP BRIDGE: ICMP path-MTU security list rule for NAT-egress tiers.
-            # Mirrors the NSG rule registered above at the security list layer.
-            self._sl_for_tier(
-                f"{tier}-ingress-icmp-pmtu",
-                tier,
-                ingress=[_sl_ingress_icmp_pmtu("0.0.0.0/0", "ICMP path-MTU discovery via NAT")],
-            )
 
     def serves(
         self,
@@ -1032,12 +965,6 @@ class Nsg(BaseResource):
             description=description or f"All traffic to {cidr}",
         )
 
-    # GAP BRIDGE: allow_icmp_from_cidr — convenience method for ICMP ingress.
-    # Previously there was no helper for ICMP rules; callers had to use the
-    # verbose add_rule() with a manually constructed icmp_options argument.
-    # This method is used internally by _apply_role_ambient_rules for PMTUD
-    # and is also available to callers who need custom ICMP ingress rules.
-
     def allow_icmp_from_cidr(
         self,
         label: str,
@@ -1047,9 +974,6 @@ class Nsg(BaseResource):
         description: str = "",
     ) -> oci.core.NetworkSecurityGroupSecurityRule:
         """Add an INGRESS ICMP rule allowing a specific type (and optional code) from a CIDR.
-
-        The most common use is ICMP Type 3 Code 4 (path-MTU discovery), which
-        is required for TCP connections traversing gateways with differing MTUs.
 
         Args:
             label: Unique label for this rule within the NSG.
@@ -1063,8 +987,7 @@ class Nsg(BaseResource):
 
         Example:
             ```python
-            # Path-MTU discovery from the internet
-            lb_nsg.allow_icmp_from_cidr("pmtu-in", INTERNET, icmp_type=3, code=4)
+            nsg.allow_icmp_from_cidr("icmp-unreachable", INTERNET, icmp_type=3, code=4)
             ```
         """
         return self.add_rule(
