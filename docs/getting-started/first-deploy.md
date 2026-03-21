@@ -1,6 +1,6 @@
 # First Deploy
 
-This guide deploys a Virtual Cloud Network (VCN) — the foundation for every CloudSpells architecture. You will end up with a fully-wired 4-tier network in OCI: public, private, secure, and management subnets, all gateways, and correct routing — from a single Python call.
+This guide creates a new CloudSpells project from scratch and deploys a Virtual Cloud Network (VCN) — the foundation for every CloudSpells architecture. You will end up with a fully-wired 4-tier network in OCI: public, private, secure, and management subnets, all gateways, and correct routing — from a single Python call.
 
 ## What gets created
 
@@ -15,21 +15,83 @@ VCN  10.0.0.0/18
 
 Three gateways (Internet, NAT, Service), four route tables, four security lists, four subnets.
 
+---
+
 ## Step 1 — Find your compartment OCID
 
 In the OCI Console, navigate to **Identity & Security → Compartments** and copy the OCID of the compartment where you want to deploy.
 
 It looks like: `ocid1.compartment.oc1..aaaa...`
 
-## Step 2 — Initialise a Pulumi stack
+---
+
+## Step 2 — Create a new project directory
 
 ```bash
-cd examples/vcn
+mkdir my-vcn
+cd my-vcn
+```
 
+---
+
+## Step 3 — Create the project files
+
+**`Pulumi.yaml`** — the Pulumi project descriptor:
+
+```yaml
+name: my-vcn
+runtime:
+  name: python
+  options:
+    virtualenv: .venv
+description: My first CloudSpells VCN
+```
+
+**`requirements.txt`** — Python dependencies:
+
+```
+cloudspells-oci
+```
+
+**`__main__.py`** — the infrastructure program:
+
+```python
+from cloudspells.core import Config
+from cloudspells.providers.oci.network import Vcn
+
+config = Config()
+compartment_id = config.require("compartment_ocid")
+
+vcn = Vcn(
+    name="lab",
+    compartment_id=compartment_id,
+)
+
+vcn.export()
+```
+
+Three lines of infrastructure code create a production-grade, fully-routed network. There are no subnet CIDRs to calculate, no route tables to attach, no gateways to wire — CloudSpells handles all of it.
+
+---
+
+## Step 4 — Initialise a Pulumi stack
+
+```bash
 pulumi stack init dev
 ```
 
-## Step 3 — Set required configuration
+Pulumi will create a `.venv` and install `requirements.txt` automatically on the first `pulumi up`. To install dependencies now:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate   # Linux / macOS
+# .venv\Scripts\activate    # Windows
+pip install -r requirements.txt
+```
+
+---
+
+## Step 5 — Set required configuration
 
 ```bash
 pulumi config set compartment_ocid ocid1.compartment.oc1..aaaa...
@@ -43,7 +105,9 @@ pulumi config set vcn_cidr_block 10.10.0.0/16
 
 The CIDR must be an RFC 1918 range with a prefix length between `/16` and `/20`.
 
-## Step 4 — Preview the changes
+---
+
+## Step 6 — Preview the changes
 
 ```bash
 pulumi preview
@@ -51,7 +115,9 @@ pulumi preview
 
 You should see roughly 14 resources planned: 1 VCN, 3 gateways, 4 route tables, 4 security lists, and 4 subnets.
 
-## Step 5 — Deploy
+---
+
+## Step 7 — Deploy
 
 ```bash
 pulumi up
@@ -59,7 +125,9 @@ pulumi up
 
 Confirm when prompted. Deployment typically takes 2–4 minutes.
 
-## Step 6 — Inspect the outputs
+---
+
+## Step 8 — Inspect the outputs
 
 ```bash
 pulumi stack output
@@ -78,26 +146,7 @@ management_subnet_id       ocid1.subnet.oc1...
 
 These outputs are consumed automatically when another stack references this VCN via `VcnRef.from_stack_reference()`.
 
-## The code behind it
-
-The entire `examples/vcn/__main__.py` is:
-
-```python
-from cloudspells.core import Config
-from cloudspells.providers.oci.network import Vcn
-
-config = Config()
-compartment_id = config.require("compartment_ocid")
-
-vcn = Vcn(
-    name="lab",
-    compartment_id=compartment_id,
-)
-
-vcn.export()
-```
-
-Three lines of infrastructure code create a production-grade, fully-routed network. There are no subnet CIDRs to calculate, no route tables to attach, no gateways to wire — CloudSpells handles all of it.
+---
 
 ## Teardown
 
