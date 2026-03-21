@@ -6,15 +6,26 @@ Import them here rather than from a provider-specific module so that
 code in `core.abstractions` and provider-agnostic spell logic remains
 free of provider dependencies.
 
-Exports:
-    HTTP, HTTPS, HTTP_ALT, HTTPS_ALT: Web ports.
-    SSH, RDP: Remote access ports.
-    MYSQL, POSTGRES, ORACLE_DB, MSSQL, CASSANDRA, MONGODB: Database ports.
-    REDIS, MEMCACHED, RABBITMQ, KAFKA: Caching and messaging ports.
-    NFS, SMB, LDAP, LDAPS: File and directory service ports.
-    ELASTICSEARCH: Search port.
-    SMTP, SMTPS: Mail ports.
-    DNS: DNS query port.
+Available constants, grouped by category:
+
+- **Web / access**: `HTTP` (80), `HTTPS` (443), `HTTP_ALT` (8080),
+  `HTTPS_ALT` (8443), `SSH` (22), `RDP` (3389)
+- **Databases**: `MYSQL` (3306), `POSTGRES` (5432), `ORACLE_DB` (1521),
+  `MSSQL` (1433), `CASSANDRA` (9042), `MONGODB` (27017)
+- **Caching / messaging**: `REDIS` (6379), `MEMCACHED` (11211),
+  `RABBITMQ` (5672), `KAFKA` (9092)
+- **File / directory**: `NFS` (2049), `SMB` (445), `LDAP` (389),
+  `LDAPS` (636)
+- **Search**: `ELASTICSEARCH` (9200)
+- **Mail**: `SMTP` (25), `SMTPS` (587)
+- **DNS**: `DNS` (53)
+
+Example:
+    ```python
+    from cloudspells.core import ports
+
+    allowed_ports = [ports.HTTPS, ports.SSH]
+    ```
 """
 
 # ── Web / access ──────────────────────────────────────────────────────────────

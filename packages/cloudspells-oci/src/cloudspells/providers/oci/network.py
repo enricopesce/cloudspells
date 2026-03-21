@@ -346,6 +346,12 @@ class Vcn(BaseResource, AbstractNetwork):
                 tracking, policy enforcement, and governance.  When `None`
                 (the default) no defined tags are applied.  Example:
                 `{"Operations": {"CostCenter": "42"}, "Project": {"Env": "prod"}}`.
+
+        Raises:
+            ValueError: If `cidr_block` has host bits set (e.g.
+                `"10.0.1.0/16"` instead of `"10.0.0.0/16"`).  OCI CIDR
+                strings must be in canonical form — the address must be the
+                network address for the given prefix length.
         """
         super().__init__("custom:network:Vcn", name, compartment_id, stack_name, opts)
         self.cidr_block = cidr_block or "10.0.0.0/18"
@@ -392,15 +398,39 @@ class Vcn(BaseResource, AbstractNetwork):
         cidr_str: str = str(self.cidr_block) if not isinstance(self.cidr_block, str) else self.cidr_block
         self._subnet_cidrs: _SubnetCidrs = self._split_tiers(cidr_str)
 
+        # Seed the standard OCI path-MTU and destination-unreachable ICMP rules
+        # that the OCI VCN wizard adds to the public security list by default.
+        self._public_ingress_rules.extend([
+            oci.core.SecurityListIngressSecurityRuleArgs(
+                protocol="1",
+                source="0.0.0.0/0",
+                source_type="CIDR_BLOCK",
+                description="ICMP 3,4: Destination Unreachable / Fragmentation Needed",
+                icmp_options=oci.core.SecurityListIngressSecurityRuleIcmpOptionsArgs(
+                    type=3,
+                    code=4,
+                ),
+            ),
+            oci.core.SecurityListIngressSecurityRuleArgs(
+                protocol="1",
+                source=cidr_str,
+                source_type="CIDR_BLOCK",
+                description="ICMP traffic for: 3 Destination Unreachable",
+                icmp_options=oci.core.SecurityListIngressSecurityRuleIcmpOptionsArgs(
+                    type=3,
+                ),
+            ),
+        ])
+
         # Resolve the OCI "All Services" bundle lazily via get_services_output()
         # so no blocking API call is made during __init__.  Both values are
         # pulumi.Output[str] and are accepted wherever pulumi.Input[str] is
         # expected (ServiceGateway, route rules, security-rule translation).
-        _all_services = oci.core.get_services_output()
-        self._svc_service_id: pulumi.Output[str] = _all_services.services.apply(
+        all_services = oci.core.get_services_output()
+        self._svc_service_id: pulumi.Output[str] = all_services.services.apply(
             lambda svcs: next(s.id for s in svcs if s.cidr_block.startswith("all-"))
         )
-        self._svc_cidr_block: pulumi.Output[str] = _all_services.services.apply(
+        self._svc_cidr_block: pulumi.Output[str] = all_services.services.apply(
             lambda svcs: next(s.cidr_block for s in svcs if s.cidr_block.startswith("all-"))
         )
 
@@ -1069,6 +1099,20 @@ class Vcn(BaseResource, AbstractNetwork):
         Raises:
             RuntimeError: If called after `finalize_network` has
                 already been called.
+
+        Example:
+            ```python
+            from cloudspells.core.abstractions.network import (
+                SecurityRules, IngressRule, EgressRule,
+            )
+
+            rules = SecurityRules(
+                public_ingress=[IngressRule(protocol="tcp", source="internet", port_min=443, port_max=443)],
+                private_egress=[EgressRule(protocol="tcp", destination="cloud-services", port_min=443, port_max=443)],
+            )
+            vcn.add_security_rules(rules)
+            vcn.finalize_network()
+            ```
         """
 
         def _translate_ingress(
@@ -1225,15 +1269,13 @@ class Vcn(BaseResource, AbstractNetwork):
                 stack_name=self.stack_name,
             )
 
-        self.register_outputs(
-            {
-                "public_subnet": self.public_subnet,
-                "private_subnet": self.private_subnet,
-                "secure_subnet": self.secure_subnet,
-                "management_subnet": self.management_subnet,
-                "cidr_block": self.cidr_block,
-            }
-        )
+        self.register_outputs({
+            "public_subnet": self.public_subnet,
+            "private_subnet": self.private_subnet,
+            "secure_subnet": self.secure_subnet,
+            "management_subnet": self.management_subnet,
+            "cidr_block": self.cidr_block,
+        })
 
 
 class VcnRef(AbstractNetworkRef):
@@ -1281,6 +1323,8 @@ class VcnRef(AbstractNetworkRef):
             or `None` if not exported by the source stack.
         management_security_list: Stub whose `.id` is the management
             security list OCID, or `None` if not exported by the source stack.
+        drg_id: `pulumi.Output[str]` OCID of the Dynamic Routing Gateway
+            attached to the referenced VCN, or `None` if not exported.
 
     Example:
         ```python

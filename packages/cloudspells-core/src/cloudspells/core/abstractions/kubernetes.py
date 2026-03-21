@@ -1,7 +1,8 @@
 """Cloud-neutral Kubernetes abstractions for CloudSpells multi-cloud support.
 
-Exports:
-    AbstractKubernetes: Interface for a managed Kubernetes cluster.
+Defines the interface for managed Kubernetes cluster spells (OCI OKE,
+AWS EKS, GCP GKE).  The abstraction covers cluster creation and kubeconfig
+generation; node pool management is handled by provider-specific classes.
 """
 
 from __future__ import annotations
@@ -37,11 +38,20 @@ class AbstractKubernetes(ABC):
 
     @abstractmethod
     def create_kubeconfig(self, filename: str) -> None:
-        """Write a kubeconfig file for this cluster.
+        """Write a kubectl-compatible kubeconfig YAML file for this cluster.
+
+        The file is written in the standard kubeconfig format recognised by
+        `kubectl`, `helm`, and other Kubernetes tooling.  The cluster endpoint,
+        CA certificate, and authentication token or exec plugin are populated
+        from the provider's cluster resource.
 
         Args:
             filename: Absolute or relative path where the kubeconfig file
                 should be written (e.g. `"/tmp/kubeconfig"`).
+
+        Raises:
+            OSError: If the parent directory does not exist or the process
+                lacks write permission for `filename`.
         """
 
 

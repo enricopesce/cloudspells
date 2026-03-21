@@ -59,9 +59,7 @@ class Bastion(BaseResource, AbstractBastion):
     Attributes:
         vcn: The `Vcn` this Bastion is attached to.
         bastion: The underlying `oci.bastion.Bastion` resource.
-        bastion_id: `pulumi.Output[str]` of the Bastion OCID.
-        bastion_endpoint: `pulumi.Output[str]` of the Bastion's private
-            endpoint IP address (used as a ProxyJump target in SSH config).
+        bastion_id: `pulumi.Output[str]` OCID of the Bastion resource.
 
     Example:
         ```python
@@ -115,6 +113,13 @@ class Bastion(BaseResource, AbstractBastion):
                 Bastion session creation is permitted.  Defaults to
                 `["0.0.0.0/0"]` (unrestricted — restrict in production).
             opts: Pulumi resource options forwarded to the component.
+
+        Raises:
+            RuntimeError: If the VCN network has already been finalised by
+                another spell (e.g. `ComputeInstance`, `ScalableWorkload`,
+                `OkeCluster`) and the Bastion SSH ingress rule was not
+                registered before that finalisation. Construct `Bastion`
+                before any spell that triggers `finalize_network()`.
         """
         super().__init__("custom:compute:Bastion", name, compartment_id, stack_name, opts)
 
@@ -165,12 +170,10 @@ class Bastion(BaseResource, AbstractBastion):
 
         self.bastion_id = self.bastion.id
 
-        self.register_outputs(
-            {
-                "bastion_id": self.bastion.id,
-                "bastion_endpoint": self.bastion.private_endpoint_ip_address,
-            }
-        )
+        self.register_outputs({
+            "bastion_id": self.bastion.id,
+            "bastion_endpoint": self.bastion.private_endpoint_ip_address,
+        })
 
     def _add_bastion_security_rules(self) -> None:
         """Add SSH ingress rule to the VCN private security list.

@@ -55,8 +55,8 @@ class VcnFlowLogs(BaseResource):
     - Two to four `oci.logging.Log` resources (one per existing subnet tier)
       configured as SERVICE logs against the OCI `flowlogs` service.
 
-    The Log Group OCID is exported as a Pulumi stack output so it can be used
-    as an audit-trail reference by other stacks or compliance tooling.
+    To expose the Log Group OCID as a Pulumi stack output for cross-stack
+    references or compliance tooling, call `export()` after construction.
 
     Attributes:
         log_group: The `oci.logging.LogGroup` resource.
@@ -74,7 +74,9 @@ class VcnFlowLogs(BaseResource):
         flow_logs = VcnFlowLogs(
             name="lab", compartment_id=compartment_id, vcn=vcn
         )  # finalize_network() called automatically
-        pulumi.export("log_group_id", flow_logs.log_group_id)
+
+        # Optionally publish the log group OCID as a stack output
+        flow_logs.export()
         ```
     """
 

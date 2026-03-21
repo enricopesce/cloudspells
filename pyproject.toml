@@ -1,6 +1,7 @@
 [tool.ruff]
 line-length = 120
 target-version = "py38"
+preview = true
 
 [tool.ruff.lint]
 select = [
@@ -8,23 +9,29 @@ select = [
     "F",        # pyflakes
     "I",        # isort
     "D",        # pydocstyle (Google-style docstrings)
+    "DOC",      # pydoclint — missing Returns/Yields/Raises sections
     "B",        # flake8-bugbear
     "UP",       # pyupgrade
     "SIM",      # flake8-simplify
     "RUF",      # ruff-specific rules
+    "C901",     # McCabe complexity
 ]
 ignore = [
     "D105",    # missing docstring in magic method
     "D107",    # missing docstring in __init__ (covered by class docstring)
     "RUF002",  # EN dash in docstrings — intentional typographic style
     "RUF003",  # EN dash in comments — intentional typographic style
+    "DOC502",  # raised exception not explicitly raised — fires on delegated raises (e.g. pulumi internals)
 ]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["D", "E402"]  # no docstring enforcement; E402 because set_mocks() must precede imports
+"tests/*" = ["D", "DOC", "E402"]  # no docstring enforcement; E402 because set_mocks() must precede imports
 # __all__ lists below use deliberate semantic groupings with comments — alphabetical sort would destroy the grouping
 "packages/cloudspells-core/src/cloudspells/core/abstractions/__init__.py" = ["RUF022"]
 "packages/cloudspells-core/src/cloudspells/core/ports.py" = ["RUF022"]
@@ -32,7 +39,7 @@ convention = "google"
 "packages/cloudspells-oci/src/cloudspells/providers/oci/nsg.py" = ["RUF022"]
 
 [tool.pytest.ini_options]
-addopts = "--cov=packages --cov-report=term-missing"
+addopts = "--cov=packages --cov-report=term-missing --cov-fail-under=85"
 testpaths = ["tests"]
 pythonpath = [
     "packages/cloudspells-core/src",

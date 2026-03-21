@@ -45,7 +45,7 @@ Internet
 cd examples/web-db
 
 pulumi stack init dev
-pulumi config set compartment_ocid ocid1.compartment.oc1..aaaa...
+pulumi config set compartment_ocid ocid1.compartment.oc1..example
 ```
 
 Optionally override defaults:

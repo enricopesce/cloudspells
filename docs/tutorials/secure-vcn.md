@@ -46,7 +46,7 @@ This tutorial deploys a production-ready OCI network with all four security tier
 cd examples/secure-vcn
 
 pulumi stack init dev
-pulumi config set compartment_ocid ocid1.compartment.oc1..aaaa...
+pulumi config set compartment_ocid ocid1.compartment.oc1..example
 ```
 
 Optionally override defaults:

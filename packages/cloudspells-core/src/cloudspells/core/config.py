@@ -3,9 +3,6 @@
 Provides `Config`, a thin composition wrapper around `pulumi.Config` that
 exposes the methods needed by CloudSpells stacks without requiring user code
 to import Pulumi directly.
-
-Exports:
-    Config
 """
 
 from __future__ import annotations
@@ -19,12 +16,9 @@ class Config:
     Composes (not inherits) `pulumi.Config` so that user-facing stacks have
     zero direct Pulumi dependency while retaining full type safety.
 
-    Attributes:
-        _config: The underlying `pulumi.Config` instance.
-
     Example:
         ```python
-        from cloudspells.providers.oci import Config
+        from cloudspells.core import Config
 
         config = Config()
         compartment_id = config.require("compartment_ocid")

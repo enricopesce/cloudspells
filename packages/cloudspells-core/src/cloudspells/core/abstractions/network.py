@@ -37,17 +37,18 @@ vcn.add_security_rules(SecurityRules(
 ))
 ```
 
-Exports:
-    INTERNET: Symbolic source/destination meaning `0.0.0.0/0`.
-    CLOUD_SERVICES: Symbolic destination meaning cloud-managed service endpoints.
-    IngressRule: Cloud-neutral inbound security rule descriptor.
-    EgressRule: Cloud-neutral outbound security rule descriptor.
-    SecurityRules: Accumulated rules for all four subnet tiers.
-    AbstractNetwork: Builder interface for cloud networks.
-    AbstractNetworkRef: Read-only reference to a network in another stack.
-    tcp_ingress: Build a TCP ingress rule from any source (CIDR, subnet ref, or INTERNET).
-    tcp_egress: Build a TCP egress rule to any destination.
-    all_egress: Build an all-protocol egress rule to any destination.
+Symbols defined here:
+
+- `INTERNET` — symbolic source/destination meaning `0.0.0.0/0`.
+- `CLOUD_SERVICES` — symbolic destination meaning cloud-managed service endpoints.
+- `IngressRule` — cloud-neutral inbound security rule descriptor.
+- `EgressRule` — cloud-neutral outbound security rule descriptor.
+- `SecurityRules` — accumulated rules for all four subnet tiers.
+- `AbstractNetwork` — builder interface for cloud networks.
+- `AbstractNetworkRef` — read-only reference to a network in another stack.
+- `tcp_ingress` — build a TCP ingress rule from any source (CIDR, subnet ref, or `INTERNET`).
+- `tcp_egress` — build a TCP egress rule to any destination.
+- `all_egress` — build an all-protocol egress rule to any destination.
 """
 
 from __future__ import annotations
@@ -208,12 +209,14 @@ def tcp_ingress(
     """Build a TCP ingress rule from any source.
 
     source can be a literal CIDR string, a `pulumi.Input[str]` subnet
-    reference (e.g. `vcn.get_public_subnet_cidr()`), or the
-    `INTERNET` constant for unrestricted internet access.
+    reference (e.g. `vcn.get_public_subnet_cidr()`), the `INTERNET`
+    constant (`"0.0.0.0/0"`), or the `CLOUD_SERVICES` constant for
+    cloud-managed service endpoints.
 
     Args:
         port: Destination TCP port number.
-        source: Source CIDR, subnet reference, or `INTERNET`.
+        source: Source CIDR, subnet reference, `INTERNET`, or
+            `CLOUD_SERVICES`.
         description: Human-readable description.  Defaults to
             `"TCP {port} ingress"`.
 
@@ -289,8 +292,8 @@ def all_egress(
 
     Example:
         ```python
-        all_egress(INTERNET)        # outbound via NAT GW
-        all_egress(CLOUD_SERVICES)  # Oracle Services via Service GW
+        all_egress(INTERNET)        # outbound via NAT gateway
+        all_egress(CLOUD_SERVICES)  # cloud-managed services (no internet path)
         ```
     """
     return EgressRule(
@@ -330,9 +333,12 @@ class AbstractNetwork(ABC):
         id: Provider resource ID of the network (VCN OCID, VPC ID, etc.).
         public_subnet: Provider subnet object for the public tier, or
             `None` before `finalize_network` is called.
-        private_subnet: Provider subnet object for the private tier.
-        secure_subnet: Provider subnet object for the secure tier.
-        management_subnet: Provider subnet object for the management tier.
+        private_subnet: Provider subnet object for the private tier, or
+            `None` before `finalize_network` is called.
+        secure_subnet: Provider subnet object for the secure tier, or
+            `None` before `finalize_network` is called.
+        management_subnet: Provider subnet object for the management tier, or
+            `None` before `finalize_network` is called.
     """
 
     id: pulumi.Output[str]
@@ -435,11 +441,16 @@ class AbstractNetworkRef(ABC):
         """Construct a read-only network reference from a stack name.
 
         Args:
-            stack_name: Fully qualified Pulumi stack name
-                (e.g. `"org/project/stack"`).
+            stack_name: Fully qualified Pulumi stack name in
+                `"org/project/stack"` format (e.g. `"acme/platform/prod"`).
 
         Returns:
-            A populated read-only network reference.
+            A populated read-only network reference whose CIDR accessors
+            resolve via Pulumi stack outputs from the referenced stack.
+
+        Raises:
+            pulumi.RunError: If the referenced stack has never been deployed
+                or does not export the expected network output keys.
         """
 
 

@@ -1,11 +1,17 @@
-"""OCI-specific utility helpers for the OCI provider.
+"""OCI-specific utility helpers used internally by the OCI provider spells.
 
-Separates the OCI-API-dependent helpers from the cloud-neutral `Helper`
-class, keeping `core/` free of `pulumi_oci` imports.
+Keeps `pulumi_oci` imports confined to this package so that
+`cloudspells.core` remains provider-agnostic.
 
 Exports:
-    OciHelper: OCI-specific stateless utilities (image resolution,
-        availability-domain mapping).
+    `OciHelper`: Stateless helper with two methods:
+
+    - `resolve_image_id` — return an explicit OCID as-is, or look up the
+      most recent platform image matching a friendly OS name and compute
+      shape.
+    - `get_ads` — convert the raw availability-domain list from
+      `oci.identity.get_availability_domains()` into the
+      `placement_configs` format expected by OKE node pools.
 """
 
 from __future__ import annotations
@@ -14,10 +20,30 @@ from typing import Any, ClassVar
 
 
 class OciHelper:
-    """OCI-specific utility methods used by the OCI provider blocks.
+    """Stateless OCI utility methods used internally by provider spells.
 
-    All methods are stateless and safe to call multiple times.
-    Instantiate with `OciHelper()` wherever needed.
+    All methods are side-effect-free with respect to Pulumi state — they
+    either return a value derived from their arguments or query the OCI
+    read-only data API. Safe to call multiple times.
+
+    Example:
+        ```python
+        helper = OciHelper()
+
+        # Resolve an image OCID for a given shape
+        image_id = helper.resolve_image_id(
+            compartment_id="ocid1.compartment.oc1..xxx",
+            shape="VM.Standard.E4.Flex",
+        )
+
+        # Build OKE placement configs from raw AD data
+        import pulumi_oci as oci
+        ad_result = oci.identity.get_availability_domains(compartment_id="ocid1.compartment.oc1..xxx")
+        placements = helper.get_ads(
+            [{"name": ad.name} for ad in ad_result.availability_domains],
+            subnet_id="ocid1.subnet.oc1..yyy",
+        )
+        ```
     """
 
     # Maps friendly OS names to (operating_system, operating_system_version)

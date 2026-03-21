@@ -51,9 +51,25 @@ combo = ComputeInstance("app", ..., nsg_ids=[web_nsg.id, db_nsg.id])
 ```
 
 Exports:
-    `Nsg`, `TCP`, `UDP`, `ALL`, `SVC_CIDR`,
-    `HTTP`, `HTTPS`, `SSH`, `MYSQL`, `POSTGRES`, `ORACLE_DB`, `REDIS`,
+
+Protocol and CIDR constants:
+    `TCP`, `UDP`, `ICMP`, `ALL`, `SVC_CIDR`, `INTERNET`
+
+Rule-option builders:
     `tcp_port`, `tcp_port_range`, `udp_port`, `udp_port_range`, `icmp_opts`
+
+Well-known port integers (plain `int`, re-exported from `cloudspells.core.ports`):
+    Web: `HTTP`, `HTTPS`, `HTTP_ALT`, `HTTPS_ALT`
+    Access: `SSH`, `RDP`
+    Databases: `MYSQL`, `POSTGRES`, `ORACLE_DB`, `MSSQL`, `CASSANDRA`, `MONGODB`
+    Caching/messaging: `REDIS`, `MEMCACHED`, `RABBITMQ`, `KAFKA`
+    File/directory: `NFS`, `SMB`, `LDAP`, `LDAPS`
+    Search/observability: `ELASTICSEARCH`
+    Mail: `SMTP`, `SMTPS`
+    DNS: `DNS`
+
+NSG class and role system:
+    `Nsg`, `Role`
 """
 
 from __future__ import annotations
@@ -298,7 +314,11 @@ def _sl_ingress_tcp(
     source: pulumi.Input[str],
     description: str = "",
 ) -> oci.core.SecurityListIngressSecurityRuleArgs:
-    """Build a TCP ingress `SecurityListIngressSecurityRuleArgs` for `port` from `source`."""
+    """Build a TCP ingress `SecurityListIngressSecurityRuleArgs` for `port` from `source`.
+
+    Returns:
+        A `SecurityListIngressSecurityRuleArgs` configured for TCP ingress on `port`.
+    """
     return oci.core.SecurityListIngressSecurityRuleArgs(
         protocol="6",
         source=source,
@@ -313,7 +333,11 @@ def _sl_egress_tcp(
     destination: pulumi.Input[str],
     description: str = "",
 ) -> oci.core.SecurityListEgressSecurityRuleArgs:
-    """Build a TCP egress `SecurityListEgressSecurityRuleArgs` for `port` to `destination`."""
+    """Build a TCP egress `SecurityListEgressSecurityRuleArgs` for `port` to `destination`.
+
+    Returns:
+        A `SecurityListEgressSecurityRuleArgs` configured for TCP egress on `port`.
+    """
     return oci.core.SecurityListEgressSecurityRuleArgs(
         protocol="6",
         destination=destination,
@@ -324,7 +348,11 @@ def _sl_egress_tcp(
 
 
 def _sl_egress_all_services() -> oci.core.SecurityListEgressSecurityRuleArgs:
-    """Build an all-protocol egress rule to the OCI Service Gateway CIDR."""
+    """Build an all-protocol egress rule to the OCI Service Gateway CIDR.
+
+    Returns:
+        A `SecurityListEgressSecurityRuleArgs` allowing all traffic to `SERVICE_CIDR_BLOCK`.
+    """
     return oci.core.SecurityListEgressSecurityRuleArgs(
         protocol="all",
         destination=SVC_CIDR,
@@ -334,7 +362,11 @@ def _sl_egress_all_services() -> oci.core.SecurityListEgressSecurityRuleArgs:
 
 
 def _sl_egress_all_internet() -> oci.core.SecurityListEgressSecurityRuleArgs:
-    """Build an all-protocol egress rule to the internet (0.0.0.0/0)."""
+    """Build an all-protocol egress rule to the internet (0.0.0.0/0).
+
+    Returns:
+        A `SecurityListEgressSecurityRuleArgs` allowing all outbound traffic via NAT Gateway.
+    """
     return oci.core.SecurityListEgressSecurityRuleArgs(
         protocol="all",
         destination="0.0.0.0/0",

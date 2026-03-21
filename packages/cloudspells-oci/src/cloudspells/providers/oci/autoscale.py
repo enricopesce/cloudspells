@@ -76,7 +76,7 @@ class OciLoadBalancerConfig(_BaseLoadBalancerConfig):
 
     Example:
         ```python
-        from cloudspells.providers.oci.autoscale import OciLoadBalancerConfig
+        from cloudspells.providers.oci import OciLoadBalancerConfig
 
         lb_cfg = OciLoadBalancerConfig(
             backend_port=8080,
@@ -131,6 +131,9 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         initial_instances: Instance count when the pool is first created.
         load_balancer_config: `LoadBalancerConfig` in use.
         scaling_policy: `MetricScalingPolicy`, `ScheduleScalingPolicy`, or `None`.
+        boot_volume_size_in_gbs: Boot volume size in GiB for pool instances.
+        availability_domains: List of OCI availability domain objects for the
+            region, used to spread pool instances across all ADs.
         auto_generated_keys: `True` when SSH keys were auto-generated.
         load_balancer: The `oci.loadbalancer.LoadBalancer` resource.
         backend_set: The `oci.loadbalancer.BackendSet` resource.
@@ -267,6 +270,11 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 resources, in `{"namespace": {"key": "value"}}` format.
                 When `None` no defined tags are applied.
             opts: Pulumi resource options forwarded to the component.
+
+        Raises:
+            ValueError: If `os_name` is not one of `"oracle"`, `"ubuntu"`,
+                or `"windows"` and `image_id` is `None`. Raised by
+                `OciHelper.resolve_image_id` during image resolution.
         """
         super().__init__("custom:compute:ScalableWorkload", name, compartment_id, stack_name, opts)
 

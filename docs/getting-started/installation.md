@@ -59,14 +59,7 @@ oci iam region list
 
 ## Install CloudSpells
 
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/enricopesce/cloudspells.git
-cd cloudspells
-```
-
-### 2. Create and activate a virtual environment
+### 1. Create and activate a virtual environment
 
 ```bash
 python -m venv .venv
@@ -74,13 +67,24 @@ source .venv/bin/activate        # Linux / macOS
 # .venv\Scripts\activate         # Windows
 ```
 
-### 3. Install dependencies
+### 2. Install from PyPI
+
+Install the OCI provider package. `cloudspells-core` is pulled in automatically as a dependency:
 
 ```bash
-pip install -r requirements.txt
+pip install cloudspells-oci
 ```
 
-### 4. Configure a Pulumi state backend
+!!! note "Installing from source"
+    If you need unreleased changes or want to contribute, clone the repository and install in editable mode instead:
+
+    ```bash
+    git clone https://github.com/enricopesce/cloudspells.git
+    cd cloudspells
+    pip install -e packages/cloudspells-core -e packages/cloudspells-oci
+    ```
+
+### 3. Configure a Pulumi state backend
 
 Pulumi needs somewhere to store state. The simplest option for getting started is the local filesystem:
 
@@ -104,14 +108,19 @@ pulumi login
 
 ## Verify the installation
 
-Run the test suite to confirm everything is wired correctly:
+Confirm the package is importable:
 
 ```bash
-source .venv/bin/activate
-pytest tests/ -q
+python -c "import cloudspells.providers.oci; print('cloudspells-oci OK')"
 ```
 
-All tests should pass. If any fail, check that your virtual environment is active and dependencies are installed.
+And that the Pulumi CLI can see it:
+
+```bash
+pulumi version
+```
+
+If the import fails, check that your virtual environment is active and that `pip install cloudspells-oci` completed without errors.
 
 ---
 

@@ -70,6 +70,11 @@ class ComputeInstance(BaseResource, AbstractCompute):
         volume_attachments: Ordered list of `oci.core.VolumeAttachment`
             resources, parallel to `block_volumes`.
         id: `pulumi.Output[str]` of the instance OCID.
+        subnet: Subnet tier the instance is placed in (`SUBNET_PRIVATE`,
+            `SUBNET_PUBLIC`, `SUBNET_SECURE`, or `SUBNET_MANAGEMENT`).
+            Resolved from `nsg.role.subnet_tier` when `nsg=` is supplied.
+        nsg_ids: List of NSG OCIDs attached to the primary VNIC, or an
+            empty list when no NSGs are used.
         auto_generated_keys: `True` when SSH keys were auto-generated.
         fault_domain: Fault domain the instance is placed in, or `None`
             when OCI auto-assigns (default spread behaviour).
@@ -264,8 +269,11 @@ class ComputeInstance(BaseResource, AbstractCompute):
             opts: Pulumi resource options forwarded to the component.
 
         Raises:
-            ValueError: If `subnet` is not a recognised tier constant, or if
-                any two `VolumeSpec` entries share the same `label`.
+            ValueError: If `volumes` is an explicitly empty list, or if any
+                two `VolumeSpec` entries share the same `label`.
+            ValueError: If `os_name` is not one of `"oracle"`, `"ubuntu"`,
+                or `"windows"` and `image_id` is `None`. Raised by
+                `OciHelper.resolve_image_id` during image resolution.
 
         Example:
             ```python
@@ -417,7 +425,37 @@ class ComputeInstance(BaseResource, AbstractCompute):
         # ---- Block volumes (one per VolumeSpec) ------------------------
         self.block_volumes = []
         self.volume_attachments = []
+        self._attach_block_volumes(availability_domain, instance_name, defined_tags)
 
+        # ---- Stack outputs ---------------------------------------------
+        outputs: dict[str, pulumi.Output[str]] = {
+            "instance_id": self.instance.id,
+            "private_ip": self.instance.private_ip,
+        }
+        for spec, vol in zip(self.volumes_spec, self.block_volumes):
+            outputs[f"{spec.label}_volume_id"] = vol.id
+        if self.subnet == SUBNET_PUBLIC:
+            outputs["public_ip"] = self.instance.public_ip
+        outputs.update(self._get_ssh_outputs())
+        self.register_outputs(outputs)
+
+    def _attach_block_volumes(
+        self,
+        availability_domain: str,
+        instance_name: str,
+        defined_tags: dict[str, Any] | None,
+    ) -> None:
+        """Create and attach one block volume per `VolumeSpec` in `self.volumes_spec`.
+
+        Appends each created `oci.core.Volume` to `self.block_volumes` and each
+        `oci.core.VolumeAttachment` to `self.volume_attachments`.
+
+        Args:
+            availability_domain: AD name used for volume placement.
+            instance_name: Resource name of the parent instance, used in volume tags.
+            defined_tags: Instance-level defined tags; merged with per-spec tags when
+                a `VolumeSpec` carries its own `defined_tags` (spec wins on conflict).
+        """
         for spec in self.volumes_spec:
             vol_name = self.create_resource_name(f"{spec.label}-vol")
             # Per-volume defined_tags: merge instance-level tags with
@@ -458,18 +496,6 @@ class ComputeInstance(BaseResource, AbstractCompute):
             )
             self.block_volumes.append(vol)
             self.volume_attachments.append(att)
-
-        # ---- Stack outputs ---------------------------------------------
-        outputs: dict[str, pulumi.Output[str]] = {
-            "instance_id": self.instance.id,
-            "private_ip": self.instance.private_ip,
-        }
-        for spec, vol in zip(self.volumes_spec, self.block_volumes):
-            outputs[f"{spec.label}_volume_id"] = vol.id
-        if self.subnet == SUBNET_PUBLIC:
-            outputs["public_ip"] = self.instance.public_ip
-        outputs.update(self._get_ssh_outputs())
-        self.register_outputs(outputs)
 
     # ------------------------------------------------------------------
     # Backward-compatibility shims
@@ -542,23 +568,15 @@ class ComputeInstance(BaseResource, AbstractCompute):
         )
 
         if self.subnet == SUBNET_PRIVATE:
-            self.vcn._add_unique_security_list_rules(
-                "compute-private-ingress-tcp-22", private_ingress=[ssh_rule]
-            )
+            self.vcn._add_unique_security_list_rules("compute-private-ingress-tcp-22", private_ingress=[ssh_rule])
         elif self.subnet == SUBNET_SECURE:
-            self.vcn._add_unique_security_list_rules(
-                "compute-secure-ingress-tcp-22", secure_ingress=[ssh_rule]
-            )
+            self.vcn._add_unique_security_list_rules("compute-secure-ingress-tcp-22", secure_ingress=[ssh_rule])
         elif self.subnet == SUBNET_MANAGEMENT:
-            self.vcn._add_unique_security_list_rules(
-                "compute-management-ingress-tcp-22", management_ingress=[ssh_rule]
-            )
+            self.vcn._add_unique_security_list_rules("compute-management-ingress-tcp-22", management_ingress=[ssh_rule])
         else:
             # Use the same fingerprint as Nsg._apply_role_ambient_rules so the
             # rule is deduplicated when an INTERNET_EDGE NSG already added it.
-            self.vcn._add_unique_security_list_rules(
-                "public-ingress-tcp-22", public_ingress=[ssh_rule]
-            )
+            self.vcn._add_unique_security_list_rules("public-ingress-tcp-22", public_ingress=[ssh_rule])
 
     # ------------------------------------------------------------------
     # Public accessors

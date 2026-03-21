@@ -1,15 +1,16 @@
 """Resource naming utilities for CloudSpells.
 
 Provides `ResourceNamer`, which generates consistent, predictable names
-for every OCI resource created by a CloudSpells component. All names follow
+for every resource created by a CloudSpells component. All names follow
 the pattern:
 
 ```
 {stack_name}-{resource_name}-{suffix}
 ```
 
-DNS labels are built by concatenating a short prefix with the stack name,
-keeping them within OCI's 15-character alphanumeric limit.
+DNS labels are built by concatenating a short prefix with the stack name.
+OCI requires DNS labels to be at most 15 alphanumeric characters, so keep
+both `prefix` and `stack_name` short.
 """
 
 
@@ -61,11 +62,14 @@ class ResourceNamer:
         """Build a DNS-safe label for OCI networking resources.
 
         OCI requires DNS labels to be alphanumeric, start with a letter, and
-        be at most 15 characters. Concatenates `prefix` and `stack_name` to
-        form the label — keep both values short to stay within the limit.
+        be at most 15 characters.  Exceeding this limit causes OCI to reject
+        the subnet or VCN resource at apply time.  Keep both `prefix` and
+        `stack_name` short to stay within the limit.
 
         Args:
-            prefix: Short alphanumeric prefix (e.g. `"pub"`, `"priv"`, `"vcn"`).
+            prefix: Short alphanumeric prefix (e.g. `"pub"`, `"priv"`,
+                `"vcn"`).  Combined with `stack_name`, the total must be
+                15 characters or fewer.
 
         Returns:
             DNS label string formed by `"{prefix}{stack_name}"`.

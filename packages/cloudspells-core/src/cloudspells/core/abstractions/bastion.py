@@ -8,9 +8,6 @@ Different providers implement secure shell access differently:
 - GCP — Identity-Aware Proxy (IAP) TCP forwarding.
 
 All implementations satisfy `AbstractBastion`.
-
-Exports:
-    AbstractBastion: Interface for a secure shell access mechanism.
 """
 
 from __future__ import annotations

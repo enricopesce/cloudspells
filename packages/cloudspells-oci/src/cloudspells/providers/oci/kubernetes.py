@@ -1,8 +1,10 @@
 """OKE (Oracle Kubernetes Engine) cluster spell for CloudSpells.
 
-Provides `OkeCluster`, a high-level Pulumi component that creates a complete
-OKE cluster with a node pool, all required OCI security list rules, and four
-Network Security Groups (NSGs) that segment traffic by component role.
+Provides `OkeCluster` and `NodePoolConfig`. `OkeCluster` is a high-level
+Pulumi component that creates a complete OKE cluster with one or more node
+pools, all required OCI security list rules, and four Network Security Groups
+(NSGs) that segment traffic by component role. `NodePoolConfig` is the
+dataclass used to describe each node pool.
 
 Subnet mapping:
 
@@ -171,10 +173,12 @@ class NodePoolConfig:
 
 
 class OkeCluster(BaseResource, AbstractKubernetes):
-    """Oracle Kubernetes Engine cluster with node pool, security configuration, and NSGs.
+    """Oracle Kubernetes Engine cluster with one or more node pools, security configuration, and NSGs.
 
-    Deploys a `BASIC_CLUSTER` OKE cluster with OCI VCN-native pod networking
-    (`OCI_VCN_IP_NATIVE` CNI) and a node pool spread across all availability
+    By default deploys a `BASIC_CLUSTER`; pass `enhanced=True` to create an
+    `ENHANCED_CLUSTER` with OCI Workload Identity and cluster add-on lifecycle
+    management.  Both cluster types use OCI VCN-native pod networking
+    (`OCI_VCN_IP_NATIVE` CNI) with each node pool spread across all availability
     domains in the region.
 
     Workers and pods share the private subnet CIDR. Four NSGs provide
@@ -272,7 +276,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         Args:
             name: Logical name for the cluster resource (e.g. `"k8s"`).
             compartment_id: OCID of the OCI compartment to deploy into.
-            vcn: `Vcn` instance that provides the public and private subnets.
+            vcn: `Vcn` or `VcnRef` that provides the public and private subnets.
             kubernetes_version: Kubernetes version string
                 (e.g. `"v1.32.1"`).
             display_name: Human-readable name used for the cluster OCI
@@ -299,6 +303,13 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 (e.g. `{"Operations": {"CostCenter": "42"}}`).  Defaults
                 to `None`.
             opts: Pulumi resource options forwarded to the component.
+
+        Raises:
+            AssertionError: If `vcn.public_subnet` or `vcn.private_subnet` is
+                `None` after `finalize_network()` completes.  This should not
+                occur with a fully constructed `Vcn`; it can happen with a
+                `VcnRef` that targets a stack that did not export the expected
+                subnet resources.
         """
         super().__init__("custom:oke:Cluster", name, compartment_id, stack_name, opts)
 
@@ -772,7 +783,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             name: Pulumi resource name, unique within this component.
             nsg_id: OCID of the NSG that owns this rule.
             direction: `"INGRESS"` or `"EGRESS"`.
-            protocol: OCI protocol string — `TCP`, `ICMP`, or `ALL`.
+            protocol: OCI protocol identifier — use the `TCP` or `ALL`
+                constants imported from `nsg.py`.
             source: Source CIDR or NSG OCID (ingress rules).
             source_type: `"CIDR_BLOCK"` or `"NETWORK_SECURITY_GROUP"`.
             destination: Destination CIDR or NSG OCID (egress rules).
@@ -1274,6 +1286,14 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             Single-element list containing the VCN public security list OCID
             as a `pulumi.Output[str]`, or an empty list when using `VcnRef`
             without a security list export.
+
+        Example:
+            ```python
+            cluster = OkeCluster(name="k8s", ...)
+            sl_ids = cluster.get_public_security_list_ids()
+            # sl_ids == [<pulumi.Output[str] of public security list OCID>]
+            # sl_ids == []  when VcnRef does not export the security list
+            ```
         """
         sl = self.vcn.public_security_list
         return [sl.id] if sl is not None else []
@@ -1285,16 +1305,27 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             Single-element list containing the VCN private security list OCID
             as a `pulumi.Output[str]`, or an empty list when using `VcnRef`
             without a security list export.
+
+        Example:
+            ```python
+            cluster = OkeCluster(name="k8s", ...)
+            sl_ids = cluster.get_private_security_list_ids()
+            # sl_ids == [<pulumi.Output[str] of private security list OCID>]
+            # sl_ids == []  when VcnRef does not export the security list
+            ```
         """
         sl = self.vcn.private_security_list
         return [sl.id] if sl is not None else []
 
     def create_kubeconfig(self, filename: str) -> None:
-        """Write a kubeconfig file for this OKE cluster.
+        """Write a kubeconfig file for this OKE cluster during `pulumi up`.
 
-        Fetches the cluster's kubeconfig content from the OCI API and writes
-        it to `filename`.  The file is created or overwritten if it already
-        exists.
+        Schedules the kubeconfig fetch and file write as a Pulumi output
+        callback: the OCI API call and file write execute only during
+        `pulumi up`, after the cluster OCID is known.  Calling this during
+        `pulumi preview` is safe but has no effect — the file is not written
+        until a real deployment completes.  The file is created or overwritten
+        if it already exists.
 
         Args:
             filename: Absolute or relative path where the kubeconfig file
@@ -1304,6 +1335,14 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             OSError: If `filename` cannot be created or written to (e.g.
                 the parent directory does not exist or the process lacks
                 write permission).
+
+        Example:
+            ```python
+            cluster = OkeCluster(name="k8s", ...)
+            cluster.create_kubeconfig("/tmp/k8s-kubeconfig")
+            # The file is written after `pulumi up` completes successfully.
+            # export KUBECONFIG=/tmp/k8s-kubeconfig
+            ```
         """
         cluster_kube_config = self.cluster.id.apply(
             lambda cid: oci.containerengine.get_cluster_kube_config(cluster_id=cid)

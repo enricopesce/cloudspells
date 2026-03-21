@@ -33,6 +33,7 @@ class VolumeSpec:
             (e.g. `"data"`, `"logs"`, `"db"`).  Must start with a lowercase
             letter and contain only lowercase letters, digits, or hyphens.
             Must be unique within the list passed to `ComputeInstance`.
+            Defaults to `"data"`.
         vpus_per_gb: OCI volume performance-unit tier.  Use the class
             constants `PERF_LOW` (0), `PERF_BALANCED` (10, default),
             `PERF_HIGH` (20), or `PERF_ULTRA` (120).
@@ -56,7 +57,7 @@ class VolumeSpec:
 
     Example:
         ```python
-        from cloudspells.providers.oci.volume import VolumeSpec
+        from cloudspells.providers.oci import VolumeSpec
 
         # Default balanced 100 GiB data volume (simplest usage)
         vol = VolumeSpec(size_in_gbs=100)

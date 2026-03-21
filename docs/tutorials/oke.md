@@ -42,8 +42,8 @@ kubectl (port 6443)
 cd examples/oke
 
 pulumi stack init dev
-pulumi config set compartment_ocid ocid1.compartment.oc1..aaaa...
-pulumi config set node_image_id    ocid1.image.oc1..aaaa...
+pulumi config set compartment_ocid ocid1.compartment.oc1..example
+pulumi config set node_image_id    ocid1.image.oc1..example
 ```
 
 Additional values with defaults — override only what you need:
@@ -217,7 +217,7 @@ Key outputs (prefix `okeinfra_` matches the `name="okeinfra"` argument):
 
 ## CIDR sizing note
 
-With VCN-native CNI, a 100-node cluster with 30 pods per node consumes ~3 100 IPs in the private subnet. The default `/18` VCN gives the private tier a `/19` (8 190 usable IPs), which is sufficient for moderate clusters. For larger deployments use a `/16` or `/17` VCN.
+With VCN-native CNI, a 100-node cluster with 30 pods per node consumes ~3,100 IPs in the private subnet. The default `/18` VCN gives the private tier a `/19` (8 190 usable IPs), which is sufficient for moderate clusters. For larger deployments use a `/16` or `/17` VCN.
 
 See [VCN Architecture → CIDR sizing guide](../reference/vcn-architecture.md#cidr-sizing-guide) for a full sizing table.
 

@@ -3,12 +3,13 @@
 Defines the disk descriptor, subnet-tier constants, and the compute
 interface that all provider implementations must satisfy.
 
-Exports:
-    DiskSpec: Cloud-neutral block-disk descriptor.
-    SubnetTier: Type alias for subnet placement tier literals.
-    SUBNET_PUBLIC, SUBNET_PRIVATE, SUBNET_SECURE, SUBNET_MANAGEMENT:
-        Tier constants shared by all providers.
-    AbstractCompute: Interface for a single VM with attached disks.
+Symbols defined here:
+
+- `DiskSpec` — cloud-neutral block-disk descriptor.
+- `SubnetTier` — type alias for subnet placement tier literals.
+- `SUBNET_PUBLIC`, `SUBNET_PRIVATE`, `SUBNET_SECURE`, `SUBNET_MANAGEMENT`
+  — tier constants shared by all providers.
+- `AbstractCompute` — interface for a single VM with attached disks.
 """
 
 from __future__ import annotations
@@ -67,7 +68,9 @@ class DiskSpec:
             address the disk via `AbstractCompute.get_disk_id`.  Must
             be unique within the instance's disk list.
         performance_tier: Workload-tier hint.  Accepted values: `"low"`,
-            `"balanced"` (default), `"high"`, `"ultra"`.
+            `"balanced"` (default), `"high"`, `"ultra"`.  The dataclass
+            does not validate this field; provider implementations raise
+            an error at apply time if an unrecognised value is passed.
         is_read_only: Mount the disk read-only.  Defaults to `False`.
 
     Example:

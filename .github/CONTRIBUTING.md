@@ -39,8 +39,8 @@ If a value can be derived, computed, or defaulted securely, it **must** be. Para
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/enricopesce/ociblocks.git
-cd ociblocks
+git clone https://github.com/enricopesce/cloudspells.git
+cd cloudspells
 
 # 2. Create and activate a virtualenv
 python -m venv .venv
@@ -57,35 +57,26 @@ pip install -r requirements.txt
 Every pull request must pass the full quality gate before review. Run it locally before pushing:
 
 ```bash
-ruff check src/ tests/ && ruff format --check src/ tests/ && pyright && pytest
+source .venv/bin/activate
+make
 ```
 
-Individual commands:
+`make` with no arguments runs the full gate — lint, format check, type check, and tests — identical to what CI runs on every push.
 
-```bash
-# Lint (report only)
-ruff check src/ tests/
+### All make targets
 
-# Lint with auto-fix
-ruff check src/ tests/ --fix
+| Target | What it does |
+|--------|--------------|
+| `make` / `make check` | Full quality gate (lint + format-check + typecheck + test) |
+| `make lint` | `ruff check` — report errors only |
+| `make lint-fix` | `ruff check --fix` — auto-fix where possible |
+| `make format` | `ruff format` — apply formatting |
+| `make format-check` | `ruff format --check` — verify formatting without changes |
+| `make typecheck` | `pyright` |
+| `make test` | `pytest` with coverage |
+| `make deadcode` | `vulture` dead-code scan (informational) |
 
-# Format check (no changes)
-ruff format --check src/ tests/
-
-# Format (apply changes)
-ruff format src/ tests/
-
-# Type checking
-pyright
-
-# Tests with coverage
-pytest
-
-# Dead code detection (informational)
-vulture src/ --min-confidence 80
-```
-
-Always activate the virtualenv first: `source .venv/bin/activate`.
+The Makefile invokes tools from `.venv/bin/` directly, so the virtualenv must be active.
 
 ---
 
@@ -217,7 +208,22 @@ Add `examples/my-spell/__main__.py` demonstrating minimal usage. Follow the patt
 
 All public classes, methods, and modules require Google-style docstrings. No undocumented public API is acceptable.
 
-Use **pure Markdown** markup inside docstrings. This is the only format that renders correctly in both VS Code (Pylance hover) and mkdocstrings.
+### Automated enforcement
+
+Docstring quality is enforced automatically by `make lint` via two ruff rule sets:
+
+| Rule set | What it checks |
+|----------|----------------|
+| `D` (pydocstyle, `convention = "google"`) | Presence and structure of docstrings; `D417` catches parameters present in the signature but missing from `Args:` |
+| `DOC201` | Function has a `return` statement but no `Returns:` section |
+| `DOC402` | Function has a `yield` statement but no `Yields:` section |
+| `DOC501` | Exception is explicitly raised but not listed in `Raises:` |
+
+Violations are reported as lint errors and will fail CI. There is no separate tool to install — ruff handles everything.
+
+### Markup format
+
+Use **pure Markdown** inside docstrings. This is the only format that renders correctly in both VS Code (Pylance hover) and mkdocstrings.
 
 | Use | Avoid |
 |-----|-------|
@@ -225,7 +231,9 @@ Use **pure Markdown** markup inside docstrings. This is the only format that ren
 | ` ``` ` fenced code blocks | `pattern::` + indented block (RST code block) |
 | plain prose | `*italic*` for emphasis (RST italic) |
 
-Required sections (as applicable):
+### Required sections
+
+Include all sections that apply:
 
 ```python
 def example(self, name: str) -> str:

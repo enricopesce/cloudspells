@@ -17,13 +17,9 @@ Predefined roles:
 - `CACHE` — private-tier caches and message brokers; same posture as `APP_SERVER`.
 - `MANAGEMENT` — management-tier monitoring agents and tooling; service egress only.
 
-Exports:
-    Role: Security posture dataclass.
-    INTERNET_EDGE: Predefined role for internet-facing resources.
-    APP_SERVER: Predefined role for private-tier application servers.
-    DATABASE: Predefined role for secure-tier databases.
-    CACHE: Predefined role for private-tier caches and message brokers.
-    MANAGEMENT: Predefined role for management-tier tooling.
+The `Role` dataclass is the base type; the five constants above are the
+complete predefined set.  Callers can also construct custom `Role` instances
+for non-standard postures.
 """
 
 from __future__ import annotations
@@ -96,6 +92,11 @@ Resources carrying this role are placed in the public subnet (internet
 gateway route).  Inbound ports are declared via the provider NSG `ports=`
 parameter.
 
+`egress_internet=False` and `egress_services=False` because public-tier
+resources do not initiate outbound connections — they receive inbound
+traffic and forward it to the private tier.  Adding general egress here
+would violate the CloudSpells network isolation model.
+
 `accept_management_ssh=False` because this role is the management entry
 point — it acts as the SSH source toward private-tier resources, not as an
 SSH target from another resource.
@@ -159,9 +160,11 @@ CACHE: Role = Role(
 )
 """Role for private-tier caches and message brokers (Redis, Memcached, Kafka).
 
-Identical security posture to `APP_SERVER` — private subnet, internet egress,
-service egress.  Provided as a semantic alias so that the intent of each
-resource is clear from its role name.
+Identical network posture to `APP_SERVER` — private subnet, internet egress
+via NAT, and service-endpoint egress.  Provided as a distinct constant so
+that the purpose of each NSG is immediately clear from its role name:
+use `APP_SERVER` for stateless compute and `CACHE` for stateful
+caching/messaging resources.
 
 Example:
     ```python

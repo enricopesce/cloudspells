@@ -1,23 +1,24 @@
 """Cloud-neutral autoscaling abstractions for CloudSpells multi-cloud support.
 
 Defines the scaling policy dataclasses and the scalable workload interface
-shared across all providers.  Scaling concepts—CPU/memory thresholds and
-cron-schedule-based rules—are cloud-neutral and map directly to OCI
+shared across all providers.  Scaling concepts — CPU/memory thresholds and
+cron-schedule-based rules — are cloud-neutral and map directly to OCI
 Autoscaling Configurations, AWS Auto Scaling Groups, and GCP Managed
 Instance Group autoscalers.
 
-The base `LoadBalancerConfig` omits provider-specific bandwidth
-fields (e.g. OCI flexible-shape Mbps).  Provider implementations extend it
-with their own specialised subclass (e.g. `OciLoadBalancerConfig`).
+The base `LoadBalancerConfig` omits provider-specific bandwidth fields
+(e.g. OCI flexible-shape Mbps).  Provider implementations extend it with
+their own specialised subclass (e.g. `OciLoadBalancerConfig`).
 
-Exports:
-    ScalingMetric: Enum of supported autoscaling metric types.
-    ScalingAction: Enum of scaling action kinds.
-    MetricScalingPolicy: CPU/memory threshold-based scaling configuration.
-    ScheduleEntry: A single cron-schedule scaling action.
-    ScheduleScalingPolicy: Schedule-based scaling configuration.
-    LoadBalancerConfig: Base cloud-neutral load balancer configuration.
-    AbstractScalableWorkload: Interface for a horizontally-scalable compute tier.
+Symbols defined here:
+
+- `ScalingMetric` — enum of supported autoscaling metric types.
+- `ScalingAction` — enum of scaling action kinds.
+- `MetricScalingPolicy` — CPU/memory threshold-based scaling configuration.
+- `ScheduleEntry` — a single cron-schedule scaling action.
+- `ScheduleScalingPolicy` — schedule-based scaling configuration.
+- `LoadBalancerConfig` — base cloud-neutral load balancer configuration.
+- `AbstractScalableWorkload` — interface for a horizontally-scalable compute tier.
 """
 
 from __future__ import annotations
@@ -102,9 +103,13 @@ class ScheduleEntry:
     Attributes:
         cron_expression: Quartz cron format expression in UTC
             (e.g. `"0 0 9 ? * MON-FRI *"`).
-        action: Whether to change the count by a delta or to an absolute
-            value.
-        value: Magnitude of the scaling action.
+        action: `ScalingAction.CHANGE_COUNT_BY` to add or remove instances
+            by a relative delta, or `ScalingAction.CHANGE_COUNT_TO` to set
+            the instance count to an absolute target.
+        value: Scaling magnitude.  For `CHANGE_COUNT_BY`, use a positive
+            integer to add instances (e.g. `2`) or a negative integer to
+            remove them (e.g. `-2`).  For `CHANGE_COUNT_TO`, use the
+            desired absolute instance count (e.g. `10`).
         display_name: Human-readable label for this schedule entry.
 
     Example:

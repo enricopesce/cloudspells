@@ -24,18 +24,24 @@ from random_word import RandomWords
 class Helper:
     """Stateless utility methods used by CloudSpells spells.
 
-    All methods are safe to call multiple times and have no side-effects
-    on instance state.  Instantiate with `Helper()` wherever needed.
+    All methods are free of side-effects on *instance* state — they do not
+    mutate `self`.  Note that `generate_ssh_key_pair` does invoke an external
+    process and write temporary files to disk, so it is not side-effect-free
+    in the broader sense.  Instantiate with `Helper()` wherever needed.
     """
 
     def get_random_word(self) -> str:
         """Return a single random English word.
 
         Uses the `random-word` library internally.  Useful for generating
-        unique name suffixes during testing or prototyping.
+        unique name suffixes during testing or prototyping.  The result is
+        non-deterministic; do not rely on it in reproducible IaC configs.
 
         Returns:
-            A random lower-case word string (e.g. `"banana"`).
+            A random lower-case word string (e.g. `"banana"`).  May return
+            `None` if the underlying library's word list is exhausted or
+            unavailable — callers that require a `str` should guard against
+            this case.
         """
         r = RandomWords()
         return r.get_random_word()
@@ -45,7 +51,7 @@ class Helper:
 
         The key pair is created in a temporary directory that is
         automatically cleaned up after the keys have been read.  The key
-        comment is set to `"ociblocks-{stack_name}-{resource_name}"` for
+        comment is set to `"cloudspells-{stack_name}-{resource_name}"` for
         traceability.
 
         Args:
@@ -60,6 +66,7 @@ class Helper:
         Raises:
             subprocess.CalledProcessError: If `ssh-keygen` exits with a
                 non-zero status.
+            FileNotFoundError: If `ssh-keygen` is not found on `PATH`.
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             key_path = os.path.join(tmpdir, "id_rsa")
@@ -75,7 +82,7 @@ class Helper:
                     "-N",
                     "",
                     "-C",
-                    f"ociblocks-{stack_name}-{resource_name}",
+                    f"cloudspells-{stack_name}-{resource_name}",
                 ],
                 check=True,
                 capture_output=True,

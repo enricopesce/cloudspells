@@ -120,19 +120,28 @@ class ResourceTagger:
 
         Extends the baseline tags from `create_freeform_tags` with:
 
-        - `network-type` — `"public"` or `"private"`.
+        - `network-type` — one of `"public"`, `"private"`, `"secure"`, or
+          `"management"`.
         - `subnet-group` — optional logical sub-group (e.g. `"public-a"`).
 
         Args:
             resource_name: Display name for the `name` tag.
             resource_type: Resource category (e.g. `"subnet"`,
                 `"security-list"`, `"route-table"`).
-            network_type: Network tier — typically `"public"` or `"private"`.
+            network_type: Network tier — one of `"public"`, `"private"`,
+                `"secure"`, or `"management"`.
             subnet_group: Optional sub-grouping label within the tier.
             additional_tags: Optional extra key/value pairs to merge.
 
         Returns:
             Flat `dict[str, str]` with all baseline and networking tags.
+
+        Example:
+            >>> tagger = ResourceTagger("prod", "lab", "vcn")
+            >>> tagger.create_network_resource_tags("prod-lab-sn-pub", "subnet", "public")
+            {'managed-by': 'cloudspells', 'spell-type': 'vcn', 'spell-name': 'lab',
+             'environment': 'prod', 'name': 'prod-lab-sn-pub', 'resource-type': 'subnet',
+             'network-type': 'public'}
         """
         extra: Dict[str, Any] = {"network-type": network_type}
 
@@ -164,6 +173,13 @@ class ResourceTagger:
         Returns:
             Flat `dict[str, str]` with all baseline tags and
             `gateway-type` included.
+
+        Example:
+            >>> tagger = ResourceTagger("prod", "lab", "vcn")
+            >>> tagger.create_gateway_tags("prod-lab-ngw", "nat")
+            {'managed-by': 'cloudspells', 'spell-type': 'vcn', 'spell-name': 'lab',
+             'environment': 'prod', 'name': 'prod-lab-ngw', 'resource-type': 'gateway',
+             'gateway-type': 'nat'}
         """
         extra: Dict[str, Any] = {"gateway-type": gateway_type}
 

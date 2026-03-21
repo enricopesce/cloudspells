@@ -21,7 +21,7 @@ Internet (HTTP port 80)
 └─────────────────────────────────────────────────────┘
 ```
 
-**What gets created:** 1 VCN, 1 load balancer, 1 instance configuration, 1 instance pool, 1 autoscaling policy, security list rules for HTTP and SSH.
+**What gets created:** 1 VCN, 1 load balancer, 1 instance configuration, 1 instance pool, 1 autoscaling policy, security list rules for HTTP (80) and HTTPS (443).
 
 ---
 
@@ -38,7 +38,7 @@ Internet (HTTP port 80)
 cd examples/autoscale
 
 pulumi stack init dev
-pulumi config set compartment_ocid ocid1.compartment.oc1..aaaa...
+pulumi config set compartment_ocid ocid1.compartment.oc1..example
 ```
 
 Optionally provide an SSH key (skip to auto-generate):

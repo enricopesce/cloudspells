@@ -102,17 +102,18 @@ class BaseResource(pulumi.ComponentResource):
                 `"{stack_name}-{name}"`.
             compartment_id: OCID of the OCI compartment that will own the
                 child resources created by this component.  For non-OCI
-                providers use project_ref instead.  At least one of
-                compartment_id or project_ref must be provided.
+                providers pass `project_ref` instead.  When both are given,
+                `compartment_id` takes precedence.  May be `None` when the
+                spell does not require a project reference.
             stack_name: Pulumi stack name.  Defaults to
                 `pulumi.get_stack()` when `None`; override in tests to
                 avoid a live Pulumi context.
             opts: Standard Pulumi resource options forwarded to the component
                 base class (e.g. `protect`, `depends_on`).
-            project_ref: Cloud-neutral alias for compartment_id.  When both
-                are provided compartment_id takes precedence.  Use this
-                parameter for non-OCI providers (AWS account ID, GCP project
-                ID, etc.) to keep `BaseResource` cloud-neutral.
+            project_ref: Cloud-neutral alias for `compartment_id` for
+                non-OCI providers (AWS account ID, GCP project ID, etc.).
+                Ignored when `compartment_id` is also provided.  May be
+                `None` when the spell does not require a project reference.
         """
         resolved_stack = stack_name if stack_name is not None else pulumi.get_stack()
         super().__init__(resource_type, f"{resolved_stack}-{name}", {}, opts)
@@ -155,9 +156,11 @@ class BaseResource(pulumi.ComponentResource):
 
         Args:
             prefix: Short alphanumeric prefix (e.g. `"pub"`, `"vcn"`).
+                Keep both prefix and stack_name short so the combined
+                label stays within OCI's 15-character alphanumeric limit.
 
         Returns:
-            Concatenation of prefix and the stack name.
+            `"{prefix}{stack_name}"` string (e.g. `"vcnprod"`).
         """
         return self.namer.create_dns_label(prefix)
 
@@ -181,7 +184,11 @@ class BaseResource(pulumi.ComponentResource):
             additional_tags: Optional extra tags to merge into the result.
 
         Returns:
-            `dict[str, str]` of OCI freeform tags.
+            Flat `dict[str, str]` with the six baseline CloudSpells tags
+            (`managed-by`, `spell-type`, `spell-name`, `environment`,
+            `name`, `resource-type`) plus any entries from
+            `additional_tags`.  Valid as `freeform_tags=` (OCI),
+            `tags=` (AWS/Azure), or `labels=` (GCP).
         """
         return self.tagger.create_freeform_tags(resource_name, resource_type, additional_tags)
 
@@ -200,7 +207,8 @@ class BaseResource(pulumi.ComponentResource):
         Args:
             resource_name: Display name used as the `Name` tag value.
             resource_type: Resource category (e.g. `"subnet"`).
-            network_type: `"public"` or `"private"`.
+            network_type: Subnet tier — one of `"public"`, `"private"`,
+                `"secure"`, or `"management"`.
             subnet_group: Optional sub-group label (e.g. `"public-a"`).
             additional_tags: Optional extra tags to merge.
 

@@ -1,19 +1,29 @@
 """Cloud-neutral abstractions for CloudSpells multi-cloud support.
 
 Defines the contracts (abstract base classes and data classes) that every
-cloud provider must implement.  Blocks typed against these interfaces work
-with any provider—OCI, AWS, GCP, or future additions—without modification.
+cloud provider must implement.  Code typed against these interfaces works
+with any provider — OCI, AWS, GCP, or future additions — without
+modification.
 
-Exports:
-    network: AbstractNetwork, AbstractNetworkRef, SecurityRules,
-        IngressRule, EgressRule.
-    compute: AbstractCompute, DiskSpec, SubnetTier constants.
-    roles: Role, INTERNET_EDGE, APP_SERVER, DATABASE, CACHE, MANAGEMENT.
-    kubernetes: AbstractKubernetes.
-    bastion: AbstractBastion.
-    autoscale: AbstractScalableWorkload, LoadBalancerConfig, ScalingMetric,
-        ScalingAction, MetricScalingPolicy, ScheduleEntry,
-        ScheduleScalingPolicy.
+All symbols are re-exported flat so callers import directly from this
+package rather than from the individual submodules:
+
+- **Network**: `AbstractNetwork`, `AbstractNetworkRef`, `SecurityRules`,
+  `IngressRule`, `EgressRule`
+- **Compute**: `AbstractCompute`, `DiskSpec`, `SubnetTier`,
+  `SUBNET_PUBLIC`, `SUBNET_PRIVATE`, `SUBNET_SECURE`, `SUBNET_MANAGEMENT`
+- **Roles**: `Role`, `INTERNET_EDGE`, `APP_SERVER`, `DATABASE`, `CACHE`,
+  `MANAGEMENT`
+- **Kubernetes**: `AbstractKubernetes`
+- **Bastion**: `AbstractBastion`
+- **Autoscale**: `AbstractScalableWorkload`, `LoadBalancerConfig`,
+  `ScalingMetric`, `ScalingAction`, `MetricScalingPolicy`,
+  `ScheduleEntry`, `ScheduleScalingPolicy`
+
+Example:
+    ```python
+    from cloudspells.core.abstractions import AbstractNetwork, SubnetTier, SUBNET_PRIVATE
+    ```
 """
 
 from .autoscale import (
