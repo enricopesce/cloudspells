@@ -94,6 +94,7 @@ class TestComputeInstance(unittest.TestCase):
             name="test-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
         return instance.instance.id.apply(lambda iid: self.assertIsNotNone(iid))
@@ -105,6 +106,7 @@ class TestComputeInstance(unittest.TestCase):
             name="test-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
         self.assertEqual(len(instance.block_volumes), 1)
@@ -118,6 +120,7 @@ class TestComputeInstance(unittest.TestCase):
             name="multi-vol-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             volumes=[
                 VolumeSpec(size_in_gbs=100, label="data"),
@@ -136,6 +139,7 @@ class TestComputeInstance(unittest.TestCase):
             name="test-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
         return instance.volume_attachments[0].id.apply(lambda aid: self.assertIsNotNone(aid))
@@ -150,6 +154,7 @@ class TestComputeInstance(unittest.TestCase):
             name="test-instance",
             compartment_id="ocid1.compartment.test",
             vcn=vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
         self.assertIsNotNone(vcn.public_subnet)
@@ -167,6 +172,7 @@ class TestComputeInstance(unittest.TestCase):
             name="compat-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
         self.assertIs(instance.block_volume, instance.block_volumes[0])
@@ -179,6 +185,7 @@ class TestComputeInstance(unittest.TestCase):
             name="compat-attach-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
         self.assertIs(instance.volume_attachment, instance.volume_attachments[0])
@@ -193,6 +200,7 @@ class TestComputeInstance(unittest.TestCase):
             name="label-lookup-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             volumes=[
                 VolumeSpec(size_in_gbs=100, label="data"),
@@ -207,6 +215,7 @@ class TestComputeInstance(unittest.TestCase):
             name="keyerror-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
         with self.assertRaises(KeyError):
@@ -218,6 +227,7 @@ class TestComputeInstance(unittest.TestCase):
             name="all-ids-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             volumes=[
                 VolumeSpec(size_in_gbs=100, label="a"),
@@ -236,6 +246,7 @@ class TestComputeInstance(unittest.TestCase):
                 name="dup-label-instance",
                 compartment_id="ocid1.compartment.test",
                 vcn=self.vcn,
+                image_id="ocid1.image.oc1.phx.test",
                 ssh_public_key="ssh-rsa AAAAB3... test-key",
                 volumes=[
                     VolumeSpec(size_in_gbs=100, label="data"),
@@ -250,6 +261,7 @@ class TestComputeInstance(unittest.TestCase):
                 name="empty-vols-instance",
                 compartment_id="ocid1.compartment.test",
                 vcn=self.vcn,
+                image_id="ocid1.image.oc1.phx.test",
                 ssh_public_key="ssh-rsa AAAAB3... test-key",
                 volumes=[],
             )
@@ -262,6 +274,7 @@ class TestComputeInstance(unittest.TestCase):
             name="auto-key-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
         )
         self.assertTrue(instance.auto_generated_keys)
         self.assertIsNotNone(instance.ssh_public_key)
@@ -275,6 +288,7 @@ class TestComputeInstance(unittest.TestCase):
             name="provided-key-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key=provided_key,
         )
         self.assertFalse(instance.auto_generated_keys)
@@ -287,6 +301,7 @@ class TestComputeInstance(unittest.TestCase):
             name="empty-key-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="",
         )
         self.assertTrue(instance.auto_generated_keys)
@@ -299,6 +314,7 @@ class TestComputeInstance(unittest.TestCase):
             name="default-shape-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
         self.assertEqual(instance.shape, "VM.Standard.E4.Flex")
@@ -309,6 +325,7 @@ class TestComputeInstance(unittest.TestCase):
             name="custom-shape-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             shape="VM.Standard.A1.Flex",
             ocpus=4,
@@ -328,6 +345,7 @@ class TestComputeInstance(unittest.TestCase):
             name="spec-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             volumes=specs,
         )
@@ -341,6 +359,7 @@ class TestComputeInstance(unittest.TestCase):
             name="getter-test-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
         self.assertIsNotNone(instance.get_private_ip())
@@ -357,6 +376,7 @@ class TestComputeInstance(unittest.TestCase):
             name="userdata-str-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             user_data="#!/bin/bash\necho hello\n",
         )
@@ -368,6 +388,7 @@ class TestComputeInstance(unittest.TestCase):
             name="userdata-bytes-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             user_data=b"#!/bin/bash\necho hello\n",
         )
@@ -379,6 +400,7 @@ class TestComputeInstance(unittest.TestCase):
             name="fd-default-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
         self.assertIsNone(instance.fault_domain)
@@ -389,6 +411,7 @@ class TestComputeInstance(unittest.TestCase):
             name="fd-explicit-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             fault_domain="FAULT-DOMAIN-2",
         )
@@ -400,6 +423,7 @@ class TestComputeInstance(unittest.TestCase):
             name="pbv-default-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
         self.assertFalse(instance.preserve_boot_volume)
@@ -410,6 +434,7 @@ class TestComputeInstance(unittest.TestCase):
             name="pbv-set-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             preserve_boot_volume=True,
         )
@@ -421,6 +446,7 @@ class TestComputeInstance(unittest.TestCase):
             name="hl-default-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
         self.assertIsNone(instance.hostname_label)
@@ -431,6 +457,7 @@ class TestComputeInstance(unittest.TestCase):
             name="hl-set-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             hostname_label="app-server",
         )
@@ -450,12 +477,6 @@ class TestComputeInstance(unittest.TestCase):
         spec = VolumeSpec(size_in_gbs=100, label="data")
         self.assertIsNone(spec.device)
 
-    def test_volume_spec_defined_tags(self):
-        """VolumeSpec.defined_tags stores the provided tags."""
-        tags = {"Ops": {"Env": "prod"}}
-        spec = VolumeSpec(size_in_gbs=100, label="data", defined_tags=tags)
-        self.assertEqual(spec.defined_tags, tags)
-
     @pulumi.runtime.test
     def test_all_new_params_accepted(self):
         """ComputeInstance accepts all new optional parameters without error."""
@@ -463,6 +484,7 @@ class TestComputeInstance(unittest.TestCase):
             name="full-params-instance",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             user_data="#!/bin/bash\necho hello\n",
             fault_domain="FAULT-DOMAIN-1",

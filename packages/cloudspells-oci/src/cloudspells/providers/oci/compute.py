@@ -5,7 +5,6 @@ subnet and attaches one or more block volumes for persistent storage.
 
 Key behaviours:
 
-- Defaults to Oracle Linux 8 (latest image for the chosen shape).
 - Deploys to the VCN's private subnet by default (not directly
   internet-facing).
 - Adds a minimal SSH ingress rule to the appropriate security list
@@ -30,7 +29,6 @@ import pulumi_oci as oci
 from cloudspells.core.abstractions.compute import AbstractCompute
 from cloudspells.core.base import BaseResource
 
-from .helper import OciHelper
 from .network import (
     SUBNET_MANAGEMENT,
     SUBNET_PRIVATE,
@@ -134,7 +132,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
     memory_in_gbs: pulumi.Input[float]
     ssh_public_key: str
     ssh_private_key: str | None
-    image_id: pulumi.Input[str] | None
+    image_id: pulumi.Input[str]
     boot_volume_size_in_gbs: pulumi.Input[int]
     volumes_spec: list[VolumeSpec]
     instance: oci.core.Instance
@@ -151,13 +149,12 @@ class ComputeInstance(BaseResource, AbstractCompute):
         name: str,
         compartment_id: pulumi.Input[str],
         vcn: Vcn | VcnRef,
+        image_id: pulumi.Input[str],
         stack_name: str | None = None,
         ssh_public_key: pulumi.Input[str] | None = None,
         shape: pulumi.Input[str] = "VM.Standard.E4.Flex",
         ocpus: pulumi.Input[float] = 1,
         memory_in_gbs: pulumi.Input[float] = 16,
-        image_id: pulumi.Input[str] | None = None,
-        os_name: str = "oracle",
         subnet: SubnetTier = SUBNET_PRIVATE,
         boot_volume_size_in_gbs: pulumi.Input[int] = 50,
         boot_volume_vpus_per_gb: int = 10,
@@ -193,13 +190,11 @@ class ComputeInstance(BaseResource, AbstractCompute):
             shape: OCI compute shape (default: `"VM.Standard.E4.Flex"`).
             ocpus: Number of OCPUs (default: `1`).
             memory_in_gbs: Memory in GiB (default: `16`).
-            image_id: Explicit boot image OCID.  When provided, `os_name`
-                is ignored.
-            os_name: Friendly OS name used to auto-discover the latest
-                image when `image_id` is `None`.  Supported values:
-                `"oracle"` (Oracle Linux 8, default), `"ubuntu"`
-                (Canonical Ubuntu 22.04), `"windows"`
-                (Windows Server 2022 Standard).
+            image_id: Boot image OCID for the instance
+                (e.g. `"ocid1.image.oc1.phx.aaaaaa..."`).  Must be an
+                explicit OCID — CloudSpells does not perform
+                auto-discovery.  Obtain the OCID from the OCI Console or
+                CLI and commit it to your Pulumi stack config.
             subnet: Which VCN tier to place the instance in.  Use the
                 constants `SUBNET_PRIVATE` (default), `SUBNET_PUBLIC`,
                 `SUBNET_SECURE`, or `SUBNET_MANAGEMENT` from
@@ -233,8 +228,6 @@ class ComputeInstance(BaseResource, AbstractCompute):
                 `None`, no user data is injected.
             defined_tags: OCI defined tags applied to the instance and all
                 block volumes, in `{"namespace": {"key": "value"}}` format.
-                Per-volume `defined_tags` on `VolumeSpec` are merged on top
-                of this value (volume spec wins on conflict).
             fault_domain: Explicit fault domain for placement
                 (e.g. `"FAULT-DOMAIN-1"`).  When `None`, OCI auto-assigns
                 and spreads instances across fault domains.
@@ -271,9 +264,6 @@ class ComputeInstance(BaseResource, AbstractCompute):
         Raises:
             ValueError: If `volumes` is an explicitly empty list, or if any
                 two `VolumeSpec` entries share the same `label`.
-            ValueError: If `os_name` is not one of `"oracle"`, `"ubuntu"`,
-                or `"windows"` and `image_id` is `None`. Raised by
-                `OciHelper.resolve_image_id` during image resolution.
 
         Example:
             ```python
@@ -298,7 +288,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         self.memory_in_gbs = memory_in_gbs
 
         self.subnet = subnet
-        self.image_id = image_id
+        self.image_id = image_id  # type: ignore[assignment]
         self.boot_volume_size_in_gbs = boot_volume_size_in_gbs
         self.fault_domain = fault_domain
         self.hostname_label = hostname_label
@@ -341,10 +331,6 @@ class ComputeInstance(BaseResource, AbstractCompute):
         assert self.vcn.public_subnet is not None
         assert self.vcn.secure_subnet is not None
         assert self.vcn.management_subnet is not None
-
-        # Resolve boot image
-        resolved_image_id = str(image_id) if image_id is not None else None
-        self.image_id = OciHelper().resolve_image_id(str(compartment_id), str(shape), resolved_image_id, os_name)
 
         ads = oci.identity.get_availability_domains(compartment_id=str(compartment_id))
         availability_domain = ads.availability_domains[0].name
@@ -453,16 +439,10 @@ class ComputeInstance(BaseResource, AbstractCompute):
         Args:
             availability_domain: AD name used for volume placement.
             instance_name: Resource name of the parent instance, used in volume tags.
-            defined_tags: Instance-level defined tags; merged with per-spec tags when
-                a `VolumeSpec` carries its own `defined_tags` (spec wins on conflict).
+            defined_tags: Instance-level defined tags applied to every volume resource.
         """
         for spec in self.volumes_spec:
             vol_name = self.create_resource_name(f"{spec.label}-vol")
-            # Per-volume defined_tags: merge instance-level tags with
-            # spec-level tags; spec-level wins on key conflicts.
-            vol_defined_tags: dict[str, Any] | None = defined_tags
-            if spec.defined_tags is not None:
-                vol_defined_tags = {**(defined_tags or {}), **spec.defined_tags}
             vol = oci.core.Volume(
                 vol_name,
                 availability_domain=availability_domain,
@@ -480,7 +460,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
                         "AttachedTo": instance_name,
                     },
                 ),
-                defined_tags=vol_defined_tags,
+                defined_tags=defined_tags,
                 opts=pulumi.ResourceOptions(parent=self),
             )
             att_name = self.create_resource_name(f"{spec.label}-vol-attach")

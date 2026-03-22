@@ -4,18 +4,19 @@ Provides `VolumeSpec`, a typed descriptor for a single OCI block volume to be
 created and attached to a `ComputeInstance`.  Pass a list of specs to
 `ComputeInstance(volumes=[...])` to attach multiple volumes at creation time.
 
-Exports:
-    VolumeSpec: Block-volume descriptor dataclass.
+Note:
+    `VolumeSpec` is a pure Python dataclass — it imports nothing from Pulumi
+    and can be constructed and validated in tests without a Pulumi context.
 """
 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
-from typing import Any, ClassVar
+from dataclasses import dataclass, field
+from typing import ClassVar
 
 
-@dataclass
+@dataclass(frozen=True)  # frozen=True: descriptor is immutable after __post_init__ validates it
 class VolumeSpec:
     """Descriptor for a single OCI block volume attached to a compute instance.
 
@@ -28,12 +29,14 @@ class VolumeSpec:
     exposed as class-level constants.
 
     Attributes:
-        size_in_gbs: Volume size in GiB.  Minimum 50.
+        size_in_gbs: Volume size in GiB.  Minimum 50, maximum 32,768
+            (OCI block volume limit).
         label: Short slug used to derive the Pulumi resource name suffix
             (e.g. `"data"`, `"logs"`, `"db"`).  Must start with a lowercase
-            letter and contain only lowercase letters, digits, or hyphens.
-            Must be unique within the list passed to `ComputeInstance`.
-            Defaults to `"data"`.
+            letter, end with a lowercase letter or digit, and contain only
+            lowercase letters, digits, or single hyphens — no trailing or
+            consecutive hyphens.  Must be unique within the list passed to
+            `ComputeInstance`.  Defaults to `"data"`.
         vpus_per_gb: OCI volume performance-unit tier.  Use the class
             constants `PERF_LOW` (0), `PERF_BALANCED` (10, default),
             `PERF_HIGH` (20), or `PERF_ULTRA` (120).
@@ -41,10 +44,6 @@ class VolumeSpec:
         device: Device path override for the paravirtualized attachment
             (e.g. `"/dev/oracleoci/oraclevdb"`).  When `None`, OCI assigns
             the next available device.
-        defined_tags: OCI defined tags applied to the block volume resource,
-            in `{"namespace": {"key": "value"}}` format.  Merged with
-            freeform tags; does not affect `ComputeInstance.defined_tags`.
-
     Class Attributes:
         PERF_LOW: Low-cost tier — 0 VPUs/GB.
         PERF_BALANCED: Default balanced tier — 10 VPUs/GB.
@@ -52,8 +51,8 @@ class VolumeSpec:
         PERF_ULTRA: Ultra-high-performance tier — 120 VPUs/GB.
 
     Raises:
-        ValueError: If `size_in_gbs` < 50, `vpus_per_gb` is not a valid
-            OCI tier, or `label` contains invalid characters.
+        ValueError: If `size_in_gbs` is outside [50, 32768], `vpus_per_gb`
+            is not a valid OCI tier, or `label` contains invalid characters.
 
     Example:
         ```python
@@ -75,20 +74,35 @@ class VolumeSpec:
         ```
     """
 
+    # ------------------------------------------------------------------ #
+    # Performance tier constants — use these instead of magic integers.   #
+    # ------------------------------------------------------------------ #
     PERF_LOW: ClassVar[int] = 0
     PERF_BALANCED: ClassVar[int] = 10
     PERF_HIGH: ClassVar[int] = 20
     PERF_ULTRA: ClassVar[int] = 120
 
+    # Derived from the four constants above — single source of truth.
     _VALID_VPUS: ClassVar[frozenset[int]] = frozenset({0, 10, 20, 120})
-    _LABEL_RE: ClassVar[re.Pattern[str]] = re.compile(r"^[a-z][a-z0-9-]*$")
 
+    # Label must start with a lowercase letter; may contain lowercase letters,
+    # digits, or hyphens; segments separated by single hyphens (no trailing
+    # or consecutive hyphens).
+    _LABEL_RE: ClassVar[re.Pattern[str]] = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
+
+    # OCI maximum block volume size in GiB.
+    _MAX_SIZE_IN_GBS: ClassVar[int] = 32_768
+
+    # ------------------------------------------------------------------ #
+    # Instance fields                                                      #
+    # ------------------------------------------------------------------ #
     size_in_gbs: int
     label: str = "data"
-    vpus_per_gb: int = 10  # PERF_BALANCED
+    # Default is PERF_BALANCED (10); expressed as a literal because ClassVar
+    # fields are not accessible as bare names in the dataclass field default.
+    vpus_per_gb: int = field(default=10)
     is_read_only: bool = False
     device: str | None = None
-    defined_tags: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         """Validate field values on construction.
@@ -98,6 +112,10 @@ class VolumeSpec:
         """
         if self.size_in_gbs < 50:
             raise ValueError(f"size_in_gbs must be >= 50; got {self.size_in_gbs}")
+        if self.size_in_gbs > self._MAX_SIZE_IN_GBS:
+            raise ValueError(
+                f"size_in_gbs must be <= {self._MAX_SIZE_IN_GBS} (OCI block volume limit); got {self.size_in_gbs}"
+            )
         if self.vpus_per_gb not in self._VALID_VPUS:
             raise ValueError(
                 f"vpus_per_gb must be one of {sorted(self._VALID_VPUS)} "
@@ -106,8 +124,9 @@ class VolumeSpec:
             )
         if not self._LABEL_RE.match(self.label):
             raise ValueError(
-                f"label must start with a lowercase letter and contain only "
-                f"lowercase letters, digits, or hyphens; got {self.label!r}"
+                "label must start with a lowercase letter, end with a lowercase "
+                "letter or digit, and contain only lowercase letters, digits, or "
+                f"single hyphens (no trailing or consecutive hyphens); got {self.label!r}"
             )
 
 

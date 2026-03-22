@@ -42,7 +42,6 @@ from cloudspells.core.abstractions.autoscale import (
 )
 from cloudspells.core.base import BaseResource
 
-from .helper import OciHelper
 from .network import Vcn, VcnRef
 
 # Sentinel to distinguish "not provided" from explicitly passing None
@@ -194,13 +193,12 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         name: str,
         compartment_id: pulumi.Input[str],
         vcn: Vcn | VcnRef,
+        image_id: pulumi.Input[str],
         stack_name: str | None = None,
         # Instance configuration
         shape: pulumi.Input[str] = "VM.Standard.E4.Flex",
         ocpus: pulumi.Input[float] = 1,
         memory_in_gbs: pulumi.Input[float] = 16,
-        image_id: pulumi.Input[str] | None = None,
-        os_name: str = "oracle",
         ssh_public_key: pulumi.Input[str] | None = None,
         user_data: str | bytes | None = None,
         boot_volume_size_in_gbs: pulumi.Input[int] = 50,
@@ -230,14 +228,11 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 (default: `"VM.Standard.E4.Flex"`).
             ocpus: Number of OCPUs per instance (default: `1`).
             memory_in_gbs: RAM in GiB per instance (default: `16`).
-            image_id: Explicit boot image OCID.  When `None`, the latest
-                image compatible with `shape` and `os_name` is resolved
-                automatically.
-            os_name: Friendly OS name used to auto-discover the latest image
-                when `image_id` is `None`.  Supported values: `"oracle"`
-                (Oracle Linux 8, default), `"ubuntu"` (Canonical Ubuntu
-                22.04), `"windows"` (Windows Server 2022 Standard).
-                Ignored when `image_id` is provided.
+            image_id: Boot image OCID for pool instances
+                (e.g. `"ocid1.image.oc1.phx.aaaaaa..."`).  Must be an
+                explicit OCID — CloudSpells does not perform
+                auto-discovery.  Obtain the OCID from the OCI Console or
+                CLI and commit it to your Pulumi stack config.
             ssh_public_key: OpenSSH public key to install on instances.
                 When `None` or empty, a key pair is auto-generated and
                 exported as Pulumi secrets.
@@ -271,10 +266,6 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 When `None` no defined tags are applied.
             opts: Pulumi resource options forwarded to the component.
 
-        Raises:
-            ValueError: If `os_name` is not one of `"oracle"`, `"ubuntu"`,
-                or `"windows"` and `image_id` is `None`. Raised by
-                `OciHelper.resolve_image_id` during image resolution.
         """
         super().__init__("custom:compute:ScalableWorkload", name, compartment_id, stack_name, opts)
 
@@ -307,9 +298,6 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             self.user_data = base64.b64encode(raw).decode()
         else:
             self.user_data = None
-        # [GAP] G4: store os_name for image resolution fallback (parity with ComputeInstance)
-        self._os_name = os_name
-
         # Handle SSH key - either use provided or auto-generate
         self._setup_ssh_keys(ssh_public_key)
 
@@ -323,9 +311,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         assert self.vcn.public_subnet is not None, "VCN public subnet must exist after finalization"
         assert self.vcn.private_subnet is not None, "VCN private subnet must exist after finalization"
 
-        # [GAP] G4: pass os_name so non-Oracle images can be resolved
-        resolved_image_id = str(image_id) if image_id is not None else None
-        self.image_id = OciHelper().resolve_image_id(str(compartment_id), str(shape), resolved_image_id, self._os_name)
+        self.image_id = image_id  # type: ignore[assignment]
 
         # Get availability domains
         ads = oci.identity.get_availability_domains(compartment_id=str(compartment_id))

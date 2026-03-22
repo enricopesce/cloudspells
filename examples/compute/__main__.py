@@ -72,6 +72,7 @@ web_server: ComputeInstance = ComputeInstance(
     name="web-server",
     compartment_id=compartment_id,
     vcn=vcn,
+    image_id=config.require("image_ocid"),
     ssh_public_key=ssh_key,
     nsg=web_nsg,
     volumes=[

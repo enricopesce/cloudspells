@@ -265,6 +265,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
             name="web-1",
             compartment_id=COMP_ID,
             vcn=vcn,
+            image_id="ocid1.image.oc1.phx.test",
             nsg=web_nsg,
         )
         self.assertEqual(instance.subnet, "private")
@@ -281,6 +282,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
             name="lb-1",
             compartment_id=COMP_ID,
             vcn=vcn,
+            image_id="ocid1.image.oc1.phx.test",
             nsg=lb_nsg,
         )
         self.assertEqual(instance.subnet, "public")
@@ -297,6 +299,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
             name="db-1",
             compartment_id=COMP_ID,
             vcn=vcn,
+            image_id="ocid1.image.oc1.phx.test",
             nsg=db_nsg,
         )
         self.assertEqual(instance.subnet, "secure")
@@ -313,6 +316,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
             name="web-x",
             compartment_id=COMP_ID,
             vcn=vcn,
+            image_id="ocid1.image.oc1.phx.test",
             nsg=web_nsg,
         )
         self.assertEqual(len(instance.nsg_ids), 1)
@@ -330,6 +334,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
             name="web-old",
             compartment_id=COMP_ID,
             vcn=vcn,
+            image_id="ocid1.image.oc1.phx.test",
             subnet=SUBNET_PRIVATE,
             nsg_ids=[web_nsg.id],
         )

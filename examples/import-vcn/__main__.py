@@ -68,6 +68,7 @@ instance: ComputeInstance = ComputeInstance(
     name="app-server",
     compartment_id=compartment_id,
     vcn=vcn,
+    image_id=config.require("image_ocid"),
     ssh_public_key=ssh_key,
 )
 

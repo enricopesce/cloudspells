@@ -121,6 +121,7 @@ load_balancer: ComputeInstance = ComputeInstance(
     name="load-balancer",
     compartment_id=compartment_id,
     vcn=vcn,
+    image_id=config.require("image_ocid"),
     ssh_public_key=ssh_key,
     nsg=lb_nsg,  # subnet=SUBNET_PUBLIC inferred
 )
@@ -129,6 +130,7 @@ web_backend_1: ComputeInstance = ComputeInstance(
     name="web-backend-1",
     compartment_id=compartment_id,
     vcn=vcn,
+    image_id=config.require("image_ocid"),
     ssh_public_key=ssh_key,
     nsg=web_nsg,  # subnet=SUBNET_PRIVATE inferred
 )
@@ -137,6 +139,7 @@ web_backend_2: ComputeInstance = ComputeInstance(
     name="web-backend-2",
     compartment_id=compartment_id,
     vcn=vcn,
+    image_id=config.require("image_ocid"),
     ssh_public_key=ssh_key,
     nsg=web_nsg,  # same NSG as web-backend-1
 )
@@ -145,6 +148,7 @@ db_1: ComputeInstance = ComputeInstance(
     name="db-1",
     compartment_id=compartment_id,
     vcn=vcn,
+    image_id=config.require("image_ocid"),
     ssh_public_key=ssh_key,
     nsg=db_nsg,  # subnet=SUBNET_SECURE inferred
     volumes=[VolumeSpec(size_in_gbs=200, label="data", vpus_per_gb=VolumeSpec.PERF_HIGH)],
@@ -154,6 +158,7 @@ db_2: ComputeInstance = ComputeInstance(
     name="db-2",
     compartment_id=compartment_id,
     vcn=vcn,
+    image_id=config.require("image_ocid"),
     ssh_public_key=ssh_key,
     nsg=db_nsg,  # same NSG as db-1
     volumes=[VolumeSpec(size_in_gbs=200, label="data", vpus_per_gb=VolumeSpec.PERF_HIGH)],

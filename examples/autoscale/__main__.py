@@ -59,6 +59,7 @@ scalable_pool: ScalableWorkload = ScalableWorkload(
     name="web-pool",
     compartment_id=compartment_id,
     vcn=vcn,
+    image_id=config.require("image_ocid"),
     ssh_public_key=config.get("ssh_key"),
     user_data=user_data_script,
     max_instances=3,

@@ -39,6 +39,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="test-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -54,6 +55,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="test-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -69,6 +71,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="test-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -84,6 +87,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="test-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -108,6 +112,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="test-workload",
             compartment_id="ocid1.compartment.test",
             vcn=vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -121,6 +126,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="auto-key-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             # No ssh_public_key provided
         )
 
@@ -137,6 +143,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="provided-key-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key=provided_key,
         )
 
@@ -150,6 +157,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="default-instances-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -163,6 +171,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="custom-instances-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             min_instances=2,
             max_instances=10,
@@ -179,6 +188,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="default-shape-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -190,6 +200,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="custom-shape-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             shape="VM.Standard.A1.Flex",
             ocpus=4,
@@ -206,6 +217,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="default-policy-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 
@@ -225,6 +237,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="metric-scaling-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             scaling_policy=policy,
         )
@@ -255,6 +268,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="schedule-scaling-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             scaling_policy=policy,
         )
@@ -268,6 +282,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="no-scaling-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             scaling_policy=None,
         )
@@ -287,6 +302,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="custom-lb-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             load_balancer_config=lb_config,
         )
@@ -302,6 +318,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
             name="getter-test-workload",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
 

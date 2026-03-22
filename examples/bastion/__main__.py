@@ -90,10 +90,10 @@ instance: ComputeInstance = ComputeInstance(
     name="web-server",
     compartment_id=compartment_id,
     vcn=vcn,
+    image_id=config.require("image_ocid"),
     ssh_public_key=config.get("ssh_key"),
     ocpus=1,
     memory_in_gbs=4,
-    os_name="ubuntu",
     nsg=app_nsg,  # subnet=SUBNET_PRIVATE inferred from role
 )
 
