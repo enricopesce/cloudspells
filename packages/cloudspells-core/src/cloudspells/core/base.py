@@ -72,6 +72,13 @@ class BaseResource(pulumi.ComponentResource):
         display_name: Human-readable name in the form `"{stack_name}-{name}"`.
         namer: `ResourceNamer` instance for this resource.
         tagger: `ResourceTagger` instance for this resource.
+        ssh_public_key: OpenSSH public key string installed on the instance.
+            Set by `_setup_ssh_keys`; auto-generated or caller-supplied.
+        ssh_private_key: PEM-encoded private key when auto-generated, `None`
+            when the caller supplied their own public key.  Always wrapped as
+            a Pulumi secret before export.  Set by `_setup_ssh_keys`.
+        auto_generated_keys: `True` when the SSH key pair was auto-generated
+            by `_setup_ssh_keys`, `False` when the caller supplied a key.
     """
 
     project_ref: pulumi.Input[str] | None
@@ -81,6 +88,9 @@ class BaseResource(pulumi.ComponentResource):
     display_name: str
     namer: ResourceNamer
     tagger: ResourceTagger
+    ssh_public_key: str
+    ssh_private_key: str | None
+    auto_generated_keys: bool
 
     def __init__(
         self,

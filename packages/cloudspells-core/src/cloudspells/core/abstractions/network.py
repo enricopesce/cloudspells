@@ -404,7 +404,19 @@ class AbstractNetwork(ABC):
 
     @abstractmethod
     def export(self) -> None:
-        """Publish standard network stack outputs."""
+        """Publish standard network stack outputs.
+
+        Implementations must export at minimum:
+
+        - `vcn_id` — provider resource ID of the network.
+        - `public_subnet_cidr` — CIDR of the public tier.
+        - `private_subnet_cidr` — CIDR of the private tier.
+        - `secure_subnet_cidr` — CIDR of the secure tier.
+        - `management_subnet_cidr` — CIDR of the management tier.
+
+        Additional provider-specific outputs (gateway IDs, DNS labels, etc.)
+        may be added by the implementation.
+        """
 
 
 class AbstractNetworkRef(ABC):

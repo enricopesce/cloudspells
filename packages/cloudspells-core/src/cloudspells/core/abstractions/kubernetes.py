@@ -34,7 +34,15 @@ class AbstractKubernetes(ABC):
 
     @abstractmethod
     def export(self) -> None:
-        """Publish standard Kubernetes cluster stack outputs."""
+        """Publish standard Kubernetes cluster stack outputs.
+
+        Implementations must export at minimum:
+
+        - `cluster_id` — provider resource ID of the cluster.
+        - `cluster_endpoint` — Kubernetes API server endpoint URL.
+        - `kubeconfig` — kubectl-compatible kubeconfig (wrapped as a Pulumi
+          secret).
+        """
 
     @abstractmethod
     def create_kubeconfig(self, filename: str) -> None:

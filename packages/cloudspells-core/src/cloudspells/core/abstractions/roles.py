@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from .compute import SUBNET_MANAGEMENT, SUBNET_PRIVATE, SUBNET_PUBLIC, SUBNET_SECURE, SubnetTier
 
 
-@dataclass
+@dataclass(frozen=True)
 class Role:
     """Security posture descriptor for a class of networked resources.
 

@@ -52,7 +52,14 @@ class AbstractBastion(ABC):
 
     @abstractmethod
     def export(self) -> None:
-        """Publish standard bastion stack outputs."""
+        """Publish standard bastion stack outputs.
+
+        Implementations must export at minimum:
+
+        - `bastion_id` — provider resource ID of the bastion resource.
+        - `bastion_endpoint` — access endpoint for establishing SSH proxy
+          sessions (from `get_access_endpoint()`).
+        """
 
 
 __all__ = ["AbstractBastion"]

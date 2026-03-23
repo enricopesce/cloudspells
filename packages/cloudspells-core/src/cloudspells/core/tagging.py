@@ -22,7 +22,7 @@ providers including GCP (which requires lowercase label keys).
 Specialised helpers add extra keys for network and gateway resources.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class ResourceTagger:
@@ -60,8 +60,8 @@ class ResourceTagger:
         self,
         resource_name: str,
         resource_type: str,
-        additional_tags: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, str]:
+        additional_tags: dict[str, Any] | None = None,
+    ) -> dict[str, str]:
         """Create the standard tag dictionary for a cloud resource.
 
         Every resource receives these baseline tags:
@@ -94,7 +94,7 @@ class ResourceTagger:
             {'managed-by': 'cloudspells', 'spell-type': 'vcn', 'spell-name': 'lab',
              'environment': 'prod', 'name': 'prod-lab-vcn', 'resource-type': 'vcn'}
         """
-        tags: Dict[str, str] = {
+        tags: dict[str, str] = {
             "managed-by": "cloudspells",
             "spell-type": self.spell_type,
             "spell-name": self.resource_name,
@@ -113,9 +113,9 @@ class ResourceTagger:
         resource_name: str,
         resource_type: str,
         network_type: str,
-        subnet_group: Optional[str] = None,
-        additional_tags: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, str]:
+        subnet_group: str | None = None,
+        additional_tags: dict[str, Any] | None = None,
+    ) -> dict[str, str]:
         """Create tags enriched with networking metadata.
 
         Extends the baseline tags from `create_freeform_tags` with:
@@ -143,7 +143,7 @@ class ResourceTagger:
              'environment': 'prod', 'name': 'prod-lab-sn-pub', 'resource-type': 'subnet',
              'network-type': 'public'}
         """
-        extra: Dict[str, Any] = {"network-type": network_type}
+        extra: dict[str, Any] = {"network-type": network_type}
 
         if subnet_group:
             extra["subnet-group"] = subnet_group
@@ -157,8 +157,8 @@ class ResourceTagger:
         self,
         resource_name: str,
         gateway_type: str,
-        additional_tags: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, str]:
+        additional_tags: dict[str, Any] | None = None,
+    ) -> dict[str, str]:
         """Create tags for a network gateway resource.
 
         Extends the baseline tags from `create_freeform_tags` with:
@@ -181,7 +181,7 @@ class ResourceTagger:
              'environment': 'prod', 'name': 'prod-lab-ngw', 'resource-type': 'gateway',
              'gateway-type': 'nat'}
         """
-        extra: Dict[str, Any] = {"gateway-type": gateway_type}
+        extra: dict[str, Any] = {"gateway-type": gateway_type}
 
         if additional_tags:
             extra.update(additional_tags)

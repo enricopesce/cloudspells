@@ -7,35 +7,19 @@ CloudSpells encodes proven reference architectures as immutable, composable spel
 ## What makes CloudSpells different
 
 - **Architecture is the product.** Network topology, subnet tiers, routing policy, gateway placement, and security posture are fixed by design — derived from cloud-provider best practices — and are not configurable at call time.
-- **Minimal required input.** A spell requires only essential identifiers (name, compartment, network CIDR). Every value that can be derived, computed, or defaulted securely must be — exposing unnecessary parameters is treated as a design defect.
+- **Minimal required input.** A spell requires only essential identifiers — at minimum, a name and compartment OCID. Every value that can be derived, computed, or defaulted securely must be — exposing unnecessary parameters is treated as a design defect.
 - **Not a Terraform replacement.** CloudSpells is the opposite of a thin API wrapper. Terraform and raw Pulumi give you every knob and let you wire everything yourself; CloudSpells makes the hard decisions for you so you cannot misconfigure them.
 
 ## Quick start
 
+A fully-wired 4-tier VCN — public, private, secure, and management subnets, all gateways, and correct routing — in three lines:
+
 ```python
-from cloudspells.core import Config
-from cloudspells.providers.oci.network import Vcn
-from cloudspells.providers.oci.compute import ComputeInstance
-from cloudspells.providers.oci.nsg import Nsg, HTTP, HTTPS, SSH
-from cloudspells.providers.oci.roles import INTERNET_EDGE
-
-config = Config()
-compartment_id = config.require("compartment_ocid")
-
-# A fully-wired 4-tier VCN — public, private, secure, and management subnets,
-# all gateways, and correct routing — from a single call.
 vcn = Vcn("lab", compartment_id=compartment_id)
-
-# An NSG role — places this resource in the public subnet and opens HTTP/HTTPS/SSH.
-web_nsg = Nsg("web", role=INTERNET_EDGE, ports=[HTTP, HTTPS, SSH],
-              vcn=vcn, compartment_id=compartment_id)
-
-# A compute instance — subnet inferred from the NSG role, SSH key auto-generated.
-instance = ComputeInstance("web", compartment_id=compartment_id, vcn=vcn, nsg=web_nsg)
-
 vcn.export()
-instance.export()
 ```
+
+[→ Full walkthrough: Getting Started → First Deploy](getting-started/first-deploy.md)
 
 ## Where to start
 
@@ -61,7 +45,7 @@ instance.export()
 Network topology, subnet tiers, routing policy, gateway placement, and security posture are fixed by design — derived from OCI best practices — and are not configurable at call time.
 
 **2. Minimal required input.**
-A spell requires only essential identifiers (name, compartment, network). Every value that can be derived, computed, or defaulted securely must be. Exposing unnecessary parameters is a design defect.
+A spell requires only essential identifiers — at minimum, a name and compartment OCID. Spells that attach to an existing network also accept a `Vcn` or `VcnRef` object. Every value that can be derived, computed, or defaulted securely must be. Exposing unnecessary parameters is a design defect.
 
 **3. Not a Terraform replacement.**
 CloudSpells encodes opinionated reference architectures. For non-standard topologies or full control over individual resources, use raw Pulumi. You can mix both in the same stack freely.

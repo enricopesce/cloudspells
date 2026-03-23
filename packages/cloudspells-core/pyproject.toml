@@ -13,8 +13,6 @@ classifiers = [
 ]
 dependencies = [
     "pulumi>=3.204.0,<4",
-    "PyYAML>=6.0",
-    "Random-Word>=1.0",
 ]
 
 [tool.hatch.build.targets.wheel]

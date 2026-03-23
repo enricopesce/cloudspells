@@ -243,7 +243,14 @@ class AbstractScalableWorkload(ABC):
 
     @abstractmethod
     def export(self) -> None:
-        """Publish standard scalable workload stack outputs."""
+        """Publish standard scalable workload stack outputs.
+
+        Implementations must export at minimum:
+
+        - `load_balancer_id` — provider resource ID of the load balancer.
+        - `load_balancer_ip` — public IP address of the load balancer.
+        - `instance_pool_id` — provider resource ID of the instance pool.
+        """
 
 
 __all__ = [

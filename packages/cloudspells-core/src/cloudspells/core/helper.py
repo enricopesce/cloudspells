@@ -16,9 +16,6 @@ import ipaddress
 import os
 import subprocess
 import tempfile
-from typing import List, Union
-
-from random_word import RandomWords
 
 
 class Helper:
@@ -29,22 +26,6 @@ class Helper:
     process and write temporary files to disk, so it is not side-effect-free
     in the broader sense.  Instantiate with `Helper()` wherever needed.
     """
-
-    def get_random_word(self) -> str:
-        """Return a single random English word.
-
-        Uses the `random-word` library internally.  Useful for generating
-        unique name suffixes during testing or prototyping.  The result is
-        non-deterministic; do not rely on it in reproducible IaC configs.
-
-        Returns:
-            A random lower-case word string (e.g. `"banana"`).  May return
-            `None` if the underlying library's word list is exhausted or
-            unavailable — callers that require a `str` should guard against
-            this case.
-        """
-        r = RandomWords()
-        return r.get_random_word()
 
     def generate_ssh_key_pair(self, stack_name: str, resource_name: str) -> tuple[str, str]:
         """Generate an RSA 4096-bit SSH key pair using `ssh-keygen`.
@@ -67,6 +48,13 @@ class Helper:
             subprocess.CalledProcessError: If `ssh-keygen` exits with a
                 non-zero status.
             FileNotFoundError: If `ssh-keygen` is not found on `PATH`.
+            PermissionError: If the process lacks write access to the
+                temporary directory.
+
+        Note:
+            The private key is returned as a plain `str`.  Wrap it in
+            `pulumi.Output.secret` before registering it as a stack output
+            or passing it to another resource.
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             key_path = os.path.join(tmpdir, "id_rsa")
@@ -93,7 +81,7 @@ class Helper:
                 private_key = f.read()
         return public_key, private_key
 
-    def calculate_subnets(self, cidr: str, num_subnets: int) -> List[str]:
+    def calculate_subnets(self, cidr: str, num_subnets: int) -> list[str]:
         """Split a supernet CIDR into n equal sub-networks.
 
         The method increases the prefix length of cidr by the minimum
@@ -114,11 +102,11 @@ class Helper:
             >>> h.calculate_subnets("10.0.0.0/16", 2)
             ['10.0.0.0/17', '10.0.128.0/17']
         """
-        supernet: Union[ipaddress.IPv4Network, ipaddress.IPv6Network] = ipaddress.ip_network(cidr)
+        supernet: ipaddress.IPv4Network | ipaddress.IPv6Network = ipaddress.ip_network(cidr)
         new_prefix_length: int = supernet.prefixlen
         while (2 ** (new_prefix_length - supernet.prefixlen)) < num_subnets:
             new_prefix_length += 1
-        subnets: List[Union[ipaddress.IPv4Network, ipaddress.IPv6Network]] = list(
+        subnets: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = list(
             supernet.subnets(new_prefix=new_prefix_length)
         )
         return [str(subnet) for subnet in subnets[:num_subnets]]

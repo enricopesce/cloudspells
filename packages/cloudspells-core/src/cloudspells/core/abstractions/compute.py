@@ -45,7 +45,7 @@ SUBNET_MANAGEMENT: SubnetTier = "management"
 # ---------------------------------------------------------------------------
 
 
-@dataclass
+@dataclass(frozen=True)
 class DiskSpec:
     """Cloud-neutral block-disk descriptor.
 
@@ -68,9 +68,8 @@ class DiskSpec:
             address the disk via `AbstractCompute.get_disk_id`.  Must
             be unique within the instance's disk list.
         performance_tier: Workload-tier hint.  Accepted values: `"low"`,
-            `"balanced"` (default), `"high"`, `"ultra"`.  The dataclass
-            does not validate this field; provider implementations raise
-            an error at apply time if an unrecognised value is passed.
+            `"balanced"` (default), `"high"`, `"ultra"`.  Pyright enforces
+            valid values at call sites via the `Literal` type annotation.
         is_read_only: Mount the disk read-only.  Defaults to `False`.
 
     Example:
@@ -85,7 +84,7 @@ class DiskSpec:
 
     size_in_gbs: int
     label: str = "data"
-    performance_tier: str = "balanced"
+    performance_tier: Literal["low", "balanced", "high", "ultra"] = "balanced"
     is_read_only: bool = False
 
 
@@ -174,7 +173,16 @@ class AbstractCompute(ABC):
 
     @abstractmethod
     def export(self) -> None:
-        """Publish standard compute stack outputs."""
+        """Publish standard compute stack outputs.
+
+        Implementations must export at minimum:
+
+        - `instance_id` — provider resource ID of the instance.
+        - `private_ip` — private IP address of the instance.
+        - `ssh_public_key` — OpenSSH public key (wrapped as a Pulumi secret).
+        - `ssh_private_key` — PEM private key when auto-generated (wrapped as
+          a Pulumi secret); omitted when the caller supplied their own key.
+        """
 
 
 __all__ = [
