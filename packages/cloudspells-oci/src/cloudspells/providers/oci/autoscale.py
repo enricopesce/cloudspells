@@ -13,7 +13,7 @@ OCI compute tier with load balancing and autoscaling:
 
 Supporting configuration dataclasses:
 
-- `LoadBalancerConfig`: Customise LB port, health check path, bandwidth, and SSL.
+- `OciLoadBalancerConfig`: Customise LB port, health check path, bandwidth, and SSL.
 - `MetricScalingPolicy`: Scale in/out based on CPU or memory utilisation thresholds.
 - `ScheduleScalingPolicy`: Scale in/out on a Quartz cron schedule (e.g. business hours).
 - `ScheduleEntry`: A single cron-schedule scaling action.
@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import base64
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 import pulumi
 import pulumi_oci as oci
@@ -44,17 +44,20 @@ from cloudspells.core.base import BaseResource
 
 from .network import Vcn, VcnRef
 
-# Sentinel to distinguish "not provided" from explicitly passing None
-_UNSET: object = object()
+
+class _UnsetType:
+    """Singleton sentinel distinguishing `scaling_policy` not provided from `None`."""
+
+
+_UNSET: _UnsetType = _UnsetType()
 
 
 @dataclass
 class OciLoadBalancerConfig(_BaseLoadBalancerConfig):
     """OCI-specific load balancer configuration extending the cloud-neutral base.
 
-    Adds OCI flexible-shape bandwidth parameters to the base `LoadBalancerConfig`.
-    Use this class instead of `LoadBalancerConfig` when deploying `ScalableWorkload`
-    on OCI and you need to control the LB's minimum or maximum bandwidth allocation.
+    Adds OCI flexible-shape bandwidth parameters to the base `_BaseLoadBalancerConfig`.
+    Use this class when deploying `ScalableWorkload` on OCI.
 
     Attributes:
         backend_port: `int`. Port on backend instances to receive forwarded traffic
@@ -90,11 +93,6 @@ class OciLoadBalancerConfig(_BaseLoadBalancerConfig):
     max_bandwidth_mbps: int = 100
 
 
-# Alias so existing callers using `LoadBalancerConfig(min_bandwidth_mbps=...)`
-# continue to work without modification.
-LoadBalancerConfig = OciLoadBalancerConfig
-
-
 class ScalableWorkload(BaseResource, AbstractScalableWorkload):
     """OCI Scalable Workload with load balancer, instance pool, and autoscaling.
 
@@ -128,11 +126,9 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         min_instances: Minimum (floor) number of instances for autoscaling.
         max_instances: Maximum (ceiling) number of instances for autoscaling.
         initial_instances: Instance count when the pool is first created.
-        load_balancer_config: `LoadBalancerConfig` in use.
+        load_balancer_config: `OciLoadBalancerConfig` in use.
         scaling_policy: `MetricScalingPolicy`, `ScheduleScalingPolicy`, or `None`.
         boot_volume_size_in_gbs: Boot volume size in GiB for pool instances.
-        availability_domains: List of OCI availability domain objects for the
-            region, used to spread pool instances across all ADs.
         auto_generated_keys: `True` when SSH keys were auto-generated.
         load_balancer: The `oci.loadbalancer.LoadBalancer` resource.
         backend_set: The `oci.loadbalancer.BackendSet` resource.
@@ -156,7 +152,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             vcn=vcn,
             min_instances=2,
             max_instances=10,
-            load_balancer_config=LoadBalancerConfig(backend_port=8080),
+            load_balancer_config=OciLoadBalancerConfig(backend_port=8080),
             scaling_policy=MetricScalingPolicy(scale_out_threshold=70),
         )
 
@@ -170,12 +166,12 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
     memory_in_gbs: pulumi.Input[float]
     ssh_public_key: str
     ssh_private_key: str | None
-    image_id: pulumi.Input[str] | None
+    image_id: pulumi.Input[str]
     user_data: str | None
     min_instances: int
     max_instances: int
     initial_instances: int
-    load_balancer_config: LoadBalancerConfig
+    load_balancer_config: OciLoadBalancerConfig
     scaling_policy: MetricScalingPolicy | ScheduleScalingPolicy | None
     auto_generated_keys: bool
 
@@ -208,9 +204,9 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         max_instances: int = 5,
         initial_instances: int | None = None,
         # Load balancer configuration
-        load_balancer_config: LoadBalancerConfig | None = None,
+        load_balancer_config: OciLoadBalancerConfig | None = None,
         # Scaling policy (metric OR schedule, not both); pass None to disable autoscaling
-        scaling_policy: MetricScalingPolicy | ScheduleScalingPolicy | None = _UNSET,  # type: ignore[assignment]
+        scaling_policy: MetricScalingPolicy | ScheduleScalingPolicy | _UnsetType | None = _UNSET,
         defined_tags: dict[str, Any] | None = None,
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
@@ -252,8 +248,8 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 create (default: `5`).
             initial_instances: Initial instance count when the pool is first
                 created.  Defaults to `min_instances`.
-            load_balancer_config: `LoadBalancerConfig` dataclass.  Defaults
-                to `LoadBalancerConfig()` (port 80, health check `/health`,
+            load_balancer_config: `OciLoadBalancerConfig` dataclass.  Defaults
+                to `OciLoadBalancerConfig()` (port 80, health check `/health`,
                 10-100 Mbps, public).
             scaling_policy: Autoscaling policy.  Pass a `MetricScalingPolicy`
                 (CPU/memory threshold), a `ScheduleScalingPolicy`
@@ -266,12 +262,14 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 When `None` no defined tags are applied.
             opts: Pulumi resource options forwarded to the component.
 
+        Raises:
+            RuntimeError: If the VCN public or private subnet is absent after
+                `finalize_network()` completes.
+
         """
         super().__init__("custom:compute:ScalableWorkload", name, compartment_id, stack_name, opts)
 
-        self.name = name
         self.vcn = vcn
-        self.compartment_id = compartment_id
         self.shape = shape
         self.ocpus = ocpus
         self.memory_in_gbs = memory_in_gbs
@@ -280,19 +278,19 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         self.min_instances = min_instances
         self.max_instances = max_instances
         self.initial_instances = initial_instances if initial_instances is not None else min_instances
-        self.load_balancer_config = load_balancer_config or LoadBalancerConfig()
-        self.scaling_policy = MetricScalingPolicy() if scaling_policy is _UNSET else scaling_policy
+        self.load_balancer_config = load_balancer_config or OciLoadBalancerConfig()
+        if isinstance(scaling_policy, _UnsetType):
+            self.scaling_policy = MetricScalingPolicy()
+        else:
+            self.scaling_policy = scaling_policy  # type: ignore[assignment]  # narrowed by isinstance above
         self.listeners = []
         self.autoscaling_configuration = None
-        # [GAP] G2: store defined_tags for propagation to all sub-resources
+        # Propagate to all sub-resources
         self._defined_tags = defined_tags
-        # [GAP] G3: store nsg_ids for pool VNIC in InstanceConfiguration
+        # Applied to pool VNIC in InstanceConfiguration
         self._nsg_ids = nsg_ids or []
 
-        # [GAP] G1: base64-encode user_data (parity with ComputeInstance).
-        # OCI InstanceConfiguration metadata["user_data"] requires base64,
-        # just as oci.core.Instance does.  Accept plain str/bytes and encode
-        # here so callers do not need to pre-encode the payload.
+        # base64-encode user_data; OCI metadata["user_data"] requires base64.
         if user_data is not None:
             raw: bytes = user_data.encode() if isinstance(user_data, str) else user_data
             self.user_data = base64.b64encode(raw).decode()
@@ -308,14 +306,10 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         self.vcn.finalize_network()
 
         # Verify subnets exist after finalization
-        assert self.vcn.public_subnet is not None, "VCN public subnet must exist after finalization"
-        assert self.vcn.private_subnet is not None, "VCN private subnet must exist after finalization"
-
-        self.image_id = image_id  # type: ignore[assignment]
-
-        # Get availability domains
-        ads = oci.identity.get_availability_domains(compartment_id=str(compartment_id))
-        self.availability_domains = ads.availability_domains
+        if self.vcn.public_subnet is None:
+            raise RuntimeError("VCN public subnet must exist after finalize_network().")
+        if self.vcn.private_subnet is None:
+            raise RuntimeError("VCN private subnet must exist after finalize_network().")
 
         # Create resources in order
         self._create_load_balancer()
@@ -360,16 +354,19 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
 
             Must be called before `Vcn.finalize_network`.
         """
-        public_subnet_cidr: pulumi.Input[str] = self.vcn.get_public_subnet_cidr()
-        private_subnet_cidr: pulumi.Input[str] = self.vcn.get_private_subnet_cidr()
-        svc_cidr: pulumi.Output[str] = self.vcn._svc_cidr_block
         backend_port = self.load_balancer_config.backend_port
 
-        # Public subnet ingress rules (Load Balancer) — use fingerprinted calls
-        # matching the Nsg INTERNET_EDGE convention so that if an INTERNET_EDGE
-        # NSG with HTTP/HTTPS ports is also present in the same VCN, the rules
-        # are deduplicated rather than appearing twice in the security list.
+        # Security list rules are only applicable when vcn is a live Vcn —
+        # VcnRef is read-only and raises on any non-empty rule list.
         if isinstance(self.vcn, Vcn):
+            public_subnet_cidr: pulumi.Input[str] = self.vcn.get_public_subnet_cidr()
+            private_subnet_cidr: pulumi.Input[str] = self.vcn.get_private_subnet_cidr()
+            svc_cidr: pulumi.Output[str] = self.vcn._svc_cidr_block
+
+            # Public subnet ingress rules (Load Balancer) — use fingerprinted calls
+            # matching the Nsg INTERNET_EDGE convention so that if an INTERNET_EDGE
+            # NSG with HTTP/HTTPS ports is also present in the same VCN, the rules
+            # are deduplicated rather than appearing twice in the security list.
             self.vcn._add_unique_security_list_rules(
                 "public-ingress-tcp-80",
                 public_ingress=[
@@ -401,47 +398,47 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 ],
             )
 
-        # Workload-specific rules (LB ↔ backend port, instance egress to Oracle
-        # Services) — these are unique to this ScalableWorkload and do not
-        # overlap with any Nsg role rules.
-        self.vcn.add_security_list_rules(
-            public_egress=[
-                oci.core.SecurityListEgressSecurityRuleArgs(
-                    description=f"Load balancer forwards traffic to backend instances on port {backend_port}",
-                    protocol="6",
-                    destination=private_subnet_cidr,
-                    destination_type="CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                        min=backend_port,
-                        max=backend_port,
+            # Workload-specific rules (LB ↔ backend port, instance egress to Oracle
+            # Services) — these are unique to this ScalableWorkload and do not
+            # overlap with any Nsg role rules.
+            self.vcn.add_security_list_rules(
+                public_egress=[
+                    oci.core.SecurityListEgressSecurityRuleArgs(
+                        description=f"Load balancer forwards traffic to backend instances on port {backend_port}",
+                        protocol="6",
+                        destination=private_subnet_cidr,
+                        destination_type="CIDR_BLOCK",
+                        tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
+                            min=backend_port,
+                            max=backend_port,
+                        ),
                     ),
-                ),
-            ],
-            private_ingress=[
-                oci.core.SecurityListIngressSecurityRuleArgs(
-                    description=f"Traffic from load balancer to application on port {backend_port}",
-                    protocol="6",
-                    source=public_subnet_cidr,
-                    source_type="CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                        min=backend_port,
-                        max=backend_port,
+                ],
+                private_ingress=[
+                    oci.core.SecurityListIngressSecurityRuleArgs(
+                        description=f"Traffic from load balancer to application on port {backend_port}",
+                        protocol="6",
+                        source=public_subnet_cidr,
+                        source_type="CIDR_BLOCK",
+                        tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
+                            min=backend_port,
+                            max=backend_port,
+                        ),
                     ),
-                ),
-            ],
-            private_egress=[
-                oci.core.SecurityListEgressSecurityRuleArgs(
-                    description="Instances access OCI services for monitoring, telemetry, and updates",
-                    protocol="6",
-                    destination=svc_cidr,
-                    destination_type="SERVICE_CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                        min=443,
-                        max=443,
+                ],
+                private_egress=[
+                    oci.core.SecurityListEgressSecurityRuleArgs(
+                        description="Instances access OCI services for monitoring, telemetry, and updates",
+                        protocol="6",
+                        destination=svc_cidr,
+                        destination_type="SERVICE_CIDR_BLOCK",
+                        tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
+                            min=443,
+                            max=443,
+                        ),
                     ),
-                ),
-            ],
-        )
+                ],
+            )
 
     def _create_load_balancer(self) -> None:
         """Create the OCI Load Balancer, backend set, and HTTP/HTTPS listeners.
@@ -452,10 +449,15 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
 
         Sets `self.load_balancer`, `self.backend_set`, and `self.listeners`
         on the instance.
+
+        Raises:
+            RuntimeError: If `vcn.public_subnet` is `None` after
+                `finalize_network()`.
         """
         lb_config = self.load_balancer_config
 
-        assert self.vcn.public_subnet is not None
+        if self.vcn.public_subnet is None:
+            raise RuntimeError("public_subnet must exist after finalize_network()")
 
         # Create load balancer
         lb_name = self.create_resource_name("lb")
@@ -471,7 +473,6 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             subnet_ids=[self.vcn.public_subnet.id],
             is_private=not lb_config.is_public,
             freeform_tags=self.create_freeform_tags(lb_name, "load-balancer"),
-            # [GAP] G2: propagate defined_tags to load balancer
             defined_tags=self._defined_tags,
             opts=pulumi.ResourceOptions(parent=self),
         )
@@ -521,7 +522,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                     protocol="HTTPS",
                     ssl_configuration=oci.loadbalancer.ListenerSslConfigurationArgs(
                         certificate_name=lb_config.ssl_certificate_name,
-                        verify_peer_certificate=False,
+                        verify_peer_certificate=True,
                     ),
                     opts=pulumi.ResourceOptions(parent=self),
                 )
@@ -535,11 +536,16 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         provision identical VMs automatically.
 
         Sets `self.instance_configuration` on the instance.
+
+        Raises:
+            RuntimeError: If `vcn.private_subnet` is `None` after
+                `finalize_network()`.
         """
         ic_name = self.create_resource_name("ic")
 
         # Subnets are guaranteed to exist after finalize_network()
-        assert self.vcn.private_subnet is not None
+        if self.vcn.private_subnet is None:
+            raise RuntimeError("private_subnet must exist after finalize_network()")
 
         # Build metadata
         metadata: dict[str, str] = {
@@ -569,12 +575,9 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                     create_vnic_details=oci.core.InstanceConfigurationInstanceDetailsLaunchDetailsCreateVnicDetailsArgs(
                         assign_public_ip=False,
                         subnet_id=self.vcn.private_subnet.id,
-                        # [GAP] G3: wire nsg_ids into pool VNIC so instances
-                        # can be placed behind caller-supplied NSGs
                         nsg_ids=self._nsg_ids if self._nsg_ids else None,
                     ),
                     metadata=metadata,
-                    # [GAP] G2: propagate defined_tags to instance configuration
                     defined_tags=self._defined_tags,
                 ),
             ),
@@ -590,20 +593,35 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         autoscaling configuration between `min_instances` and `max_instances`.
 
         Sets `self.instance_pool` on the instance.
+
+        Raises:
+            RuntimeError: If `vcn.private_subnet` is `None` after
+                `finalize_network()`.
         """
         pool_name = self.create_resource_name("pool")
 
         # Subnets are guaranteed to exist after finalize_network()
-        assert self.vcn.private_subnet is not None
+        if self.vcn.private_subnet is None:
+            raise RuntimeError("private_subnet must exist after finalize_network()")
+        private_subnet_id = self.vcn.private_subnet.id
 
-        # Build placement configurations for all ADs
-        placement_configs = [
-            oci.core.InstancePoolPlacementConfigurationArgs(
-                availability_domain=ad.name,
-                primary_subnet_id=self.vcn.private_subnet.id,
-            )
-            for ad in self.availability_domains
-        ]
+        # Build placement configurations for all ADs using the async Output so
+        # the blocking get_availability_domains() call is never made at __init__
+        # time.  pulumi.Output.all ensures both the AD list and subnet ID are
+        # fully resolved before the list comprehension runs.
+        ads_output = oci.identity.get_availability_domains_output(compartment_id=self.compartment_id)
+        placement_configs = pulumi.Output.all(
+            ads_output.availability_domains,
+            private_subnet_id,
+        ).apply(
+            lambda args: [
+                oci.core.InstancePoolPlacementConfigurationArgs(
+                    availability_domain=ad["name"],
+                    primary_subnet_id=args[1],
+                )
+                for ad in args[0]
+            ]
+        )
 
         self.instance_pool = oci.core.InstancePool(
             pool_name,
@@ -621,7 +639,6 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 ),
             ],
             freeform_tags=self.create_freeform_tags(pool_name, "instance-pool"),
-            # [GAP] G2: propagate defined_tags to instance pool
             defined_tags=self._defined_tags,
             opts=pulumi.ResourceOptions(parent=self),
         )
@@ -663,8 +680,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             asc_name: Fully-qualified OCI resource name for the autoscaling
                 configuration (created by `BaseResource.create_resource_name`).
         """
-        policy = self.scaling_policy
-        assert isinstance(policy, MetricScalingPolicy)
+        policy = cast(MetricScalingPolicy, self.scaling_policy)
 
         self.autoscaling_configuration = oci.autoscaling.AutoScalingConfiguration(
             asc_name,
@@ -720,7 +736,6 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 ),
             ],
             freeform_tags=self.create_freeform_tags(asc_name, "autoscaling-configuration"),
-            # [GAP] G2: propagate defined_tags to metric autoscaling configuration
             defined_tags=self._defined_tags,
             opts=pulumi.ResourceOptions(parent=self),
         )
@@ -728,7 +743,8 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
     def _create_schedule_autoscaling(self, asc_name: str) -> None:
         """Create a cron-schedule-based autoscaling configuration for the instance pool.
 
-        One OCI autoscaling policy is created per `ScheduleEntry` in
+        Creates a single `oci.autoscaling.AutoScalingConfiguration` whose
+        `policies` list contains one policy per `ScheduleEntry` in
         `ScheduleScalingPolicy.schedules`.  Each policy uses a Quartz cron
         expression in UTC and performs a `ScheduleEntry.action` of either
         `CHANGE_COUNT_BY` or `CHANGE_COUNT_TO`.
@@ -737,8 +753,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             asc_name: Fully-qualified OCI resource name for the autoscaling
                 configuration (created by `BaseResource.create_resource_name`).
         """
-        policy = self.scaling_policy
-        assert isinstance(policy, ScheduleScalingPolicy)
+        policy = cast(ScheduleScalingPolicy, self.scaling_policy)
 
         # For schedule-based policies, we create one policy per schedule entry
         policies = []
@@ -775,7 +790,6 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             is_enabled=True,
             policies=policies,
             freeform_tags=self.create_freeform_tags(asc_name, "autoscaling-configuration"),
-            # [GAP] G2: propagate defined_tags to schedule autoscaling configuration
             defined_tags=self._defined_tags,
             opts=pulumi.ResourceOptions(parent=self),
         )
@@ -853,7 +867,6 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
 
 
 __all__ = [
-    "LoadBalancerConfig",
     "MetricScalingPolicy",
     "OciLoadBalancerConfig",
     "ScalableWorkload",

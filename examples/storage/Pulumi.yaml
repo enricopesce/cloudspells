@@ -1,0 +1,11 @@
+name: blocks-storage
+runtime:
+  name: python
+  options:
+    virtualenv: ../../.venv
+    pythonpath: ../../src
+description: Object Storage — backup bucket and data lake bucket
+config:
+  namespace:
+    type: string
+    description: OCI tenancy-level Object Storage namespace (visible in OCI Console under Tenancy Details)

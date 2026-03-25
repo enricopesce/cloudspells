@@ -76,9 +76,9 @@ import pulumi_oci as oci
 from cloudspells.core.abstractions.kubernetes import AbstractKubernetes
 from cloudspells.core.base import BaseResource
 
-from .helper import OciHelper
+from .helper import get_ads
 from .network import Vcn, VcnRef
-from .nsg import ALL, INTERNET, SVC_CIDR, TCP, tcp_port, tcp_port_range
+from .nsg import ALL, INTERNET, TCP, _get_svc_cidr, tcp_port, tcp_port_range
 
 
 @dataclass
@@ -241,12 +241,16 @@ class OkeCluster(BaseResource, AbstractKubernetes):
 
     vcn: Vcn | VcnRef
     kubernetes_version: pulumi.Input[str]
-    display_name: str
+    display_name: pulumi.Input[str]
     api_nsg: oci.core.NetworkSecurityGroup
     lb_nsg: oci.core.NetworkSecurityGroup
     worker_nsg: oci.core.NetworkSecurityGroup
     pod_nsg: oci.core.NetworkSecurityGroup
-    # Aliases pointing to the VCN security lists (Any to cover Vcn and VcnRef)
+    # Aliases pointing to the VCN security lists.
+    # Typed Any: the value is oci.core.SecurityList (for Vcn) or the private
+    # _SecurityListRef stub (for VcnRef), or None.  A structural Protocol is
+    # not feasible because oci.core.SecurityList exposes .id as a property
+    # (not a plain attribute), which breaks Protocol invariance checks.
     oke_public_security_list: Any
     oke_private_security_list: Any
     cluster: oci.containerengine.Cluster
@@ -263,7 +267,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         node_pools: list[NodePoolConfig],
         stack_name: str | None = None,
         enhanced: bool = False,
-        endpoint_subnet: oci.core.Subnet | None = None,
         defined_tags: dict[str, Any] | None = None,
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
@@ -293,19 +296,13 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 Workload Identity (pod-level OCI API auth without embedded
                 credentials), cluster add-on lifecycle management, and OCI
                 DevOps integration.  Defaults to `False`.
-            endpoint_subnet: Subnet where the Kubernetes API endpoint VNIC
-                is placed.  Defaults to `None`, which uses `vcn.public_subnet`
-                and assigns a public IP (reachable from the internet on 6443).
-                Pass `vcn.private_subnet` (or any other subnet) for a
-                private-only endpoint reachable only from within the VCN or
-                connected networks (FastConnect, VPN).
             defined_tags: OCI defined tags applied to the cluster resource
                 (e.g. `{"Operations": {"CostCenter": "42"}}`).  Defaults
                 to `None`.
             opts: Pulumi resource options forwarded to the component.
 
         Raises:
-            AssertionError: If `vcn.public_subnet` or `vcn.private_subnet` is
+            RuntimeError: If `vcn.public_subnet` or `vcn.private_subnet` is
                 `None` after `finalize_network()` completes.  This should not
                 occur with a fully constructed `Vcn`; it can happen with a
                 `VcnRef` that targets a stack that did not export the expected
@@ -313,10 +310,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         """
         super().__init__("custom:oke:Cluster", name, compartment_id, stack_name, opts)
 
-        self.display_name = str(display_name) if not isinstance(display_name, str) else display_name
-        self.name = name
+        self.display_name = display_name  # type: ignore[assignment]  # pulumi.Input[str] is accepted by OCI resources
         self.vcn = vcn
-        self.compartment_id = compartment_id
         self.kubernetes_version = kubernetes_version
 
         # Layer 1: subnet-level security list rules
@@ -324,21 +319,24 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         self.vcn.finalize_network()
 
         # Aliases pointing to the VCN security lists (None when using VcnRef)
-        self.oke_public_security_list = self.vcn.public_security_list  # type: ignore[assignment]
-        self.oke_private_security_list = self.vcn.private_security_list  # type: ignore[assignment]
+        self.oke_public_security_list = self.vcn.public_security_list
+        self.oke_private_security_list = self.vcn.private_security_list
 
-        assert self.vcn.public_subnet is not None, "VCN public subnet must exist after finalization"
-        assert self.vcn.private_subnet is not None, "VCN private subnet must exist after finalization"
+        if self.vcn.public_subnet is None:
+            raise RuntimeError("VCN public subnet must exist after finalize_network().")
+        if self.vcn.private_subnet is None:
+            raise RuntimeError("VCN private subnet must exist after finalize_network().")
 
         # Layer 2: VNIC-level NSGs — must be created before cluster/node pool
         self._create_oke_nsgs()
 
         child_opts = pulumi.ResourceOptions(parent=self)
 
+        cluster_name = self.create_resource_name("cluster")
         self.cluster = oci.containerengine.Cluster(
-            "Cluster",
+            cluster_name,
             compartment_id=self.compartment_id,
-            name=f"Cluster-{self.display_name}",
+            name=cluster_name,
             kubernetes_version=self.kubernetes_version,
             options=oci.containerengine.ClusterOptionsArgs(
                 service_lb_subnet_ids=[self.vcn.public_subnet.id],
@@ -355,31 +353,34 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             type="ENHANCED_CLUSTER" if enhanced else "BASIC_CLUSTER",
             vcn_id=self.vcn.id,
             endpoint_config=oci.containerengine.ClusterEndpointConfigArgs(
-                subnet_id=(endpoint_subnet or self.vcn.public_subnet).id,  # type: ignore[union-attr]
-                is_public_ip_enabled=endpoint_subnet is None,
+                subnet_id=self.vcn.public_subnet.id,  # type: ignore[union-attr]
+                is_public_ip_enabled=True,
                 nsg_ids=[self.api_nsg.id],
             ),
-            freeform_tags=self.create_freeform_tags(f"Cluster-{self.display_name}", "oke-cluster"),
+            freeform_tags=self.create_freeform_tags(cluster_name, "oke-cluster"),
             defined_tags=defined_tags,
             opts=child_opts,
         )
 
         self.id = self.cluster.id
 
-        h: OciHelper = OciHelper()
         get_ad_names = oci.identity.get_availability_domains_output(compartment_id=self.compartment_id)
         ads = get_ad_names.availability_domains
 
         self.node_pools = []
         for cfg in node_pools:
+            pool_name = self.create_resource_name(f"pool-{cfg.name}")
             pool = oci.containerengine.NodePool(
-                f"NodePool-{cfg.name}",
-                name=f"NodePool-{cfg.name}-{self.display_name}",
+                pool_name,
+                name=pool_name,
                 cluster_id=self.cluster.id,
                 compartment_id=self.compartment_id,
                 kubernetes_version=self.kubernetes_version,
                 node_config_details=oci.containerengine.NodePoolNodeConfigDetailsArgs(
-                    placement_configs=ads.apply(lambda ads_list: h.get_ads(ads_list, self.vcn.private_subnet.id)),  # type: ignore[arg-type, union-attr, return-value]
+                    placement_configs=pulumi.Output.all(
+                        ads,
+                        self.vcn.private_subnet.id,  # type: ignore[union-attr]
+                    ).apply(lambda args: get_ads(args[0], args[1])),
                     size=cfg.node_count,
                     nsg_ids=[self.worker_nsg.id],
                     node_pool_pod_network_option_details=oci.containerengine.NodePoolNodeConfigDetailsNodePoolPodNetworkOptionDetailsArgs(
@@ -422,13 +423,19 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 if cfg.cycling_enabled
                 else None,
                 ssh_public_key=cfg.ssh_public_key or None,
-                freeform_tags=self.create_freeform_tags(f"NodePool-{cfg.name}", "oke-node-pool"),
+                freeform_tags=self.create_freeform_tags(pool_name, "oke-node-pool"),
                 defined_tags=cfg.defined_tags,
                 opts=child_opts,
             )
             self.node_pools.append(pool)
 
-        self.register_outputs({})
+        self.register_outputs({
+            "cluster_id": self.cluster.id,
+            "api_nsg_id": self.api_nsg.id,
+            "lb_nsg_id": self.lb_nsg.id,
+            "worker_nsg_id": self.worker_nsg.id,
+            "pod_nsg_id": self.pod_nsg.id,
+        })
 
     # ------------------------------------------------------------------
     # Private: security list rules (subnet-level, Layer 1)
@@ -469,7 +476,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
 
         private_subnet_cidr: pulumi.Input[str] = self.vcn.get_private_subnet_cidr()
         public_subnet_cidr: pulumi.Input[str] = self.vcn.get_public_subnet_cidr()
-        svc_cidr: pulumi.Output[str] = SVC_CIDR
+        svc_cidr: pulumi.Output[str] = _get_svc_cidr()
 
         # ───────────────────────────────────────────────────────────────
         # PUBLIC – INGRESS
@@ -723,32 +730,36 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         opts = pulumi.ResourceOptions(parent=self)
 
         # ── Create the four NSG objects ────────────────────────────────
+        api_nsg_name = self.create_resource_name("api-nsg")
         self.api_nsg = oci.core.NetworkSecurityGroup(
-            "OkeApiNsg",
+            api_nsg_name,
             compartment_id=self.compartment_id,
             vcn_id=self.vcn.id,
-            display_name=f"{self.display_name}-api-nsg",
+            display_name=api_nsg_name,
             opts=opts,
         )
+        lb_nsg_name = self.create_resource_name("lb-nsg")
         self.lb_nsg = oci.core.NetworkSecurityGroup(
-            "OkeLbNsg",
+            lb_nsg_name,
             compartment_id=self.compartment_id,
             vcn_id=self.vcn.id,
-            display_name=f"{self.display_name}-lb-nsg",
+            display_name=lb_nsg_name,
             opts=opts,
         )
+        worker_nsg_name = self.create_resource_name("worker-nsg")
         self.worker_nsg = oci.core.NetworkSecurityGroup(
-            "OkeWorkerNsg",
+            worker_nsg_name,
             compartment_id=self.compartment_id,
             vcn_id=self.vcn.id,
-            display_name=f"{self.display_name}-worker-nsg",
+            display_name=worker_nsg_name,
             opts=opts,
         )
+        pod_nsg_name = self.create_resource_name("pod-nsg")
         self.pod_nsg = oci.core.NetworkSecurityGroup(
-            "OkePodNsg",
+            pod_nsg_name,
             compartment_id=self.compartment_id,
             vcn_id=self.vcn.id,
-            display_name=f"{self.display_name}-pod-nsg",
+            display_name=pod_nsg_name,
             opts=opts,
         )
 
@@ -832,7 +843,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
 
         # ── INGRESS ────────────────────────────────────────────────────
         self._r(
-            "OkeApiNsgIngress-worker-6443",
+            self.create_resource_name("api-nsg-ingress-worker-6443"),
             nsg,
             direction="INGRESS",
             protocol=TCP,
@@ -843,7 +854,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkeApiNsgIngress-worker-12250",
+            self.create_resource_name("api-nsg-ingress-worker-12250"),
             nsg,
             direction="INGRESS",
             protocol=TCP,
@@ -854,7 +865,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkeApiNsgIngress-pod-6443",
+            self.create_resource_name("api-nsg-ingress-pod-6443"),
             nsg,
             direction="INGRESS",
             protocol=TCP,
@@ -865,7 +876,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkeApiNsgIngress-pod-12250",
+            self.create_resource_name("api-nsg-ingress-pod-12250"),
             nsg,
             direction="INGRESS",
             protocol=TCP,
@@ -876,7 +887,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkeApiNsgIngress-kubectl",
+            self.create_resource_name("api-nsg-ingress-kubectl"),
             nsg,
             direction="INGRESS",
             protocol=TCP,
@@ -889,17 +900,17 @@ class OkeCluster(BaseResource, AbstractKubernetes):
 
         # ── EGRESS ─────────────────────────────────────────────────────
         self._r(
-            "OkeApiNsgEgress-services",
+            self.create_resource_name("api-nsg-egress-services"),
             nsg,
             direction="EGRESS",
             protocol=ALL,
-            destination=SVC_CIDR,
+            destination=_get_svc_cidr(),
             destination_type="SERVICE_CIDR_BLOCK",
             description="Control plane sends telemetry and management traffic to OCI services",
             opts=opts,
         )
         self._r(
-            "OkeApiNsgEgress-worker-kubelet",
+            self.create_resource_name("api-nsg-egress-worker-kubelet"),
             nsg,
             direction="EGRESS",
             protocol=TCP,
@@ -910,7 +921,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkeApiNsgEgress-pod-all",
+            self.create_resource_name("api-nsg-egress-pod-all"),
             nsg,
             direction="EGRESS",
             protocol=ALL,
@@ -935,7 +946,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
 
         # ── INGRESS ────────────────────────────────────────────────────
         self._r(
-            "OkeLbNsgIngress-https",
+            self.create_resource_name("lb-nsg-ingress-https"),
             nsg,
             direction="INGRESS",
             protocol=TCP,
@@ -946,7 +957,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkeLbNsgIngress-http",
+            self.create_resource_name("lb-nsg-ingress-http"),
             nsg,
             direction="INGRESS",
             protocol=TCP,
@@ -959,7 +970,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
 
         # ── EGRESS ─────────────────────────────────────────────────────
         self._r(
-            "OkeLbNsgEgress-nodeport",
+            self.create_resource_name("lb-nsg-egress-nodeport"),
             nsg,
             direction="EGRESS",
             protocol=TCP,
@@ -970,7 +981,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkeLbNsgEgress-kubeproxy",
+            self.create_resource_name("lb-nsg-egress-kubeproxy"),
             nsg,
             direction="EGRESS",
             protocol=TCP,
@@ -999,7 +1010,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
 
         # ── INGRESS ────────────────────────────────────────────────────
         self._r(
-            "OkeWorkerNsgIngress-api-kubelet",
+            self.create_resource_name("worker-nsg-ingress-api-kubelet"),
             nsg,
             direction="INGRESS",
             protocol=TCP,
@@ -1010,7 +1021,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkeWorkerNsgIngress-lb-nodeport",
+            self.create_resource_name("worker-nsg-ingress-lb-nodeport"),
             nsg,
             direction="INGRESS",
             protocol=TCP,
@@ -1021,7 +1032,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkeWorkerNsgIngress-lb-kubeproxy",
+            self.create_resource_name("worker-nsg-ingress-lb-kubeproxy"),
             nsg,
             direction="INGRESS",
             protocol=TCP,
@@ -1032,7 +1043,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkeWorkerNsgIngress-pod-all",
+            self.create_resource_name("worker-nsg-ingress-pod-all"),
             nsg,
             direction="INGRESS",
             protocol=ALL,
@@ -1042,7 +1053,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkeWorkerNsgIngress-worker-all",
+            self.create_resource_name("worker-nsg-ingress-worker-all"),
             nsg,
             direction="INGRESS",
             protocol=ALL,
@@ -1053,7 +1064,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         )
         # ── EGRESS ─────────────────────────────────────────────────────
         self._r(
-            "OkeWorkerNsgEgress-api-6443",
+            self.create_resource_name("worker-nsg-egress-api-6443"),
             nsg,
             direction="EGRESS",
             protocol=TCP,
@@ -1064,7 +1075,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkeWorkerNsgEgress-api-12250",
+            self.create_resource_name("worker-nsg-egress-api-12250"),
             nsg,
             direction="EGRESS",
             protocol=TCP,
@@ -1075,17 +1086,17 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkeWorkerNsgEgress-services",
+            self.create_resource_name("worker-nsg-egress-services"),
             nsg,
             direction="EGRESS",
             protocol=ALL,
-            destination=SVC_CIDR,
+            destination=_get_svc_cidr(),
             destination_type="SERVICE_CIDR_BLOCK",
             description="Workers pull images from OCIR and send metrics and logs to OCI services",
             opts=opts,
         )
         self._r(
-            "OkeWorkerNsgEgress-pod-all",
+            self.create_resource_name("worker-nsg-egress-pod-all"),
             nsg,
             direction="EGRESS",
             protocol=ALL,
@@ -1095,7 +1106,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkeWorkerNsgEgress-worker-all",
+            self.create_resource_name("worker-nsg-egress-worker-all"),
             nsg,
             direction="EGRESS",
             protocol=ALL,
@@ -1105,7 +1116,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkeWorkerNsgEgress-inet-443",
+            self.create_resource_name("worker-nsg-egress-inet-443"),
             nsg,
             direction="EGRESS",
             protocol=TCP,
@@ -1116,7 +1127,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkeWorkerNsgEgress-inet-80",
+            self.create_resource_name("worker-nsg-egress-inet-80"),
             nsg,
             direction="EGRESS",
             protocol=TCP,
@@ -1145,7 +1156,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
 
         # ── INGRESS ────────────────────────────────────────────────────
         self._r(
-            "OkePodNsgIngress-api-all",
+            self.create_resource_name("pod-nsg-ingress-api-all"),
             nsg,
             direction="INGRESS",
             protocol=ALL,
@@ -1155,7 +1166,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkePodNsgIngress-worker-all",
+            self.create_resource_name("pod-nsg-ingress-worker-all"),
             nsg,
             direction="INGRESS",
             protocol=ALL,
@@ -1165,7 +1176,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkePodNsgIngress-pod-all",
+            self.create_resource_name("pod-nsg-ingress-pod-all"),
             nsg,
             direction="INGRESS",
             protocol=ALL,
@@ -1177,7 +1188,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
 
         # ── EGRESS ─────────────────────────────────────────────────────
         self._r(
-            "OkePodNsgEgress-pod-all",
+            self.create_resource_name("pod-nsg-egress-pod-all"),
             nsg,
             direction="EGRESS",
             protocol=ALL,
@@ -1187,7 +1198,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkePodNsgEgress-worker-all",
+            self.create_resource_name("pod-nsg-egress-worker-all"),
             nsg,
             direction="EGRESS",
             protocol=ALL,
@@ -1197,7 +1208,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkePodNsgEgress-api-6443",
+            self.create_resource_name("pod-nsg-egress-api-6443"),
             nsg,
             direction="EGRESS",
             protocol=TCP,
@@ -1208,7 +1219,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkePodNsgEgress-api-12250",
+            self.create_resource_name("pod-nsg-egress-api-12250"),
             nsg,
             direction="EGRESS",
             protocol=TCP,
@@ -1219,17 +1230,17 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkePodNsgEgress-services",
+            self.create_resource_name("pod-nsg-egress-services"),
             nsg,
             direction="EGRESS",
             protocol=ALL,
-            destination=SVC_CIDR,
+            destination=_get_svc_cidr(),
             destination_type="SERVICE_CIDR_BLOCK",
             description="Pods reach OCI services for object storage, monitoring, and logging",
             opts=opts,
         )
         self._r(
-            "OkePodNsgEgress-inet-443",
+            self.create_resource_name("pod-nsg-egress-inet-443"),
             nsg,
             direction="EGRESS",
             protocol=TCP,
@@ -1240,7 +1251,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             opts=opts,
         )
         self._r(
-            "OkePodNsgEgress-inet-80",
+            self.create_resource_name("pod-nsg-egress-inet-80"),
             nsg,
             direction="EGRESS",
             protocol=TCP,
@@ -1344,6 +1355,12 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             # export KUBECONFIG=/tmp/k8s-kubeconfig
             ```
         """
+        # Guard against dry-run: during `pulumi preview` the cluster OCID is
+        # unknown and the OCI API call would fail or produce a misleading error.
+        # The file write is a side-effect that must only happen on real deploys.
+        if pulumi.runtime.is_dry_run():
+            return
+
         cluster_kube_config = self.cluster.id.apply(
             lambda cid: oci.containerengine.get_cluster_kube_config(cluster_id=cid)
         )

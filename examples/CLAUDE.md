@@ -22,6 +22,8 @@ pulumi destroy   # tear down
 | `web-db/` | `Vcn`, `Nsg` ×3, `ComputeInstance` ×5 | 3-tier: INTERNET_EDGE → APP_SERVER → DATABASE; `nsg.serves()` |
 | `import-vcn/` | `VcnRef` | Cross-stack VCN reference via `VcnRef.from_stack_reference()` |
 | `secure-vcn/` | `Vcn` (with `flow_logs=True`), `Nsg` ×4 | Flow logs, four-tier NSGs, management-tier SSH controls |
+| `loadbalancer/` | `Vcn`, `LoadBalancer` | Internet-facing HTTPS LB with TLS termination and HTTP→HTTPS redirect |
+| `storage/` | `BackupBucket`, `DataLakeBucket` | Object Storage retention patterns: versioned backup and tiered lifecycle |
 
 ## Config (Pulumi.\<stack\>.yaml)
 

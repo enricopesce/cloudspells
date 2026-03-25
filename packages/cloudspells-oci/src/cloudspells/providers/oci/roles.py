@@ -14,13 +14,14 @@ from cloudspells.providers.oci import APP_SERVER
 from cloudspells.providers.oci.roles import APP_SERVER
 ```
 
-Exports:
-    Role: Security posture dataclass.
-    INTERNET_EDGE: Predefined role for internet-facing resources.
-    APP_SERVER: Predefined role for private-tier application servers.
-    DATABASE: Predefined role for secure-tier databases.
-    CACHE: Predefined role for private-tier caches and message brokers.
-    MANAGEMENT: Predefined role for management-tier tooling.
+Re-exports:
+
+- `Role`: Security posture dataclass.
+- `INTERNET_EDGE`: Predefined role for internet-facing resources.
+- `APP_SERVER`: Predefined role for private-tier application servers.
+- `DATABASE`: Predefined role for secure-tier databases.
+- `CACHE`: Predefined role for private-tier caches and message brokers.
+- `MANAGEMENT`: Predefined role for management-tier monitoring tooling.
 """
 
 from cloudspells.core.abstractions.roles import (

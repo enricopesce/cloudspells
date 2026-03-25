@@ -13,7 +13,7 @@ Key behaviours:
   `ScalableWorkload` was constructed first), the existing SSH rule is reused
   and no duplicate rule is added.
 - Session access is controlled at the Bastion level via
-  `client_cidr_block_allow_list`; the security-list rule allows all sources
+  `allowed_client_cidrs`; the security-list rule allows all sources
   because OCI Bastion uses dynamically-assigned managed IPs.
 
 Sessions are ephemeral (max 3 h TTL) and are not managed by this spell.
@@ -30,12 +30,26 @@ oci bastion session create-managed-ssh \\
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import pulumi
 import pulumi_oci as oci
 from cloudspells.core.abstractions.bastion import AbstractBastion
 from cloudspells.core.base import BaseResource
 
-from .network import Vcn
+from .network import Vcn, VcnRef
+
+# Fingerprint used to deduplicate the Bastion SSH ingress rule across multiple
+# Bastion instances that share the same Vcn.  Declared as a module constant so
+# both the guard check and _add_unique_security_list_rules always reference the
+# same string — changing one without the other would silently break deduplication.
+_BASTION_SSH_RULE_FINGERPRINT = "bastion-private-ingress-tcp-22"
+
+# OCI Bastion sessions always expire at 3 hours — the maximum the service
+# allows.  Exposing a shorter TTL as a parameter would only create operational
+# friction with no security benefit, since the session can always be terminated
+# early.
+_MAX_SESSION_TTL_SECONDS = 10800
 
 
 class Bastion(BaseResource, AbstractBastion):
@@ -54,12 +68,14 @@ class Bastion(BaseResource, AbstractBastion):
 
     - Private subnet ingress: TCP port 22 from `0.0.0.0/0`.  OCI Bastion
       uses managed, randomly-assigned source IPs; restrict client access via
-      `client_cidr_block_allow_list` instead.
+      `allowed_client_cidrs` instead.
 
     Attributes:
-        vcn: The `Vcn` this Bastion is attached to.
+        vcn: The `Vcn` or `VcnRef` this Bastion is attached to.
         bastion: The underlying `oci.bastion.Bastion` resource.
         bastion_id: `pulumi.Output[str]` OCID of the Bastion resource.
+        bastion_endpoint: `pulumi.Output[str]` private endpoint IP address
+            of the Bastion.  Use this as a `ProxyJump` target in SSH config.
 
     Example:
         ```python
@@ -75,14 +91,14 @@ class Bastion(BaseResource, AbstractBastion):
             name="mgmt",
             compartment_id=comp_id,
             vcn=vcn,
-            client_cidr_block_allow_list=["203.0.113.0/24"],
+            allowed_client_cidrs=["203.0.113.0/24"],
         )
 
         pulumi.export("bastion_endpoint", bastion.get_bastion_endpoint())
         ```
     """
 
-    vcn: Vcn
+    vcn: Vcn | VcnRef
     bastion: oci.bastion.Bastion
     bastion_id: pulumi.Output[str]
     bastion_endpoint: pulumi.Output[str]
@@ -91,10 +107,9 @@ class Bastion(BaseResource, AbstractBastion):
         self,
         name: str,
         compartment_id: pulumi.Input[str],
-        vcn: Vcn,
+        vcn: Vcn | VcnRef,
+        allowed_client_cidrs: Sequence[pulumi.Input[str]] | None = None,
         stack_name: str | None = None,
-        max_session_ttl_in_seconds: int = 10800,
-        client_cidr_block_allow_list: list[str] | None = None,
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
         """Create an OCI Bastion Service endpoint.
@@ -102,16 +117,15 @@ class Bastion(BaseResource, AbstractBastion):
         Args:
             name: Logical name for the Bastion (e.g. `"mgmt"`).
             compartment_id: OCID of the OCI compartment to deploy into.
-            vcn: `Vcn` instance whose private subnet the Bastion will be
-                attached to.
+            vcn: `Vcn` or `VcnRef` instance whose private subnet the Bastion
+                will be attached to.
+            allowed_client_cidrs: List of IPv4 CIDR blocks from which
+                Bastion session creation is permitted.  Defaults to
+                `["0.0.0.0/0"]` (unrestricted).  Supply at least one
+                specific CIDR (e.g. `["203.0.113.0/24"]`) in production
+                environments to restrict which clients may open sessions.
             stack_name: Pulumi stack name.  Defaults to
                 `pulumi.get_stack()` when `None`.
-            max_session_ttl_in_seconds: Maximum lifetime of a single Bastion
-                session in seconds.  Minimum `1800` (30 min), maximum
-                `10800` (3 h).  Default: `10800`.
-            client_cidr_block_allow_list: List of IPv4 CIDR blocks from which
-                Bastion session creation is permitted.  Defaults to
-                `["0.0.0.0/0"]` (unrestricted — restrict in production).
             opts: Pulumi resource options forwarded to the component.
 
         Raises:
@@ -121,12 +135,17 @@ class Bastion(BaseResource, AbstractBastion):
                 registered before that finalisation. Construct `Bastion`
                 before any spell that triggers `finalize_network()`.
         """
-        super().__init__("custom:compute:Bastion", name, compartment_id, stack_name, opts)
+        super().__init__("custom:bastion:Bastion", name, compartment_id, stack_name, opts)
 
         self.vcn = vcn
 
-        if client_cidr_block_allow_list is None:
-            client_cidr_block_allow_list = ["0.0.0.0/0"]
+        if allowed_client_cidrs is None:
+            allowed_client_cidrs = ["0.0.0.0/0"]
+            pulumi.warn(
+                f"Bastion '{name}': allowed_client_cidrs defaults to ['0.0.0.0/0'] — "
+                "any client may create sessions.  Supply a specific CIDR list in "
+                "production environments (e.g. allowed_client_cidrs=['203.0.113.0/24'])."
+            )
 
         # Register the Bastion SSH rule before finalising.  OCI Bastion sessions
         # originate from randomly-assigned managed IPs, so the rule must allow
@@ -137,7 +156,7 @@ class Bastion(BaseResource, AbstractBastion):
         # network was already finalised before this Bastion was constructed.
         if isinstance(self.vcn, Vcn):
             if self.vcn._security_lists_finalized:
-                if "bastion-private-ingress-tcp-22" not in self.vcn._applied_ambient_rule_fingerprints:
+                if _BASTION_SSH_RULE_FINGERPRINT not in self.vcn._applied_ambient_rule_fingerprints:
                     raise RuntimeError(
                         "Bastion must be constructed before any spell that finalizes "
                         "the VCN network (ComputeInstance, ScalableWorkload, OkeCluster). "
@@ -150,10 +169,11 @@ class Bastion(BaseResource, AbstractBastion):
                 self._add_bastion_security_rules()
         self.vcn.finalize_network()
 
-        assert self.vcn.private_subnet is not None, (
-            "VCN private subnet must exist. Construct ComputeInstance or "
-            "ScalableWorkload before Bastion, or call vcn.finalize_network() first."
-        )
+        if self.vcn.private_subnet is None:
+            raise RuntimeError(
+                "VCN private subnet must exist after finalize_network(). "
+                "This is an internal error — please file a bug report."
+            )
 
         bastion_name = self.create_resource_name("bastion")
         self.bastion = oci.bastion.Bastion(
@@ -162,17 +182,18 @@ class Bastion(BaseResource, AbstractBastion):
             compartment_id=self.compartment_id,
             target_subnet_id=self.vcn.private_subnet.id,
             name=bastion_name,
-            max_session_ttl_in_seconds=max_session_ttl_in_seconds,
-            client_cidr_block_allow_lists=client_cidr_block_allow_list,
+            max_session_ttl_in_seconds=_MAX_SESSION_TTL_SECONDS,
+            client_cidr_block_allow_lists=allowed_client_cidrs,
             freeform_tags=self.create_freeform_tags(bastion_name, "bastion"),
             opts=pulumi.ResourceOptions(parent=self),
         )
 
         self.bastion_id = self.bastion.id
+        self.bastion_endpoint = self.bastion.private_endpoint_ip_address
 
         self.register_outputs({
-            "bastion_id": self.bastion.id,
-            "bastion_endpoint": self.bastion.private_endpoint_ip_address,
+            "bastion_id": self.bastion_id,
+            "bastion_endpoint": self.bastion_endpoint,
         })
 
     def _add_bastion_security_rules(self) -> None:
@@ -180,9 +201,9 @@ class Bastion(BaseResource, AbstractBastion):
 
         OCI Bastion sessions originate from managed, randomly-assigned source
         IPs, so the rule must allow `0.0.0.0/0` on port 22.  Client access
-        is restricted at the Bastion level via `client_cidr_block_allow_list`.
+        is restricted at the Bastion level via `allowed_client_cidrs`.
 
-        Uses fingerprint `"bastion-private-ingress-tcp-22"` so that a second
+        Uses fingerprint `_BASTION_SSH_RULE_FINGERPRINT` so that a second
         `Bastion` constructed against the same VCN is deduplicated rather than
         producing a duplicate rule.
 
@@ -190,9 +211,8 @@ class Bastion(BaseResource, AbstractBastion):
         before any spell that triggers finalisation (e.g. `ComputeInstance`)
         ensures the correct ordering.
         """
-        assert isinstance(self.vcn, Vcn)
-        self.vcn._add_unique_security_list_rules(
-            "bastion-private-ingress-tcp-22",
+        self.vcn._add_unique_security_list_rules(  # type: ignore[union-attr]
+            _BASTION_SSH_RULE_FINGERPRINT,
             private_ingress=[
                 oci.core.SecurityListIngressSecurityRuleArgs(
                     description="SSH access from OCI Bastion service to private subnet instances",
@@ -246,7 +266,7 @@ class Bastion(BaseResource, AbstractBastion):
             `pulumi.Output[str]` resolving to the Bastion private endpoint
             IP address.
         """
-        return self.bastion.private_endpoint_ip_address
+        return self.bastion_endpoint
 
     def get_access_endpoint(self) -> pulumi.Output[str]:
         """Return the access endpoint for SSH proxy sessions.

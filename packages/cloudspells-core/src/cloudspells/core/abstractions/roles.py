@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .compute import SUBNET_MANAGEMENT, SUBNET_PRIVATE, SUBNET_PUBLIC, SUBNET_SECURE, SubnetTier
+from .tiers import SUBNET_MANAGEMENT, SUBNET_PRIVATE, SUBNET_PUBLIC, SUBNET_SECURE, SubnetTier
 
 
 @dataclass(frozen=True)
@@ -39,6 +39,9 @@ class Role:
     separately by the provider's NSG/security-group implementation.
 
     Attributes:
+        name: Human-readable identifier for this role (e.g. `"APP_SERVER"`).
+            Used as a stable identity field so that two `Role` instances with
+            identical network flags but different names compare as unequal.
         subnet_tier: Which network tier resources carrying this role belong to.
             Used by compute spells to infer subnet placement when a role is
             supplied instead of an explicit subnet.
@@ -64,6 +67,7 @@ class Role:
 
         # Custom role: private tier, internet + service egress, no SSH from upstream.
         proxy = Role(
+            name="PROXY",
             subnet_tier=SUBNET_PRIVATE,
             egress_internet=True,
             egress_services=True,
@@ -72,6 +76,7 @@ class Role:
         ```
     """
 
+    name: str
     subnet_tier: SubnetTier
     egress_internet: bool = False
     egress_services: bool = False
@@ -81,6 +86,7 @@ class Role:
 # ── Predefined roles ────────────────────────────────────────────────────────
 
 INTERNET_EDGE: Role = Role(
+    name="INTERNET_EDGE",
     subnet_tier=SUBNET_PUBLIC,
     egress_internet=False,
     egress_services=False,
@@ -112,6 +118,7 @@ Example:
 """
 
 APP_SERVER: Role = Role(
+    name="APP_SERVER",
     subnet_tier=SUBNET_PRIVATE,
     egress_internet=True,
     egress_services=True,
@@ -133,6 +140,7 @@ Example:
 """
 
 DATABASE: Role = Role(
+    name="DATABASE",
     subnet_tier=SUBNET_SECURE,
     egress_internet=False,
     egress_services=True,
@@ -153,6 +161,7 @@ Example:
 """
 
 CACHE: Role = Role(
+    name="CACHE",
     subnet_tier=SUBNET_PRIVATE,
     egress_internet=True,
     egress_services=True,
@@ -164,7 +173,10 @@ Identical network posture to `APP_SERVER` — private subnet, internet egress
 via NAT, and service-endpoint egress.  Provided as a distinct constant so
 that the purpose of each NSG is immediately clear from its role name:
 use `APP_SERVER` for stateless compute and `CACHE` for stateful
-caching/messaging resources.
+caching/messaging resources.  The `name="CACHE"` field ensures that
+`CACHE != APP_SERVER` under equality even though their other flags are
+identical, preventing accidental role confusion in NSG and security-list
+logic.
 
 Example:
     ```python
@@ -176,6 +188,7 @@ Example:
 """
 
 MANAGEMENT: Role = Role(
+    name="MANAGEMENT",
     subnet_tier=SUBNET_MANAGEMENT,
     egress_internet=False,
     egress_services=True,

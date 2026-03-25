@@ -23,6 +23,7 @@ Internet
 
 - Completed [Installation](../getting-started/installation.md)
 - OCI compartment OCID at hand
+- Boot image OCID for the instance (OCI Console → Compute → Images, or use the OCI CLI)
 
 ---
 
@@ -33,6 +34,7 @@ cd examples/compute
 
 pulumi stack init dev
 pulumi config set compartment_ocid ocid1.compartment.oc1..example
+pulumi config set image_ocid        ocid1.image.oc1..example
 ```
 
 Optionally, provide your own SSH public key (skip this to auto-generate one):
@@ -87,6 +89,7 @@ web_server = ComputeInstance(
     name="web-server",
     compartment_id=compartment_id,
     vcn=vcn,
+    image_id=config.require("image_ocid"),
     ssh_public_key=ssh_key,
     nsg=web_nsg,
     volumes=[
@@ -97,6 +100,8 @@ web_server = ComputeInstance(
 ```
 
 The instance inherits its subnet from the NSG role: because `web_nsg` uses `INTERNET_EDGE`, the instance is automatically placed in the public subnet. No subnet argument needed.
+
+`image_id` is a required parameter — pass the OCID of a boot image for the instance. Obtain it from the OCI Console or CLI and store it in Pulumi config.
 
 `ComputeInstance` calls `vcn.finalize_network()` automatically — security lists and subnets are materialised at this point.
 

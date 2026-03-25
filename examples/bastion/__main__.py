@@ -78,8 +78,6 @@ bastion: Bastion = Bastion(
     name="mgmt",
     compartment_id=compartment_id,
     vcn=vcn,
-    max_session_ttl_in_seconds=10800,
-    client_cidr_block_allow_list=["0.0.0.0/0"],
 )
 
 # ── 4. Compute instance (private subnet inferred from APP_SERVER role) ────────

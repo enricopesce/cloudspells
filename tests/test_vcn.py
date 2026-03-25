@@ -10,7 +10,8 @@ from tests.mocks import set_mocks
 set_mocks()
 
 # Import AFTER mocks are set
-from cloudspells.providers.oci.network import Vcn
+from cloudspells.core.abstractions.network import EgressRule, IngressRule, SecurityRules
+from cloudspells.providers.oci.network import Vcn, VcnRef
 
 
 class TestVcn(unittest.TestCase):
@@ -368,6 +369,157 @@ class TestVcn(unittest.TestCase):
             on_premise_cidrs=["10.10.0.0/16"],
         )
         self.assertIsNone(vcn.drg, "drg must be None when drg=False even with on_premise_cidrs set")
+
+    # ------------------------------------------------------------------
+    # add_security_list_rules / add_security_rules
+    # ------------------------------------------------------------------
+
+    def test_add_security_list_rules_after_finalize_raises(self):
+        """add_security_list_rules() raises RuntimeError when called after finalize_network."""
+        vcn = Vcn(name="test-vcn", compartment_id="ocid1.compartment.test")
+        vcn.finalize_network()
+        with self.assertRaises(RuntimeError):
+            vcn.add_security_list_rules(public_ingress=[])
+
+    @pulumi.runtime.test
+    def test_add_security_rules_translates_ingress_and_egress(self):
+        """add_security_rules() populates public/private security lists via cloud-neutral rules."""
+        vcn = Vcn(name="test-vcn", compartment_id="ocid1.compartment.test")
+        rules = SecurityRules(
+            public_ingress=[IngressRule(protocol="tcp", source="internet", port_min=443, port_max=443)],
+            private_egress=[EgressRule(protocol="tcp", destination="cloud-services", port_min=443, port_max=443)],
+        )
+        vcn.add_security_rules(rules)
+        vcn.finalize_network()
+
+        def check_public_ingress(ingress_rules):
+            cidrs = [r.get("source") for r in (ingress_rules or [])]
+            self.assertIn("0.0.0.0/0", cidrs, "internet source must translate to 0.0.0.0/0")
+
+        def check_private_egress(egress_rules):
+            types = [r.get("destination_type") for r in (egress_rules or [])]
+            self.assertIn("SERVICE_CIDR_BLOCK", types, "cloud-services destination must have SERVICE_CIDR_BLOCK type")
+
+        public_check = vcn.public_security_list.ingress_security_rules.apply(check_public_ingress)
+        private_check = vcn.private_security_list.egress_security_rules.apply(check_private_egress)
+        return pulumi.Output.all(public_check, private_check)
+
+    @pulumi.runtime.test
+    def test_add_security_rules_management_tier(self):
+        """add_security_rules() correctly routes management_ingress rules."""
+        vcn = Vcn(name="test-vcn", compartment_id="ocid1.compartment.test")
+        rules = SecurityRules(
+            management_ingress=[IngressRule(protocol="tcp", source="10.0.0.0/8", port_min=22, port_max=22)],
+        )
+        vcn.add_security_rules(rules)
+        vcn.finalize_network()
+
+        def check(ingress_rules):
+            sources = [r.get("source") for r in (ingress_rules or [])]
+            self.assertIn("10.0.0.0/8", sources)
+
+        return vcn.management_security_list.ingress_security_rules.apply(check)
+
+
+class TestVcnRef(unittest.TestCase):
+    """Test cases for VcnRef — cross-stack VCN reference."""
+
+    def _make_ref(self, **kwargs):
+        defaults = dict(
+            vcn_id="ocid1.vcn.oc1.phx.test",
+            public_subnet_id="ocid1.subnet.public.test",
+            private_subnet_id="ocid1.subnet.private.test",
+            public_subnet_cidr="10.0.192.0/19",
+            private_subnet_cidr="10.0.0.0/17",
+            cidr_block="10.0.0.0/16",
+            secure_subnet_id="ocid1.subnet.secure.test",
+            secure_subnet_cidr="10.0.128.0/18",
+            management_subnet_id="ocid1.subnet.mgmt.test",
+            management_subnet_cidr="10.0.224.0/19",
+        )
+        defaults.update(kwargs)
+        return VcnRef(**defaults)
+
+    def test_vcnref_requires_cidr_block(self):
+        """VcnRef raises ValueError when cidr_block is None."""
+        with self.assertRaises(ValueError):
+            VcnRef(
+                vcn_id="ocid1.vcn.test",
+                public_subnet_id="ocid1.subnet.pub.test",
+                private_subnet_id="ocid1.subnet.priv.test",
+                public_subnet_cidr="10.0.0.0/19",
+                private_subnet_cidr="10.0.0.0/17",
+                cidr_block=None,
+            )
+
+    def test_vcnref_cidr_accessors(self):
+        """VcnRef CIDR accessors return the values passed at construction."""
+        ref = self._make_ref()
+        self.assertEqual(ref.get_public_subnet_cidr(), "10.0.192.0/19")
+        self.assertEqual(ref.get_private_subnet_cidr(), "10.0.0.0/17")
+        self.assertEqual(ref.get_secure_subnet_cidr(), "10.0.128.0/18")
+        self.assertEqual(ref.get_management_subnet_cidr(), "10.0.224.0/19")
+
+    def test_vcnref_optional_subnets_none_by_default(self):
+        """VcnRef has None secure/management subnets when not provided."""
+        ref = VcnRef(
+            vcn_id="ocid1.vcn.test",
+            public_subnet_id="ocid1.subnet.pub.test",
+            private_subnet_id="ocid1.subnet.priv.test",
+            public_subnet_cidr="10.0.0.0/19",
+            private_subnet_cidr="10.0.0.0/17",
+            cidr_block="10.0.0.0/16",
+        )
+        self.assertIsNone(ref.secure_subnet)
+        self.assertIsNone(ref.management_subnet)
+        self.assertEqual(ref.get_secure_subnet_cidr(), "")
+        self.assertEqual(ref.get_management_subnet_cidr(), "")
+
+    def test_vcnref_drg_id_none_by_default(self):
+        """VcnRef.drg_id is None when not provided."""
+        ref = self._make_ref()
+        self.assertIsNone(ref.drg_id)
+
+    def test_vcnref_drg_id_set(self):
+        """VcnRef stores drg_id when provided."""
+        ref = self._make_ref(drg_id="ocid1.drg.test")
+        self.assertIsNotNone(ref.drg_id)
+
+    def test_vcnref_add_security_list_rules_nonempty_raises(self):
+        """VcnRef.add_security_list_rules() raises RuntimeError for non-empty rule lists."""
+        import pulumi_oci as oci
+
+        ref = self._make_ref()
+        dummy_rule = oci.core.SecurityListIngressSecurityRuleArgs(
+            protocol="6", source="0.0.0.0/0", source_type="CIDR_BLOCK"
+        )
+        with self.assertRaises(RuntimeError):
+            ref.add_security_list_rules(public_ingress=[dummy_rule])
+
+    def test_vcnref_add_security_list_rules_all_none_is_noop(self):
+        """VcnRef.add_security_list_rules() accepts all-None without raising."""
+        ref = self._make_ref()
+        ref.add_security_list_rules()  # must not raise
+
+    def test_vcnref_finalize_network_is_noop(self):
+        """VcnRef.finalize_network() is a no-op and does not raise."""
+        ref = self._make_ref()
+        ref.finalize_network()  # must not raise
+
+    def test_vcnref_security_list_stubs_present(self):
+        """VcnRef exposes security list stubs when IDs are provided."""
+        ref = self._make_ref(
+            public_security_list_id="ocid1.sl.pub.test",
+            private_security_list_id="ocid1.sl.priv.test",
+        )
+        self.assertIsNotNone(ref.public_security_list)
+        self.assertIsNotNone(ref.private_security_list)
+
+    def test_vcnref_security_list_stubs_none_when_not_provided(self):
+        """VcnRef security list stubs are None when IDs are omitted."""
+        ref = self._make_ref()
+        self.assertIsNone(ref.public_security_list)
+        self.assertIsNone(ref.private_security_list)
 
 
 if __name__ == "__main__":

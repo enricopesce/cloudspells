@@ -90,7 +90,7 @@ class TestBastion(unittest.TestCase):
             name="custom-cidr-bastion",
             compartment_id="ocid1.compartment.test",
             vcn=self.vcn,
-            client_cidr_block_allow_list=custom_cidrs,
+            allowed_client_cidrs=custom_cidrs,
         )
 
         self.assertIsNotNone(bastion.bastion)
@@ -108,6 +108,45 @@ class TestBastion(unittest.TestCase):
             self.assertIsNotNone(endpoint, "Bastion endpoint must be set")
 
         return bastion.get_bastion_endpoint().apply(check_endpoint)
+
+    @pulumi.runtime.test
+    def test_get_access_endpoint_matches_bastion_endpoint(self):
+        """get_access_endpoint() returns the same Output as get_bastion_endpoint()."""
+        bastion = Bastion(
+            name="access-endpoint-bastion",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+        )
+
+        def check(endpoint):
+            self.assertIsNotNone(endpoint)
+
+        return bastion.get_access_endpoint().apply(check)
+
+    def test_bastion_raises_when_vcn_already_finalized(self):
+        """Bastion raises RuntimeError when the VCN is finalized without the SSH rule applied."""
+        vcn = Vcn(
+            name="pre-finalized-vcn",
+            compartment_id="ocid1.compartment.test",
+        )
+        # Finalize before any Bastion has registered its SSH rule.
+        vcn.finalize_network()
+        with self.assertRaises(RuntimeError):
+            Bastion(
+                name="late-bastion",
+                compartment_id="ocid1.compartment.test",
+                vcn=vcn,
+            )
+
+    def test_second_bastion_on_same_vcn_is_accepted(self):
+        """A second Bastion against the same VCN is a no-op (deduplication via fingerprint)."""
+        vcn = Vcn(
+            name="dedup-vcn",
+            compartment_id="ocid1.compartment.test",
+        )
+        Bastion(name="first-bastion", compartment_id="ocid1.compartment.test", vcn=vcn)
+        # VCN is now finalized; a second Bastion should not raise.
+        Bastion(name="second-bastion", compartment_id="ocid1.compartment.test", vcn=vcn)
 
 
 if __name__ == "__main__":

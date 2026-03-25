@@ -29,6 +29,7 @@ Internet (HTTP port 80)
 
 - Completed [Installation](../getting-started/installation.md)
 - OCI compartment OCID at hand
+- Boot image OCID for the pool instances (OCI Console → Compute → Images, or use the OCI CLI)
 
 ---
 
@@ -39,6 +40,7 @@ cd examples/autoscale
 
 pulumi stack init dev
 pulumi config set compartment_ocid ocid1.compartment.oc1..example
+pulumi config set image_ocid        ocid1.image.oc1..example
 ```
 
 Optionally provide an SSH key (skip to auto-generate):
@@ -86,11 +88,14 @@ scalable_pool = ScalableWorkload(
     name="web-pool",
     compartment_id=compartment_id,
     vcn=vcn,
+    image_id=config.require("image_ocid"),
     ssh_public_key=config.get("ssh_key"),
     user_data=user_data_script,
     max_instances=3,
 )
 ```
+
+`image_id` is a required parameter — pass the OCID of a boot image for the pool instances. Obtain it from the OCI Console or CLI and store it in Pulumi config.
 
 `ScalableWorkload` encapsulates the entire tier:
 
@@ -177,7 +182,7 @@ bastion = Bastion(
 )
 ```
 
-See the [Bastion how-to guide](../how-to/bastion.md) for session creation steps.
+Declare the `Bastion` **before** `ScalableWorkload` so its SSH rule is registered before `finalize_network()` runs. See the [Bastion how-to guide](../how-to/bastion.md) for session creation steps.
 
 ---
 

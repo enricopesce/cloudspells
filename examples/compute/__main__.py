@@ -66,7 +66,6 @@ web_nsg: Nsg = Nsg(
 # ── Step 3 — Compute instance ─────────────────────────────────────────────────
 #
 # nsg= infers subnet=SUBNET_PUBLIC from the INTERNET_EDGE role.
-# finalize_network() is called automatically by ComputeInstance.
 
 web_server: ComputeInstance = ComputeInstance(
     name="web-server",

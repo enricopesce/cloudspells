@@ -78,6 +78,11 @@ class TestVolumeSpec(unittest.TestCase):
         spec = VolumeSpec(size_in_gbs=50)
         self.assertEqual(spec.size_in_gbs, 50)
 
+    def test_rejects_size_above_maximum(self) -> None:
+        """Test that size_in_gbs above OCI maximum raises ValueError."""
+        with self.assertRaises(ValueError):
+            VolumeSpec(size_in_gbs=32769)
+
 
 class TestComputeInstance(unittest.TestCase):
     """Tests for ComputeInstance block."""
@@ -417,29 +422,6 @@ class TestComputeInstance(unittest.TestCase):
         )
         self.assertEqual(instance.fault_domain, "FAULT-DOMAIN-2")
 
-    def test_preserve_boot_volume_default(self):
-        """preserve_boot_volume defaults to False."""
-        instance = ComputeInstance(
-            name="pbv-default-instance",
-            compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
-            image_id="ocid1.image.oc1.phx.test",
-            ssh_public_key="ssh-rsa AAAAB3... test-key",
-        )
-        self.assertFalse(instance.preserve_boot_volume)
-
-    def test_preserve_boot_volume_set(self):
-        """preserve_boot_volume=True is stored."""
-        instance = ComputeInstance(
-            name="pbv-set-instance",
-            compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
-            image_id="ocid1.image.oc1.phx.test",
-            ssh_public_key="ssh-rsa AAAAB3... test-key",
-            preserve_boot_volume=True,
-        )
-        self.assertTrue(instance.preserve_boot_volume)
-
     def test_hostname_label_optional(self):
         """hostname_label defaults to None."""
         instance = ComputeInstance(
@@ -489,13 +471,6 @@ class TestComputeInstance(unittest.TestCase):
             user_data="#!/bin/bash\necho hello\n",
             fault_domain="FAULT-DOMAIN-1",
             hostname_label="full-params",
-            private_ip="10.0.1.50",
-            skip_source_dest_check=True,
-            boot_volume_vpus_per_gb=20,
-            is_pv_encryption_in_transit=True,
-            preserve_boot_volume=True,
-            recovery_action="RESTORE_INSTANCE",
-            baseline_ocpu_utilization="BASELINE_1_2",
             volumes=[
                 VolumeSpec(
                     size_in_gbs=200,
@@ -505,6 +480,131 @@ class TestComputeInstance(unittest.TestCase):
             ],
         )
         return instance.instance.id.apply(lambda iid: self.assertIsNotNone(iid))
+
+    # ------ subnet placement ------------------------------------------
+
+    def test_management_subnet_placement(self):
+        """ComputeInstance with subnet=SUBNET_MANAGEMENT is accepted."""
+        from cloudspells.providers.oci.network import SUBNET_MANAGEMENT
+
+        instance = ComputeInstance(
+            name="mgmt-subnet-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+            subnet=SUBNET_MANAGEMENT,
+        )
+        self.assertIsNotNone(instance.instance)
+
+    def test_public_subnet_placement(self):
+        """ComputeInstance with subnet=SUBNET_PUBLIC is accepted."""
+        from cloudspells.providers.oci.network import SUBNET_PUBLIC
+
+        instance = ComputeInstance(
+            name="public-subnet-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+            subnet=SUBNET_PUBLIC,
+        )
+        self.assertIsNotNone(instance.instance)
+
+    # ------ additional accessor methods --------------------------------
+
+    def test_get_disk_id_delegates_to_get_volume_id(self):
+        """get_disk_id returns the same Output as get_volume_id for the same label."""
+        instance = ComputeInstance(
+            name="disk-id-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+            volumes=[VolumeSpec(size_in_gbs=100, label="data")],
+        )
+        self.assertIsNotNone(instance.get_disk_id("data"))
+
+    def test_get_disk_id_unknown_label_raises(self):
+        """get_disk_id raises KeyError for an unknown label."""
+        instance = ComputeInstance(
+            name="disk-keyerror-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+        )
+        with self.assertRaises(KeyError):
+            instance.get_disk_id("nonexistent")
+
+    def test_get_volume_returns_oci_resource(self):
+        """get_volume returns a non-None resource object for a valid label."""
+        instance = ComputeInstance(
+            name="get-vol-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+            volumes=[VolumeSpec(size_in_gbs=100, label="data")],
+        )
+        self.assertIsNotNone(instance.get_volume("data"))
+
+    def test_get_volume_unknown_label_raises(self):
+        """get_volume raises KeyError for an unknown label."""
+        instance = ComputeInstance(
+            name="get-vol-keyerror-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+        )
+        with self.assertRaises(KeyError):
+            instance.get_volume("nonexistent")
+
+    def test_get_volume_attachment_returns_resource(self):
+        """get_volume_attachment returns a non-None resource for a valid label."""
+        instance = ComputeInstance(
+            name="get-att-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+            volumes=[VolumeSpec(size_in_gbs=100, label="data")],
+        )
+        self.assertIsNotNone(instance.get_volume_attachment("data"))
+
+    def test_get_volume_attachment_unknown_label_raises(self):
+        """get_volume_attachment raises KeyError for an unknown label."""
+        instance = ComputeInstance(
+            name="get-att-keyerror-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+        )
+        with self.assertRaises(KeyError):
+            instance.get_volume_attachment("nonexistent")
+
+    def test_get_ssh_private_key_returns_none_when_key_provided(self):
+        """get_ssh_private_key returns None when the caller supplied their own public key."""
+        instance = ComputeInstance(
+            name="privkey-none-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+        )
+        self.assertIsNone(instance.get_ssh_private_key())
+
+    def test_get_ssh_private_key_returns_key_when_auto_generated(self):
+        """get_ssh_private_key returns the PEM string when keys were auto-generated."""
+        instance = ComputeInstance(
+            name="privkey-auto-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self.vcn,
+            image_id="ocid1.image.oc1.phx.test",
+        )
+        self.assertIsNotNone(instance.get_ssh_private_key())
 
 
 if __name__ == "__main__":

@@ -36,6 +36,15 @@ test:
 deadcode:
 	$(VENV)/bin/vulture packages/ --min-confidence 80
 
+# ── Per-file quality gate (used by spell-fixer agent) ────────────────────────
+# Usage: make check-file FILE=packages/cloudspells-oci/src/cloudspells/providers/oci/compute.py
+
+.PHONY: check-file
+check-file:
+	$(RUFF) check $(FILE) --output-format=concise
+	$(RUFF) format --check $(FILE)
+	$(PYRIGHT) $(FILE)
+
 # ── Full quality gate (mirrors CI exactly) ───────────────────────────────────
 
 .PHONY: check

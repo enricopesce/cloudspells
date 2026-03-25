@@ -78,15 +78,97 @@ _PROTOCOL_MAP: dict[str, str] = {
 }
 
 
+def _translate_ingress_rule(
+    rule: IngressRule,
+) -> oci.core.SecurityListIngressSecurityRuleArgs:
+    """Translate a cloud-neutral `IngressRule` to OCI `SecurityList` ingress args.
+
+    Args:
+        rule: Cloud-neutral ingress rule descriptor.
+
+    Returns:
+        OCI-specific `SecurityListIngressSecurityRuleArgs` ready for use in
+        a security list resource.
+    """
+    proto = _PROTOCOL_MAP.get(rule.protocol, rule.protocol)
+    source = "0.0.0.0/0" if rule.source == "internet" else rule.source
+    kwargs: dict[str, Any] = {
+        "protocol": proto,
+        "source": source,
+        "source_type": "CIDR_BLOCK",
+        "description": rule.description,
+    }
+    if rule.protocol == "tcp" and (rule.port_min is not None or rule.port_max is not None):
+        kwargs["tcp_options"] = oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
+            min=rule.port_min or 1,
+            max=rule.port_max or 65535,
+        )
+    return oci.core.SecurityListIngressSecurityRuleArgs(**kwargs)
+
+
+def _translate_egress_rule(
+    rule: EgressRule,
+    svc_cidr_block: pulumi.Output[str],
+) -> oci.core.SecurityListEgressSecurityRuleArgs:
+    """Translate a cloud-neutral `EgressRule` to OCI `SecurityList` egress args.
+
+    Args:
+        rule: Cloud-neutral egress rule descriptor.
+        svc_cidr_block: OCI Service Gateway CIDR block used when
+            `rule.destination == "cloud-services"`.
+
+    Returns:
+        OCI-specific `SecurityListEgressSecurityRuleArgs` ready for use in
+        a security list resource.
+    """
+    proto = _PROTOCOL_MAP.get(rule.protocol, rule.protocol)
+    is_service = rule.destination == "cloud-services"
+    destination = (
+        svc_cidr_block if is_service else ("0.0.0.0/0" if rule.destination == "internet" else rule.destination)
+    )
+    dest_type = "SERVICE_CIDR_BLOCK" if is_service else "CIDR_BLOCK"
+    kwargs: dict[str, Any] = {
+        "protocol": proto,
+        "destination": destination,
+        "destination_type": dest_type,
+        "description": rule.description,
+    }
+    if rule.protocol == "tcp" and (rule.port_min is not None or rule.port_max is not None):
+        kwargs["tcp_options"] = oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
+            min=rule.port_min or 1,
+            max=rule.port_max or 65535,
+        )
+    return oci.core.SecurityListEgressSecurityRuleArgs(**kwargs)
+
+
 class _SubnetRef:
-    """Thin wrapper exposing only the `id` of an externally-managed subnet."""
+    """Thin wrapper exposing only the `id` of an externally-managed subnet.
+
+    Used by `VcnRef` to present subnet stubs compatible with `oci.core.Subnet`
+    for the purposes of reading `.id`.  Callers that receive a `VcnRef` will
+    encounter `_SubnetRef` objects on `public_subnet`, `private_subnet`,
+    `secure_subnet`, and `management_subnet`.
+
+    Attributes:
+        id: `pulumi.Output[str]` OCID of the subnet.
+    """
 
     def __init__(self, subnet_id: pulumi.Input[str]) -> None:
         self.id: pulumi.Output[str] = pulumi.Output.from_input(subnet_id)
 
 
 class _SecurityListRef:
-    """Thin wrapper exposing only the `id` of an externally-managed security list."""
+    """Thin wrapper exposing only the `id` of an externally-managed security list.
+
+    Used by `VcnRef` to present security-list stubs compatible with
+    `oci.core.SecurityList` for the purposes of reading `.id`.  Callers that
+    receive a `VcnRef` will encounter `_SecurityListRef` objects on
+    `public_security_list`, `private_security_list`, `secure_security_list`,
+    and `management_security_list` when those IDs were provided at construction.
+
+    Attributes:
+        id: `pulumi.Output[str]` OCID of the security list.
+    """
 
     def __init__(self, security_list_id: pulumi.Input[str]) -> None:
         self.id: pulumi.Output[str] = pulumi.Output.from_input(security_list_id)
@@ -158,7 +240,9 @@ class Vcn(BaseResource, AbstractNetwork):
     their rules via `add_security_list_rules` **before** that call.
 
     Attributes:
-        cidr_block: IPv4 CIDR block for the VCN.
+        cidr_block: Plain `str` IPv4 CIDR block for the VCN.  A `str` (not
+            `pulumi.Output[str]`) is required because subnet CIDR splitting
+            runs synchronously at construction time via `ipaddress.ip_network`.
         vcn: The underlying `oci.core.Vcn` resource.
         internet_gateway: Internet Gateway resource.
         nat_gateway: NAT Gateway resource.
@@ -225,7 +309,7 @@ class Vcn(BaseResource, AbstractNetwork):
     SUBNET_SECURE: SubnetTier = "secure"
     SUBNET_MANAGEMENT: SubnetTier = "management"
 
-    cidr_block: pulumi.Input[str]
+    cidr_block: str
     vcn: oci.core.Vcn
     internet_gateway: oci.core.InternetGateway
     nat_gateway: oci.core.NatGateway
@@ -253,7 +337,7 @@ class Vcn(BaseResource, AbstractNetwork):
         compartment_id: pulumi.Input[str],
         stack_name: str | None = None,
         opts: pulumi.ResourceOptions | None = None,
-        cidr_block: pulumi.Input[str] | None = None,
+        cidr_block: str | None = None,
         additional_cidr_blocks: list[pulumi.Input[str]] | None = None,
         ipv6_enabled: bool = False,
         flow_logs: bool = False,
@@ -279,7 +363,11 @@ class Vcn(BaseResource, AbstractNetwork):
             opts: Pulumi resource options forwarded to the component.
             cidr_block: IPv4 CIDR for the VCN in canonical form
                 (no host bits set, e.g. `"10.0.0.0/16"` not
-                `"10.0.1.0/16"`).  Defaults to `"10.0.0.0/18"`.
+                `"10.0.1.0/16"`).  Must be a plain Python `str`, not a
+                `pulumi.Output[str]` — subnet CIDR splitting runs
+                synchronously at construction time via `ipaddress.ip_network`
+                and cannot accept an unresolved `Output`.
+                Defaults to `"10.0.0.0/18"`.
                 Any prefix length is accepted; the four tier subnets are
                 derived automatically by binary subdivision — private gets
                 50 % (prefix+1), secure 25 % (prefix+2), public and
@@ -395,8 +483,7 @@ class Vcn(BaseResource, AbstractNetwork):
         # NSGs should not add the services-egress rule five times).
         self._applied_ambient_rule_fingerprints: set[str] = set()
 
-        cidr_str: str = str(self.cidr_block) if not isinstance(self.cidr_block, str) else self.cidr_block
-        self._subnet_cidrs: _SubnetCidrs = self._split_tiers(cidr_str)
+        self._subnet_cidrs: _SubnetCidrs = self._split_tiers(self.cidr_block)
 
         # Seed the standard OCI path-MTU and destination-unreachable ICMP rules
         # that the OCI VCN wizard adds to the public security list by default.
@@ -413,7 +500,7 @@ class Vcn(BaseResource, AbstractNetwork):
             ),
             oci.core.SecurityListIngressSecurityRuleArgs(
                 protocol="1",
-                source=cidr_str,
+                source=self.cidr_block,
                 source_type="CIDR_BLOCK",
                 description="ICMP traffic for: 3 Destination Unreachable",
                 icmp_options=oci.core.SecurityListIngressSecurityRuleIcmpOptionsArgs(
@@ -526,9 +613,10 @@ class Vcn(BaseResource, AbstractNetwork):
             has been created and OCI has assigned its IPv6 prefix.
 
         Raises:
-            AssertionError: If called when `ipv6_enabled=False`.
+            RuntimeError: If called when `ipv6_enabled=False`.
         """
-        assert self._ipv6_enabled, "_compute_ipv6_subnet_cidr called with ipv6_enabled=False"
+        if not self._ipv6_enabled:
+            raise RuntimeError("_compute_ipv6_subnet_cidr called when IPv6 is not enabled on this VCN")
         return self.vcn.ipv6cidr_blocks.apply(
             lambda blocks: str(list(ipaddress.ip_network(blocks[0]).subnets(new_prefix=64))[idx])
         )
@@ -823,26 +911,26 @@ class Vcn(BaseResource, AbstractNetwork):
         # IPv6 slot assignments mirror the IPv4 tier layout: private=0
         # (largest tier), secure=1, public=2, management=3.  Stable indices
         # ensure subnets always get the same /64 on re-plan.
-        subnet_configs: dict[tuple[str, str], SubnetConfig] = {
-            ("public", "public"): SubnetConfig(
+        subnet_configs: dict[str, SubnetConfig] = {
+            "public": SubnetConfig(
                 public_cidr,
                 True,
                 "pub",
                 self._compute_ipv6_subnet_cidr(2) if self._ipv6_enabled else None,
             ),
-            ("private", "private"): SubnetConfig(
+            "private": SubnetConfig(
                 private_cidr,
                 False,
                 "priv",
                 self._compute_ipv6_subnet_cidr(0) if self._ipv6_enabled else None,
             ),
-            ("secure", "secure"): SubnetConfig(
+            "secure": SubnetConfig(
                 secure_cidr,
                 False,
                 "sec",
                 self._compute_ipv6_subnet_cidr(1) if self._ipv6_enabled else None,
             ),
-            ("management", "management"): SubnetConfig(
+            "management": SubnetConfig(
                 management_cidr,
                 False,
                 "mgmt",
@@ -850,15 +938,15 @@ class Vcn(BaseResource, AbstractNetwork):
             ),
         }
 
-        for (short_name, attr_name), config in subnet_configs.items():
-            security_list: oci.core.SecurityList = getattr(self, f"{attr_name}_security_list")
-            route_table: oci.core.RouteTable = getattr(self, f"{attr_name}_route_table")
+        for tier, config in subnet_configs.items():
+            security_list: oci.core.SecurityList = getattr(self, f"{tier}_security_list")
+            route_table: oci.core.RouteTable = getattr(self, f"{tier}_route_table")
 
-            subnet_name: str = self.create_resource_name(f"sn-{short_name}")
+            subnet_name: str = self.create_resource_name(f"sn-{tier}")
             setattr(
                 self,
-                f"{attr_name}_subnet",
-                self._create_subnet(subnet_name, config, security_list, route_table, short_name),
+                f"{tier}_subnet",
+                self._create_subnet(subnet_name, config, security_list, route_table, tier),
             )
 
     def _inject_baseline_rules(self) -> None:
@@ -979,6 +1067,11 @@ class Vcn(BaseResource, AbstractNetwork):
         Calls `finalize_network` automatically if it has not been called
         yet, so no explicit call is needed before `export()`.
 
+        Raises:
+            RuntimeError: If any of the four subnets are `None` after
+                `finalize_network` completes (indicates an internal
+                inconsistency — should not occur in normal use).
+
         Example:
             ```python
             vcn = Vcn(name="lab", compartment_id=comp_id)
@@ -986,10 +1079,14 @@ class Vcn(BaseResource, AbstractNetwork):
             ```
         """
         self.finalize_network()
-        assert self.public_subnet is not None
-        assert self.private_subnet is not None
-        assert self.secure_subnet is not None
-        assert self.management_subnet is not None
+        if self.public_subnet is None:
+            raise RuntimeError("finalize_network() must be called before export()")
+        if self.private_subnet is None:
+            raise RuntimeError("finalize_network() must be called before export()")
+        if self.secure_subnet is None:
+            raise RuntimeError("finalize_network() must be called before export()")
+        if self.management_subnet is None:
+            raise RuntimeError("finalize_network() must be called before export()")
         pulumi.export("vcn_id", self.id)
         pulumi.export("cidr_block", self.cidr_block)
         pulumi.export("public_subnet_id", self.public_subnet.id)
@@ -1114,59 +1211,15 @@ class Vcn(BaseResource, AbstractNetwork):
             vcn.finalize_network()
             ```
         """
-
-        def _translate_ingress(
-            rule: IngressRule,
-        ) -> oci.core.SecurityListIngressSecurityRuleArgs:
-            proto = _PROTOCOL_MAP.get(rule.protocol, rule.protocol)
-            source = "0.0.0.0/0" if rule.source == "internet" else rule.source
-            source_type = "CIDR_BLOCK"
-            kwargs: dict[str, Any] = {
-                "protocol": proto,
-                "source": source,
-                "source_type": source_type,
-                "description": rule.description,
-            }
-            if rule.protocol == "tcp" and (rule.port_min is not None or rule.port_max is not None):
-                kwargs["tcp_options"] = oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                    min=rule.port_min or 1,
-                    max=rule.port_max or 65535,
-                )
-            return oci.core.SecurityListIngressSecurityRuleArgs(**kwargs)
-
-        def _translate_egress(
-            rule: EgressRule,
-        ) -> oci.core.SecurityListEgressSecurityRuleArgs:
-            proto = _PROTOCOL_MAP.get(rule.protocol, rule.protocol)
-            is_service = rule.destination == "cloud-services"
-            destination = (
-                self._svc_cidr_block
-                if is_service
-                else ("0.0.0.0/0" if rule.destination == "internet" else rule.destination)
-            )
-            dest_type = "SERVICE_CIDR_BLOCK" if is_service else "CIDR_BLOCK"
-            kwargs: dict[str, Any] = {
-                "protocol": proto,
-                "destination": destination,
-                "destination_type": dest_type,
-                "description": rule.description,
-            }
-            if rule.protocol == "tcp" and (rule.port_min is not None or rule.port_max is not None):
-                kwargs["tcp_options"] = oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                    min=rule.port_min or 1,
-                    max=rule.port_max or 65535,
-                )
-            return oci.core.SecurityListEgressSecurityRuleArgs(**kwargs)
-
         self.add_security_list_rules(
-            public_ingress=[_translate_ingress(r) for r in rules.public_ingress],
-            public_egress=[_translate_egress(r) for r in rules.public_egress],
-            private_ingress=[_translate_ingress(r) for r in rules.private_ingress],
-            private_egress=[_translate_egress(r) for r in rules.private_egress],
-            secure_ingress=[_translate_ingress(r) for r in rules.secure_ingress],
-            secure_egress=[_translate_egress(r) for r in rules.secure_egress],
-            management_ingress=[_translate_ingress(r) for r in rules.management_ingress],
-            management_egress=[_translate_egress(r) for r in rules.management_egress],
+            public_ingress=[_translate_ingress_rule(r) for r in rules.public_ingress],
+            public_egress=[_translate_egress_rule(r, self._svc_cidr_block) for r in rules.public_egress],
+            private_ingress=[_translate_ingress_rule(r) for r in rules.private_ingress],
+            private_egress=[_translate_egress_rule(r, self._svc_cidr_block) for r in rules.private_egress],
+            secure_ingress=[_translate_ingress_rule(r) for r in rules.secure_ingress],
+            secure_egress=[_translate_egress_rule(r, self._svc_cidr_block) for r in rules.secure_egress],
+            management_ingress=[_translate_ingress_rule(r) for r in rules.management_ingress],
+            management_egress=[_translate_egress_rule(r, self._svc_cidr_block) for r in rules.management_egress],
         )
 
     def get_public_subnet_cidr(self) -> pulumi.Input[str]:
@@ -1240,6 +1293,12 @@ class Vcn(BaseResource, AbstractNetwork):
         - `self.private_subnet` is set.
         - `self.secure_subnet` is set.
         - `self.management_subnet` is set.
+        - `self.flow_logs` is set when `flow_logs=True` was passed to
+          `__init__`; it remains `None` otherwise.
+
+        Raises:
+            RuntimeError: If `compartment_id` is `None` when
+                `flow_logs=True` (indicates construction was incomplete).
 
         Example:
             ```python
@@ -1260,7 +1319,8 @@ class Vcn(BaseResource, AbstractNetwork):
         if self._flow_logs_enabled:
             from .network_logging import VcnFlowLogs  # lazy import avoids circular dependency
 
-            assert self.compartment_id is not None, "Vcn requires a compartment_id"
+            if self.compartment_id is None:
+                raise RuntimeError("Vcn requires a compartment_id")
             self.flow_logs = VcnFlowLogs(
                 name=self.name,
                 compartment_id=self.compartment_id,
@@ -1270,10 +1330,10 @@ class Vcn(BaseResource, AbstractNetwork):
             )
 
         self.register_outputs({
-            "public_subnet": self.public_subnet,
-            "private_subnet": self.private_subnet,
-            "secure_subnet": self.secure_subnet,
-            "management_subnet": self.management_subnet,
+            "public_subnet_id": self.public_subnet.id if self.public_subnet is not None else None,
+            "private_subnet_id": self.private_subnet.id if self.private_subnet is not None else None,
+            "secure_subnet_id": self.secure_subnet.id if self.secure_subnet is not None else None,
+            "management_subnet_id": self.management_subnet.id if self.management_subnet is not None else None,
             "cidr_block": self.cidr_block,
         })
 
@@ -1363,7 +1423,7 @@ class VcnRef(AbstractNetworkRef):
         management_security_list_id: pulumi.Input[str] | None = None,
         drg_id: pulumi.Input[str] | None = None,
     ) -> None:
-        """Wrap existing VCN resource IDs in an CloudSpells-compatible interface.
+        """Wrap existing VCN resource IDs in a CloudSpells-compatible interface.
 
         Args:
             vcn_id: OCID of the existing VCN.
@@ -1409,9 +1469,6 @@ class VcnRef(AbstractNetworkRef):
                 "It is exported as 'cidr_block' by every CloudSpells VCN stack."
             )
         self.cidr_block = pulumi.Output.from_input(cidr_block)
-        self._svc_cidr_block: pulumi.Output[str] = oci.core.get_services_output().services.apply(
-            lambda svcs: next(s.cidr_block for s in svcs if s.cidr_block.startswith("all-"))
-        )
         self.public_subnet = _SubnetRef(public_subnet_id)
         self.private_subnet = _SubnetRef(private_subnet_id)
         self._public_subnet_cidr: pulumi.Input[str] = public_subnet_cidr

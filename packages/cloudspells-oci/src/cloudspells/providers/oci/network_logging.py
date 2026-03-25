@@ -213,6 +213,10 @@ class VcnFlowLogs(BaseResource):
         For a `VcnRef` this call is a no-op (the remote stack owns subnets).
         Secure and management logs are skipped when those subnets are absent
         (possible for `VcnRef` when upstream did not export those IDs).
+
+        Raises:
+            RuntimeError: If `public_subnet` or `private_subnet` is `None`
+                after `finalize_network()`.
         """
         # Bridge gap: finalize_network() is a no-op for VcnRef — safe to call
         # unconditionally on both Vcn and VcnRef.
@@ -223,8 +227,10 @@ class VcnFlowLogs(BaseResource):
         sec = self._vcn.secure_subnet
         mgmt = self._vcn.management_subnet
 
-        assert pub is not None, "public_subnet must exist after finalize_network"
-        assert priv is not None, "private_subnet must exist after finalize_network"
+        if pub is None:
+            raise RuntimeError("public_subnet must exist after finalize_network()")
+        if priv is None:
+            raise RuntimeError("private_subnet must exist after finalize_network()")
 
         self.public_flow_log = self._flow_log("public", pub.id)
         self.private_flow_log = self._flow_log("private", priv.id)
@@ -250,3 +256,6 @@ class VcnFlowLogs(BaseResource):
             ```
         """
         pulumi.export("network_audit_log_group_id", self.log_group_id)
+
+
+__all__ = ["VcnFlowLogs"]

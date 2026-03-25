@@ -22,7 +22,7 @@ Exports:
 from __future__ import annotations
 
 import base64
-from typing import Any, Sequence
+from typing import Sequence
 
 import pulumi
 import pulumi_oci as oci
@@ -77,9 +77,6 @@ class ComputeInstance(BaseResource, AbstractCompute):
         fault_domain: Fault domain the instance is placed in, or `None`
             when OCI auto-assigns (default spread behaviour).
         hostname_label: DNS hostname for the primary VNIC, or `None`.
-        preserve_boot_volume: Whether the boot volume is retained after
-            instance termination.
-
     Usage patterns:
 
     1. **Minimal — single default data volume, auto-generated SSH keys**:
@@ -157,22 +154,12 @@ class ComputeInstance(BaseResource, AbstractCompute):
         memory_in_gbs: pulumi.Input[float] = 16,
         subnet: SubnetTier = SUBNET_PRIVATE,
         boot_volume_size_in_gbs: pulumi.Input[int] = 50,
-        boot_volume_vpus_per_gb: int = 10,
         volumes: Sequence[VolumeSpec] | None = None,
         nsg_ids: list[pulumi.Input[str]] | None = None,
         nsg: Nsg | None = None,
         user_data: str | bytes | None = None,
-        defined_tags: dict[str, Any] | None = None,
         fault_domain: str | None = None,
         hostname_label: str | None = None,
-        private_ip: str | None = None,
-        skip_source_dest_check: bool = False,
-        is_pv_encryption_in_transit: bool = False,
-        preserve_boot_volume: bool = False,
-        recovery_action: str | None = None,
-        baseline_ocpu_utilization: str | None = None,
-        dedicated_vm_host_id: str | None = None,
-        capacity_reservation_id: str | None = None,
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
         """Create a compute instance with one or more attached block volumes.
@@ -220,50 +207,22 @@ class ComputeInstance(BaseResource, AbstractCompute):
                 infers `subnet` from `nsg.role.subnet_tier`.  Takes
                 precedence over `subnet` and `nsg_ids` when both are
                 provided.
-            boot_volume_vpus_per_gb: Boot volume performance tier.  Use
-                `0` (low), `10` (balanced, default), `20` (high), or
-                `120` (ultra-high).
             user_data: Cloud-init script as a plain `str` or `bytes`.
                 CloudSpells base64-encodes it before passing to OCI.  When
                 `None`, no user data is injected.
-            defined_tags: OCI defined tags applied to the instance and all
-                block volumes, in `{"namespace": {"key": "value"}}` format.
             fault_domain: Explicit fault domain for placement
                 (e.g. `"FAULT-DOMAIN-1"`).  When `None`, OCI auto-assigns
                 and spreads instances across fault domains.
             hostname_label: DNS hostname registered for the primary VNIC.
                 Must be unique within the subnet.  When `None`, OCI does
                 not assign a hostname.
-            private_ip: Explicit private IP address for the primary VNIC.
-                Must fall within the selected subnet's CIDR.  When `None`,
-                OCI assigns the next available IP.
-            skip_source_dest_check: Disable the source/destination check on
-                the primary VNIC.  Set to `True` for NAT instances or
-                software routers.  Defaults to `False`.
-            is_pv_encryption_in_transit: Encrypt data in transit between
-                the instance and paravirtualized-attached volumes.
-                Defaults to `False`.
-            preserve_boot_volume: Keep the boot volume after the instance
-                is terminated.  Defaults to `False` (boot volume is deleted
-                with the instance).
-            recovery_action: Live-migration recovery action.  Pass
-                `"RESTORE_INSTANCE"` (default OCI behaviour) to restart
-                after host maintenance, or `"STOP_INSTANCE"` to stop
-                instead.  `None` accepts the OCI account default.
-            baseline_ocpu_utilization: Burstable-instance CPU baseline.
-                One of `"BASELINE_1_8"` (12.5 %), `"BASELINE_1_2"` (50 %),
-                or `"BASELINE_1_1"` (100 % — effectively non-burstable).
-                `None` uses a standard (non-burstable) instance.
-            dedicated_vm_host_id: OCID of the dedicated VM host to place
-                this instance on.  When `None`, the instance runs on shared
-                infrastructure.
-            capacity_reservation_id: OCID of the capacity reservation to
-                consume.  When `None`, no reservation is used.
             opts: Pulumi resource options forwarded to the component.
 
         Raises:
             ValueError: If `volumes` is an explicitly empty list, or if any
                 two `VolumeSpec` entries share the same `label`.
+            RuntimeError: If any of the four VCN subnets is absent after
+                `finalize_network()` completes.
 
         Example:
             ```python
@@ -273,26 +232,26 @@ class ComputeInstance(BaseResource, AbstractCompute):
                                   volumes=[VolumeSpec(size_in_gbs=200, label="data")])
             ```
         """
+        super().__init__("custom:compute:Instance", name, compartment_id, stack_name, opts)
+
         # Resolve nsg= shorthand: infer subnet from role and expand nsg_ids.
+        # This block runs after super().__init__ so the Pulumi component context
+        # is active before any resource-related attributes are accessed.
         if nsg is not None:
             if nsg.role is not None:
                 subnet = nsg.role.subnet_tier
             nsg_ids = [nsg.id]
-        super().__init__("custom:compute:Instance", name, compartment_id, stack_name, opts)
 
-        self.name = name
         self.vcn = vcn
-        self.compartment_id = compartment_id
         self.shape = shape
         self.ocpus = ocpus
         self.memory_in_gbs = memory_in_gbs
 
         self.subnet = subnet
-        self.image_id = image_id  # type: ignore[assignment]
+        self.image_id = image_id
         self.boot_volume_size_in_gbs = boot_volume_size_in_gbs
         self.fault_domain = fault_domain
         self.hostname_label = hostname_label
-        self.preserve_boot_volume = preserve_boot_volume
 
         # Resolve volumes list.
         # None  → one default 100 GiB balanced-performance data volume.
@@ -327,13 +286,11 @@ class ComputeInstance(BaseResource, AbstractCompute):
             self._add_compute_security_rules()
         self.vcn.finalize_network()
 
-        assert self.vcn.private_subnet is not None
-        assert self.vcn.public_subnet is not None
-        assert self.vcn.secure_subnet is not None
-        assert self.vcn.management_subnet is not None
+        self._assert_subnets_ready()
 
-        ads = oci.identity.get_availability_domains(compartment_id=str(compartment_id))
-        availability_domain = ads.availability_domains[0].name
+        availability_domain: pulumi.Output[str] = oci.identity.get_availability_domains_output(
+            compartment_id=compartment_id
+        ).availability_domains.apply(lambda ads: ads[0].name)
 
         # ---- Encode cloud-init user data --------------------------------
         encoded_user_data: str | None = None
@@ -355,44 +312,26 @@ class ComputeInstance(BaseResource, AbstractCompute):
             shape=self.shape,
             display_name=instance_name,
             fault_domain=fault_domain,
-            dedicated_vm_host_id=dedicated_vm_host_id,
-            capacity_reservation_id=capacity_reservation_id,
             source_details=oci.core.InstanceSourceDetailsArgs(
                 source_type="image",
                 source_id=self.image_id,
                 boot_volume_size_in_gbs=str(self.boot_volume_size_in_gbs),
-                boot_volume_vpus_per_gb=str(boot_volume_vpus_per_gb),
+                boot_volume_vpus_per_gb="10",
             ),
             create_vnic_details=oci.core.InstanceCreateVnicDetailsArgs(
-                subnet_id=(
-                    self.vcn.public_subnet.id
-                    if self.subnet == SUBNET_PUBLIC
-                    else self.vcn.secure_subnet.id
-                    if self.subnet == SUBNET_SECURE
-                    else self.vcn.management_subnet.id
-                    if self.subnet == SUBNET_MANAGEMENT
-                    else self.vcn.private_subnet.id
-                ),
+                subnet_id=self._resolve_subnet_id(),
                 assign_public_ip="true" if self.subnet == SUBNET_PUBLIC else "false",
                 display_name=f"{instance_name}-vnic",
                 nsg_ids=self.nsg_ids if self.nsg_ids else None,
                 hostname_label=hostname_label,
-                private_ip=private_ip,
-                skip_source_dest_check=skip_source_dest_check,
+                skip_source_dest_check=False,
             ),
             metadata=instance_metadata,
             shape_config=oci.core.InstanceShapeConfigArgs(
                 ocpus=self.ocpus,
                 memory_in_gbs=self.memory_in_gbs,
-                baseline_ocpu_utilization=baseline_ocpu_utilization,
             ),
-            availability_config=oci.core.InstanceAvailabilityConfigArgs(
-                recovery_action=recovery_action,
-            )
-            if recovery_action is not None
-            else None,
-            is_pv_encryption_in_transit_enabled=is_pv_encryption_in_transit,
-            preserve_boot_volume=preserve_boot_volume,
+            is_pv_encryption_in_transit_enabled=True,
             freeform_tags=self.create_freeform_tags(
                 instance_name,
                 "compute-instance",
@@ -402,7 +341,6 @@ class ComputeInstance(BaseResource, AbstractCompute):
                     "MemoryGB": str(memory_in_gbs),
                 },
             ),
-            defined_tags=defined_tags,
             opts=pulumi.ResourceOptions(parent=self),
         )
 
@@ -411,7 +349,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         # ---- Block volumes (one per VolumeSpec) ------------------------
         self.block_volumes = []
         self.volume_attachments = []
-        self._attach_block_volumes(availability_domain, instance_name, defined_tags)
+        self._attach_block_volumes(availability_domain, instance_name)
 
         # ---- Stack outputs ---------------------------------------------
         outputs: dict[str, pulumi.Output[str]] = {
@@ -425,11 +363,20 @@ class ComputeInstance(BaseResource, AbstractCompute):
         outputs.update(self._get_ssh_outputs())
         self.register_outputs(outputs)
 
+    def _resolve_subnet_id(self) -> pulumi.Input[str]:
+        """Return the subnet OCID for the VNIC based on `self.subnet`."""
+        if self.subnet == SUBNET_PUBLIC:
+            return self.vcn.public_subnet.id  # type: ignore[union-attr]
+        if self.subnet == SUBNET_SECURE:
+            return self.vcn.secure_subnet.id  # type: ignore[union-attr]
+        if self.subnet == SUBNET_MANAGEMENT:
+            return self.vcn.management_subnet.id  # type: ignore[union-attr]
+        return self.vcn.private_subnet.id  # type: ignore[union-attr]
+
     def _attach_block_volumes(
         self,
-        availability_domain: str,
+        availability_domain: pulumi.Input[str],
         instance_name: str,
-        defined_tags: dict[str, Any] | None,
     ) -> None:
         """Create and attach one block volume per `VolumeSpec` in `self.volumes_spec`.
 
@@ -439,7 +386,6 @@ class ComputeInstance(BaseResource, AbstractCompute):
         Args:
             availability_domain: AD name used for volume placement.
             instance_name: Resource name of the parent instance, used in volume tags.
-            defined_tags: Instance-level defined tags applied to every volume resource.
         """
         for spec in self.volumes_spec:
             vol_name = self.create_resource_name(f"{spec.label}-vol")
@@ -460,7 +406,6 @@ class ComputeInstance(BaseResource, AbstractCompute):
                         "AttachedTo": instance_name,
                     },
                 ),
-                defined_tags=defined_tags,
                 opts=pulumi.ResourceOptions(parent=self),
             )
             att_name = self.create_resource_name(f"{spec.label}-vol-attach")
@@ -510,6 +455,26 @@ class ComputeInstance(BaseResource, AbstractCompute):
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    def _assert_subnets_ready(self) -> None:
+        """Raise `RuntimeError` if any VCN subnet is absent after `finalize_network()`.
+
+        All four subnets must be non-`None` before resources that reference
+        them can be created.  This should never fire for a properly constructed
+        `Vcn`; it can fire for a `VcnRef` whose source stack did not export
+        all expected subnet outputs.
+
+        Raises:
+            RuntimeError: If any of the four subnets is `None`.
+        """
+        for attr, label in (
+            ("private_subnet", "private"),
+            ("public_subnet", "public"),
+            ("secure_subnet", "secure"),
+            ("management_subnet", "management"),
+        ):
+            if getattr(self.vcn, attr) is None:
+                raise RuntimeError(f"VCN {label} subnet must exist after finalize_network().")
 
     def _add_compute_security_rules(self) -> None:
         """Add SSH ingress rule to the appropriate VCN security list.

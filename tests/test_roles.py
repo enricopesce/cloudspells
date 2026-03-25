@@ -86,6 +86,7 @@ class TestRoleDataclass(unittest.TestCase):
     def test_custom_role_composition(self) -> None:
         """A custom Role can be composed with arbitrary attribute values."""
         custom = Role(
+            name="TEST_ROLE",
             subnet_tier=SUBNET_PRIVATE,
             egress_internet=True,
             egress_services=False,
@@ -95,6 +96,15 @@ class TestRoleDataclass(unittest.TestCase):
         self.assertTrue(custom.egress_internet)
         self.assertFalse(custom.egress_services)
         self.assertFalse(custom.accept_management_ssh)
+
+    def test_cache_not_equal_to_app_server(self) -> None:
+        """Test that CACHE and APP_SERVER are not equal after name field addition."""
+        self.assertNotEqual(CACHE, APP_SERVER)
+
+    def test_role_name_field_uniqueness(self) -> None:
+        """Test that all predefined role constants have distinct name values."""
+        names = [INTERNET_EDGE.name, APP_SERVER.name, DATABASE.name, CACHE.name, MANAGEMENT.name]
+        self.assertEqual(len(names), len(set(names)))
 
 
 class TestNsgWithRole(unittest.TestCase):
@@ -340,6 +350,24 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
         )
         self.assertEqual(instance.subnet, "private")
         self.assertEqual(len(instance.nsg_ids), 1)
+
+
+class TestTiersModule(unittest.TestCase):
+    """Tests for the tiers module and its importable symbols."""
+
+    def test_subnet_tier_importable_from_tiers_module(self) -> None:
+        """Test that SubnetTier and tier constants are importable from tiers module."""
+        from cloudspells.core.abstractions.tiers import (
+            SUBNET_MANAGEMENT,
+            SUBNET_PRIVATE,
+            SUBNET_PUBLIC,
+            SUBNET_SECURE,
+        )
+
+        self.assertEqual(SUBNET_PUBLIC, "public")
+        self.assertEqual(SUBNET_PRIVATE, "private")
+        self.assertEqual(SUBNET_SECURE, "secure")
+        self.assertEqual(SUBNET_MANAGEMENT, "management")
 
 
 if __name__ == "__main__":

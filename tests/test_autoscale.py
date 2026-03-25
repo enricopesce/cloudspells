@@ -11,8 +11,8 @@ set_mocks()
 
 # Import AFTER mocks are set
 from cloudspells.providers.oci.autoscale import (
-    LoadBalancerConfig,
     MetricScalingPolicy,
+    OciLoadBalancerConfig,
     ScalableWorkload,
     ScalingAction,
     ScalingMetric,
@@ -291,7 +291,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
 
     def test_custom_load_balancer_config(self):
         """Test that ScalableWorkload accepts custom load balancer config."""
-        lb_config = LoadBalancerConfig(
+        lb_config = OciLoadBalancerConfig(
             backend_port=8080,
             health_check_path="/api/health",
             min_bandwidth_mbps=50,
@@ -356,8 +356,8 @@ class TestDataclasses(unittest.TestCase):
         self.assertEqual(policy.metric, ScalingMetric.MEMORY_UTILIZATION)
 
     def test_load_balancer_config_defaults(self):
-        """Test LoadBalancerConfig default values."""
-        config = LoadBalancerConfig()
+        """Test OciLoadBalancerConfig default values."""
+        config = OciLoadBalancerConfig()
 
         self.assertTrue(config.is_public)
         self.assertEqual(config.backend_port, 80)
@@ -367,8 +367,8 @@ class TestDataclasses(unittest.TestCase):
         self.assertIsNone(config.ssl_certificate_name)
 
     def test_load_balancer_config_https(self):
-        """Test LoadBalancerConfig HTTPS configuration."""
-        config = LoadBalancerConfig(ssl_certificate_name="my-cert")
+        """Test OciLoadBalancerConfig HTTPS configuration."""
+        config = OciLoadBalancerConfig(ssl_certificate_name="my-cert")
 
         self.assertEqual(config.ssl_certificate_name, "my-cert")
 

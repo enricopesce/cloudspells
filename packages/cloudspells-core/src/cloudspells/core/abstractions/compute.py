@@ -20,25 +20,13 @@ from typing import Literal
 
 import pulumi
 
-# ---------------------------------------------------------------------------
-# Subnet tier constants
-# ---------------------------------------------------------------------------
-
-#: Type alias for the four subnet placement tiers.
-SubnetTier = Literal["public", "private", "secure", "management"]
-
-#: Public tier — load balancers and bastion hosts.  Route: internet gateway.
-SUBNET_PUBLIC: SubnetTier = "public"
-
-#: Private tier — app servers, Kubernetes nodes.  Route: NAT + service gateway.
-SUBNET_PRIVATE: SubnetTier = "private"
-
-#: Secure tier — databases, secrets.  Route: service gateway only.
-SUBNET_SECURE: SubnetTier = "secure"
-
-#: Management tier — monitoring, VPN endpoints.  Route: service gateway only.
-SUBNET_MANAGEMENT: SubnetTier = "management"
-
+from .tiers import (
+    SUBNET_MANAGEMENT,
+    SUBNET_PRIVATE,
+    SUBNET_PUBLIC,
+    SUBNET_SECURE,
+    SubnetTier,
+)
 
 # ---------------------------------------------------------------------------
 # DiskSpec

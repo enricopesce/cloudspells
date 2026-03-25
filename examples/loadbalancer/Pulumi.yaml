@@ -1,0 +1,15 @@
+name: blocks-loadbalancer
+runtime:
+  name: python
+  options:
+    virtualenv: ../../.venv
+    pythonpath: ../../src
+description: VCN + internet-facing HTTPS load balancer
+config:
+  vcn_cidr_block:
+    type: string
+    description: CIDR block for the VCN
+    default: "10.0.0.0/18"
+  certificate_name:
+    type: string
+    description: Name of a TLS certificate pre-uploaded to the OCI Load Balancer service

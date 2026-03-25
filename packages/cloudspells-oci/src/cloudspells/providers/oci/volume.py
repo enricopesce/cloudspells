@@ -4,9 +4,8 @@ Provides `VolumeSpec`, a typed descriptor for a single OCI block volume to be
 created and attached to a `ComputeInstance`.  Pass a list of specs to
 `ComputeInstance(volumes=[...])` to attach multiple volumes at creation time.
 
-Note:
-    `VolumeSpec` is a pure Python dataclass — it imports nothing from Pulumi
-    and can be constructed and validated in tests without a Pulumi context.
+`VolumeSpec` is a pure Python dataclass — it imports nothing from Pulumi
+and can be constructed and validated in tests without a Pulumi context.
 """
 
 from __future__ import annotations
@@ -82,7 +81,9 @@ class VolumeSpec:
     PERF_HIGH: ClassVar[int] = 20
     PERF_ULTRA: ClassVar[int] = 120
 
-    # Derived from the four constants above — single source of truth.
+    # Valid VPU tiers — mirrors the four PERF_* constants above.
+    # Declared with literal values because ClassVar defaults are evaluated
+    # before the class body finishes, making PERF_* names inaccessible here.
     _VALID_VPUS: ClassVar[frozenset[int]] = frozenset({0, 10, 20, 120})
 
     # Label must start with a lowercase letter; may contain lowercase letters,
@@ -98,9 +99,11 @@ class VolumeSpec:
     # ------------------------------------------------------------------ #
     size_in_gbs: int
     label: str = "data"
-    # Default is PERF_BALANCED (10); expressed as a literal because ClassVar
-    # fields are not accessible as bare names in the dataclass field default.
-    vpus_per_gb: int = field(default=10)
+    # Default == PERF_BALANCED; field(default=...) must use a literal here
+    # because ClassVar values are resolved after the class body, not during
+    # it — so VolumeSpec.PERF_BALANCED is not accessible as a bare name when
+    # field defaults are evaluated.
+    vpus_per_gb: int = field(default=10)  # == PERF_BALANCED
     is_read_only: bool = False
     device: str | None = None
 

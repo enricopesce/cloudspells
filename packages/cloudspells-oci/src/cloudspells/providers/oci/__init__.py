@@ -22,15 +22,27 @@ fully-implemented provider.
 - `Bastion`: OCI Bastion Service endpoint in the private subnet.
 - `ScalableWorkload`: OCI Load Balancer in the public subnet backed by an
   Instance Pool in the private subnet with CPU autoscaling.
+- `ObjectStorageBucket`: Private OCI Object Storage bucket with secure
+  defaults (no public access, standard tier).
+- `BackupBucket`: Versioned Standard-tier bucket with lifecycle deletion for
+  backup and disaster recovery workloads.
+- `DataLakeBucket`: Standard-tier bucket with hot-to-archive-to-delete
+  lifecycle for data lake and analytics workloads.
+- `ArchiveBucket`: Archive-tier bucket with an immutable retention rule for
+  long-term compliance and audit storage.
+- `StaticWebsiteBucket`: Publicly readable Standard-tier bucket for static
+  website hosting and content delivery.
+- `LoadBalancer`: Internet-facing HTTPS load balancer in the VCN public
+  subnet with TLS termination and automatic HTTP→HTTPS redirect.
+- `InternalLoadBalancer`: Private HTTP load balancer in the VCN private
+  subnet for internal service-to-service routing.
 
 **Configuration descriptors** (plain dataclasses, no cloud resources):
 
 - `VolumeSpec`: Block-volume descriptor — size, performance tier
   (`vpus_per_gb`), label, and read-only flag.
-- `LoadBalancerConfig`: Cloud-neutral load balancer settings (listener
-  port, backend port, health check path).
-- `OciLoadBalancerConfig`: OCI-specific extension of `LoadBalancerConfig`
-  adding flexible-shape min/max bandwidth.
+- `OciLoadBalancerConfig`: OCI load balancer settings — listener port,
+  backend port, health check path, and flexible-shape min/max bandwidth.
 - `NodePoolConfig`: Configuration for a single OKE node pool — shape,
   image OCID, node count, and boot volume size. Pass one or more instances
   to `OkeCluster(node_pools=...)`.
@@ -67,7 +79,6 @@ fully-implemented provider.
 from cloudspells.core.config import Config
 
 from .autoscale import (
-    LoadBalancerConfig,
     MetricScalingPolicy,
     OciLoadBalancerConfig,
     ScalableWorkload,
@@ -79,6 +90,7 @@ from .autoscale import (
 from .bastion import Bastion
 from .compute import ComputeInstance
 from .kubernetes import OkeCluster
+from .loadbalancer import InternalLoadBalancer, LoadBalancer
 from .network import (
     SUBNET_MANAGEMENT,
     SUBNET_PRIVATE,
@@ -91,6 +103,7 @@ from .network import (
 from .network_logging import VcnFlowLogs
 from .nsg import ALL, SVC_CIDR, TCP, UDP, Nsg, tcp_port, tcp_port_range
 from .roles import APP_SERVER, CACHE, DATABASE, INTERNET_EDGE, MANAGEMENT, Role
+from .storage import ArchiveBucket, BackupBucket, DataLakeBucket, ObjectStorageBucket, StaticWebsiteBucket
 from .volume import VolumeSpec
 
 __all__ = [
@@ -128,10 +141,18 @@ __all__ = [
     "VolumeSpec",
     # Bastion
     "Bastion",
+    # Load Balancer
+    "InternalLoadBalancer",
+    "LoadBalancer",
+    # Storage
+    "ObjectStorageBucket",
+    "BackupBucket",
+    "DataLakeBucket",
+    "ArchiveBucket",
+    "StaticWebsiteBucket",
     # Autoscale
     "ScalableWorkload",
     "OciLoadBalancerConfig",
-    "LoadBalancerConfig",
     "ScalingMetric",
     "ScalingAction",
     "MetricScalingPolicy",
