@@ -59,6 +59,9 @@ class ComputeInstance(BaseResource, AbstractCompute):
         ssh_private_key: Corresponding private key string, or `None` when
             the caller supplied their own public key.
         image_id: OCID of the boot image used by the instance.
+        availability_domain: OCI Availability Domain name for the instance
+            and all attached block volumes
+            (e.g. `"IqDk:US-ASHBURN-AD-1"`).
         boot_volume_size_in_gbs: Size of the boot volume in GiB.
         volumes_spec: Resolved list of `VolumeSpec` objects used to create
             the attached block volumes.
@@ -130,6 +133,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
     ssh_public_key: str
     ssh_private_key: str | None
     image_id: pulumi.Input[str]
+    availability_domain: pulumi.Input[str]
     boot_volume_size_in_gbs: pulumi.Input[int]
     volumes_spec: list[VolumeSpec]
     instance: oci.core.Instance
@@ -139,7 +143,6 @@ class ComputeInstance(BaseResource, AbstractCompute):
     auto_generated_keys: bool
     fault_domain: str | None
     hostname_label: str | None
-    preserve_boot_volume: bool
 
     def __init__(
         self,
@@ -147,6 +150,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         compartment_id: pulumi.Input[str],
         vcn: Vcn | VcnRef,
         image_id: pulumi.Input[str],
+        availability_domain: pulumi.Input[str],
         stack_name: str | None = None,
         ssh_public_key: pulumi.Input[str] | None = None,
         shape: pulumi.Input[str] = "VM.Standard.E4.Flex",
@@ -182,6 +186,12 @@ class ComputeInstance(BaseResource, AbstractCompute):
                 explicit OCID — CloudSpells does not perform
                 auto-discovery.  Obtain the OCID from the OCI Console or
                 CLI and commit it to your Pulumi stack config.
+            availability_domain: OCI Availability Domain name for the
+                instance and its block volumes
+                (e.g. `"IqDk:US-ASHBURN-AD-1"`).  Must be an explicit
+                value — CloudSpells does not auto-select an AD.  Obtain
+                the AD name from the OCI Console or CLI and commit it to
+                your Pulumi stack config.
             subnet: Which VCN tier to place the instance in.  Use the
                 constants `SUBNET_PRIVATE` (default), `SUBNET_PUBLIC`,
                 `SUBNET_SECURE`, or `SUBNET_MANAGEMENT` from
@@ -249,6 +259,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
 
         self.subnet = subnet
         self.image_id = image_id
+        self.availability_domain = availability_domain
         self.boot_volume_size_in_gbs = boot_volume_size_in_gbs
         self.fault_domain = fault_domain
         self.hostname_label = hostname_label
@@ -282,15 +293,11 @@ class ComputeInstance(BaseResource, AbstractCompute):
         # sibling ComputeInstance was constructed first); the caller is
         # responsible for adding any additional rules before the first spell
         # triggers finalisation.
-        if isinstance(self.vcn, Vcn) and not self.vcn._security_lists_finalized:
+        if isinstance(self.vcn, Vcn) and not self.vcn.is_finalized:
             self._add_compute_security_rules()
         self.vcn.finalize_network()
 
         self._assert_subnets_ready()
-
-        availability_domain: pulumi.Output[str] = oci.identity.get_availability_domains_output(
-            compartment_id=compartment_id
-        ).availability_domains.apply(lambda ads: ads[0].name)
 
         # ---- Encode cloud-init user data --------------------------------
         encoded_user_data: str | None = None
@@ -366,12 +373,12 @@ class ComputeInstance(BaseResource, AbstractCompute):
     def _resolve_subnet_id(self) -> pulumi.Input[str]:
         """Return the subnet OCID for the VNIC based on `self.subnet`."""
         if self.subnet == SUBNET_PUBLIC:
-            return self.vcn.public_subnet.id  # type: ignore[union-attr]
+            return self.vcn.public_subnet.id  # type: ignore[union-attr]  # narrowed by _assert_subnets_ready guarantee
         if self.subnet == SUBNET_SECURE:
-            return self.vcn.secure_subnet.id  # type: ignore[union-attr]
+            return self.vcn.secure_subnet.id  # type: ignore[union-attr]  # narrowed by _assert_subnets_ready guarantee
         if self.subnet == SUBNET_MANAGEMENT:
-            return self.vcn.management_subnet.id  # type: ignore[union-attr]
-        return self.vcn.private_subnet.id  # type: ignore[union-attr]
+            return self.vcn.management_subnet.id  # type: ignore[union-attr]  # narrowed by _assert_subnets_ready guarantee
+        return self.vcn.private_subnet.id  # type: ignore[union-attr]  # narrowed by _assert_subnets_ready guarantee
 
     def _attach_block_volumes(
         self,
@@ -513,15 +520,15 @@ class ComputeInstance(BaseResource, AbstractCompute):
         )
 
         if self.subnet == SUBNET_PRIVATE:
-            self.vcn._add_unique_security_list_rules("compute-private-ingress-tcp-22", private_ingress=[ssh_rule])
+            self.vcn.add_unique_security_list_rules("compute-private-ingress-tcp-22", private_ingress=[ssh_rule])
         elif self.subnet == SUBNET_SECURE:
-            self.vcn._add_unique_security_list_rules("compute-secure-ingress-tcp-22", secure_ingress=[ssh_rule])
+            self.vcn.add_unique_security_list_rules("compute-secure-ingress-tcp-22", secure_ingress=[ssh_rule])
         elif self.subnet == SUBNET_MANAGEMENT:
-            self.vcn._add_unique_security_list_rules("compute-management-ingress-tcp-22", management_ingress=[ssh_rule])
+            self.vcn.add_unique_security_list_rules("compute-management-ingress-tcp-22", management_ingress=[ssh_rule])
         else:
             # Use the same fingerprint as Nsg._apply_role_ambient_rules so the
             # rule is deduplicated when an INTERNET_EDGE NSG already added it.
-            self.vcn._add_unique_security_list_rules("public-ingress-tcp-22", public_ingress=[ssh_rule])
+            self.vcn.add_unique_security_list_rules("public-ingress-tcp-22", public_ingress=[ssh_rule])
 
     # ------------------------------------------------------------------
     # Public accessors

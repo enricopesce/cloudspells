@@ -91,6 +91,7 @@ def _translate_ingress_rule(
         a security list resource.
     """
     proto = _PROTOCOL_MAP.get(rule.protocol, rule.protocol)
+    # "internet" is a symbolic alias for INTERNET = "0.0.0.0/0"
     source = "0.0.0.0/0" if rule.source == "internet" else rule.source
     kwargs: dict[str, Any] = {
         "protocol": proto,
@@ -100,8 +101,8 @@ def _translate_ingress_rule(
     }
     if rule.protocol == "tcp" and (rule.port_min is not None or rule.port_max is not None):
         kwargs["tcp_options"] = oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-            min=rule.port_min or 1,
-            max=rule.port_max or 65535,
+            min=rule.port_min if rule.port_min is not None else 1,
+            max=rule.port_max if rule.port_max is not None else 65535,
         )
     return oci.core.SecurityListIngressSecurityRuleArgs(**kwargs)
 
@@ -135,8 +136,8 @@ def _translate_egress_rule(
     }
     if rule.protocol == "tcp" and (rule.port_min is not None or rule.port_max is not None):
         kwargs["tcp_options"] = oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-            min=rule.port_min or 1,
-            max=rule.port_max or 65535,
+            min=rule.port_min if rule.port_min is not None else 1,
+            max=rule.port_max if rule.port_max is not None else 65535,
         )
     return oci.core.SecurityListEgressSecurityRuleArgs(**kwargs)
 
@@ -175,7 +176,7 @@ class _SecurityListRef:
 
 
 @dataclass
-class SubnetConfig:
+class _SubnetConfig:
     """Internal configuration record for a single subnet.
 
     Used by `Vcn._create_subnets` to hold the per-subnet parameters
@@ -853,7 +854,7 @@ class Vcn(BaseResource, AbstractNetwork):
     def _create_subnet(
         self,
         subnet_name: str,
-        config: SubnetConfig,
+        config: _SubnetConfig,
         security_list: oci.core.SecurityList,
         route_table: oci.core.RouteTable,
         tier: str,
@@ -862,7 +863,7 @@ class Vcn(BaseResource, AbstractNetwork):
 
         Args:
             subnet_name: Fully-qualified OCI resource name for the subnet.
-            config: `SubnetConfig` carrying CIDR, visibility, and DNS
+            config: `_SubnetConfig` carrying CIDR, visibility, and DNS
                 label for this subnet.
             security_list: Security list to attach to the subnet.
             route_table: Route table to attach to the subnet.
@@ -911,26 +912,26 @@ class Vcn(BaseResource, AbstractNetwork):
         # IPv6 slot assignments mirror the IPv4 tier layout: private=0
         # (largest tier), secure=1, public=2, management=3.  Stable indices
         # ensure subnets always get the same /64 on re-plan.
-        subnet_configs: dict[str, SubnetConfig] = {
-            "public": SubnetConfig(
+        subnet_configs: dict[str, _SubnetConfig] = {
+            "public": _SubnetConfig(
                 public_cidr,
                 True,
                 "pub",
                 self._compute_ipv6_subnet_cidr(2) if self._ipv6_enabled else None,
             ),
-            "private": SubnetConfig(
+            "private": _SubnetConfig(
                 private_cidr,
                 False,
                 "priv",
                 self._compute_ipv6_subnet_cidr(0) if self._ipv6_enabled else None,
             ),
-            "secure": SubnetConfig(
+            "secure": _SubnetConfig(
                 secure_cidr,
                 False,
                 "sec",
                 self._compute_ipv6_subnet_cidr(1) if self._ipv6_enabled else None,
             ),
-            "management": SubnetConfig(
+            "management": _SubnetConfig(
                 management_cidr,
                 False,
                 "mgmt",
@@ -1004,7 +1005,36 @@ class Vcn(BaseResource, AbstractNetwork):
     # Public API
     # ------------------------------------------------------------------
 
-    def _add_unique_security_list_rules(
+    @property
+    def is_finalized(self) -> bool:
+        """Return `True` after `finalize_network` has been called.
+
+        Spells use this to decide whether to register security list rules
+        before triggering finalization.
+
+        Returns:
+            `True` if `finalize_network` has already run, `False` otherwise.
+        """
+        return self._security_lists_finalized
+
+    def has_ambient_rule(self, fingerprint: str) -> bool:
+        """Return `True` if a rule with `fingerprint` has already been registered.
+
+        Spells use this to detect ordering errors — if the network has been
+        finalized without a required rule (e.g. the Bastion SSH ingress), they
+        can raise a clear `RuntimeError` rather than silently deploying
+        incomplete security lists.
+
+        Args:
+            fingerprint: The rule fingerprint to look up (e.g.
+                `"bastion-private-ingress-tcp-22"`).
+
+        Returns:
+            `True` if the rule has been registered, `False` otherwise.
+        """
+        return fingerprint in self._applied_ambient_rule_fingerprints
+
+    def add_unique_security_list_rules(
         self,
         fingerprint: str,
         public_ingress: list[oci.core.SecurityListIngressSecurityRuleArgs] | None = None,
@@ -1016,16 +1046,12 @@ class Vcn(BaseResource, AbstractNetwork):
         management_ingress: list[oci.core.SecurityListIngressSecurityRuleArgs] | None = None,
         management_egress: list[oci.core.SecurityListEgressSecurityRuleArgs] | None = None,
     ) -> None:
-        """Add security list rules only if fingerprint has not been seen before.
+        """Add security list rules only if `fingerprint` has not been seen before.
 
         Prevents duplicate rules when multiple NSGs of the same role are created
         (e.g. five `APP_SERVER` NSGs should not write the services-egress rule
         five times to the private security list).  Each unique ambient rule is
         identified by a short string fingerprint chosen by the caller.
-
-        This is an internal helper — callers are `Nsg`
-        role and relationship methods.  External code should use
-        `add_security_list_rules` directly.
 
         Args:
             fingerprint: Unique string identifying this rule (e.g.
@@ -1274,6 +1300,66 @@ class Vcn(BaseResource, AbstractNetwork):
         """
         return self._subnet_cidrs.management
 
+    def get_public_subnet_id(self) -> pulumi.Output[str]:
+        """Return the OCID of the public subnet.
+
+        Only available after `finalize_network()` has been called.
+
+        Returns:
+            Public subnet OCID as a `pulumi.Output[str]`.
+
+        Raises:
+            RuntimeError: If called before `finalize_network()`.
+        """
+        if self.public_subnet is None:
+            raise RuntimeError("VCN public subnet is not yet created. Call finalize_network() first.")
+        return self.public_subnet.id
+
+    def get_private_subnet_id(self) -> pulumi.Output[str]:
+        """Return the OCID of the private subnet.
+
+        Only available after `finalize_network()` has been called.
+
+        Returns:
+            Private subnet OCID as a `pulumi.Output[str]`.
+
+        Raises:
+            RuntimeError: If called before `finalize_network()`.
+        """
+        if self.private_subnet is None:
+            raise RuntimeError("VCN private subnet is not yet created. Call finalize_network() first.")
+        return self.private_subnet.id
+
+    def get_secure_subnet_id(self) -> pulumi.Output[str]:
+        """Return the OCID of the secure subnet.
+
+        Only available after `finalize_network()` has been called.
+
+        Returns:
+            Secure subnet OCID as a `pulumi.Output[str]`.
+
+        Raises:
+            RuntimeError: If called before `finalize_network()`.
+        """
+        if self.secure_subnet is None:
+            raise RuntimeError("VCN secure subnet is not yet created. Call finalize_network() first.")
+        return self.secure_subnet.id
+
+    def get_management_subnet_id(self) -> pulumi.Output[str]:
+        """Return the OCID of the management subnet.
+
+        Only available after `finalize_network()` has been called.
+
+        Returns:
+            Management subnet OCID as a `pulumi.Output[str]`.
+
+        Raises:
+            RuntimeError: If called before `finalize_network()`.
+        """
+        if self.management_subnet is None:
+            raise RuntimeError("VCN management subnet is not yet created. Call finalize_network() first.")
+        return self.management_subnet.id
+
     def finalize_network(self) -> None:
         """Create security lists and subnets with all accumulated rules.
 
@@ -1476,10 +1562,10 @@ class VcnRef(AbstractNetworkRef):
         self.public_security_list = _SecurityListRef(public_security_list_id) if public_security_list_id else None
         self.private_security_list = _SecurityListRef(private_security_list_id) if private_security_list_id else None
         self.secure_subnet = _SubnetRef(secure_subnet_id) if secure_subnet_id else None
-        self._secure_subnet_cidr: pulumi.Input[str] = secure_subnet_cidr or ""
+        self._secure_subnet_cidr: pulumi.Input[str] | None = secure_subnet_cidr
         self.secure_security_list = _SecurityListRef(secure_security_list_id) if secure_security_list_id else None
         self.management_subnet = _SubnetRef(management_subnet_id) if management_subnet_id else None
-        self._management_subnet_cidr: pulumi.Input[str] = management_subnet_cidr or ""
+        self._management_subnet_cidr: pulumi.Input[str] | None = management_subnet_cidr
         self.management_security_list = (
             _SecurityListRef(management_security_list_id) if management_security_list_id else None
         )
@@ -1599,23 +1685,75 @@ class VcnRef(AbstractNetworkRef):
         """Return the secure subnet CIDR.
 
         Returns:
-            Secure subnet CIDR as a `pulumi.Input[str]`, or an empty string
-            `""` when `secure_subnet_id` was not provided at construction.
-            Check `self.secure_subnet is not None` before using the result
-            in security rules.
+            Secure subnet CIDR as a `pulumi.Input[str]`.
+
+        Raises:
+            ValueError: If `secure_subnet_cidr` was not provided at construction.
         """
+        if self._secure_subnet_cidr is None:
+            raise ValueError(
+                "VcnRef was constructed without a secure_subnet_cidr. "
+                "Pass the secure subnet CIDR when constructing VcnRef."
+            )
         return self._secure_subnet_cidr
 
     def get_management_subnet_cidr(self) -> pulumi.Input[str]:
         """Return the management subnet CIDR.
 
         Returns:
-            Management subnet CIDR as a `pulumi.Input[str]`, or an empty
-            string `""` when `management_subnet_id` was not provided at
-            construction.  Check `self.management_subnet is not None` before
-            using the result in security rules.
+            Management subnet CIDR as a `pulumi.Input[str]`.
+
+        Raises:
+            ValueError: If `management_subnet_cidr` was not provided at construction.
         """
+        if self._management_subnet_cidr is None:
+            raise ValueError(
+                "VcnRef was constructed without a management_subnet_cidr. "
+                "Pass the management subnet CIDR when constructing VcnRef."
+            )
         return self._management_subnet_cidr
+
+    def get_public_subnet_id(self) -> pulumi.Output[str]:
+        """Return the OCID of the public subnet.
+
+        Returns:
+            Public subnet OCID as a `pulumi.Output[str]`.
+        """
+        return self.public_subnet.id
+
+    def get_private_subnet_id(self) -> pulumi.Output[str]:
+        """Return the OCID of the private subnet.
+
+        Returns:
+            Private subnet OCID as a `pulumi.Output[str]`.
+        """
+        return self.private_subnet.id
+
+    def get_secure_subnet_id(self) -> pulumi.Output[str]:
+        """Return the OCID of the secure subnet.
+
+        Returns:
+            Secure subnet OCID as a `pulumi.Output[str]`.
+
+        Raises:
+            RuntimeError: If `secure_subnet_id` was not provided at construction.
+        """
+        if self.secure_subnet is None:
+            raise RuntimeError("VcnRef was constructed without a secure_subnet_id.")
+        return self.secure_subnet.id
+
+    def get_management_subnet_id(self) -> pulumi.Output[str]:
+        """Return the OCID of the management subnet.
+
+        Returns:
+            Management subnet OCID as a `pulumi.Output[str]`.
+
+        Raises:
+            RuntimeError: If `management_subnet_id` was not provided at construction.
+        """
+        if self.management_subnet is None:
+            raise RuntimeError("VcnRef was constructed without a management_subnet_id.")
+        return self.management_subnet.id
 
     def finalize_network(self) -> None:
         """No-op — the referenced VCN network is already finalized."""
@@ -1626,7 +1764,6 @@ __all__ = [
     "SUBNET_PRIVATE",
     "SUBNET_PUBLIC",
     "SUBNET_SECURE",
-    "SubnetConfig",
     "SubnetTier",
     "Vcn",
     "VcnRef",

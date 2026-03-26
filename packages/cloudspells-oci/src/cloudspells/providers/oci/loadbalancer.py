@@ -23,6 +23,8 @@ Exports:
 
 from __future__ import annotations
 
+from typing import Protocol
+
 import pulumi
 import pulumi_oci as oci
 from cloudspells.core.base import BaseResource
@@ -32,7 +34,7 @@ from .network import Vcn, VcnRef
 # ── Private mixin ─────────────────────────────────────────────────────────────
 
 
-class _LbMixin:
+class _LbMixin(Protocol):
     """Shared accessors for all CloudSpells load balancer spells.
 
     Provides `get_lb_id()`, `get_lb_ip()`, and `export()` so the identical
@@ -92,7 +94,7 @@ class _LbMixin:
 # ── Spell classes ─────────────────────────────────────────────────────────────
 
 
-class LoadBalancer(_LbMixin, BaseResource):
+class LoadBalancer(BaseResource, _LbMixin):
     """Internet-facing HTTPS load balancer in the VCN public subnet.
 
     Creates a flexible-shape OCI Load Balancer with TLS termination.
@@ -157,6 +159,7 @@ class LoadBalancer(_LbMixin, BaseResource):
         vcn: Vcn | VcnRef,
         certificate_name: pulumi.Input[str],
         backend_port: int = 80,
+        health_check_path: str = "/health",
         stack_name: str | None = None,
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
@@ -175,6 +178,9 @@ class LoadBalancer(_LbMixin, BaseResource):
                 OCI CLI before deploying this spell.
             backend_port: Port on which backend instances accept forwarded
                 traffic and health-check probes.  Defaults to `80`.
+            health_check_path: HTTP path used for backend health checks.
+                Defaults to `"/health"`.  Must be a valid absolute URL path
+                (e.g. `"/healthz"`, `"/status"`).
             stack_name: Pulumi stack name.  Defaults to
                 `pulumi.get_stack()` when `None`.
             opts: Pulumi resource options forwarded to the component.
@@ -198,11 +204,6 @@ class LoadBalancer(_LbMixin, BaseResource):
         # finalize_network() is idempotent for Vcn and a no-op for VcnRef.
         self.vcn.finalize_network()
 
-        if self.vcn.public_subnet is None:
-            raise RuntimeError("VCN public subnet must exist. Ensure the VCN was constructed before LoadBalancer.")
-        if self.vcn.private_subnet is None:
-            raise RuntimeError("VCN private subnet must exist. Ensure the VCN was constructed before LoadBalancer.")
-
         # 2. Load balancer — flexible shape, public subnet, public IP.
         lb_name = self.create_resource_name("lb")
         self.load_balancer = oci.loadbalancer.LoadBalancer(
@@ -214,7 +215,7 @@ class LoadBalancer(_LbMixin, BaseResource):
                 minimum_bandwidth_in_mbps=10,
                 maximum_bandwidth_in_mbps=100,
             ),
-            subnet_ids=[self.vcn.public_subnet.id],
+            subnet_ids=[self.vcn.get_public_subnet_id()],
             is_private=False,
             freeform_tags=self.create_freeform_tags(lb_name, "load-balancer"),
             opts=pulumi.ResourceOptions(parent=self),
@@ -230,7 +231,7 @@ class LoadBalancer(_LbMixin, BaseResource):
             health_checker=oci.loadbalancer.BackendSetHealthCheckerArgs(
                 protocol="HTTP",
                 port=backend_port,
-                url_path="/health",
+                url_path=health_check_path,
                 interval_ms=10000,
                 timeout_in_millis=3000,
                 retries=3,
@@ -325,7 +326,7 @@ class LoadBalancer(_LbMixin, BaseResource):
         public_subnet_cidr: pulumi.Input[str] = self.vcn.get_public_subnet_cidr()
         private_subnet_cidr: pulumi.Input[str] = self.vcn.get_private_subnet_cidr()
 
-        self.vcn._add_unique_security_list_rules(
+        self.vcn.add_unique_security_list_rules(
             "lb-public-ingress-tcp-80",
             public_ingress=[
                 oci.core.SecurityListIngressSecurityRuleArgs(
@@ -340,7 +341,7 @@ class LoadBalancer(_LbMixin, BaseResource):
                 ),
             ],
         )
-        self.vcn._add_unique_security_list_rules(
+        self.vcn.add_unique_security_list_rules(
             "lb-public-ingress-tcp-443",
             public_ingress=[
                 oci.core.SecurityListIngressSecurityRuleArgs(
@@ -383,7 +384,7 @@ class LoadBalancer(_LbMixin, BaseResource):
         )
 
 
-class InternalLoadBalancer(_LbMixin, BaseResource):
+class InternalLoadBalancer(BaseResource, _LbMixin):
     """Private HTTP load balancer in the VCN private subnet.
 
     Creates a flexible-shape OCI Load Balancer with `is_private=True` placed
@@ -440,6 +441,7 @@ class InternalLoadBalancer(_LbMixin, BaseResource):
         compartment_id: pulumi.Input[str],
         vcn: Vcn | VcnRef,
         backend_port: int = 80,
+        health_check_path: str = "/health",
         stack_name: str | None = None,
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
@@ -453,6 +455,9 @@ class InternalLoadBalancer(_LbMixin, BaseResource):
                 The load balancer is placed in the private subnet.
             backend_port: Port on which backend instances accept forwarded
                 traffic and health-check probes.  Defaults to `80`.
+            health_check_path: HTTP path used for backend health checks.
+                Defaults to `"/health"`.  Must be a valid absolute URL path
+                (e.g. `"/healthz"`, `"/status"`).
             stack_name: Pulumi stack name.  Defaults to
                 `pulumi.get_stack()` when `None`.
             opts: Pulumi resource options forwarded to the component.
@@ -475,11 +480,6 @@ class InternalLoadBalancer(_LbMixin, BaseResource):
         # finalize_network() is idempotent for Vcn and a no-op for VcnRef.
         self.vcn.finalize_network()
 
-        if self.vcn.private_subnet is None:
-            raise RuntimeError(
-                "VCN private subnet must exist. Ensure the VCN was constructed before InternalLoadBalancer."
-            )
-
         # 2. Load balancer — flexible shape, private subnet, no public IP.
         lb_name = self.create_resource_name("lb")
         self.load_balancer = oci.loadbalancer.LoadBalancer(
@@ -491,7 +491,7 @@ class InternalLoadBalancer(_LbMixin, BaseResource):
                 minimum_bandwidth_in_mbps=10,
                 maximum_bandwidth_in_mbps=100,
             ),
-            subnet_ids=[self.vcn.private_subnet.id],
+            subnet_ids=[self.vcn.get_private_subnet_id()],
             is_private=True,
             freeform_tags=self.create_freeform_tags(lb_name, "load-balancer"),
             opts=pulumi.ResourceOptions(parent=self),
@@ -507,7 +507,7 @@ class InternalLoadBalancer(_LbMixin, BaseResource):
             health_checker=oci.loadbalancer.BackendSetHealthCheckerArgs(
                 protocol="HTTP",
                 port=backend_port,
-                url_path="/health",
+                url_path=health_check_path,
                 interval_ms=10000,
                 timeout_in_millis=3000,
                 retries=3,
@@ -560,7 +560,7 @@ class InternalLoadBalancer(_LbMixin, BaseResource):
 
         private_subnet_cidr: pulumi.Input[str] = self.vcn.get_private_subnet_cidr()
 
-        self.vcn._add_unique_security_list_rules(
+        self.vcn.add_unique_security_list_rules(
             "lb-private-ingress-tcp-80",
             private_ingress=[
                 oci.core.SecurityListIngressSecurityRuleArgs(

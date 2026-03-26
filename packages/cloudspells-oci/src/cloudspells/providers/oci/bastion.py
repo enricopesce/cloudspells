@@ -155,8 +155,8 @@ class Bastion(BaseResource, AbstractBastion):
         # and break all Bastion sessions.  Raise early with a clear message if the
         # network was already finalised before this Bastion was constructed.
         if isinstance(self.vcn, Vcn):
-            if self.vcn._security_lists_finalized:
-                if _BASTION_SSH_RULE_FINGERPRINT not in self.vcn._applied_ambient_rule_fingerprints:
+            if self.vcn.is_finalized:
+                if not self.vcn.has_ambient_rule(_BASTION_SSH_RULE_FINGERPRINT):
                     raise RuntimeError(
                         "Bastion must be constructed before any spell that finalizes "
                         "the VCN network (ComputeInstance, ScalableWorkload, OkeCluster). "
@@ -169,18 +169,12 @@ class Bastion(BaseResource, AbstractBastion):
                 self._add_bastion_security_rules()
         self.vcn.finalize_network()
 
-        if self.vcn.private_subnet is None:
-            raise RuntimeError(
-                "VCN private subnet must exist after finalize_network(). "
-                "This is an internal error — please file a bug report."
-            )
-
         bastion_name = self.create_resource_name("bastion")
         self.bastion = oci.bastion.Bastion(
             bastion_name,
             bastion_type="STANDARD",
             compartment_id=self.compartment_id,
-            target_subnet_id=self.vcn.private_subnet.id,
+            target_subnet_id=self.vcn.get_private_subnet_id(),
             name=bastion_name,
             max_session_ttl_in_seconds=_MAX_SESSION_TTL_SECONDS,
             client_cidr_block_allow_lists=allowed_client_cidrs,
@@ -211,7 +205,7 @@ class Bastion(BaseResource, AbstractBastion):
         before any spell that triggers finalisation (e.g. `ComputeInstance`)
         ensures the correct ordering.
         """
-        self.vcn._add_unique_security_list_rules(  # type: ignore[union-attr]
+        self.vcn.add_unique_security_list_rules(  # type: ignore[union-attr]  # narrowed to Vcn by isinstance guard above
             _BASTION_SSH_RULE_FINGERPRINT,
             private_ingress=[
                 oci.core.SecurityListIngressSecurityRuleArgs(

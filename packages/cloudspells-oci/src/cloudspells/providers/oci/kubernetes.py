@@ -52,7 +52,7 @@ Public subnet (API endpoint + Load Balancer):
 
 - Ingress: Kubernetes API (6443) and control-plane port (12250) from private.
 - Ingress: HTTPS (443) and HTTP (80) from internet (Load Balancer).
-- Ingress: Kubernetes API (6443) from internet (kubectl).
+- Ingress: Kubernetes API (6443) from each CIDR in `kubectl_allowed_cidrs` (kubectl).
 - Egress: OCI services (cluster management and telemetry).
 - Egress: Kubelet (10250), NodePort (30000-32767), kube-proxy (10256) to private.
 - Egress: All traffic to private subnet (webhooks, admission controllers).
@@ -76,9 +76,10 @@ import pulumi_oci as oci
 from cloudspells.core.abstractions.kubernetes import AbstractKubernetes
 from cloudspells.core.base import BaseResource
 
+from ._oci_utils import get_svc_cidr as _get_svc_cidr
 from .helper import get_ads
 from .network import Vcn, VcnRef
-from .nsg import ALL, INTERNET, TCP, _get_svc_cidr, tcp_port, tcp_port_range
+from .nsg import ALL, INTERNET, TCP, tcp_port, tcp_port_range
 
 
 @dataclass
@@ -193,7 +194,9 @@ class OkeCluster(BaseResource, AbstractKubernetes):
     Attributes:
         vcn: The `Vcn` this cluster is deployed into.
         kubernetes_version: Kubernetes version string (e.g. `"v1.30.1"`).
-        display_name: Human-readable cluster display name.
+        kubectl_allowed_cidrs: List of CIDRs permitted to reach the Kubernetes
+            API endpoint on port 6443.  An empty list means no external kubectl
+            access.
         api_nsg: NSG attached to the Kubernetes API endpoint VNIC.
         lb_nsg: NSG for OCI Load Balancers; apply via service annotation.
         worker_nsg: NSG attached to every worker node VNIC.
@@ -220,7 +223,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             compartment_id=comp_id,
             vcn=vcn,
             kubernetes_version="v1.30.1",
-            display_name="prod-k8s",
+            kubectl_allowed_cidrs=["203.0.113.0/24"],
             node_pools=[
                 NodePoolConfig(
                     name="default",
@@ -241,7 +244,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
 
     vcn: Vcn | VcnRef
     kubernetes_version: pulumi.Input[str]
-    display_name: pulumi.Input[str]
+    kubectl_allowed_cidrs: list[str]
     api_nsg: oci.core.NetworkSecurityGroup
     lb_nsg: oci.core.NetworkSecurityGroup
     worker_nsg: oci.core.NetworkSecurityGroup
@@ -263,10 +266,10 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         compartment_id: pulumi.Input[str],
         vcn: Vcn | VcnRef,
         kubernetes_version: pulumi.Input[str],
-        display_name: pulumi.Input[str],
         node_pools: list[NodePoolConfig],
         stack_name: str | None = None,
         enhanced: bool = False,
+        kubectl_allowed_cidrs: list[str] | None = None,
         defined_tags: dict[str, Any] | None = None,
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
@@ -282,8 +285,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             vcn: `Vcn` or `VcnRef` that provides the public and private subnets.
             kubernetes_version: Kubernetes version string
                 (e.g. `"v1.32.1"`).
-            display_name: Human-readable name used for the cluster OCI
-                resource.
             node_pools: List of `NodePoolConfig` descriptors.  Each entry
                 creates a separate node pool on the cluster, enabling mixed
                 shapes (e.g. a small system pool and a large app pool).
@@ -296,6 +297,13 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 Workload Identity (pod-level OCI API auth without embedded
                 credentials), cluster add-on lifecycle management, and OCI
                 DevOps integration.  Defaults to `False`.
+            kubectl_allowed_cidrs: CIDRs permitted to reach the Kubernetes
+                API endpoint on port 6443.  Pass `None` (default) to allow
+                no external kubectl access; a `pulumi.warn()` is emitted to
+                remind the caller to set this explicitly.  Pass `[]` to
+                suppress the warning while still blocking all external access.
+                Pass one or more CIDRs (e.g. `["203.0.113.0/24"]`) to allow
+                kubectl from those addresses.
             defined_tags: OCI defined tags applied to the cluster resource
                 (e.g. `{"Operations": {"CostCenter": "42"}}`).  Defaults
                 to `None`.
@@ -310,7 +318,16 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         """
         super().__init__("custom:oke:Cluster", name, compartment_id, stack_name, opts)
 
-        self.display_name = display_name  # type: ignore[assignment]  # pulumi.Input[str] is accepted by OCI resources
+        if kubectl_allowed_cidrs is None:
+            pulumi.warn(
+                "OkeCluster: kubectl_allowed_cidrs is not set — no external kubectl access "
+                "is allowed. Set kubectl_allowed_cidrs to a list of CIDRs (e.g. your office "
+                "IP) to enable kubectl access to port 6443."
+            )
+            self.kubectl_allowed_cidrs = []
+        else:
+            self.kubectl_allowed_cidrs = kubectl_allowed_cidrs
+
         self.vcn = vcn
         self.kubernetes_version = kubernetes_version
 
@@ -353,7 +370,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             type="ENHANCED_CLUSTER" if enhanced else "BASIC_CLUSTER",
             vcn_id=self.vcn.id,
             endpoint_config=oci.containerengine.ClusterEndpointConfigArgs(
-                subnet_id=self.vcn.public_subnet.id,  # type: ignore[union-attr]
+                subnet_id=self.vcn.public_subnet.id,  # type: ignore[union-attr]  # narrowed by RuntimeError guard at lines 342–343
                 is_public_ip_enabled=True,
                 nsg_ids=[self.api_nsg.id],
             ),
@@ -379,13 +396,13 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 node_config_details=oci.containerengine.NodePoolNodeConfigDetailsArgs(
                     placement_configs=pulumi.Output.all(
                         ads,
-                        self.vcn.private_subnet.id,  # type: ignore[union-attr]
+                        self.vcn.private_subnet.id,  # type: ignore[union-attr]  # narrowed by RuntimeError guard at lines 344–345
                     ).apply(lambda args: get_ads(args[0], args[1])),
                     size=cfg.node_count,
                     nsg_ids=[self.worker_nsg.id],
                     node_pool_pod_network_option_details=oci.containerengine.NodePoolNodeConfigDetailsNodePoolPodNetworkOptionDetailsArgs(
                         cni_type="OCI_VCN_IP_NATIVE",
-                        pod_subnet_ids=[self.vcn.private_subnet.id],  # type: ignore[union-attr]
+                        pod_subnet_ids=[self.vcn.private_subnet.id],  # type: ignore[union-attr]  # narrowed by RuntimeError guard at lines 344–345
                         pod_nsg_ids=[self.pod_nsg.id],
                     ),
                     defined_tags=cfg.defined_tags,
@@ -454,8 +471,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
 
         Public subnet ingress: Kubernetes API (6443) and control-plane port
         (12250) from private subnet (workers + pods); HTTPS (443) and HTTP (80)
-        from internet (Load Balancer); Kubernetes API (6443) from internet
-        (kubectl).
+        from internet (Load Balancer); Kubernetes API (6443) from each CIDR in
+        `self.kubectl_allowed_cidrs` (kubectl).
 
         Public subnet egress: OCI services (telemetry, management); kubelet
         (10250), NodePort (30000-32767), and kube-proxy (10256) to private;
@@ -504,17 +521,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                     max=12250,
                 ),
             ),
-            # External clients (kubectl) → API server
-            oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Allow external access to Kubernetes API for kubectl and cluster management tools",
-                protocol="6",  # TCP
-                source="0.0.0.0/0",
-                source_type="CIDR_BLOCK",
-                tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                    min=6443,
-                    max=6443,
-                ),
-            ),
             # Internet → Load Balancer HTTPS
             oci.core.SecurityListIngressSecurityRuleArgs(
                 description="Load Balancer receives HTTPS traffic from internet for public web applications and APIs",
@@ -538,6 +544,22 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 ),
             ),
         ]
+
+        # External clients (kubectl) → API server — one rule per allowed CIDR.
+        # An empty list means no external kubectl access is provisioned.
+        for cidr in self.kubectl_allowed_cidrs:
+            public_ingress_rules.append(
+                oci.core.SecurityListIngressSecurityRuleArgs(
+                    description=f"Allow kubectl access to Kubernetes API from {cidr}",
+                    protocol="6",  # TCP
+                    source=cidr,
+                    source_type="CIDR_BLOCK",
+                    tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
+                        min=6443,
+                        max=6443,
+                    ),
+                )
+            )
 
         # ───────────────────────────────────────────────────────────────
         # PUBLIC – EGRESS
@@ -830,8 +852,9 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         """Add ingress and egress rules to `api_nsg`.
 
         Ingress: workers and pods reach the API server (6443) and internal
-        control-plane port (12250); external clients (kubectl) reach the API
-        on 6443.
+        control-plane port (12250); one rule per CIDR in
+        `self.kubectl_allowed_cidrs` permits external kubectl access on 6443.
+        No kubectl rule is created when the list is empty.
 
         Egress: control plane reaches OCI services (telemetry), kubelet on
         workers (10250), and all ports on pods (webhooks, exec, metrics).
@@ -886,17 +909,20 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             description="Pods reach Kubernetes control-plane internal port",
             opts=opts,
         )
-        self._r(
-            self.create_resource_name("api-nsg-ingress-kubectl"),
-            nsg,
-            direction="INGRESS",
-            protocol=TCP,
-            source=INTERNET,
-            source_type="CIDR_BLOCK",
-            tcp_options=tcp_port(6443),
-            description="External kubectl and CI tooling reach the Kubernetes API",
-            opts=opts,
-        )
+        # External clients (kubectl) → API server — one rule per allowed CIDR.
+        # An empty list means no external kubectl access is provisioned.
+        for i, cidr in enumerate(self.kubectl_allowed_cidrs):
+            self._r(
+                self.create_resource_name(f"api-nsg-ingress-kubectl-{i}"),
+                nsg,
+                direction="INGRESS",
+                protocol=TCP,
+                source=cidr,
+                source_type="CIDR_BLOCK",
+                tcp_options=tcp_port(6443),
+                description=f"External kubectl and CI tooling reach the Kubernetes API from {cidr}",
+                opts=opts,
+            )
 
         # ── EGRESS ─────────────────────────────────────────────────────
         self._r(
@@ -1272,23 +1298,37 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         Publishes outputs derived from the spell's logical name:
 
         - `{name}_cluster_id` — OCID of the OKE cluster.
+        - `{name}_cluster_endpoint` — Kubernetes API server public endpoint URL.
         - `{name}_kubernetes_version` — Kubernetes version deployed.
         - `{name}_lb_nsg_id` — OCID of the load-balancer NSG.  Reference this
           value in the Kubernetes service annotation
           `oci.oraclecloud.com/security-group-ids` so that OCI attaches the
           correct NSG to every managed load balancer.
+        - `{name}_kubeconfig` — kubectl-compatible kubeconfig (Pulumi secret).
+          Not exported during `pulumi preview` — only available after a real
+          `pulumi up` completes.
 
         Example:
             ```python
             oke = OkeCluster(name="okeinfra", ...)
             oke.export()
-            # Exports: okeinfra_cluster_id, okeinfra_kubernetes_version, okeinfra_lb_nsg_id
+            # Exports: okeinfra_cluster_id, okeinfra_cluster_endpoint,
+            #          okeinfra_kubernetes_version, okeinfra_lb_nsg_id,
+            #          okeinfra_kubeconfig (secret)
             ```
         """
         prefix = self.name.replace("-", "_")
         pulumi.export(f"{prefix}_cluster_id", self.id)
+        pulumi.export(f"{prefix}_cluster_endpoint", self.cluster.endpoints.public_endpoint)
         pulumi.export(f"{prefix}_kubernetes_version", self.kubernetes_version)
         pulumi.export(f"{prefix}_lb_nsg_id", self.lb_nsg.id)
+
+        # Kubeconfig requires a real cluster OCID — skip during preview.
+        if not pulumi.runtime.is_dry_run():
+            kubeconfig = self.cluster.id.apply(
+                lambda cid: oci.containerengine.get_cluster_kube_config(cluster_id=cid).content
+            )
+            pulumi.export(f"{prefix}_kubeconfig", pulumi.Output.secret(kubeconfig))
 
     def get_public_security_list_ids(self) -> list[pulumi.Output[str]]:
         """Return the OCIDs of the public security lists populated with OKE rules.
@@ -1369,7 +1409,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             with open(filename, "w") as f:
                 f.write(cc)
 
-        cluster_kube_config.content.apply(_write)  # type: ignore[union-attr]
+        cluster_kube_config.content.apply(_write)  # type: ignore[union-attr]  # content is Optional[str] in stubs but never None for a live cluster
 
 
 __all__ = ["NodePoolConfig", "OkeCluster"]

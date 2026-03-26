@@ -89,7 +89,7 @@ from .autoscale import (
 )
 from .bastion import Bastion
 from .compute import ComputeInstance
-from .kubernetes import OkeCluster
+from .kubernetes import NodePoolConfig, OkeCluster
 from .loadbalancer import InternalLoadBalancer, LoadBalancer
 from .network import (
     SUBNET_MANAGEMENT,
@@ -101,7 +101,20 @@ from .network import (
     VcnRef,
 )
 from .network_logging import VcnFlowLogs
-from .nsg import ALL, SVC_CIDR, TCP, UDP, Nsg, tcp_port, tcp_port_range
+from .nsg import (
+    ALL,
+    ICMP,
+    INTERNET,
+    SVC_CIDR,
+    TCP,
+    UDP,
+    Nsg,
+    icmp_opts,
+    tcp_port,
+    tcp_port_range,
+    udp_port,
+    udp_port_range,
+)
 from .roles import APP_SERVER, CACHE, DATABASE, INTERNET_EDGE, MANAGEMENT, Role
 from .storage import ArchiveBucket, BackupBucket, DataLakeBucket, ObjectStorageBucket, StaticWebsiteBucket
 from .volume import VolumeSpec
@@ -121,10 +134,15 @@ __all__ = [
     "Nsg",
     "TCP",
     "UDP",
+    "ICMP",
     "ALL",
     "SVC_CIDR",
+    "INTERNET",
     "tcp_port",
     "tcp_port_range",
+    "udp_port",
+    "udp_port_range",
+    "icmp_opts",
     # Security — Roles
     "Role",
     "INTERNET_EDGE",
@@ -136,6 +154,7 @@ __all__ = [
     "VcnFlowLogs",
     # Kubernetes
     "OkeCluster",
+    "NodePoolConfig",
     # Compute
     "ComputeInstance",
     "VolumeSpec",

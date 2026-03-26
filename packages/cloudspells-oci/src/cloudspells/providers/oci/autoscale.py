@@ -305,11 +305,9 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         # Finalize the VCN network
         self.vcn.finalize_network()
 
-        # Verify subnets exist after finalization
-        if self.vcn.public_subnet is None:
-            raise RuntimeError("VCN public subnet must exist after finalize_network().")
-        if self.vcn.private_subnet is None:
-            raise RuntimeError("VCN private subnet must exist after finalize_network().")
+        # Verify subnets exist after finalization (accessors raise RuntimeError if None)
+        self.vcn.get_public_subnet_id()
+        self.vcn.get_private_subnet_id()
 
         # Create resources in order
         self._create_load_balancer()
@@ -344,8 +342,9 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
 
         - Ingress: Backend port from public subnet CIDR (load balancer
           health checks and forwarded traffic).
-        - Egress: HTTPS (443) to OCI service CIDR block (monitoring,
-          telemetry, software updates).
+        - Egress to OCI services: not added here — the baseline VCN rules
+          already provide all-protocol egress to the OCI service CIDR for
+          every private-tier subnet.
 
         Note:
             SSH access to pool instances is not managed here.  Deploy a
@@ -361,13 +360,12 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         if isinstance(self.vcn, Vcn):
             public_subnet_cidr: pulumi.Input[str] = self.vcn.get_public_subnet_cidr()
             private_subnet_cidr: pulumi.Input[str] = self.vcn.get_private_subnet_cidr()
-            svc_cidr: pulumi.Output[str] = self.vcn._svc_cidr_block
 
             # Public subnet ingress rules (Load Balancer) — use fingerprinted calls
             # matching the Nsg INTERNET_EDGE convention so that if an INTERNET_EDGE
             # NSG with HTTP/HTTPS ports is also present in the same VCN, the rules
             # are deduplicated rather than appearing twice in the security list.
-            self.vcn._add_unique_security_list_rules(
+            self.vcn.add_unique_security_list_rules(
                 "public-ingress-tcp-80",
                 public_ingress=[
                     oci.core.SecurityListIngressSecurityRuleArgs(
@@ -382,7 +380,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                     ),
                 ],
             )
-            self.vcn._add_unique_security_list_rules(
+            self.vcn.add_unique_security_list_rules(
                 "public-ingress-tcp-443",
                 public_ingress=[
                     oci.core.SecurityListIngressSecurityRuleArgs(
@@ -426,18 +424,11 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                         ),
                     ),
                 ],
-                private_egress=[
-                    oci.core.SecurityListEgressSecurityRuleArgs(
-                        description="Instances access OCI services for monitoring, telemetry, and updates",
-                        protocol="6",
-                        destination=svc_cidr,
-                        destination_type="SERVICE_CIDR_BLOCK",
-                        tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                            min=443,
-                            max=443,
-                        ),
-                    ),
-                ],
+                # No private_egress rule for OCI services needed here: the
+                # baseline VCN rules injected by Vcn._inject_baseline_rules
+                # already provide all-protocol egress to the OCI service CIDR
+                # for every private-tier subnet, making a narrower TCP-443 rule
+                # unreachable under OCI union semantics.
             )
 
     def _create_load_balancer(self) -> None:
@@ -456,9 +447,6 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         """
         lb_config = self.load_balancer_config
 
-        if self.vcn.public_subnet is None:
-            raise RuntimeError("public_subnet must exist after finalize_network()")
-
         # Create load balancer
         lb_name = self.create_resource_name("lb")
         self.load_balancer = oci.loadbalancer.LoadBalancer(
@@ -470,7 +458,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 minimum_bandwidth_in_mbps=lb_config.min_bandwidth_mbps,
                 maximum_bandwidth_in_mbps=lb_config.max_bandwidth_mbps,
             ),
-            subnet_ids=[self.vcn.public_subnet.id],
+            subnet_ids=[self.vcn.get_public_subnet_id()],
             is_private=not lb_config.is_public,
             freeform_tags=self.create_freeform_tags(lb_name, "load-balancer"),
             defined_tags=self._defined_tags,
@@ -543,10 +531,6 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         """
         ic_name = self.create_resource_name("ic")
 
-        # Subnets are guaranteed to exist after finalize_network()
-        if self.vcn.private_subnet is None:
-            raise RuntimeError("private_subnet must exist after finalize_network()")
-
         # Build metadata
         metadata: dict[str, str] = {
             "ssh_authorized_keys": self.ssh_public_key,
@@ -574,7 +558,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                     ),
                     create_vnic_details=oci.core.InstanceConfigurationInstanceDetailsLaunchDetailsCreateVnicDetailsArgs(
                         assign_public_ip=False,
-                        subnet_id=self.vcn.private_subnet.id,
+                        subnet_id=self.vcn.get_private_subnet_id(),
                         nsg_ids=self._nsg_ids if self._nsg_ids else None,
                     ),
                     metadata=metadata,
@@ -600,10 +584,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         """
         pool_name = self.create_resource_name("pool")
 
-        # Subnets are guaranteed to exist after finalize_network()
-        if self.vcn.private_subnet is None:
-            raise RuntimeError("private_subnet must exist after finalize_network()")
-        private_subnet_id = self.vcn.private_subnet.id
+        private_subnet_id = self.vcn.get_private_subnet_id()
 
         # Build placement configurations for all ADs using the async Output so
         # the blocking get_availability_domains() call is never made at __init__
@@ -746,8 +727,15 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         Creates a single `oci.autoscaling.AutoScalingConfiguration` whose
         `policies` list contains one policy per `ScheduleEntry` in
         `ScheduleScalingPolicy.schedules`.  Each policy uses a Quartz cron
-        expression in UTC and performs a `ScheduleEntry.action` of either
-        `CHANGE_COUNT_BY` or `CHANGE_COUNT_TO`.
+        expression in UTC and adjusts instance pool capacity according to the
+        `ScheduleEntry.action` (`CHANGE_COUNT_BY` or `CHANGE_COUNT_TO`) and
+        `ScheduleEntry.value`.
+
+        OCI scheduled autoscaling for instance pools uses `policy_type="scheduled"`
+        with `execution_schedule` (cron) and `capacity` (min/max/initial).  The
+        `resource_action` field is for power-management actions and must not be
+        used for scaling policies — it would deploy an instance power on/off
+        action instead of a capacity change.
 
         Args:
             asc_name: Fully-qualified OCI resource name for the autoscaling
@@ -755,26 +743,35 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         """
         policy = cast(ScheduleScalingPolicy, self.scaling_policy)
 
-        # For schedule-based policies, we create one policy per schedule entry
+        # Build one scheduled policy per ScheduleEntry.
+        # Each entry drives a capacity change via execution_schedule + capacity;
+        # CHANGE_COUNT_TO sets capacity directly, CHANGE_COUNT_BY adjusts relative
+        # to the current pool size using min/max as guard rails.
         policies = []
         for entry in policy.schedules:
+            if entry.action.value == "CHANGE_COUNT_TO":
+                target = entry.value
+                new_min = min(entry.value, self.min_instances)
+                new_max = max(entry.value, self.max_instances)
+            else:
+                # CHANGE_COUNT_BY: clamp delta within [min_instances, max_instances]
+                target = max(self.min_instances, min(self.max_instances, self.initial_instances + entry.value))
+                new_min = self.min_instances
+                new_max = self.max_instances
+
             policies.append(
                 oci.autoscaling.AutoScalingConfigurationPolicyArgs(
                     display_name=entry.display_name,
                     policy_type="scheduled",
                     capacity=oci.autoscaling.AutoScalingConfigurationPolicyCapacityArgs(
-                        initial=self.initial_instances,
-                        max=self.max_instances,
-                        min=self.min_instances,
+                        initial=target,
+                        min=new_min,
+                        max=new_max,
                     ),
                     execution_schedule=oci.autoscaling.AutoScalingConfigurationPolicyExecutionScheduleArgs(
                         expression=entry.cron_expression,
                         timezone="UTC",
                         type="cron",
-                    ),
-                    resource_action=oci.autoscaling.AutoScalingConfigurationPolicyResourceActionArgs(
-                        action=entry.action.value,
-                        action_type="power",
                     ),
                 ),
             )

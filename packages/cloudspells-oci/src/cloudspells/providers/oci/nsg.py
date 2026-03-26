@@ -110,6 +110,7 @@ from cloudspells.core.ports import (
     SSH,
 )
 
+from ._oci_utils import get_svc_cidr as _get_svc_cidr
 from .network import Vcn, VcnRef
 from .roles import Role
 
@@ -134,24 +135,6 @@ Used in `__all__` and docstring references for backward compatibility.
 Internal code calls `_get_svc_cidr()` to obtain the actual
 `pulumi.Output[str]` value at resource-construction time.
 """
-
-
-def _get_svc_cidr() -> pulumi.Output[str]:
-    """Return the OCI All-Services CIDR as a `pulumi.Output[str]`.
-
-    Calls `oci.core.get_services_output()` on every invocation so that
-    each Pulumi resource-construction call gets a fresh `Output` bound to
-    the current Pulumi context.  Must only be called from within Pulumi
-    resource construction (i.e. inside `Nsg.__init__` or a method called
-    from it), never at module scope.
-
-    Returns:
-        `pulumi.Output[str]` containing the OCI All-Services CIDR block
-        (e.g. `"all-iad-services-in-oracle-services-network"`).
-    """
-    return oci.core.get_services_output().services.apply(
-        lambda svcs: next(s.cidr_block for s in svcs if s.cidr_block.startswith("all-"))
-    )
 
 
 INTERNET: str = "0.0.0.0/0"
@@ -491,6 +474,11 @@ class Nsg(BaseResource):
                 the internet (e.g. `[HTTP, HTTPS, SSH]`).  Required when
                 `role=INTERNET_EDGE`; ignored for other roles.
 
+        Raises:
+            ValueError: If `role` is `INTERNET_EDGE` and `ports` is `None` or
+                empty.  An internet-facing NSG with no declared ports would
+                silently accept no inbound traffic.
+
         Example:
             ```python
             from cloudspells.providers.oci import INTERNET_EDGE, APP_SERVER, DATABASE
@@ -515,6 +503,13 @@ class Nsg(BaseResource):
 
         self._vcn = vcn
         self.role = role
+
+        if role is not None and role.subnet_tier == SUBNET_PUBLIC and not ports:
+            raise ValueError(
+                f"Nsg '{name}': role=INTERNET_EDGE requires at least one port in `ports=` "
+                "(e.g. ports=[HTTP, HTTPS]).  An empty or missing ports list would create "
+                "an internet-facing NSG that accepts no inbound traffic."
+            )
 
         resource_name = self.create_resource_name("nsg")
         self.nsg = oci.core.NetworkSecurityGroup(
@@ -545,7 +540,7 @@ class Nsg(BaseResource):
     ) -> None:
         """Dispatch a uniquely-fingerprinted security list rule to the correct tier.
 
-        Wraps `Vcn._add_unique_security_list_rules` with an explicit
+        Wraps `Vcn.add_unique_security_list_rules` with an explicit
         `if`/`elif` tier dispatch so Pyright can verify that ingress args go
         to ingress parameters and egress args to egress parameters (dynamic
         `**kwargs` unpacking defeats the type checker).
@@ -565,13 +560,13 @@ class Nsg(BaseResource):
             return
         vcn = self._vcn
         if tier == SUBNET_PUBLIC:
-            vcn._add_unique_security_list_rules(fingerprint, public_ingress=ingress, public_egress=egress)
+            vcn.add_unique_security_list_rules(fingerprint, public_ingress=ingress, public_egress=egress)
         elif tier == SUBNET_PRIVATE:
-            vcn._add_unique_security_list_rules(fingerprint, private_ingress=ingress, private_egress=egress)
+            vcn.add_unique_security_list_rules(fingerprint, private_ingress=ingress, private_egress=egress)
         elif tier == SUBNET_SECURE:
-            vcn._add_unique_security_list_rules(fingerprint, secure_ingress=ingress, secure_egress=egress)
+            vcn.add_unique_security_list_rules(fingerprint, secure_ingress=ingress, secure_egress=egress)
         elif tier == SUBNET_MANAGEMENT:
-            vcn._add_unique_security_list_rules(fingerprint, management_ingress=ingress, management_egress=egress)
+            vcn.add_unique_security_list_rules(fingerprint, management_ingress=ingress, management_egress=egress)
 
     def _cidr_for_tier(self, tier: str) -> pulumi.Input[str]:
         """Return the subnet CIDR for `tier` from the backing VCN.
@@ -614,7 +609,7 @@ class Nsg(BaseResource):
 
         When the backing network is a live `Vcn` (not a `VcnRef`), the
         equivalent subnet security list rules are also registered via
-        `Vcn._add_unique_security_list_rules` so that `Vcn.finalize_network`
+        `Vcn.add_unique_security_list_rules` so that `Vcn.finalize_network`
         can emit them without any manual `Vcn.add_security_rules` call by the
         user.
 
@@ -641,7 +636,7 @@ class Nsg(BaseResource):
 
         if is_internet_edge:
             for port in ports:
-                self._vcn._add_unique_security_list_rules(
+                self._vcn.add_unique_security_list_rules(
                     f"public-ingress-tcp-{port}",
                     public_ingress=[_sl_ingress_tcp(port, "0.0.0.0/0", f"TCP {port} from internet")],
                 )
