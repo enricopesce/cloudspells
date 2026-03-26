@@ -27,7 +27,7 @@ oke: OkeCluster = OkeCluster(
     compartment_id=compartment_id,
     vcn=vcn,
     kubernetes_version=kubernetes_version,
-    display_name="infra",
+    kubectl_allowed_cidrs=[c for c in (config.get("kubectl_allowed_cidrs") or "").split(",") if c],
     node_pools=[
         NodePoolConfig(
             name="default",

@@ -59,6 +59,7 @@ from cloudspells.providers.oci.network import VcnRef
 config = Config()
 compartment_id: str = config.require("compartment_ocid")
 vcn_stack: str = config.require("vcn_stack")
+availability_domain: str = config.require("availability_domain")
 
 ssh_key: str | None = config.get("ssh_key") or None
 
@@ -69,6 +70,7 @@ instance: ComputeInstance = ComputeInstance(
     compartment_id=compartment_id,
     vcn=vcn,
     image_id=config.require("image_ocid"),
+    availability_domain=availability_domain,
     ssh_public_key=ssh_key,
 )
 

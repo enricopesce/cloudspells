@@ -78,6 +78,7 @@ from cloudspells.providers.oci.volume import VolumeSpec
 
 config = Config()
 compartment_id: str = config.require("compartment_ocid")
+availability_domain: str = config.require("availability_domain")
 ssh_key: str | None = config.get("ssh_key")
 vcn_cidr: str = config.get("vcn_cidr") or "10.0.0.0/18"
 app_port: int = config.get_int("app_port") or 8080
@@ -122,6 +123,7 @@ load_balancer: ComputeInstance = ComputeInstance(
     compartment_id=compartment_id,
     vcn=vcn,
     image_id=config.require("image_ocid"),
+    availability_domain=availability_domain,
     ssh_public_key=ssh_key,
     nsg=lb_nsg,  # subnet=SUBNET_PUBLIC inferred
 )
@@ -131,6 +133,7 @@ web_backend_1: ComputeInstance = ComputeInstance(
     compartment_id=compartment_id,
     vcn=vcn,
     image_id=config.require("image_ocid"),
+    availability_domain=availability_domain,
     ssh_public_key=ssh_key,
     nsg=web_nsg,  # subnet=SUBNET_PRIVATE inferred
 )
@@ -140,6 +143,7 @@ web_backend_2: ComputeInstance = ComputeInstance(
     compartment_id=compartment_id,
     vcn=vcn,
     image_id=config.require("image_ocid"),
+    availability_domain=availability_domain,
     ssh_public_key=ssh_key,
     nsg=web_nsg,  # same NSG as web-backend-1
 )
@@ -149,6 +153,7 @@ db_1: ComputeInstance = ComputeInstance(
     compartment_id=compartment_id,
     vcn=vcn,
     image_id=config.require("image_ocid"),
+    availability_domain=availability_domain,
     ssh_public_key=ssh_key,
     nsg=db_nsg,  # subnet=SUBNET_SECURE inferred
     volumes=[VolumeSpec(size_in_gbs=200, label="data", vpus_per_gb=VolumeSpec.PERF_HIGH)],
@@ -159,6 +164,7 @@ db_2: ComputeInstance = ComputeInstance(
     compartment_id=compartment_id,
     vcn=vcn,
     image_id=config.require("image_ocid"),
+    availability_domain=availability_domain,
     ssh_public_key=ssh_key,
     nsg=db_nsg,  # same NSG as db-1
     volumes=[VolumeSpec(size_in_gbs=200, label="data", vpus_per_gb=VolumeSpec.PERF_HIGH)],

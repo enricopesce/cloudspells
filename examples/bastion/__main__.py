@@ -45,6 +45,7 @@ from cloudspells.providers.oci.roles import APP_SERVER
 
 config = Config()
 compartment_id: str = config.require("compartment_ocid")
+availability_domain: str = config.require("availability_domain")
 
 # ── 1. VCN ───────────────────────────────────────────────────────────────────
 
@@ -89,6 +90,7 @@ instance: ComputeInstance = ComputeInstance(
     compartment_id=compartment_id,
     vcn=vcn,
     image_id=config.require("image_ocid"),
+    availability_domain=availability_domain,
     ssh_public_key=config.get("ssh_key"),
     ocpus=1,
     memory_in_gbs=4,

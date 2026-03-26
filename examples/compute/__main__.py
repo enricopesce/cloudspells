@@ -42,6 +42,7 @@ from cloudspells.providers.oci.volume import VolumeSpec
 
 config = Config()
 compartment_id: str = config.require("compartment_ocid")
+availability_domain: str = config.require("availability_domain")
 ssh_key: str | None = config.get("ssh_key")
 
 # ── Step 1 — VCN ──────────────────────────────────────────────────────────────
@@ -72,6 +73,7 @@ web_server: ComputeInstance = ComputeInstance(
     compartment_id=compartment_id,
     vcn=vcn,
     image_id=config.require("image_ocid"),
+    availability_domain=availability_domain,
     ssh_public_key=ssh_key,
     nsg=web_nsg,
     volumes=[
