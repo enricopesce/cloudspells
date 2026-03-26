@@ -17,6 +17,8 @@ All CloudSpells resource classes (`Vcn`, `OkeCluster`, `ComputeInstance`,
   subclasses never import those helpers directly.
 """
 
+__all__ = ["BaseResource"]
+
 import re
 from typing import Any
 

@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import pulumi
 
+__all__ = ["Config"]
+
 
 class Config:
     """Thin wrapper around `pulumi.Config` for stack configuration.

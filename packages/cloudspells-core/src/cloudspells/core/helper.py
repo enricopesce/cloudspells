@@ -12,6 +12,8 @@ OCI-specific helpers (image resolution and availability-domain mapping)
 live in `providers.oci.helper`.
 """
 
+__all__ = ["Helper"]
+
 import ipaddress
 import os
 import subprocess

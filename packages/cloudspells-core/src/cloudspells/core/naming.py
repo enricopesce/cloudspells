@@ -13,6 +13,8 @@ OCI requires DNS labels to be at most 15 alphanumeric characters, so keep
 both `prefix` and `stack_name` short.
 """
 
+__all__ = ["ResourceNamer"]
+
 
 class ResourceNamer:
     """Generate standardised resource names and DNS labels.

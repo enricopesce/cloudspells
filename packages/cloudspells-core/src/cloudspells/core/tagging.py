@@ -22,6 +22,8 @@ providers including GCP (which requires lowercase label keys).
 Specialised helpers add extra keys for network and gateway resources.
 """
 
+__all__ = ["ResourceTagger"]
+
 from typing import Any
 
 
