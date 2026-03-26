@@ -25,9 +25,9 @@ from cloudspells.providers.oci.network import Vcn
 class TestAutoscaleWorkload(unittest.TestCase):
     """Test cases for AutoScale workload block."""
 
-    def setUp(self):
-        """Set up VCN for autoscale workload tests."""
-        self.vcn = Vcn(
+    def _make_vcn(self) -> Vcn:
+        """Create a fresh VCN for each test to prevent shared mutable state."""
+        return Vcn(
             name="autoscale-test-vcn",
             compartment_id="ocid1.compartment.test",
         )
@@ -38,7 +38,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
         workload = ScalableWorkload(
             name="test-workload",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
             image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
@@ -54,7 +54,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
         workload = ScalableWorkload(
             name="test-workload",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
             image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
@@ -70,7 +70,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
         workload = ScalableWorkload(
             name="test-workload",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
             image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
@@ -86,7 +86,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
         workload = ScalableWorkload(
             name="test-workload",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
             image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
@@ -125,7 +125,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
         workload = ScalableWorkload(
             name="auto-key-workload",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
             image_id="ocid1.image.oc1.phx.test",
             # No ssh_public_key provided
         )
@@ -142,7 +142,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
         workload = ScalableWorkload(
             name="provided-key-workload",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
             image_id="ocid1.image.oc1.phx.test",
             ssh_public_key=provided_key,
         )
@@ -156,7 +156,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
         workload = ScalableWorkload(
             name="default-instances-workload",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
             image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
@@ -170,7 +170,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
         workload = ScalableWorkload(
             name="custom-instances-workload",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
             image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             min_instances=2,
@@ -187,7 +187,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
         workload = ScalableWorkload(
             name="default-shape-workload",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
             image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
@@ -199,7 +199,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
         workload = ScalableWorkload(
             name="custom-shape-workload",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
             image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             shape="VM.Standard.A1.Flex",
@@ -216,7 +216,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
         workload = ScalableWorkload(
             name="default-policy-workload",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
             image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )
@@ -236,7 +236,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
         workload = ScalableWorkload(
             name="metric-scaling-workload",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
             image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             scaling_policy=policy,
@@ -267,7 +267,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
         workload = ScalableWorkload(
             name="schedule-scaling-workload",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
             image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             scaling_policy=policy,
@@ -281,7 +281,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
         workload = ScalableWorkload(
             name="no-scaling-workload",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
             image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             scaling_policy=None,
@@ -301,7 +301,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
         workload = ScalableWorkload(
             name="custom-lb-workload",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
             image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
             load_balancer_config=lb_config,
@@ -317,7 +317,7 @@ class TestAutoscaleWorkload(unittest.TestCase):
         workload = ScalableWorkload(
             name="getter-test-workload",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
             image_id="ocid1.image.oc1.phx.test",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
         )

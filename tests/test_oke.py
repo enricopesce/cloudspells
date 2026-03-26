@@ -29,17 +29,17 @@ def _make_cluster(vcn: Vcn, node_pools: list[NodePoolConfig] | None = None) -> O
         compartment_id="ocid1.compartment.test",
         vcn=vcn,
         kubernetes_version="v1.28.2",
-        display_name="test-cluster",
         node_pools=node_pools or [_DEFAULT_POOL],
+        kubectl_allowed_cidrs=["10.0.0.0/8"],
     )
 
 
 class TestOkeCluster(unittest.TestCase):
     """Test cases for OKE Cluster block."""
 
-    def setUp(self):
-        """Set up VCN for OKE tests."""
-        self.vcn = Vcn(
+    def _make_vcn(self) -> Vcn:
+        """Create a fresh VCN for each test to prevent shared mutable state."""
+        return Vcn(
             name="oke-test-vcn",
             compartment_id="ocid1.compartment.test",
         )
@@ -47,7 +47,7 @@ class TestOkeCluster(unittest.TestCase):
     @pulumi.runtime.test
     def test_oke_creates_cluster(self):
         """Test that OkeCluster creates a Kubernetes cluster."""
-        oke = _make_cluster(self.vcn)
+        oke = _make_cluster(self._make_vcn())
 
         def check_cluster(cluster_id):
             self.assertIsNotNone(cluster_id, "OKE cluster must be created")
@@ -57,7 +57,7 @@ class TestOkeCluster(unittest.TestCase):
     @pulumi.runtime.test
     def test_oke_creates_node_pools(self):
         """Test that OkeCluster creates node pools for every NodePoolConfig."""
-        oke = _make_cluster(self.vcn)
+        oke = _make_cluster(self._make_vcn())
 
         def check_node_pool(node_pool_id):
             self.assertIsNotNone(node_pool_id, "Node pool must be created")
@@ -85,7 +85,7 @@ class TestOkeCluster(unittest.TestCase):
                 memory_in_gbs=64,
             ),
         ]
-        oke = _make_cluster(self.vcn, node_pools=pools)
+        oke = _make_cluster(self._make_vcn(), node_pools=pools)
 
         self.assertEqual(len(oke.node_pools), 2, "Two node pools must be created")
 
@@ -159,7 +159,7 @@ class TestOkeCluster(unittest.TestCase):
 
     def test_oke_security_list_aliases(self):
         """Test that OkeCluster creates security list aliases."""
-        oke = _make_cluster(self.vcn)
+        oke = _make_cluster(self._make_vcn())
 
         self.assertIsNotNone(oke.oke_public_security_list)
         self.assertIsNotNone(oke.oke_private_security_list)
@@ -167,7 +167,8 @@ class TestOkeCluster(unittest.TestCase):
     @pulumi.runtime.test
     def test_oke_security_lists_match_vcn(self):
         """Test that OKE security list aliases point to VCN security lists."""
-        oke = _make_cluster(self.vcn)
+        vcn = self._make_vcn()
+        oke = _make_cluster(vcn)
 
         def check_security_lists(args):
             oke_public_id, vcn_public_id, oke_private_id, vcn_private_id = args
@@ -176,14 +177,14 @@ class TestOkeCluster(unittest.TestCase):
 
         return pulumi.Output.all(
             oke.oke_public_security_list.id,
-            self.vcn.public_security_list.id,
+            vcn.public_security_list.id,
             oke.oke_private_security_list.id,
-            self.vcn.private_security_list.id,
+            vcn.private_security_list.id,
         ).apply(check_security_lists)
 
     def test_oke_nsgs_created(self):
         """Test that OkeCluster creates all four NSGs."""
-        oke = _make_cluster(self.vcn)
+        oke = _make_cluster(self._make_vcn())
 
         self.assertIsNotNone(oke.api_nsg, "api_nsg must be created")
         self.assertIsNotNone(oke.lb_nsg, "lb_nsg must be created")
@@ -193,7 +194,7 @@ class TestOkeCluster(unittest.TestCase):
     @pulumi.runtime.test
     def test_oke_nsgs_have_ids(self):
         """Test that all four NSGs expose Output IDs."""
-        oke = _make_cluster(self.vcn)
+        oke = _make_cluster(self._make_vcn())
 
         def check_nsg_ids(args):
             api_id, lb_id, worker_id, pod_id = args
@@ -208,6 +209,42 @@ class TestOkeCluster(unittest.TestCase):
             oke.worker_nsg.id,
             oke.pod_nsg.id,
         ).apply(check_nsg_ids)
+
+    def test_kubectl_allowed_cidrs_stored(self):
+        """Test that kubectl_allowed_cidrs are stored on the cluster."""
+        cidrs = ["10.0.0.0/8", "192.168.1.0/24"]
+        oke = OkeCluster(
+            name="test-kubectl-cidrs",
+            compartment_id="ocid1.compartment.test",
+            vcn=self._make_vcn(),
+            kubernetes_version="v1.28.2",
+            node_pools=[_DEFAULT_POOL],
+            kubectl_allowed_cidrs=cidrs,
+        )
+        self.assertEqual(oke.kubectl_allowed_cidrs, cidrs)
+
+    def test_kubectl_empty_cidrs_stored(self):
+        """Test that an empty kubectl_allowed_cidrs list is stored correctly."""
+        oke = OkeCluster(
+            name="test-kubectl-empty",
+            compartment_id="ocid1.compartment.test",
+            vcn=self._make_vcn(),
+            kubernetes_version="v1.28.2",
+            node_pools=[_DEFAULT_POOL],
+            kubectl_allowed_cidrs=[],
+        )
+        self.assertEqual(oke.kubectl_allowed_cidrs, [])
+
+    def test_kubectl_none_defaults_to_empty(self):
+        """Test that omitting kubectl_allowed_cidrs defaults to no external access."""
+        oke = OkeCluster(
+            name="test-kubectl-none",
+            compartment_id="ocid1.compartment.test",
+            vcn=self._make_vcn(),
+            kubernetes_version="v1.28.2",
+            node_pools=[_DEFAULT_POOL],
+        )
+        self.assertEqual(oke.kubectl_allowed_cidrs, [])
 
 
 if __name__ == "__main__":

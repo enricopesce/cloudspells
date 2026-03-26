@@ -472,8 +472,10 @@ class TestVcnRef(unittest.TestCase):
         )
         self.assertIsNone(ref.secure_subnet)
         self.assertIsNone(ref.management_subnet)
-        self.assertEqual(ref.get_secure_subnet_cidr(), "")
-        self.assertEqual(ref.get_management_subnet_cidr(), "")
+        with self.assertRaises(ValueError):
+            ref.get_secure_subnet_cidr()
+        with self.assertRaises(ValueError):
+            ref.get_management_subnet_cidr()
 
     def test_vcnref_drg_id_none_by_default(self):
         """VcnRef.drg_id is None when not provided."""

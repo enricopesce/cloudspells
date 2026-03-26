@@ -17,9 +17,9 @@ from cloudspells.providers.oci.network import Vcn
 class TestBastion(unittest.TestCase):
     """Test cases for Bastion block."""
 
-    def setUp(self):
-        """Set up VCN for bastion tests."""
-        self.vcn = Vcn(
+    def _make_vcn(self) -> Vcn:
+        """Create a fresh VCN for each test to prevent shared mutable state."""
+        return Vcn(
             name="bastion-test-vcn",
             compartment_id="ocid1.compartment.test",
         )
@@ -30,7 +30,7 @@ class TestBastion(unittest.TestCase):
         bastion = Bastion(
             name="test-bastion",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
         )
 
         def check_bastion(bastion_id):
@@ -63,7 +63,7 @@ class TestBastion(unittest.TestCase):
         bastion = Bastion(
             name="getter-test-bastion",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
         )
 
         def check_id(bastion_id):
@@ -76,7 +76,7 @@ class TestBastion(unittest.TestCase):
         bastion = Bastion(
             name="default-ttl-bastion",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
         )
 
         # Default TTL is 10800 seconds (3 hours)
@@ -89,7 +89,7 @@ class TestBastion(unittest.TestCase):
         bastion = Bastion(
             name="custom-cidr-bastion",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
             allowed_client_cidrs=custom_cidrs,
         )
 
@@ -101,7 +101,7 @@ class TestBastion(unittest.TestCase):
         bastion = Bastion(
             name="endpoint-test-bastion",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
         )
 
         def check_endpoint(endpoint):
@@ -115,7 +115,7 @@ class TestBastion(unittest.TestCase):
         bastion = Bastion(
             name="access-endpoint-bastion",
             compartment_id="ocid1.compartment.test",
-            vcn=self.vcn,
+            vcn=self._make_vcn(),
         )
 
         def check(endpoint):

@@ -120,7 +120,20 @@ class OCIMocks(pulumi.runtime.Mocks):
             outputs["id"] = f"{args.name}-id"
 
     def call(self, args: pulumi.runtime.MockCallArgs) -> tuple[dict[Any, Any], list[tuple[str, str]]]:
-        """Mock OCI provider function calls."""
+        """Mock OCI provider function calls (invoke operations).
+
+        Intercepts `oci:Core/getServices`, `oci:Identity/getAvailabilityDomains`,
+        and any other OCI data-source lookups so that tests run without a real
+        OCI tenancy.
+
+        Args:
+            args: Pulumi mock call arguments containing the provider token and
+                input values.
+
+        Returns:
+            A `(outputs, failures)` tuple.  `outputs` is a dict of mocked
+            return values; `failures` is an empty list (no simulated errors).
+        """
 
         # Mock get_services (for Service Gateway)
         if args.token == "oci:Core/getServices:getServices":
@@ -131,22 +144,6 @@ class OCIMocks(pulumi.runtime.Mocks):
                             "id": "mock-all-services-id",
                             "name": "All FRA Services In Oracle Services Network",
                             "cidrBlock": "all-fra-services-in-oracle-services-network",
-                        }
-                    ]
-                },
-                [],
-            )
-
-        # Mock get_images (for Compute Instance)
-        if args.token == "oci:Core/getImages:getImages":
-            return (
-                {
-                    "images": [
-                        {
-                            "id": "mock-oracle-linux-8-image-id",
-                            "displayName": "Oracle-Linux-8.9-2024.01.26-0",
-                            "operatingSystem": "Oracle Linux",
-                            "operatingSystemVersion": "8",
                         }
                     ]
                 },

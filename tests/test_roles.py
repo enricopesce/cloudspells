@@ -248,14 +248,12 @@ class TestNsgServes(unittest.TestCase):
         vcn = Vcn(name="same-tier", compartment_id=COMP_ID)
         web1 = Nsg("web-1", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
         web2 = Nsg("web-2", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
-        initial_fp_count = len(vcn._applied_ambient_rule_fingerprints)
+        before = frozenset(vcn._applied_ambient_rule_fingerprints)
         web1.serves(web2, port=8080)
 
         # No new cross-subnet fingerprints (both are private tier)
-        new_fps = vcn._applied_ambient_rule_fingerprints - set(
-            list(vcn._applied_ambient_rule_fingerprints)[:initial_fp_count]
-        )
-        cross_subnet = {fp for fp in new_fps if "to-" in fp or "from-" in fp}
+        after = frozenset(vcn._applied_ambient_rule_fingerprints)
+        cross_subnet = {fp for fp in (after - before) if "to-" in fp or "from-" in fp}
         self.assertEqual(len(cross_subnet), 0)
 
 
@@ -276,6 +274,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
             compartment_id=COMP_ID,
             vcn=vcn,
             image_id="ocid1.image.oc1.phx.test",
+            availability_domain="AD-1",
             nsg=web_nsg,
         )
         self.assertEqual(instance.subnet, "private")
@@ -293,6 +292,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
             compartment_id=COMP_ID,
             vcn=vcn,
             image_id="ocid1.image.oc1.phx.test",
+            availability_domain="AD-1",
             nsg=lb_nsg,
         )
         self.assertEqual(instance.subnet, "public")
@@ -310,6 +310,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
             compartment_id=COMP_ID,
             vcn=vcn,
             image_id="ocid1.image.oc1.phx.test",
+            availability_domain="AD-1",
             nsg=db_nsg,
         )
         self.assertEqual(instance.subnet, "secure")
@@ -327,6 +328,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
             compartment_id=COMP_ID,
             vcn=vcn,
             image_id="ocid1.image.oc1.phx.test",
+            availability_domain="AD-1",
             nsg=web_nsg,
         )
         self.assertEqual(len(instance.nsg_ids), 1)
@@ -345,6 +347,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
             compartment_id=COMP_ID,
             vcn=vcn,
             image_id="ocid1.image.oc1.phx.test",
+            availability_domain="AD-1",
             subnet=SUBNET_PRIVATE,
             nsg_ids=[web_nsg.id],
         )
