@@ -138,7 +138,7 @@ class TestNsgWithRole(unittest.TestCase):
     def test_internet_edge_registers_sl_rules(self) -> None:
         """INTERNET_EDGE role registers port ingress rules on the public security list."""
         vcn = self._make_vcn("ie-sl")
-        _nsg = Nsg("lb", role=INTERNET_EDGE, ports=[80, 443, 22], vcn=vcn, compartment_id=COMP_ID)
+        Nsg("lb", role=INTERNET_EDGE, ports=[80, 443, 22], vcn=vcn, compartment_id=COMP_ID)
 
         # The VCN accumulator should have received the three port rules.
         fingerprints = vcn._applied_ambient_rule_fingerprints
@@ -150,7 +150,7 @@ class TestNsgWithRole(unittest.TestCase):
     def test_app_server_registers_sl_rules(self) -> None:
         """APP_SERVER role registers egress rules on the private security list."""
         vcn = self._make_vcn("as-sl")
-        _nsg = Nsg("web", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
+        Nsg("web", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
 
         fingerprints = vcn._applied_ambient_rule_fingerprints
         self.assertIn("private-egress-all-services", fingerprints)
@@ -160,7 +160,7 @@ class TestNsgWithRole(unittest.TestCase):
     def test_database_registers_sl_rules(self) -> None:
         """DATABASE role registers services-egress rule on the secure security list."""
         vcn = self._make_vcn("db-sl")
-        _nsg = Nsg("db", role=DATABASE, vcn=vcn, compartment_id=COMP_ID)
+        Nsg("db", role=DATABASE, vcn=vcn, compartment_id=COMP_ID)
 
         fingerprints = vcn._applied_ambient_rule_fingerprints
         self.assertIn("secure-egress-all-services", fingerprints)
@@ -170,9 +170,9 @@ class TestNsgWithRole(unittest.TestCase):
     def test_duplicate_app_server_nsgs_deduplicates_sl_rules(self) -> None:
         """Multiple NSGs of the same role add security list rules only once."""
         vcn = self._make_vcn("dedup")
-        _web1 = Nsg("web-1", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
-        _web2 = Nsg("web-2", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
-        _web3 = Nsg("web-3", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
+        Nsg("web-1", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
+        Nsg("web-2", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
+        Nsg("web-3", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
 
         # All three NSGs share the same fingerprints: private_egress_rules must
         # have exactly 2 entries (services + internet) — not 6 (2 × 3 NSGs).
@@ -255,104 +255,6 @@ class TestNsgServes(unittest.TestCase):
         after = frozenset(vcn._applied_ambient_rule_fingerprints)
         cross_subnet = {fp for fp in (after - before) if "to-" in fp or "from-" in fp}
         self.assertEqual(len(cross_subnet), 0)
-
-
-class TestComputeInstanceNsgShorthand(unittest.TestCase):
-    """Tests for ComputeInstance nsg= parameter and subnet inference."""
-
-    @pulumi.runtime.test
-    def test_nsg_shorthand_infers_private_subnet(self) -> None:
-        """ComputeInstance with nsg=APP_SERVER NSG is placed in private subnet."""
-        from cloudspells.providers.oci.compute import ComputeInstance
-
-        vcn = Vcn(name="ci-priv", compartment_id=COMP_ID)
-        web_nsg = Nsg("web", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
-        web_nsg.serves(Nsg("db", role=DATABASE, vcn=vcn, compartment_id=COMP_ID), port=5432)
-
-        instance = ComputeInstance(
-            name="web-1",
-            compartment_id=COMP_ID,
-            vcn=vcn,
-            image_id="ocid1.image.oc1.phx.test",
-            availability_domain="AD-1",
-            nsg=web_nsg,
-        )
-        self.assertEqual(instance.subnet, "private")
-
-    @pulumi.runtime.test
-    def test_nsg_shorthand_infers_public_subnet(self) -> None:
-        """ComputeInstance with nsg=INTERNET_EDGE NSG is placed in public subnet."""
-        from cloudspells.providers.oci.compute import ComputeInstance
-
-        vcn = Vcn(name="ci-pub", compartment_id=COMP_ID)
-        lb_nsg = Nsg("lb", role=INTERNET_EDGE, ports=[80], vcn=vcn, compartment_id=COMP_ID)
-
-        instance = ComputeInstance(
-            name="lb-1",
-            compartment_id=COMP_ID,
-            vcn=vcn,
-            image_id="ocid1.image.oc1.phx.test",
-            availability_domain="AD-1",
-            nsg=lb_nsg,
-        )
-        self.assertEqual(instance.subnet, "public")
-
-    @pulumi.runtime.test
-    def test_nsg_shorthand_infers_secure_subnet(self) -> None:
-        """ComputeInstance with nsg=DATABASE NSG is placed in secure subnet."""
-        from cloudspells.providers.oci.compute import ComputeInstance
-
-        vcn = Vcn(name="ci-sec", compartment_id=COMP_ID)
-        db_nsg = Nsg("db", role=DATABASE, vcn=vcn, compartment_id=COMP_ID)
-
-        instance = ComputeInstance(
-            name="db-1",
-            compartment_id=COMP_ID,
-            vcn=vcn,
-            image_id="ocid1.image.oc1.phx.test",
-            availability_domain="AD-1",
-            nsg=db_nsg,
-        )
-        self.assertEqual(instance.subnet, "secure")
-
-    @pulumi.runtime.test
-    def test_nsg_shorthand_sets_nsg_ids(self) -> None:
-        """ComputeInstance with nsg= sets nsg_ids to [nsg.id]."""
-        from cloudspells.providers.oci.compute import ComputeInstance
-
-        vcn = Vcn(name="ci-ids", compartment_id=COMP_ID)
-        web_nsg = Nsg("web", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
-
-        instance = ComputeInstance(
-            name="web-x",
-            compartment_id=COMP_ID,
-            vcn=vcn,
-            image_id="ocid1.image.oc1.phx.test",
-            availability_domain="AD-1",
-            nsg=web_nsg,
-        )
-        self.assertEqual(len(instance.nsg_ids), 1)
-
-    @pulumi.runtime.test
-    def test_old_api_unchanged(self) -> None:
-        """ComputeInstance with explicit subnet= and nsg_ids= still works."""
-        from cloudspells.providers.oci.compute import ComputeInstance
-        from cloudspells.providers.oci.network import SUBNET_PRIVATE
-
-        vcn = Vcn(name="ci-old", compartment_id=COMP_ID)
-        web_nsg = Nsg("web-old", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
-
-        instance = ComputeInstance(
-            name="web-old",
-            compartment_id=COMP_ID,
-            vcn=vcn,
-            image_id="ocid1.image.oc1.phx.test",
-            availability_domain="AD-1",
-            subnet=SUBNET_PRIVATE,
-            nsg_ids=[web_nsg.id],
-        )
-        self.assertEqual(instance.subnet, "private")
-        self.assertEqual(len(instance.nsg_ids), 1)
 
 
 class TestTiersModule(unittest.TestCase):

@@ -112,7 +112,7 @@ from cloudspells.core.ports import (
 
 from ._oci_utils import get_svc_cidr as _get_svc_cidr
 from .network import Vcn, VcnRef
-from .roles import Role
+from .roles import INTERNET_EDGE, Role
 
 # ── Protocol constants ────────────────────────────────────────────────────────
 
@@ -434,7 +434,6 @@ class Nsg(BaseResource):
     """
 
     nsg: oci.core.NetworkSecurityGroup
-    id: pulumi.Output[str]
     role: Role | None
 
     def __init__(
@@ -504,7 +503,7 @@ class Nsg(BaseResource):
         self._vcn = vcn
         self.role = role
 
-        if role is not None and role.subnet_tier == SUBNET_PUBLIC and not ports:
+        if role is INTERNET_EDGE and not ports:
             raise ValueError(
                 f"Nsg '{name}': role=INTERNET_EDGE requires at least one port in `ports=` "
                 "(e.g. ports=[HTTP, HTTPS]).  An empty or missing ports list would create "

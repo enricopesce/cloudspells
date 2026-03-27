@@ -194,8 +194,12 @@ class Bastion(BaseResource, AbstractBastion):
         """Add SSH ingress rule to the VCN private security list.
 
         OCI Bastion sessions originate from managed, randomly-assigned source
-        IPs, so the rule must allow `0.0.0.0/0` on port 22.  Client access
-        is restricted at the Bastion level via `allowed_client_cidrs`.
+        IPs whose addresses are not known at deploy time, so the security list
+        rule must allow `0.0.0.0/0` on port 22.  This is the key design
+        decision: unlike a jump-host rule that can be scoped to a known CIDR,
+        OCI Bastion requires an open-source rule on the security list while
+        restricting actual session creation to specific CIDRs at the Bastion
+        level via `allowed_client_cidrs`.
 
         Uses fingerprint `_BASTION_SSH_RULE_FINGERPRINT` so that a second
         `Bastion` constructed against the same VCN is deduplicated rather than

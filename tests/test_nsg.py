@@ -253,8 +253,8 @@ class TestPortHelpers(unittest.TestCase):
     def test_udp_port_sets_min_max(self):
         """udp_port(n) returns args with min=max=n."""
         opts = udp_port(53)
-        self.assertEqual(opts.destination_port_range.min, 53)  # type: ignore[union-attr]  # Args object at construction time
-        self.assertEqual(opts.destination_port_range.max, 53)  # type: ignore[union-attr]
+        self.assertEqual(opts.destination_port_range.min, 53)  # type: ignore[union-attr]  # Args object at construction time — not a pulumi.Output
+        self.assertEqual(opts.destination_port_range.max, 53)  # type: ignore[union-attr]  # Args object at construction time — not a pulumi.Output
 
     def test_icmp_opts_type_only(self):
         """icmp_opts(type) returns args with type set and code=-1."""

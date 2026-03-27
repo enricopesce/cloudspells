@@ -86,6 +86,7 @@ class ObjectStorageBucket(BaseResource):
         ```
     """
 
+    bucket: oci.objectstorage.Bucket
     bucket_name: pulumi.Output[str]
 
     def __init__(
@@ -183,6 +184,7 @@ class BackupBucket(BaseResource):
         ```
     """
 
+    bucket: oci.objectstorage.Bucket
     lifecycle_policy: oci.objectstorage.ObjectLifecyclePolicy
     bucket_name: pulumi.Output[str]
 
@@ -304,6 +306,7 @@ class DataLakeBucket(BaseResource):
         ```
     """
 
+    bucket: oci.objectstorage.Bucket
     lifecycle_policy: oci.objectstorage.ObjectLifecyclePolicy
     bucket_name: pulumi.Output[str]
 
@@ -442,6 +445,7 @@ class ArchiveBucket(BaseResource):
         ```
     """
 
+    bucket: oci.objectstorage.Bucket
     bucket_name: pulumi.Output[str]
 
     def __init__(
@@ -542,6 +546,10 @@ class StaticWebsiteBucket(BaseResource):
         bucket: The underlying `oci.objectstorage.Bucket` resource.
         bucket_name: `pulumi.Output[str]` resolving to the OCI bucket name.
 
+    Raises:
+        RuntimeError: If `BaseResource.__init__` fails during Pulumi context
+            setup (e.g. outside a Pulumi program entry point).
+
     Example:
         ```python
         site = StaticWebsiteBucket(
@@ -549,10 +557,13 @@ class StaticWebsiteBucket(BaseResource):
             compartment_id=comp_id,
             namespace="mytenancy",
         )
+        # All objects in this bucket are publicly readable — do not upload
+        # sensitive data.  access_type="ObjectRead" is enforced by the spell.
         pulumi.export("site_bucket", site.bucket_name)
         ```
     """
 
+    bucket: oci.objectstorage.Bucket
     bucket_name: pulumi.Output[str]
 
     def __init__(
@@ -581,6 +592,12 @@ class StaticWebsiteBucket(BaseResource):
             opts: Pulumi resource options forwarded to the component.
         """
         super().__init__("custom:storage:StaticWebsiteBucket", name, compartment_id, stack_name, opts)
+
+        pulumi.warn(
+            f"StaticWebsiteBucket '{name}': access_type='ObjectRead' — every object in "
+            "this bucket is publicly readable without authentication.  Do not upload "
+            "sensitive data.  This is intentional for static website hosting."
+        )
 
         # The Pulumi logical name (first arg) and the OCI bucket `name=` are
         # intentionally set to the same value so the Pulumi URN and the OCI

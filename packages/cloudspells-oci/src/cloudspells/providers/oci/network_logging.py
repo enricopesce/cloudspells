@@ -3,7 +3,7 @@
 Provides `VcnFlowLogs`, which provisions an OCI Logging Log Group
 dedicated to network audit traffic and one VCN Flow Log per subnet tier.
 
-**Architecture**
+### Architecture
 
 A single `oci.logging.LogGroup` named `{stack}-{name}-network-audit` is
 created as the common container.  Up to four `oci.logging.Log` resources —
@@ -15,7 +15,7 @@ Secure and management flow logs are created only when those subnets are
 present — they may be absent when `VcnRef` is used and the upstream stack
 did not export those subnet IDs.
 
-**Retention**
+### Retention
 
 Log retention is configurable via `retention_duration` (default 90 days).
 OCI accepts only the discrete values `30`, `60`, `90`, `120`, `150`, `180`;
@@ -71,9 +71,14 @@ class VcnFlowLogs(BaseResource):
     Example:
         ```python
         vcn = Vcn(name="lab", compartment_id=compartment_id)
-        flow_logs = VcnFlowLogs(
-            name="lab", compartment_id=compartment_id, vcn=vcn
-        )  # finalize_network() called automatically
+        # compartment_id is inferred from the live Vcn when omitted
+        flow_logs = VcnFlowLogs(name="lab", vcn=vcn)
+
+        # With a VcnRef, compartment_id must be supplied explicitly
+        vcn_ref = VcnRef(name="lab", stack_name="prod")
+        flow_logs_ref = VcnFlowLogs(
+            name="lab", vcn=vcn_ref, compartment_id=compartment_id
+        )
 
         # Optionally publish the log group OCID as a stack output
         flow_logs.export()
@@ -90,8 +95,8 @@ class VcnFlowLogs(BaseResource):
     def __init__(
         self,
         name: str,
-        compartment_id: pulumi.Input[str],
         vcn: Vcn | VcnRef,
+        compartment_id: pulumi.Input[str] | None = None,
         retention_duration: int = 90,
         stack_name: str | None = None,
         opts: pulumi.ResourceOptions | None = None,
@@ -100,12 +105,14 @@ class VcnFlowLogs(BaseResource):
 
         Args:
             name: Logical name for this logging component (e.g. `"lab"`).
-            compartment_id: OCID of the OCI compartment to deploy into.
-                Required explicitly because `VcnRef` does not carry a
-                compartment ID — only live `Vcn` objects do.
             vcn: The `Vcn` or `VcnRef` whose subnets will be monitored.
                 `Vcn.finalize_network` is called automatically when a live
                 `Vcn` is passed; the call is a no-op for `VcnRef`.
+            compartment_id: OCID of the OCI compartment to deploy into.
+                When `None` and a live `Vcn` is supplied, the compartment ID
+                is taken directly from `vcn.compartment_id`.  Must be
+                provided explicitly when `vcn` is a `VcnRef`, because
+                `VcnRef` does not carry a compartment ID.
             retention_duration: Log retention in days.  Accepted values are
                 `30`, `60`, `90`, `120`, `150`, `180`.
                 Defaults to `90`.
@@ -117,7 +124,19 @@ class VcnFlowLogs(BaseResource):
             ValueError: If `retention_duration` is not one of the discrete
                 values accepted by OCI (`30`, `60`, `90`, `120`, `150`,
                 `180`).
+            ValueError: If `compartment_id` is `None` and `vcn` is a
+                `VcnRef` (which does not carry a compartment ID).
         """
+        # Bridge gap: extract compartment_id from a live Vcn when not provided.
+        if compartment_id is None:
+            if isinstance(vcn, Vcn):
+                compartment_id = vcn.compartment_id
+            else:
+                raise ValueError(
+                    "compartment_id must be supplied explicitly when vcn is a VcnRef — "
+                    "VcnRef does not carry a compartment ID."
+                )
+
         # Bridge gap: validate against OCI-accepted discrete retention values.
         if retention_duration not in _VALID_RETENTION:
             raise ValueError(f"retention_duration must be one of {sorted(_VALID_RETENTION)}, got {retention_duration}")

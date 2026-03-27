@@ -655,5 +655,108 @@ class TestComputeInstance(unittest.TestCase):
         self.assertIsNotNone(instance.get_ssh_private_key())
 
 
+class TestComputeInstanceNsgShorthand(unittest.TestCase):
+    """Tests for ComputeInstance nsg= parameter and subnet inference."""
+
+    @pulumi.runtime.test
+    def test_nsg_shorthand_infers_private_subnet(self) -> None:
+        """ComputeInstance with nsg=APP_SERVER NSG is placed in private subnet."""
+        from cloudspells.providers.oci.nsg import Nsg
+        from cloudspells.providers.oci.roles import APP_SERVER, DATABASE
+
+        vcn = Vcn(name="ci-priv", compartment_id="ocid1.compartment.oc1..test")
+        web_nsg = Nsg("web", role=APP_SERVER, vcn=vcn, compartment_id="ocid1.compartment.oc1..test")
+        web_nsg.serves(Nsg("db", role=DATABASE, vcn=vcn, compartment_id="ocid1.compartment.oc1..test"), port=5432)
+
+        instance = ComputeInstance(
+            name="web-1",
+            compartment_id="ocid1.compartment.oc1..test",
+            vcn=vcn,
+            image_id="ocid1.image.oc1.phx.test",
+            availability_domain="AD-1",
+            nsg=web_nsg,
+        )
+        self.assertEqual(instance.subnet, "private")
+
+    @pulumi.runtime.test
+    def test_nsg_shorthand_infers_public_subnet(self) -> None:
+        """ComputeInstance with nsg=INTERNET_EDGE NSG is placed in public subnet."""
+        from cloudspells.providers.oci.nsg import Nsg
+        from cloudspells.providers.oci.roles import INTERNET_EDGE
+
+        vcn = Vcn(name="ci-pub", compartment_id="ocid1.compartment.oc1..test")
+        lb_nsg = Nsg("lb", role=INTERNET_EDGE, ports=[80], vcn=vcn, compartment_id="ocid1.compartment.oc1..test")
+
+        instance = ComputeInstance(
+            name="lb-1",
+            compartment_id="ocid1.compartment.oc1..test",
+            vcn=vcn,
+            image_id="ocid1.image.oc1.phx.test",
+            availability_domain="AD-1",
+            nsg=lb_nsg,
+        )
+        self.assertEqual(instance.subnet, "public")
+
+    @pulumi.runtime.test
+    def test_nsg_shorthand_infers_secure_subnet(self) -> None:
+        """ComputeInstance with nsg=DATABASE NSG is placed in secure subnet."""
+        from cloudspells.providers.oci.nsg import Nsg
+        from cloudspells.providers.oci.roles import DATABASE
+
+        vcn = Vcn(name="ci-sec", compartment_id="ocid1.compartment.oc1..test")
+        db_nsg = Nsg("db", role=DATABASE, vcn=vcn, compartment_id="ocid1.compartment.oc1..test")
+
+        instance = ComputeInstance(
+            name="db-1",
+            compartment_id="ocid1.compartment.oc1..test",
+            vcn=vcn,
+            image_id="ocid1.image.oc1.phx.test",
+            availability_domain="AD-1",
+            nsg=db_nsg,
+        )
+        self.assertEqual(instance.subnet, "secure")
+
+    @pulumi.runtime.test
+    def test_nsg_shorthand_sets_nsg_ids(self) -> None:
+        """ComputeInstance with nsg= sets nsg_ids to [nsg.id]."""
+        from cloudspells.providers.oci.nsg import Nsg
+        from cloudspells.providers.oci.roles import APP_SERVER
+
+        vcn = Vcn(name="ci-ids", compartment_id="ocid1.compartment.oc1..test")
+        web_nsg = Nsg("web", role=APP_SERVER, vcn=vcn, compartment_id="ocid1.compartment.oc1..test")
+
+        instance = ComputeInstance(
+            name="web-x",
+            compartment_id="ocid1.compartment.oc1..test",
+            vcn=vcn,
+            image_id="ocid1.image.oc1.phx.test",
+            availability_domain="AD-1",
+            nsg=web_nsg,
+        )
+        self.assertEqual(len(instance.nsg_ids), 1)
+
+    @pulumi.runtime.test
+    def test_old_api_unchanged(self) -> None:
+        """ComputeInstance with explicit subnet= and nsg_ids= still works."""
+        from cloudspells.providers.oci.network import SUBNET_PRIVATE
+        from cloudspells.providers.oci.nsg import Nsg
+        from cloudspells.providers.oci.roles import APP_SERVER
+
+        vcn = Vcn(name="ci-old", compartment_id="ocid1.compartment.oc1..test")
+        web_nsg = Nsg("web-old", role=APP_SERVER, vcn=vcn, compartment_id="ocid1.compartment.oc1..test")
+
+        instance = ComputeInstance(
+            name="web-old",
+            compartment_id="ocid1.compartment.oc1..test",
+            vcn=vcn,
+            image_id="ocid1.image.oc1.phx.test",
+            availability_domain="AD-1",
+            subnet=SUBNET_PRIVATE,
+            nsg_ids=[web_nsg.id],
+        )
+        self.assertEqual(instance.subnet, "private")
+        self.assertEqual(len(instance.nsg_ids), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

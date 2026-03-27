@@ -550,11 +550,11 @@ class ComputeInstance(BaseResource, AbstractCompute):
     def export(self) -> None:
         """Export standard compute instance stack outputs.
 
-        Publishes instance OCID, private IP, all block volume OCIDs, and SSH
-        public key under keys derived from the spell's logical name.  The SSH
-        private key is exported as a Pulumi secret only when it was
-        auto-generated.  Each volume is exported under
-        `{name}_{label}_volume_id`.
+        Publishes instance OCID, private IP, availability domain, shape,
+        fault domain, all block volume OCIDs, and SSH public key under keys
+        derived from the spell's logical name.  The SSH private key is
+        exported as a Pulumi secret only when it was auto-generated.  Each
+        volume is exported under `{name}_{label}_volume_id`.
 
         Example:
             ```python
@@ -569,6 +569,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
             )
             instance.export()
             # Exports: app_id, app_private_ip,
+            #          app_availability_domain, app_shape, app_fault_domain,
             #          app_data_volume_id, app_db_volume_id,
             #          app_ssh_public_key,
             #          app_ssh_private_key (secret, only if auto-generated)
@@ -579,6 +580,9 @@ class ComputeInstance(BaseResource, AbstractCompute):
         pulumi.export(f"{prefix}_private_ip", self.get_private_ip())
         if self.subnet == SUBNET_PUBLIC:
             pulumi.export(f"{prefix}_public_ip", self.instance.public_ip)
+        pulumi.export(f"{prefix}_availability_domain", self.availability_domain)
+        pulumi.export(f"{prefix}_shape", self.instance.shape)
+        pulumi.export(f"{prefix}_fault_domain", self.instance.fault_domain)
         for spec, vol in zip(self.volumes_spec, self.block_volumes):
             pulumi.export(f"{prefix}_{spec.label}_volume_id", vol.id)
         pulumi.export(f"{prefix}_ssh_public_key", self.get_ssh_public_key())

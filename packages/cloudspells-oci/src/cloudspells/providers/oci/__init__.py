@@ -37,7 +37,7 @@ fully-implemented provider.
 - `InternalLoadBalancer`: Private HTTP load balancer in the VCN private
   subnet for internal service-to-service routing.
 
-**Configuration descriptors** (plain dataclasses, no cloud resources):
+### Configuration descriptors (plain dataclasses, no cloud resources)
 
 - `VolumeSpec`: Block-volume descriptor — size, performance tier
   (`vpus_per_gb`), label, and read-only flag.
@@ -47,7 +47,7 @@ fully-implemented provider.
   image OCID, node count, and boot volume size. Pass one or more instances
   to `OkeCluster(node_pools=...)`.
 
-**Autoscaling policy types**:
+### Autoscaling policy types
 
 - `ScalingMetric`: Enum of supported autoscaling metrics (e.g. `CPU_UTILIZATION`).
 - `ScalingAction`: Enum of autoscaling adjustment actions (e.g. `CHANGE_COUNT_BY`).
@@ -56,7 +56,7 @@ fully-implemented provider.
 - `ScheduleScalingPolicy`: Collection of `ScheduleEntry` items forming a
   scheduled autoscaling policy.
 
-**Network security helpers**:
+### Network security helpers
 
 - `TCP`, `UDP`, `ALL`: Protocol constants for NSG rules.
 - `SVC_CIDR`: Sentinel used in NSG rules to target the OCI Services CIDR.

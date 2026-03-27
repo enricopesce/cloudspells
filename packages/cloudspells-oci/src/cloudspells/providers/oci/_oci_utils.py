@@ -28,6 +28,13 @@ def get_svc_cidr() -> pulumi.Output[str]:
     Returns:
         `pulumi.Output[str]` containing the OCI All-Services CIDR block
         (e.g. `"all-iad-services-in-oracle-services-network"`).
+
+    Raises:
+        StopIteration: Propagated from `next()` inside the `apply()` callback
+            if the OCI services list contains no entry whose `cidr_block`
+            starts with `"all-"`.  This should not occur in a correctly
+            configured tenancy, but will surface as an opaque error inside
+            a Pulumi `apply()` if the services API returns unexpected data.
     """
     return oci.core.get_services_output().services.apply(
         lambda svcs: next(s.cidr_block for s in svcs if s.cidr_block.startswith("all-"))

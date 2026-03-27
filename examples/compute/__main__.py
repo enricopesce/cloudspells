@@ -94,6 +94,7 @@ web_server: ComputeInstance = ComputeInstance(
 )
 
 # Exported keys: vcn_id, vcn_cidr, public_subnet_id, private_subnet_id,
-#                web_server_id, web_server_public_ip, web_server_private_ip.
+#                web_server_id, web_server_public_ip, web_server_private_ip,
+#                web_server_availability_domain, web_server_shape, web_server_fault_domain.
 vcn.export()
 web_server.export()

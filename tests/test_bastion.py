@@ -71,15 +71,14 @@ class TestBastion(unittest.TestCase):
 
         return bastion.get_bastion_id().apply(check_id)
 
-    def test_bastion_default_ttl(self):
-        """Test that Bastion uses default session TTL of 3 hours."""
+    def test_bastion_resource_created(self):
+        """Test that Bastion resource is created successfully with default options."""
         bastion = Bastion(
             name="default-ttl-bastion",
             compartment_id="ocid1.compartment.test",
             vcn=self._make_vcn(),
         )
 
-        # Default TTL is 10800 seconds (3 hours)
         self.assertIsNotNone(bastion.bastion)
 
     def test_bastion_custom_cidr_allow_list(self):

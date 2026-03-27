@@ -43,7 +43,6 @@ class VolumeSpec:
         device: Device path override for the paravirtualized attachment
             (e.g. `"/dev/oracleoci/oraclevdb"`).  When `None`, OCI assigns
             the next available device.
-    Class Attributes:
         PERF_LOW: Low-cost tier — 0 VPUs/GB.
         PERF_BALANCED: Default balanced tier — 10 VPUs/GB.
         PERF_HIGH: High-performance tier — 20 VPUs/GB.
