@@ -155,6 +155,12 @@ class _SubnetRef:
     """
 
     def __init__(self, subnet_id: pulumi.Input[str]) -> None:
+        """Wrap an externally-managed subnet OCID.
+
+        Args:
+            subnet_id: OCID of the subnet to wrap.  Accepts any
+                `pulumi.Input[str]` (plain string or `pulumi.Output[str]`).
+        """
         self.id: pulumi.Output[str] = pulumi.Output.from_input(subnet_id)
 
 
@@ -172,6 +178,12 @@ class _SecurityListRef:
     """
 
     def __init__(self, security_list_id: pulumi.Input[str]) -> None:
+        """Wrap an externally-managed security list OCID.
+
+        Args:
+            security_list_id: OCID of the security list to wrap.  Accepts any
+                `pulumi.Input[str]` (plain string or `pulumi.Output[str]`).
+        """
         self.id: pulumi.Output[str] = pulumi.Output.from_input(security_list_id)
 
 
@@ -670,7 +682,23 @@ class Vcn(BaseResource, AbstractNetwork):
         )
 
     def _create_gateways(self) -> None:
-        """Create Internet, NAT, Service, and (optionally) Dynamic Routing gateways."""
+        """Create Internet, NAT, Service, and (optionally) Dynamic Routing gateways.
+
+        Always creates an Internet Gateway (public subnet egress/ingress), a
+        NAT Gateway (private/secure/management egress), and a Service Gateway
+        (OCI service CIDR — OCIR, monitoring, object storage).  A Dynamic
+        Routing Gateway (DRG) is created only when `enable_drg=True` was
+        passed to the `Vcn` constructor; it enables FastConnect and Site-to-Site
+        VPN connectivity.
+
+        Sets `self.internet_gateway`, `self.nat_gateway`,
+        `self.service_gateway`, and optionally `self.drg` on the instance.
+
+        Raises:
+            RuntimeError: If called before the underlying `oci.core.Vcn`
+                resource has been created (i.e. outside of a Pulumi `__init__`
+                context).
+        """
         # Internet Gateway
         igw_name = self.create_resource_name("igw")
         self.internet_gateway = oci.core.InternetGateway(

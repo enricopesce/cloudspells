@@ -59,9 +59,10 @@ class ComputeInstance(BaseResource, AbstractCompute):
         ssh_private_key: Corresponding private key string, or `None` when
             the caller supplied their own public key.
         image_id: OCID of the boot image used by the instance.
-        availability_domain: OCI Availability Domain name for the instance
-            and all attached block volumes
-            (e.g. `"IqDk:US-ASHBURN-AD-1"`).
+        availability_domain: Resolved OCI Availability Domain name
+            (`pulumi.Output[str]`) for the instance and all attached block
+            volumes.  Auto-discovered from the compartment's first AD when
+            not explicitly supplied.
         boot_volume_size_in_gbs: Size of the boot volume in GiB.
         volumes_spec: Resolved list of `VolumeSpec` objects used to create
             the attached block volumes.
@@ -80,6 +81,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         fault_domain: Fault domain the instance is placed in, or `None`
             when OCI auto-assigns (default spread behaviour).
         hostname_label: DNS hostname for the primary VNIC, or `None`.
+
     Usage patterns:
 
     1. **Minimal — single default data volume, auto-generated SSH keys**:
@@ -133,9 +135,11 @@ class ComputeInstance(BaseResource, AbstractCompute):
     ssh_public_key: str
     ssh_private_key: str | None
     image_id: pulumi.Input[str]
-    availability_domain: pulumi.Input[str]
+    availability_domain: pulumi.Output[str]
     boot_volume_size_in_gbs: pulumi.Input[int]
     volumes_spec: list[VolumeSpec]
+    subnet: SubnetTier
+    nsg_ids: list[pulumi.Input[str]]
     instance: oci.core.Instance
     block_volumes: list[oci.core.Volume]
     volume_attachments: list[oci.core.VolumeAttachment]
@@ -150,7 +154,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         compartment_id: pulumi.Input[str],
         vcn: Vcn | VcnRef,
         image_id: pulumi.Input[str],
-        availability_domain: pulumi.Input[str],
+        availability_domain: pulumi.Input[str] | None = None,
         stack_name: str | None = None,
         ssh_public_key: pulumi.Input[str] | None = None,
         shape: pulumi.Input[str] = "VM.Standard.E4.Flex",
@@ -188,10 +192,10 @@ class ComputeInstance(BaseResource, AbstractCompute):
                 CLI and commit it to your Pulumi stack config.
             availability_domain: OCI Availability Domain name for the
                 instance and its block volumes
-                (e.g. `"IqDk:US-ASHBURN-AD-1"`).  Must be an explicit
-                value — CloudSpells does not auto-select an AD.  Obtain
-                the AD name from the OCI Console or CLI and commit it to
-                your Pulumi stack config.
+                (e.g. `"IqDk:US-ASHBURN-AD-1"`).  When `None` (default),
+                CloudSpells auto-discovers the first AD in the compartment
+                via `oci.identity.get_availability_domains_output()`.
+                Provide an explicit value to pin placement to a specific AD.
             subnet: Which VCN tier to place the instance in.  Use the
                 constants `SUBNET_PRIVATE` (default), `SUBNET_PUBLIC`,
                 `SUBNET_SECURE`, or `SUBNET_MANAGEMENT` from
@@ -259,7 +263,11 @@ class ComputeInstance(BaseResource, AbstractCompute):
 
         self.subnet = subnet
         self.image_id = image_id
-        self.availability_domain = availability_domain
+        if availability_domain is not None:
+            self.availability_domain = pulumi.Output.from_input(availability_domain)
+        else:
+            ads_output = oci.identity.get_availability_domains_output(compartment_id=self.compartment_id)
+            self.availability_domain = ads_output.availability_domains.apply(lambda ads: ads[0]["name"])
         self.boot_volume_size_in_gbs = boot_volume_size_in_gbs
         self.fault_domain = fault_domain
         self.hostname_label = hostname_label
@@ -314,7 +322,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
 
         self.instance = oci.core.Instance(
             instance_name,
-            availability_domain=availability_domain,
+            availability_domain=self.availability_domain,
             compartment_id=self.compartment_id,
             shape=self.shape,
             display_name=instance_name,
@@ -356,7 +364,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         # ---- Block volumes (one per VolumeSpec) ------------------------
         self.block_volumes = []
         self.volume_attachments = []
-        self._attach_block_volumes(availability_domain, instance_name)
+        self._attach_block_volumes(self.availability_domain, instance_name)
 
         # ---- Stack outputs ---------------------------------------------
         outputs: dict[str, pulumi.Output[str]] = {
@@ -528,6 +536,11 @@ class ComputeInstance(BaseResource, AbstractCompute):
         else:
             # Use the same fingerprint as Nsg._apply_role_ambient_rules so the
             # rule is deduplicated when an INTERNET_EDGE NSG already added it.
+            pulumi.warn(
+                f"ComputeInstance '{self.name}': SSH (port 22) is open to 0.0.0.0/0 on the "
+                "public subnet. Restrict access by placing this instance behind a bastion or "
+                "using an NSG with a narrower source CIDR."
+            )
             self.vcn.add_unique_security_list_rules("public-ingress-tcp-22", public_ingress=[ssh_rule])
 
     # ------------------------------------------------------------------

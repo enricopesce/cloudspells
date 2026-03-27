@@ -113,9 +113,6 @@ class NodePoolConfig:
         node_metadata: OCI instance metadata key/value pairs propagated to
             every worker node.  Pass `{"user_data": "<base64>"}` to inject
             a cloud-init script.  Defaults to `None`.
-        defined_tags: OCI defined tags applied to the node pool resource
-            (e.g. `{"Operations": {"CostCenter": "42"}}`).  Defaults to
-            `None`.
         eviction_grace_duration: ISO 8601 duration OCI waits for workloads
             to drain before terminating a node (e.g. `"PT1H"`).  When
             `None` OCI uses its built-in default.
@@ -165,7 +162,6 @@ class NodePoolConfig:
     boot_volume_size_in_gbs: int | None = None
     initial_node_labels: dict[str, str] | None = None
     node_metadata: dict[str, str] | None = None
-    defined_tags: dict[str, Any] | None = None
     eviction_grace_duration: str | None = None
     force_delete_after_grace: bool = False
     cycling_enabled: bool = False
@@ -270,7 +266,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         stack_name: str | None = None,
         enhanced: bool = False,
         kubectl_allowed_cidrs: list[str] | None = None,
-        defined_tags: dict[str, Any] | None = None,
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
         """Create a complete OKE cluster infrastructure.
@@ -304,9 +299,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 suppress the warning while still blocking all external access.
                 Pass one or more CIDRs (e.g. `["203.0.113.0/24"]`) to allow
                 kubectl from those addresses.
-            defined_tags: OCI defined tags applied to the cluster resource
-                (e.g. `{"Operations": {"CostCenter": "42"}}`).  Defaults
-                to `None`.
             opts: Pulumi resource options forwarded to the component.
 
         Raises:
@@ -375,7 +367,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 nsg_ids=[self.api_nsg.id],
             ),
             freeform_tags=self.create_freeform_tags(cluster_name, "oke-cluster"),
-            defined_tags=defined_tags,
             opts=child_opts,
         )
 
@@ -405,7 +396,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                         pod_subnet_ids=[self.vcn.private_subnet.id],  # type: ignore[union-attr]  # narrowed by RuntimeError guard at lines 344–345
                         pod_nsg_ids=[self.pod_nsg.id],
                     ),
-                    defined_tags=cfg.defined_tags,
                 ),
                 node_shape=cfg.shape,
                 node_shape_config=oci.containerengine.NodePoolNodeShapeConfigArgs(
@@ -441,7 +431,6 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 else None,
                 ssh_public_key=cfg.ssh_public_key or None,
                 freeform_tags=self.create_freeform_tags(pool_name, "oke-node-pool"),
-                defined_tags=cfg.defined_tags,
                 opts=child_opts,
             )
             self.node_pools.append(pool)

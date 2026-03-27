@@ -107,6 +107,17 @@ class TestComputeInstance(unittest.TestCase):
         return instance.instance.id.apply(lambda iid: self.assertIsNotNone(iid))
 
     @pulumi.runtime.test
+    def test_auto_discovers_availability_domain(self):
+        """ComputeInstance without availability_domain selects first mock AD."""
+        instance = ComputeInstance(
+            name="auto-ad-instance",
+            compartment_id="ocid1.compartment.test",
+            vcn=self._make_vcn(),
+            image_id="ocid1.image.oc1.phx.test",
+        )
+        return instance.availability_domain.apply(lambda ad: self.assertEqual(ad, "AD-1"))
+
+    @pulumi.runtime.test
     def test_default_creates_one_volume(self):
         """Default ComputeInstance creates exactly one block volume."""
         instance = ComputeInstance(

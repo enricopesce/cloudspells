@@ -23,8 +23,6 @@ Exports:
 
 from __future__ import annotations
 
-from typing import Protocol
-
 import pulumi
 import pulumi_oci as oci
 from cloudspells.core.base import BaseResource
@@ -34,11 +32,12 @@ from .network import Vcn, VcnRef
 # ── Private mixin ─────────────────────────────────────────────────────────────
 
 
-class _LbMixin(Protocol):
+class _LbMixin:
     """Shared accessors for all CloudSpells load balancer spells.
 
-    Provides `get_lb_id()`, `get_lb_ip()`, and `export()` so the identical
-    implementation is not repeated across every load balancer spell class.
+    Plain base class providing `get_lb_id()`, `get_lb_ip()`, and `export()`
+    so the identical implementation is not repeated across every load balancer
+    spell class.  Used via multiple inheritance alongside `BaseResource`.
     Not part of the public API.
 
     Attributes:

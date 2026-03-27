@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import base64
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any
 
 import pulumi
 import pulumi_oci as oci
@@ -44,12 +44,8 @@ from cloudspells.core.base import BaseResource
 
 from .network import Vcn, VcnRef
 
-
-class _UnsetType:
-    """Singleton sentinel distinguishing `scaling_policy` not provided from `None`."""
-
-
-_UNSET: _UnsetType = _UnsetType()
+_UNSET = object()
+"""Sentinel distinguishing `scaling_policy` not provided from `None`."""
 
 
 @dataclass
@@ -60,21 +56,20 @@ class OciLoadBalancerConfig(_BaseLoadBalancerConfig):
     Use this class when deploying `ScalableWorkload` on OCI.
 
     Attributes:
-        backend_port: `int`. Port on backend instances to receive forwarded traffic
+        backend_port: Port on backend instances to receive forwarded traffic
             and health-check probes.  Default: `80`.
-        health_check_path: `str`. HTTP path used for backend health checks.
+        health_check_path: HTTP path used for backend health checks.
             Default: `"/health"`.
-        is_public: `bool`. Whether the load balancer is assigned a public IP.
+        is_public: Whether the load balancer is assigned a public IP.
             Default: `True`.
-        min_bandwidth_mbps: `int`. Minimum bandwidth allocated to the OCI flexible
+        min_bandwidth_mbps: Minimum bandwidth allocated to the OCI flexible
             load-balancer shape in Mbps.  OCI will not reduce below this value even
             when traffic is idle.  Default: `10`.
-        max_bandwidth_mbps: `int`. Maximum bandwidth the OCI flexible load-balancer
+        max_bandwidth_mbps: Maximum bandwidth the OCI flexible load-balancer
             shape may burst to in Mbps.  Default: `100`.
-        ssl_certificate_name: `str | None`. Name of a certificate object already
-            uploaded to the load balancer.  When set, an HTTPS listener on port 443
-            is created alongside the HTTP listener on port 80.
-            Default: `None` (HTTP only).
+        ssl_certificate_name: Name of a certificate object already uploaded to
+            the load balancer.  When set, an HTTPS listener on port 443 is created
+            alongside the HTTP listener on port 80.  Default: `None` (HTTP only).
 
     Example:
         ```python
@@ -206,7 +201,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         # Load balancer configuration
         load_balancer_config: OciLoadBalancerConfig | None = None,
         # Scaling policy (metric OR schedule, not both); pass None to disable autoscaling
-        scaling_policy: MetricScalingPolicy | ScheduleScalingPolicy | _UnsetType | None = _UNSET,
+        scaling_policy: MetricScalingPolicy | ScheduleScalingPolicy | object | None = _UNSET,
         defined_tags: dict[str, Any] | None = None,
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
@@ -279,10 +274,10 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         self.max_instances = max_instances
         self.initial_instances = initial_instances if initial_instances is not None else min_instances
         self.load_balancer_config = load_balancer_config or OciLoadBalancerConfig()
-        if isinstance(scaling_policy, _UnsetType):
+        if scaling_policy is _UNSET:
             self.scaling_policy = MetricScalingPolicy()
         else:
-            self.scaling_policy = scaling_policy  # type: ignore[assignment]  # narrowed by isinstance above
+            self.scaling_policy = scaling_policy  # type: ignore[assignment]  # narrowed by identity check above
         self.listeners = []
         self.autoscaling_configuration = None
         # Propagate to all sub-resources
@@ -299,7 +294,10 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         # Handle SSH key - either use provided or auto-generate
         self._setup_ssh_keys(ssh_public_key)
 
-        # Add security rules for load balancer and instance pool
+        # Add security rules for load balancer and instance pool.
+        # Security list rules only apply to a live Vcn — the guard is inside
+        # _add_scalable_workload_security_rules (skipped for VcnRef, which is
+        # read-only and has no mutable security lists).
         self._add_scalable_workload_security_rules()
 
         # Finalize the VCN network
@@ -321,6 +319,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         outputs: dict[str, pulumi.Output[str] | str] = {
             "instance_pool_id": self.instance_pool.id,
             "load_balancer_id": self.load_balancer.id,
+            "load_balancer_ip": self.get_load_balancer_ip(),
         }
 
         outputs.update(self._get_ssh_outputs())
@@ -458,7 +457,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 minimum_bandwidth_in_mbps=lb_config.min_bandwidth_mbps,
                 maximum_bandwidth_in_mbps=lb_config.max_bandwidth_mbps,
             ),
-            subnet_ids=[self.vcn.get_public_subnet_id()],
+            subnet_ids=[self.vcn.get_public_subnet_id() if lb_config.is_public else self.vcn.get_private_subnet_id()],
             is_private=not lb_config.is_public,
             freeform_tags=self.create_freeform_tags(lb_name, "load-balancer"),
             defined_tags=self._defined_tags,
@@ -661,7 +660,9 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             asc_name: Fully-qualified OCI resource name for the autoscaling
                 configuration (created by `BaseResource.create_resource_name`).
         """
-        policy = cast(MetricScalingPolicy, self.scaling_policy)
+        # safe: narrowed by isinstance check in _create_autoscaling_configuration
+        assert isinstance(self.scaling_policy, MetricScalingPolicy)
+        policy = self.scaling_policy
 
         self.autoscaling_configuration = oci.autoscaling.AutoScalingConfiguration(
             asc_name,
@@ -741,7 +742,9 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             asc_name: Fully-qualified OCI resource name for the autoscaling
                 configuration (created by `BaseResource.create_resource_name`).
         """
-        policy = cast(ScheduleScalingPolicy, self.scaling_policy)
+        # safe: narrowed by isinstance check in _create_autoscaling_configuration
+        assert isinstance(self.scaling_policy, ScheduleScalingPolicy)
+        policy = self.scaling_policy
 
         # Build one scheduled policy per ScheduleEntry.
         # Each entry drives a capacity change via execution_schedule + capacity;

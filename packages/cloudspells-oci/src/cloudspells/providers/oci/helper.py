@@ -5,7 +5,7 @@ Keeps `pulumi_oci` imports confined to this package so that
 
 Exports:
     `get_ads` — convert the raw availability-domain list from
-    `oci.identity.get_availability_domains()` into the
+    `oci.identity.get_availability_domains_output()` into the
     `placement_configs` format expected by OKE node pools.
 """
 
@@ -21,7 +21,7 @@ def get_ads(
     """Convert OCI availability-domain data into OKE placement configs.
 
     Transforms the raw list returned by
-    `oci.identity.get_availability_domains()` into the format expected
+    `oci.identity.get_availability_domains_output()` into the format expected
     by the OKE node pool `placement_configs` argument.
 
     Args:

@@ -166,6 +166,25 @@ class OCIMocks(pulumi.runtime.Mocks):
         return ({}, [])
 
 
-def set_mocks():
-    """Set up Pulumi mocks for testing."""
+def set_mocks() -> None:
+    """Activate the `OCIMocks` runtime for a Pulumi unit test.
+
+    Must be called before importing any infrastructure module.  The Pulumi
+    test runner intercepts all `new_resource` and `call` invocations from the
+    moment mocks are installed, so any import that triggers resource
+    registration must happen after this call.
+
+    Example:
+        ```python
+        from tests.mocks import set_mocks
+        set_mocks()  # must come before any infrastructure import
+
+        from cloudspells.providers.oci.network import Vcn
+
+        @pulumi.runtime.test
+        async def test_vcn_creates_base_resources(self):
+            vcn = Vcn("test", "ocid1.compartment.oc1...", "test-stack")
+            ...
+        ```
+    """
     pulumi.runtime.set_mocks(OCIMocks(), project="unittest", stack="unittest", preview=False)
