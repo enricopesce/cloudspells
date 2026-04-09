@@ -69,7 +69,7 @@ vcn = Vcn(
 vcn.export()
 ```
 
-That's it. Four subnets, three gateways, four route tables, security lists — all generated from one line.
+Four subnets, three gateways, four route tables, security lists — all generated from one line.
 
 ### 2. Add a Compute Instance
 
@@ -85,6 +85,8 @@ from cloudspells.providers.oci.volume import VolumeSpec
 
 cfg = Config()
 compartment_id = cfg.require("compartment_ocid")
+ssh_public_key = cfg.require("ssh_public_key")
+
 vcn = Vcn(name="lab", compartment_id=compartment_id)
 
 # Declare what this VM is — rules are generated from the role
@@ -101,8 +103,9 @@ web_server = ComputeInstance(
     name="web-server",
     compartment_id=compartment_id,
     vcn=vcn,
-    ssh_public_key=ssh_key,
+    ssh_public_key=ssh_public_key,
     nsg=web_nsg,
+    image="ocid1.image.oc1..<your-image-ocid>",
     volumes=[
         VolumeSpec(size_in_gbs=100, label="data"),
         VolumeSpec(size_in_gbs=200, label="logs", vpus_per_gb=VolumeSpec.PERF_LOW),
@@ -121,31 +124,38 @@ Three-tier architecture with a load balancer, web backends, and isolated databas
 from cloudspells.core import Config
 from cloudspells.providers.oci.network import Vcn
 from cloudspells.providers.oci.compute import ComputeInstance
-from cloudspells.providers.oci.nsg import HTTP, HTTPS, SSH, Nsg
+from cloudspells.providers.oci.nsg import HTTP, HTTPS, SSH, POSTGRES, Nsg
 from cloudspells.providers.oci.roles import APP_SERVER, DATABASE, INTERNET_EDGE
 from cloudspells.providers.oci.volume import VolumeSpec
 
 cfg = Config()
 compartment_id = cfg.require("compartment_ocid")
+ssh_public_key = cfg.require("ssh_public_key")
+image = cfg.require("instance_image_ocid")
+
 vcn = Vcn(name="lab", compartment_id=compartment_id, cidr_block="10.0.0.0/16")
 
 # Declare security posture via roles — no manual rule writing
-lb_nsg  = Nsg("load-balancer", role=INTERNET_EDGE, ports=[HTTP, HTTPS, SSH], vcn=vcn, compartment_id=compartment_id)
+lb_nsg  = Nsg("load-balancer", role=INTERNET_EDGE, ports=[HTTP, HTTPS], vcn=vcn, compartment_id=compartment_id)
 web_nsg = Nsg("web-backend",   role=APP_SERVER,     vcn=vcn, compartment_id=compartment_id)
 db_nsg  = Nsg("database",      role=DATABASE,        vcn=vcn, compartment_id=compartment_id)
 
-# One line per hop generates bilateral NSG rules + Security List rules
-lb_nsg.serves(web_nsg, port=app_port)   # LB → web: app port + SSH mgmt
-web_nsg.serves(db_nsg, port=db_port)   # web → DB: db port + SSH mgmt
+# One call per hop generates bilateral NSG rules + Security List rules
+lb_nsg.serves(web_nsg, port=HTTP)      # LB → web: HTTP + SSH mgmt
+web_nsg.serves(db_nsg, port=POSTGRES)  # web → DB: Postgres + SSH mgmt
 
 # Subnet tier inferred from role — no explicit subnet= parameter
-load_balancer = ComputeInstance("load-balancer", compartment_id=compartment_id, vcn=vcn, nsg=lb_nsg)
-web_backend_1 = ComputeInstance("web-backend-1", compartment_id=compartment_id, vcn=vcn, nsg=web_nsg)
-web_backend_2 = ComputeInstance("web-backend-2", compartment_id=compartment_id, vcn=vcn, nsg=web_nsg)
-db_1 = ComputeInstance("db-1", compartment_id=compartment_id, vcn=vcn, nsg=db_nsg,
-                        volumes=[VolumeSpec(size_in_gbs=200, label="data", vpus_per_gb=VolumeSpec.PERF_HIGH)])
-db_2 = ComputeInstance("db-2", compartment_id=compartment_id, vcn=vcn, nsg=db_nsg,
-                        volumes=[VolumeSpec(size_in_gbs=200, label="data", vpus_per_gb=VolumeSpec.PERF_HIGH)])
+load_balancer = ComputeInstance("load-balancer", compartment_id=compartment_id, vcn=vcn, ssh_public_key=ssh_public_key, image=image, nsg=lb_nsg)
+web_backend_1 = ComputeInstance("web-backend-1", compartment_id=compartment_id, vcn=vcn, ssh_public_key=ssh_public_key, image=image, nsg=web_nsg)
+web_backend_2 = ComputeInstance("web-backend-2", compartment_id=compartment_id, vcn=vcn, ssh_public_key=ssh_public_key, image=image, nsg=web_nsg)
+db_1 = ComputeInstance(
+    "db-1", compartment_id=compartment_id, vcn=vcn, ssh_public_key=ssh_public_key, image=image, nsg=db_nsg,
+    volumes=[VolumeSpec(size_in_gbs=200, label="data", vpus_per_gb=VolumeSpec.PERF_HIGH)],
+)
+db_2 = ComputeInstance(
+    "db-2", compartment_id=compartment_id, vcn=vcn, ssh_public_key=ssh_public_key, image=image, nsg=db_nsg,
+    volumes=[VolumeSpec(size_in_gbs=200, label="data", vpus_per_gb=VolumeSpec.PERF_HIGH)],
+)
 ```
 
 Adding a third web backend? Attach `web_nsg` to a new `ComputeInstance`. Zero NSG changes required.
@@ -160,9 +170,16 @@ Adding a third web backend? Attach `web_nsg` to a new `ComputeInstance`. Zero NS
 | `OkeCluster` | OCI | Oracle Kubernetes Engine cluster, node pool, OCI_VCN_IP_NATIVE CNI, multi-AD node placement | Alpha |
 | `ComputeInstance` | OCI | VM instance, SSH key management, block volume attachments | Alpha |
 | `Bastion` | OCI | OCI Bastion service in the private subnet, ready for session-based access | Alpha |
-| `ScalableWorkload` | OCI | Load balancer (public) + instance pool (private) + CPU autoscaling | Alpha |
+| `ScalableWorkload` | OCI | Load balancer (public) + instance pool (private) + CPU/schedule autoscaling | Alpha |
+| `LoadBalancer` | OCI | Flexible-shape public load balancer with HTTP/HTTPS listeners and health checks | Alpha |
+| `InternalLoadBalancer` | OCI | Private load balancer in the secure subnet for internal service-to-service traffic | Alpha |
 | `Nsg` | OCI | Network Security Group with role-based rule generation and port constants | Alpha |
 | `VcnFlowLogs` | OCI | VCN flow log capture for network audit and compliance | Alpha |
+| `ObjectStorageBucket` | OCI | Standard object storage bucket with lifecycle and versioning defaults | Alpha |
+| `BackupBucket` | OCI | Versioned bucket with permanent-delete retention for backups | Alpha |
+| `DataLakeBucket` | OCI | Archive-tier bucket optimised for large-scale data lake storage | Alpha |
+| `ArchiveBucket` | OCI | Deep-archive bucket for long-term cold storage | Alpha |
+| `StaticWebsiteBucket` | OCI | Public-read bucket with static website hosting enabled | Alpha |
 | AWS provider | AWS | Full spell library for AWS | Planned |
 | GCP provider | GCP | Full spell library for GCP | Planned |
 
@@ -186,18 +203,19 @@ packages/
 │
 └── cloudspells-oci/             ← pip install cloudspells-oci
     └── src/cloudspells/
-        ├── providers/
-        │   └── oci/             ← OCI implementation (canonical, use this for new code)
-        │       ├── network.py           ← Vcn, VcnRef
-        │       ├── kubernetes.py        ← OkeCluster
-        │       ├── compute.py           ← ComputeInstance
-        │       ├── bastion.py           ← Bastion
-        │       ├── autoscale.py         ← ScalableWorkload
-        │       ├── nsg.py               ← Nsg + role-based rule generation
-        │       ├── roles.py             ← role constants (INTERNET_EDGE, APP_SERVER, DATABASE, …)
-        │       ├── volume.py            ← VolumeSpec
-        │       └── network_logging.py   ← VcnFlowLogs
-        └── blocks/              ← backward-compat re-exports only — no logic here
+        └── providers/
+            └── oci/             ← OCI implementation (canonical, use this for new code)
+                ├── network.py           ← Vcn, VcnRef
+                ├── kubernetes.py        ← OkeCluster
+                ├── compute.py           ← ComputeInstance
+                ├── bastion.py           ← Bastion
+                ├── autoscale.py         ← ScalableWorkload
+                ├── loadbalancer.py      ← LoadBalancer, InternalLoadBalancer
+                ├── nsg.py               ← Nsg + role-based rule generation
+                ├── roles.py             ← role constants (INTERNET_EDGE, APP_SERVER, DATABASE, …)
+                ├── storage.py           ← ObjectStorageBucket, BackupBucket, DataLakeBucket, ArchiveBucket, StaticWebsiteBucket
+                ├── volume.py            ← VolumeSpec
+                └── network_logging.py   ← VcnFlowLogs
 ```
 
 **The key design insight:** adding a new cloud provider means implementing the abstractions under `packages/cloudspells-<cloud>/src/cloudspells/providers/<cloud>/` — zero changes to the user-facing API. An application written against `AbstractNetwork` works identically across OCI, AWS, and GCP once the provider implementations exist.
@@ -284,6 +302,8 @@ Each example is a self-contained Pulumi stack in `examples/`:
 | [`oke`](examples/oke/) | VCN + Oracle Kubernetes Engine cluster with configurable node pool. |
 | [`bastion`](examples/bastion/) | VCN + OCI Bastion service for secure private-subnet access. |
 | [`autoscale`](examples/autoscale/) | VCN + load balancer + auto-scaling instance pool with CPU policies. |
+| [`loadbalancer`](examples/loadbalancer/) | VCN + HTTPS load balancer with HTTP→HTTPS redirect and health checks. |
+| [`storage`](examples/storage/) | Backup bucket + data lake bucket with lifecycle and versioning defaults. |
 | [`web-db`](examples/web-db/) | Three-tier web+DB stack: LB (public) → app servers (private) → DB nodes (secure). |
 | [`secure-vcn`](examples/secure-vcn/) | VCN with VCN flow log capture enabled for network audit. |
 | [`import-vcn`](examples/import-vcn/) | Consume a VCN owned by a separate stack via `VcnRef.from_stack_reference()`. |
@@ -304,6 +324,8 @@ CloudSpells is actively looking for contributors. See [CONTRIBUTING.md](.github/
 - [x] Security list rule helpers and `INTERNET` constant
 - [x] `VcnRef` for cross-stack VCN references
 - [x] `VcnFlowLogs` for network audit and compliance
+- [x] `LoadBalancer` and `InternalLoadBalancer` spells
+- [x] Object storage spells (ObjectStorageBucket, BackupBucket, DataLakeBucket, ArchiveBucket, StaticWebsiteBucket)
 - [x] Split into `cloudspells-core` and `cloudspells-oci` packages for independent versioning
 - [x] PyPI publishing via GitHub Actions
 - [ ] AWS provider — implement `AbstractNetwork`, `AbstractScalableWorkload`, etc. for AWS
