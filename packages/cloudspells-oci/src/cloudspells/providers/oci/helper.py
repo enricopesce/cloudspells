@@ -33,6 +33,11 @@ def get_ads(
         List of `{"availability_domain": str, "subnet_id": str}` dicts,
         one entry per availability domain.
 
+    Raises:
+        RuntimeError: If any entry in `ads` is missing a `"name"` key.
+            Verify that `oci.identity.get_availability_domains_output()`
+            returns valid data for your tenancy and region.
+
     Example:
         ```python
         ads = [{"name": "Uocm:PHX-AD-1"}, {"name": "Uocm:PHX-AD-2"}]
@@ -43,7 +48,17 @@ def get_ads(
         #   'subnet_id': 'ocid1.subnet.oc1...'}]
         ```
     """
-    return [{"availability_domain": str(ad["name"]), "subnet_id": subnet_id} for ad in ads]
+    result = []
+    for ad in ads:
+        ad_name = getattr(ad, "name", None) or ad.get("name")
+        if not ad_name:
+            raise RuntimeError(
+                f"Availability domain entry is missing a 'name' key: {ad!r}. "
+                "Verify that oci.identity.get_availability_domains_output() returns "
+                "valid data for your tenancy and region."
+            )
+        result.append({"availability_domain": str(ad_name), "subnet_id": subnet_id})
+    return result
 
 
 __all__ = ["get_ads"]

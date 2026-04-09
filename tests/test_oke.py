@@ -175,6 +175,8 @@ class TestOkeCluster(unittest.TestCase):
             self.assertEqual(oke_public_id, vcn_public_id, "OKE public SL should match VCN")
             self.assertEqual(oke_private_id, vcn_private_id, "OKE private SL should match VCN")
 
+        assert oke.oke_public_security_list is not None
+        assert oke.oke_private_security_list is not None
         return pulumi.Output.all(
             oke.oke_public_security_list.id,
             vcn.public_security_list.id,

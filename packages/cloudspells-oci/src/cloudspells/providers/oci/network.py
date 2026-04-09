@@ -687,7 +687,7 @@ class Vcn(BaseResource, AbstractNetwork):
         Always creates an Internet Gateway (public subnet egress/ingress), a
         NAT Gateway (private/secure/management egress), and a Service Gateway
         (OCI service CIDR — OCIR, monitoring, object storage).  A Dynamic
-        Routing Gateway (DRG) is created only when `enable_drg=True` was
+        Routing Gateway (DRG) is created only when `drg=True` was
         passed to the `Vcn` constructor; it enables FastConnect and Site-to-Site
         VPN connectivity.
 
@@ -1134,13 +1134,13 @@ class Vcn(BaseResource, AbstractNetwork):
         """
         self.finalize_network()
         if self.public_subnet is None:
-            raise RuntimeError("finalize_network() must be called before export()")
+            raise RuntimeError("finalize_network() failed to create the public subnet")
         if self.private_subnet is None:
-            raise RuntimeError("finalize_network() must be called before export()")
+            raise RuntimeError("finalize_network() failed to create the private subnet")
         if self.secure_subnet is None:
-            raise RuntimeError("finalize_network() must be called before export()")
+            raise RuntimeError("finalize_network() failed to create the secure subnet")
         if self.management_subnet is None:
-            raise RuntimeError("finalize_network() must be called before export()")
+            raise RuntimeError("finalize_network() failed to create the management subnet")
         pulumi.export("vcn_id", self.id)
         pulumi.export("cidr_block", self.cidr_block)
         pulumi.export("public_subnet_id", self.public_subnet.id)
@@ -1443,11 +1443,15 @@ class Vcn(BaseResource, AbstractNetwork):
                 stack_name=self.stack_name,
             )
 
+        assert self.public_subnet is not None
+        assert self.private_subnet is not None
+        assert self.secure_subnet is not None
+        assert self.management_subnet is not None
         self.register_outputs({
-            "public_subnet_id": self.public_subnet.id if self.public_subnet is not None else None,
-            "private_subnet_id": self.private_subnet.id if self.private_subnet is not None else None,
-            "secure_subnet_id": self.secure_subnet.id if self.secure_subnet is not None else None,
-            "management_subnet_id": self.management_subnet.id if self.management_subnet is not None else None,
+            "public_subnet_id": self.public_subnet.id,
+            "private_subnet_id": self.private_subnet.id,
+            "secure_subnet_id": self.secure_subnet.id,
+            "management_subnet_id": self.management_subnet.id,
             "cidr_block": self.cidr_block,
         })
 
@@ -1582,6 +1586,20 @@ class VcnRef(AbstractNetworkRef):
                 "Pass the VCN's IPv4 CIDR (e.g. '10.0.0.0/18'). "
                 "It is exported as 'cidr_block' by every CloudSpells VCN stack."
             )
+        if (secure_subnet_id is None) != (secure_subnet_cidr is None):
+            missing = "secure_subnet_cidr" if secure_subnet_id is not None else "secure_subnet_id"
+            provided = "secure_subnet_id" if secure_subnet_id is not None else "secure_subnet_cidr"
+            raise ValueError(
+                f"VcnRef: '{provided}' was provided but '{missing}' was not. "
+                "Both secure_subnet_id and secure_subnet_cidr must be supplied together."
+            )
+        if (management_subnet_id is None) != (management_subnet_cidr is None):
+            missing = "management_subnet_cidr" if management_subnet_id is not None else "management_subnet_id"
+            provided = "management_subnet_id" if management_subnet_id is not None else "management_subnet_cidr"
+            raise ValueError(
+                f"VcnRef: '{provided}' was provided but '{missing}' was not. "
+                "Both management_subnet_id and management_subnet_cidr must be supplied together."
+            )
         self.cidr_block = pulumi.Output.from_input(cidr_block)
         self.public_subnet = _SubnetRef(public_subnet_id)
         self.private_subnet = _SubnetRef(private_subnet_id)
@@ -1638,14 +1656,14 @@ class VcnRef(AbstractNetworkRef):
 
     def add_security_list_rules(
         self,
-        public_ingress: list[Any] | None = None,
-        public_egress: list[Any] | None = None,
-        private_ingress: list[Any] | None = None,
-        private_egress: list[Any] | None = None,
-        secure_ingress: list[Any] | None = None,
-        secure_egress: list[Any] | None = None,
-        management_ingress: list[Any] | None = None,
-        management_egress: list[Any] | None = None,
+        public_ingress: list[oci.core.SecurityListIngressSecurityRuleArgs] | None = None,  # type: ignore[override]  # intentional: VcnRef rejects non-empty lists at runtime; Any would lose type safety at call sites
+        public_egress: list[oci.core.SecurityListEgressSecurityRuleArgs] | None = None,  # type: ignore[override]
+        private_ingress: list[oci.core.SecurityListIngressSecurityRuleArgs] | None = None,  # type: ignore[override]
+        private_egress: list[oci.core.SecurityListEgressSecurityRuleArgs] | None = None,  # type: ignore[override]
+        secure_ingress: list[oci.core.SecurityListIngressSecurityRuleArgs] | None = None,  # type: ignore[override]
+        secure_egress: list[oci.core.SecurityListEgressSecurityRuleArgs] | None = None,  # type: ignore[override]
+        management_ingress: list[oci.core.SecurityListIngressSecurityRuleArgs] | None = None,  # type: ignore[override]
+        management_egress: list[oci.core.SecurityListEgressSecurityRuleArgs] | None = None,  # type: ignore[override]
     ) -> None:
         """Reject any non-empty rule list — security rules must live in the source stack.
 
@@ -1692,6 +1710,40 @@ class VcnRef(AbstractNetworkRef):
                 f"applied to an imported CloudSpells VCN: {non_empty}. "
                 f"Add these rules to the source CloudSpells stack first, then re-deploy here."
             )
+
+    def add_unique_security_list_rules(
+        self,
+        fingerprint: str,
+        public_ingress: list[oci.core.SecurityListIngressSecurityRuleArgs] | None = None,
+        public_egress: list[oci.core.SecurityListEgressSecurityRuleArgs] | None = None,
+        private_ingress: list[oci.core.SecurityListIngressSecurityRuleArgs] | None = None,
+        private_egress: list[oci.core.SecurityListEgressSecurityRuleArgs] | None = None,
+        secure_ingress: list[oci.core.SecurityListIngressSecurityRuleArgs] | None = None,
+        secure_egress: list[oci.core.SecurityListEgressSecurityRuleArgs] | None = None,
+        management_ingress: list[oci.core.SecurityListIngressSecurityRuleArgs] | None = None,
+        management_egress: list[oci.core.SecurityListEgressSecurityRuleArgs] | None = None,
+    ) -> None:
+        """No-op — security lists in the source stack are already finalised.
+
+        `VcnRef` is a read-only handle; the security lists it points to belong
+        to another CloudSpells stack and cannot be modified here.  This method
+        exists solely to make `VcnRef` structurally complete alongside `Vcn` so
+        callers do not need `isinstance` guards before calling
+        `add_unique_security_list_rules`.
+
+        Args:
+            fingerprint: Ignored — no deduplication needed for a no-op.
+            public_ingress: Ignored.
+            public_egress: Ignored.
+            private_ingress: Ignored.
+            private_egress: Ignored.
+            secure_ingress: Ignored.
+            secure_egress: Ignored.
+            management_ingress: Ignored.
+            management_egress: Ignored.
+        """
+        # No-op: VcnRef cannot modify security lists owned by another stack.
+        return
 
     def get_public_subnet_cidr(self) -> pulumi.Input[str]:
         """Return the public subnet CIDR.

@@ -44,8 +44,12 @@ from cloudspells.core.base import BaseResource
 
 from .network import Vcn, VcnRef
 
-_UNSET = object()
-"""Sentinel distinguishing `scaling_policy` not provided from `None`."""
+
+class _UnsetType:
+    """Sentinel type distinguishing `scaling_policy` not provided from `None`."""
+
+
+_UNSET = _UnsetType()
 
 
 @dataclass
@@ -159,6 +163,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
     shape: pulumi.Input[str]
     ocpus: pulumi.Input[float]
     memory_in_gbs: pulumi.Input[float]
+    boot_volume_size_in_gbs: pulumi.Input[int]
     ssh_public_key: str
     ssh_private_key: str | None
     image_id: pulumi.Input[str]
@@ -201,7 +206,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         # Load balancer configuration
         load_balancer_config: OciLoadBalancerConfig | None = None,
         # Scaling policy (metric OR schedule, not both); pass None to disable autoscaling
-        scaling_policy: MetricScalingPolicy | ScheduleScalingPolicy | object | None = _UNSET,
+        scaling_policy: MetricScalingPolicy | ScheduleScalingPolicy | _UnsetType | None = _UNSET,
         defined_tags: dict[str, Any] | None = None,
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
@@ -329,7 +334,10 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
     def _add_scalable_workload_security_rules(self) -> None:
         """Add security rules for load balancer and instance pool communication.
 
-        Calls `Vcn.add_security_list_rules` with:
+        Calls `Vcn.add_unique_security_list_rules` for HTTP and HTTPS public-ingress
+        rules (deduplicated against any `INTERNET_EDGE` NSG rules already registered),
+        then calls `Vcn.add_security_list_rules` for workload-specific LB-to-backend
+        and backend-ingress rules.  Summary of rules added:
 
         Public subnet (Load Balancer):
 
@@ -460,7 +468,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             subnet_ids=[self.vcn.get_public_subnet_id() if lb_config.is_public else self.vcn.get_private_subnet_id()],
             is_private=not lb_config.is_public,
             freeform_tags=self.create_freeform_tags(lb_name, "load-balancer"),
-            defined_tags=self._defined_tags,
+            defined_tags=self._defined_tags,  # type: ignore[arg-type]  # OCI stub uses Input[Mapping[str,Input[str]]] but the OCI API accepts nested dicts at runtime
             opts=pulumi.ResourceOptions(parent=self),
         )
 
@@ -561,7 +569,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                         nsg_ids=self._nsg_ids if self._nsg_ids else None,
                     ),
                     metadata=metadata,
-                    defined_tags=self._defined_tags,
+                    defined_tags=self._defined_tags,  # type: ignore[arg-type]  # OCI stub uses Input[Mapping[str,Input[str]]] but the OCI API accepts nested dicts at runtime
                 ),
             ),
             freeform_tags=self.create_freeform_tags(ic_name, "instance-configuration"),
@@ -596,7 +604,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         ).apply(
             lambda args: [
                 oci.core.InstancePoolPlacementConfigurationArgs(
-                    availability_domain=ad["name"],
+                    availability_domain=getattr(ad, "name", None) or ad.get("name"),  # type: ignore[union-attr]  # handles typed objects (production) and dicts (test mocks)
                     primary_subnet_id=args[1],
                 )
                 for ad in args[0]
@@ -619,7 +627,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 ),
             ],
             freeform_tags=self.create_freeform_tags(pool_name, "instance-pool"),
-            defined_tags=self._defined_tags,
+            defined_tags=self._defined_tags,  # type: ignore[arg-type]  # OCI stub uses Input[Mapping[str,Input[str]]] but the OCI API accepts nested dicts at runtime
             opts=pulumi.ResourceOptions(parent=self),
         )
 
@@ -659,9 +667,17 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         Args:
             asc_name: Fully-qualified OCI resource name for the autoscaling
                 configuration (created by `BaseResource.create_resource_name`).
+
+        Raises:
+            RuntimeError: If `scaling_policy` is not a `MetricScalingPolicy`.
+                This should never occur in practice because the caller
+                `_create_autoscaling_configuration` performs an `isinstance`
+                check before dispatching here.
         """
-        # safe: narrowed by isinstance check in _create_autoscaling_configuration
-        assert isinstance(self.scaling_policy, MetricScalingPolicy)
+        if not isinstance(self.scaling_policy, MetricScalingPolicy):
+            raise RuntimeError(
+                f"_create_metric_autoscaling called with wrong policy type: {type(self.scaling_policy)!r}"
+            )
         policy = self.scaling_policy
 
         self.autoscaling_configuration = oci.autoscaling.AutoScalingConfiguration(
@@ -718,7 +734,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 ),
             ],
             freeform_tags=self.create_freeform_tags(asc_name, "autoscaling-configuration"),
-            defined_tags=self._defined_tags,
+            defined_tags=self._defined_tags,  # type: ignore[arg-type]  # OCI stub uses Input[Mapping[str,Input[str]]] but the OCI API accepts nested dicts at runtime
             opts=pulumi.ResourceOptions(parent=self),
         )
 
@@ -741,9 +757,17 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         Args:
             asc_name: Fully-qualified OCI resource name for the autoscaling
                 configuration (created by `BaseResource.create_resource_name`).
+
+        Raises:
+            RuntimeError: If `scaling_policy` is not a `ScheduleScalingPolicy`.
+                This should never occur in practice because the caller
+                `_create_autoscaling_configuration` performs an `isinstance`
+                check before dispatching here.
         """
-        # safe: narrowed by isinstance check in _create_autoscaling_configuration
-        assert isinstance(self.scaling_policy, ScheduleScalingPolicy)
+        if not isinstance(self.scaling_policy, ScheduleScalingPolicy):
+            raise RuntimeError(
+                f"_create_schedule_autoscaling called with wrong policy type: {type(self.scaling_policy)!r}"
+            )
         policy = self.scaling_policy
 
         # Build one scheduled policy per ScheduleEntry.
@@ -790,7 +814,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             is_enabled=True,
             policies=policies,
             freeform_tags=self.create_freeform_tags(asc_name, "autoscaling-configuration"),
-            defined_tags=self._defined_tags,
+            defined_tags=self._defined_tags,  # type: ignore[arg-type]  # OCI stub uses Input[Mapping[str,Input[str]]] but the OCI API accepts nested dicts at runtime
             opts=pulumi.ResourceOptions(parent=self),
         )
 

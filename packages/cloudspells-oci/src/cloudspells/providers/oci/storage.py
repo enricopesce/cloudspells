@@ -33,6 +33,45 @@ from cloudspells.core.base import BaseResource
 _MULTIPART_EXPIRY_DAYS: int = 7
 
 
+class _BucketMixin:
+    """Private mixin providing shared accessor and export logic for all bucket spells.
+
+    Extracted to satisfy CS-011 (DRY via private mixin): `get_bucket_name` and
+    `export` are identical across all five bucket classes.  This mixin is not
+    exported and must not appear in `__all__`.
+
+    Requires that the concrete class sets `self.bucket` (an
+    `oci.objectstorage.Bucket`) and `self.name` (the logical resource name)
+    before any mixin method is called — both are guaranteed by `BaseResource`.
+    """
+
+    def get_bucket_name(self) -> pulumi.Output[str]:
+        """Return the OCI bucket name.
+
+        Returns:
+            `pulumi.Output[str]` resolving to the physical OCI bucket name.
+        """
+        return self.bucket.name  # type: ignore[attr-defined]  # bucket set by concrete class __init__
+
+    def export(self) -> None:
+        """Export the bucket name as a Pulumi stack output.
+
+        Publishes `{name}_bucket_name` so other stacks and tooling can
+        reference the physical OCI bucket name without hard-coding it.
+
+        Example:
+            ```python
+            bucket = ObjectStorageBucket(
+                name="artifacts", compartment_id=comp_id, namespace="mytenancy"
+            )
+            bucket.export()
+            # Stack output: artifacts_bucket_name = <stack>-artifacts-bucket
+            ```
+        """
+        prefix = self.name.replace("-", "_")  # type: ignore[attr-defined]  # name set by BaseResource
+        pulumi.export(f"{prefix}_bucket_name", self.get_bucket_name())
+
+
 def _abort_multipart_rule() -> oci.objectstorage.ObjectLifecyclePolicyRuleArgs:
     """Return a lifecycle rule that aborts stale multipart uploads after 7 days.
 
@@ -53,7 +92,7 @@ def _abort_multipart_rule() -> oci.objectstorage.ObjectLifecyclePolicyRuleArgs:
     )
 
 
-class ObjectStorageBucket(BaseResource):
+class ObjectStorageBucket(_BucketMixin, BaseResource):
     """OCI Object Storage bucket with private access and standard storage tier.
 
     Creates a single `oci.objectstorage.Bucket` scoped to the supplied
@@ -139,16 +178,8 @@ class ObjectStorageBucket(BaseResource):
             "bucket_name": self.bucket.name,
         })
 
-    def get_bucket_name(self) -> pulumi.Output[str]:
-        """Return the OCI bucket name.
 
-        Returns:
-            `pulumi.Output[str]` resolving to the physical OCI bucket name.
-        """
-        return self.bucket.name
-
-
-class BackupBucket(BaseResource):
+class BackupBucket(_BucketMixin, BaseResource):
     """OCI Object Storage bucket configured for backup and disaster recovery.
 
     Creates a `Standard`-tier bucket with object versioning enabled and a
@@ -259,16 +290,8 @@ class BackupBucket(BaseResource):
         self.bucket_name = self.bucket.name
         self.register_outputs({"bucket_name": self.bucket.name})
 
-    def get_bucket_name(self) -> pulumi.Output[str]:
-        """Return the OCI bucket name.
 
-        Returns:
-            `pulumi.Output[str]` resolving to the physical OCI bucket name.
-        """
-        return self.bucket.name
-
-
-class DataLakeBucket(BaseResource):
+class DataLakeBucket(_BucketMixin, BaseResource):
     """OCI Object Storage bucket configured for data lake and analytics workloads.
 
     Creates a `Standard`-tier bucket with a two-stage lifecycle policy:
@@ -394,16 +417,8 @@ class DataLakeBucket(BaseResource):
         self.bucket_name = self.bucket.name
         self.register_outputs({"bucket_name": self.bucket.name})
 
-    def get_bucket_name(self) -> pulumi.Output[str]:
-        """Return the OCI bucket name.
 
-        Returns:
-            `pulumi.Output[str]` resolving to the physical OCI bucket name.
-        """
-        return self.bucket.name
-
-
-class ArchiveBucket(BaseResource):
+class ArchiveBucket(_BucketMixin, BaseResource):
     """OCI Object Storage bucket for long-term archiving and compliance.
 
     Creates an `Archive`-tier bucket with versioning enabled and a
@@ -511,16 +526,8 @@ class ArchiveBucket(BaseResource):
         self.bucket_name = self.bucket.name
         self.register_outputs({"bucket_name": self.bucket.name})
 
-    def get_bucket_name(self) -> pulumi.Output[str]:
-        """Return the OCI bucket name.
 
-        Returns:
-            `pulumi.Output[str]` resolving to the physical OCI bucket name.
-        """
-        return self.bucket.name
-
-
-class StaticWebsiteBucket(BaseResource):
+class StaticWebsiteBucket(_BucketMixin, BaseResource):
     """OCI Object Storage bucket configured for static website hosting.
 
     Creates a `Standard`-tier bucket with `ObjectRead` public access,
@@ -617,14 +624,6 @@ class StaticWebsiteBucket(BaseResource):
 
         self.bucket_name = self.bucket.name
         self.register_outputs({"bucket_name": self.bucket.name})
-
-    def get_bucket_name(self) -> pulumi.Output[str]:
-        """Return the OCI bucket name.
-
-        Returns:
-            `pulumi.Output[str]` resolving to the physical OCI bucket name.
-        """
-        return self.bucket.name
 
 
 __all__ = [

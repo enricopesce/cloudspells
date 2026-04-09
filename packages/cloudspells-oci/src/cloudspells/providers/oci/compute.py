@@ -267,7 +267,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
             self.availability_domain = pulumi.Output.from_input(availability_domain)
         else:
             ads_output = oci.identity.get_availability_domains_output(compartment_id=self.compartment_id)
-            self.availability_domain = ads_output.availability_domains.apply(lambda ads: ads[0]["name"])
+            self.availability_domain = ads_output.availability_domains.apply(lambda ads: ads[0].name)
         self.boot_volume_size_in_gbs = boot_volume_size_in_gbs
         self.fault_domain = fault_domain
         self.hostname_label = hostname_label
@@ -336,7 +336,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
             create_vnic_details=oci.core.InstanceCreateVnicDetailsArgs(
                 subnet_id=self._resolve_subnet_id(),
                 assign_public_ip="true" if self.subnet == SUBNET_PUBLIC else "false",
-                display_name=f"{instance_name}-vnic",
+                display_name=self.create_resource_name("vnic"),
                 nsg_ids=self.nsg_ids if self.nsg_ids else None,
                 hostname_label=hostname_label,
                 skip_source_dest_check=False,

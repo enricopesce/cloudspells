@@ -262,8 +262,10 @@ class VcnFlowLogs(BaseResource):
     def export(self) -> None:
         """Export the network-audit log group OCID as a Pulumi stack output.
 
-        Registers `network_audit_log_group_id` so other stacks and compliance
+        Registers `{name}_log_group_id` so other stacks and compliance
         tooling can reference the log group without duplicating its OCID.
+        The key is namespaced with the spell name to avoid collisions when
+        multiple `VcnFlowLogs` instances are deployed in the same stack.
 
         Example:
             ```python
@@ -271,10 +273,11 @@ class VcnFlowLogs(BaseResource):
                 name="lab", compartment_id=compartment_id, vcn=vcn
             )
             flow_logs.export()
-            # Stack output: network_audit_log_group_id = ocid1.loggroup...
+            # Stack output: lab_log_group_id = ocid1.loggroup...
             ```
         """
-        pulumi.export("network_audit_log_group_id", self.log_group_id)
+        prefix = self.name.replace("-", "_")
+        pulumi.export(f"{prefix}_log_group_id", self.log_group_id)
 
 
 __all__ = ["VcnFlowLogs"]

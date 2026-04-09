@@ -131,9 +131,13 @@ ALL: str = "all"
 SVC_CIDR: str = "oci-services-cidr"
 """Sentinel string identifying the OCI All-Services CIDR target.
 
-Used in `__all__` and docstring references for backward compatibility.
-Internal code calls `_get_svc_cidr()` to obtain the actual
-`pulumi.Output[str]` value at resource-construction time.
+**This is NOT a valid CIDR string.** Do not pass it directly to OCI resource
+arguments — it will produce an invalid rule that passes Pulumi planning but
+fails at apply time.  Use `Nsg.allow_to_services()` instead, which resolves
+the real `pulumi.Output[str]` CIDR at construction time via `_get_svc_cidr()`.
+
+This constant is retained in `__all__` only for import-compatibility
+with existing code that references it in docstrings or type guards.
 """
 
 
@@ -433,6 +437,8 @@ class Nsg(BaseResource):
         ```
     """
 
+    _vcn: Vcn | VcnRef
+    id: pulumi.Output[str]
     nsg: oci.core.NetworkSecurityGroup
     role: Role | None
 
