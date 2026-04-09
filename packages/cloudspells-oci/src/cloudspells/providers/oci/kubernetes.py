@@ -69,7 +69,7 @@ Private subnet (Worker nodes + Pods):
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Protocol
 
 import pulumi
 import pulumi_oci as oci
@@ -80,6 +80,20 @@ from ._oci_utils import get_svc_cidr as _get_svc_cidr
 from .helper import get_ads
 from .network import Vcn, VcnRef
 from .nsg import ALL, INTERNET, TCP, tcp_port, tcp_port_range
+
+
+class _HasId(Protocol):
+    """Structural protocol for objects that expose a read-only `.id` output.
+
+    Used as the type annotation for `OkeCluster.oke_public_security_list` and
+    `OkeCluster.oke_private_security_list`.  Both `oci.core.SecurityList` (live
+    `Vcn`) and `_SecurityListRef` (cross-stack `VcnRef`) satisfy this protocol
+    because each exposes `.id` as a `pulumi.Output[str]`.  `None` is permitted
+    when the source stack did not export the corresponding security list ID.
+    """
+
+    @property
+    def id(self) -> pulumi.Output[str]: ...
 
 
 @dataclass
@@ -246,12 +260,11 @@ class OkeCluster(BaseResource, AbstractKubernetes):
     worker_nsg: oci.core.NetworkSecurityGroup
     pod_nsg: oci.core.NetworkSecurityGroup
     # Aliases pointing to the VCN security lists.
-    # Typed Any: the value is oci.core.SecurityList (for Vcn) or the private
-    # _SecurityListRef stub (for VcnRef), or None.  A structural Protocol is
-    # not feasible because oci.core.SecurityList exposes .id as a property
-    # (not a plain attribute), which breaks Protocol invariance checks.
-    oke_public_security_list: Any
-    oke_private_security_list: Any
+    # The value is oci.core.SecurityList (for Vcn) or the private
+    # _SecurityListRef stub (for VcnRef), or None.  Both expose `.id` as
+    # pulumi.Output[str], which is sufficient for all downstream consumers.
+    oke_public_security_list: _HasId | None
+    oke_private_security_list: _HasId | None
     cluster: oci.containerengine.Cluster
     node_pools: list[oci.containerengine.NodePool]
     id: pulumi.Output[str]
@@ -266,6 +279,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         stack_name: str | None = None,
         enhanced: bool = False,
         kubectl_allowed_cidrs: list[str] | None = None,
+        pods_cidr: str = "172.16.0.0/16",
+        services_cidr: str = "172.17.0.0/16",
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
         """Create a complete OKE cluster infrastructure.
@@ -299,6 +314,13 @@ class OkeCluster(BaseResource, AbstractKubernetes):
                 suppress the warning while still blocking all external access.
                 Pass one or more CIDRs (e.g. `["203.0.113.0/24"]`) to allow
                 kubectl from those addresses.
+            pods_cidr: CIDR block assigned to Kubernetes pod IPs.  Override
+                when `172.16.0.0/16` conflicts with an existing network (e.g.
+                a corporate VPN or on-premises route).  Defaults to
+                `"172.16.0.0/16"`.
+            services_cidr: CIDR block assigned to Kubernetes service
+                (ClusterIP) IPs.  Override when `172.17.0.0/16` conflicts
+                with an existing network.  Defaults to `"172.17.0.0/16"`.
             opts: Pulumi resource options forwarded to the component.
 
         Raises:
@@ -322,6 +344,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
 
         self.vcn = vcn
         self.kubernetes_version = kubernetes_version
+        self._pods_cidr = pods_cidr
+        self._services_cidr = services_cidr
 
         # Layer 1: subnet-level security list rules
         self._add_oke_security_lists_rules()
@@ -350,8 +374,8 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             options=oci.containerengine.ClusterOptionsArgs(
                 service_lb_subnet_ids=[self.vcn.public_subnet.id],
                 kubernetes_network_config=oci.containerengine.ClusterOptionsKubernetesNetworkConfigArgs(
-                    pods_cidr="172.16.0.0/16",
-                    services_cidr="172.17.0.0/16",
+                    pods_cidr=self._pods_cidr,
+                    services_cidr=self._services_cidr,
                 ),
             ),
             cluster_pod_network_options=[
@@ -747,6 +771,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             compartment_id=self.compartment_id,
             vcn_id=self.vcn.id,
             display_name=api_nsg_name,
+            freeform_tags=self.create_freeform_tags(api_nsg_name, "nsg"),
             opts=opts,
         )
         lb_nsg_name = self.create_resource_name("lb-nsg")
@@ -755,6 +780,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             compartment_id=self.compartment_id,
             vcn_id=self.vcn.id,
             display_name=lb_nsg_name,
+            freeform_tags=self.create_freeform_tags(lb_nsg_name, "nsg"),
             opts=opts,
         )
         worker_nsg_name = self.create_resource_name("worker-nsg")
@@ -763,6 +789,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             compartment_id=self.compartment_id,
             vcn_id=self.vcn.id,
             display_name=worker_nsg_name,
+            freeform_tags=self.create_freeform_tags(worker_nsg_name, "nsg"),
             opts=opts,
         )
         pod_nsg_name = self.create_resource_name("pod-nsg")
@@ -771,6 +798,7 @@ class OkeCluster(BaseResource, AbstractKubernetes):
             compartment_id=self.compartment_id,
             vcn_id=self.vcn.id,
             display_name=pod_nsg_name,
+            freeform_tags=self.create_freeform_tags(pod_nsg_name, "nsg"),
             opts=opts,
         )
 
@@ -1390,6 +1418,9 @@ class OkeCluster(BaseResource, AbstractKubernetes):
         if pulumi.runtime.is_dry_run():
             return
 
+        # TODO: use get_cluster_kube_config_output form once the downstream
+        # .content.apply(_write) chain can be rewritten to handle a nested
+        # pulumi.Output without double-wrapping.
         cluster_kube_config = self.cluster.id.apply(
             lambda cid: oci.containerengine.get_cluster_kube_config(cluster_id=cid)
         )
