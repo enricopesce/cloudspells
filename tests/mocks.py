@@ -15,6 +15,9 @@ Mocked resource types and their injected computed outputs:
 | `oci:Core/volume:Volume` | `id` |
 | `oci:LoadBalancer/loadBalancer:LoadBalancer` | `ipAddressDetails` |
 | `oci:Bastion/bastion:Bastion` | `privateEndpointIpAddress` |
+| `oci:Identity/dynamicGroup:DynamicGroup` | `id` |
+| `oci:Identity/policy:Policy` | `id` |
+| `oci:Identity/group:Group` | `id` |
 | `oci:ObjectStorage/bucket:Bucket` | `name` |
 
 Mocked provider call tokens:
@@ -108,6 +111,14 @@ class OCIMocks(pulumi.runtime.Mocks):
         # ── Bastion ───────────────────────────────────────────────────────────
         elif typ == "oci:Bastion/bastion:Bastion":
             outputs["privateEndpointIpAddress"] = "10.0.128.5"
+
+        # ── IAM ───────────────────────────────────────────────────────────────
+        elif typ in (
+            "oci:Identity/dynamicGroup:DynamicGroup",
+            "oci:Identity/policy:Policy",
+            "oci:Identity/group:Group",
+        ):
+            outputs["id"] = f"{args.name}-id"
 
         # ── Object Storage ────────────────────────────────────────────────────
         elif typ == "oci:ObjectStorage/bucket:Bucket":

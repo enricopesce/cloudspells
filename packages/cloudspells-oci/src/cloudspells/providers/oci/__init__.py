@@ -36,6 +36,12 @@ fully-implemented provider.
   subnet with TLS termination and automatic HTTP→HTTPS redirect.
 - `InternalLoadBalancer`: Private HTTP load balancer in the VCN private
   subnet for internal service-to-service routing.
+- `ComputeInstancePrincipal`: Dynamic group and policy granting compute
+  instances in a compartment read access to Object Storage and Secrets Service.
+- `OkeNodePrincipal`: Dynamic group and policy granting OKE node pool instances
+  the full permission set required for OKE cluster operation.
+- `CompartmentAdminGroup`: IAM group and policy granting human operators full
+  `manage all-resources` access within a compartment.
 
 ### Configuration descriptors (plain dataclasses, no cloud resources)
 
@@ -89,6 +95,7 @@ from .autoscale import (
 )
 from .bastion import Bastion
 from .compute import ComputeInstance
+from .iam import CompartmentAdminGroup, ComputeInstancePrincipal, OkeNodePrincipal
 from .kubernetes import NodePoolConfig, OkeCluster
 from .loadbalancer import InternalLoadBalancer, LoadBalancer
 from .network import (
@@ -163,6 +170,10 @@ __all__ = [
     # Load Balancer
     "InternalLoadBalancer",
     "LoadBalancer",
+    # IAM
+    "CompartmentAdminGroup",
+    "ComputeInstancePrincipal",
+    "OkeNodePrincipal",
     # Storage
     "ObjectStorageBucket",
     "BackupBucket",

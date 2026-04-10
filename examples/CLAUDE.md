@@ -20,8 +20,9 @@ pulumi destroy   # tear down
 | `oke/` | `Vcn`, `OkeCluster` | Kubernetes on OCI, kubeconfig generation |
 | `bastion/` | `Vcn`, `ComputeInstance`, `Nsg`, `Bastion` | Private-subnet instance + OCI Bastion for SSH access |
 | `web-db/` | `Vcn`, `Nsg` ×3, `ComputeInstance` ×5 | 3-tier: INTERNET_EDGE → APP_SERVER → DATABASE; `nsg.serves()` |
+| `iam/` | `ComputeInstancePrincipal`, `OkeNodePrincipal`, `CompartmentAdminGroup` | Instance principals and compartment admin group; `tenancy_ocid` config key |
 | `import-vcn/` | `VcnRef` | Cross-stack VCN reference via `VcnRef.from_stack_reference()` |
-| `secure-vcn/` | `Vcn` (with `flow_logs=True`), `Nsg` ×4 | Flow logs, four-tier NSGs, management-tier SSH controls |
+| `secure-vcn/` | `Vcn` (with `flow_logs=True`), `Nsg` ×4, `ComputeInstancePrincipal`, `CompartmentAdminGroup` | Flow logs, four-tier NSGs, management-tier SSH controls, zero-credential app tier via instance principal |
 | `loadbalancer/` | `Vcn`, `LoadBalancer` | Internet-facing HTTPS LB with TLS termination and HTTP→HTTPS redirect |
 | `storage/` | `BackupBucket`, `DataLakeBucket` | Object Storage retention patterns: versioned backup and tiered lifecycle |
 

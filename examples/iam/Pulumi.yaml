@@ -1,0 +1,11 @@
+name: blocks-iam
+runtime:
+  name: python
+  options:
+    virtualenv: ../../.venv
+    pythonpath: ../../src
+description: IAM — instance principals and compartment admin group
+config:
+  tenancy_ocid:
+    type: string
+    description: OCID of the tenancy root compartment (Tenancy Details → OCID in OCI Console)

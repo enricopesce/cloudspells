@@ -2,7 +2,8 @@
 
 ## Architecture
 
-This example deploys the complete CloudSpells secure-network stack:
+This example deploys the complete CloudSpells secure-network stack with IAM
+principals so every workload authenticates by identity, not by stored credentials:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -10,9 +11,9 @@ This example deploys the complete CloudSpells secure-network stack:
 │                                                                 │
 │  ┌─────────────────┐  ┌──────────────────────────────────────┐  │
 │  │ Public /21      │  │ Private /19                          │  │
-│  │ (LB tier)       │  │ (App tier)                           │  │
-│  │ IGW route       │  │ NAT GW + Service GW routes           │  │
-│  │ lb-nsg ──────────┼──► app-nsg                             │  │
+│  │ (LB tier)       │  │ (App tier)  ← ComputeInstancePrinci- │  │
+│  │ IGW route       │  │ NAT GW + Service GW routes     pal   │  │
+│  │ lb-nsg ──────────┼──► app-nsg    reads Vault Secrets      │  │
 │  └─────────────────┘  └──────────────────┬───────────────────┘  │
 │                                          │ TCP {db_port}        │
 │  ┌────────────────────────────────────────▼───────────────────┐  │
@@ -27,9 +28,19 @@ This example deploys the complete CloudSpells secure-network stack:
 │  │ mgmt-nsg ──► SSH to LB + app + DB tiers                   │  │
 │  └────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
+
+Tenancy (root compartment)
+ ├── DynamicGroup: {stack}-app-dg   ← all instances in compartment
+ └── Group:        {stack}-ops-group
+
+Compartment
+ ├── Policy: {stack}-app-policy  → read secret-family, read object-family
+ └── Policy: {stack}-ops-policy  → manage all-resources
 ```
 
 ## Security model
+
+### Network layer — NSG roles
 
 Each NSG is assigned a **role** that declares its security posture.  The
 role auto-generates:
@@ -47,7 +58,30 @@ role auto-generates:
 
 …plus the corresponding cross-subnet Security List rules.
 
-## Zero Trust tagging
+### IAM layer — zero-credential workloads
+
+`ComputeInstancePrincipal` creates a dynamic group matching every instance in
+the compartment and a policy granting `read secret-family` and
+`read object-family`.  App-tier instances authenticate as **instance
+principals** — the OCI SDK picks up the credential automatically from the
+instance metadata endpoint.  No API keys, no passwords in user-data or
+environment variables.
+
+A typical usage pattern in the app tier:
+
+```python
+import oci
+signer = oci.auth.signers.InstancePrincipalsSecurityTokenSigner()
+secrets_client = oci.secrets.SecretsClient({}, signer=signer)
+bundle = secrets_client.get_secret_bundle(secret_id="ocid1.vaultsecret...").data
+db_password = base64.b64decode(bundle.secret_bundle_content.content).decode()
+```
+
+`CompartmentAdminGroup` creates an empty IAM group and a policy granting
+`manage all-resources` within the compartment.  Ops team members are added
+post-deploy — no credentials are deployed or rotated by Pulumi.
+
+### Zero Trust tagging
 
 Every NSG is tagged with `ZprLabel=tier:<name>`.  Enable **Zero Trust
 Packet Routing (ZPR)** in your tenancy and create a ZPR policy referencing
@@ -66,6 +100,9 @@ Define policy "network-zpr-policy" as
 Required Pulumi config values (set with `pulumi config set`):
 
 - `compartment_ocid` — OCID of the OCI compartment to deploy into.
+- `tenancy_ocid` — OCID of the tenancy root compartment (Tenancy Details →
+  OCID in the OCI Console).  Required to create the dynamic group and ops
+  group at the tenancy level.
 
 Optional:
 
@@ -84,6 +121,10 @@ Optional:
 - `secure_subnet_id` — Secure (DB) subnet OCID
 - `management_subnet_id` — Management subnet OCID
 - `network_audit_log_group_id` — Log Group OCID for network audit logs
+- `app_dynamic_group_id` — Dynamic group OCID for app-tier instance principal
+- `app_policy_id` — Policy OCID granting Vault Secrets + Object Storage read
+- `ops_group_id` — IAM group OCID for compartment administrators
+- `ops_policy_id` — Policy OCID granting compartment admin rights
 """
 
 import os
@@ -94,6 +135,7 @@ sys.path.insert(0, os.path.join(_root, "packages/cloudspells-core/src"))
 sys.path.insert(0, os.path.join(_root, "packages/cloudspells-oci/src"))
 
 from cloudspells.core import Config
+from cloudspells.providers.oci.iam import CompartmentAdminGroup, ComputeInstancePrincipal
 from cloudspells.providers.oci.network import Vcn
 from cloudspells.providers.oci.nsg import HTTP, HTTPS, SSH, Nsg
 from cloudspells.providers.oci.roles import APP_SERVER, DATABASE, INTERNET_EDGE, MANAGEMENT
@@ -103,6 +145,7 @@ from cloudspells.providers.oci.roles import APP_SERVER, DATABASE, INTERNET_EDGE,
 config = Config()
 
 compartment_id: str = config.require("compartment_ocid")
+tenancy_id: str = config.require("tenancy_ocid")
 vcn_cidr: str = config.get("vcn_cidr") or "10.0.0.0/18"
 management_ingress_cidr: str = config.get("management_ingress_cidr") or "0.0.0.0/0"
 app_port: int = config.get_int("app_port") or 8080
@@ -156,7 +199,65 @@ mgmt_nsg.serves(lb_nsg, port=SSH, with_ssh=False)  # mgmt → LB: SSH only
 mgmt_nsg.serves(app_nsg, port=SSH, with_ssh=False)  # mgmt → app: SSH only
 mgmt_nsg.serves(db_nsg, port=SSH, with_ssh=False)  # mgmt → DB: SSH only
 
+# ── Step 4 — IAM principals ───────────────────────────────────────────────────
+#
+# ComputeInstancePrincipal creates:
+#
+#   DynamicGroup matching rule:
+#     instance.compartment.id = '<compartment_id>'
+#     → every instance launched into this compartment is a member, including
+#       load-balancer, app-server, database, and management tier VMs.
+#       Scope the dynamic group to a specific node pool or tag if you need
+#       finer-grained membership.
+#
+#   Policy statements (scoped to this compartment):
+#     Allow dynamic-group {stack}-app-dg to read object-family in compartment id <compartment_id>
+#     Allow dynamic-group {stack}-app-dg to read secret-family in compartment id <compartment_id>
+#
+#   What instances can access:
+#     - Object Storage: list buckets, read objects (GET/HEAD). Cannot write or delete.
+#     - Vault Secrets: retrieve secret bundles (e.g. DB password). Cannot manage secrets.
+#
+#   How to use on the instance (no API keys needed):
+#     import oci, base64
+#     signer = oci.auth.signers.InstancePrincipalsSecurityTokenSigner()
+#     client = oci.secrets.SecretsClient({}, signer=signer)
+#     bundle = client.get_secret_bundle(secret_id="ocid1.vaultsecret...").data
+#     db_password = base64.b64decode(bundle.secret_bundle_content.content).decode()
+#
+# CompartmentAdminGroup creates:
+#
+#   Group: empty at creation — add operators post-deploy:
+#     oci iam group add-user \
+#         --group-id $(pulumi stack output ops_group_id) \
+#         --user-id <user_ocid>
+#
+#   Policy statement (scoped to this compartment):
+#     Allow group {stack}-ops-group to manage all-resources in compartment id <compartment_id>
+#
+#   What group members can do:
+#     - Full CRUD on all resources within this compartment only.
+#     - Cannot touch tenancy-level resources (users, groups, other compartments).
+
+app_principal: ComputeInstancePrincipal = ComputeInstancePrincipal(
+    name="app",
+    compartment_id=compartment_id,
+    tenancy_id=tenancy_id,
+    grants=[
+        "read secret-family",   # fetch DB password from Vault — no credentials on the VM
+        "read object-family",   # read app config from Object Storage
+    ],
+)
+
+ops_group: CompartmentAdminGroup = CompartmentAdminGroup(
+    name="ops",
+    compartment_id=compartment_id,
+    tenancy_id=tenancy_id,
+)
+
 # ── Stack outputs ──────────────────────────────────────────────────────────────
 #
 # vcn.export() also publishes network_audit_log_group_id when flow_logs=True.
 vcn.export()
+app_principal.export()
+ops_group.export()
