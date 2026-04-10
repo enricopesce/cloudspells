@@ -17,7 +17,7 @@ Demonstrates the three IAM spells for common workload patterns:
 Tenancy (root compartment)
  ├── DynamicGroup: {stack}-app-dg     ← matches all instances in compartment
  ├── DynamicGroup: {stack}-k8s-dg     ← matches all instances in compartment
- └── Group:        {stack}-ops-dg
+ └── Group:        {stack}-ops-group
 
 Compartment
  ├── Policy: {stack}-app-policy   → read object-family, read secret-family

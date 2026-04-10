@@ -37,7 +37,9 @@ fully-implemented provider.
 - `InternalLoadBalancer`: Private HTTP load balancer in the VCN private
   subnet for internal service-to-service routing.
 - `ComputeInstancePrincipal`: Dynamic group and policy granting compute
-  instances in a compartment read access to Object Storage and Secrets Service.
+  instances in a compartment access to caller-specified OCI services. Pass
+  `grants=["<verb> <resource-type>", ...]` to control what the instances can
+  access. Defaults to `["read object-family", "read secret-family"]`.
 - `OkeNodePrincipal`: Dynamic group and policy granting OKE node pool instances
   the full permission set required for OKE cluster operation.
 - `CompartmentAdminGroup`: IAM group and policy granting human operators full
