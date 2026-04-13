@@ -22,7 +22,7 @@ Exports:
 from __future__ import annotations
 
 import base64
-from typing import Sequence
+from collections.abc import Sequence
 
 import pulumi
 import pulumi_oci as oci
@@ -371,7 +371,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
             "instance_id": self.instance.id,
             "private_ip": self.instance.private_ip,
         }
-        for spec, vol in zip(self.volumes_spec, self.block_volumes):
+        for spec, vol in zip(self.volumes_spec, self.block_volumes, strict=False):
             outputs[f"{spec.label}_volume_id"] = vol.id
         if self.subnet == SUBNET_PUBLIC:
             outputs["public_ip"] = self.instance.public_ip
@@ -583,7 +583,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         pulumi.export(f"{prefix}_availability_domain", self.availability_domain)
         pulumi.export(f"{prefix}_shape", self.instance.shape)
         pulumi.export(f"{prefix}_fault_domain", self.instance.fault_domain)
-        for spec, vol in zip(self.volumes_spec, self.block_volumes):
+        for spec, vol in zip(self.volumes_spec, self.block_volumes, strict=False):
             pulumi.export(f"{prefix}_{spec.label}_volume_id", vol.id)
         pulumi.export(f"{prefix}_ssh_public_key", self.get_ssh_public_key())
         if self.auto_generated_keys and self.ssh_private_key:
@@ -636,7 +636,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
             db_vol_id = instance.get_volume_id("db")
             ```
         """
-        for spec, vol in zip(self.volumes_spec, self.block_volumes):
+        for spec, vol in zip(self.volumes_spec, self.block_volumes, strict=False):
             if spec.label == label:
                 return vol.id
         raise KeyError(f"No volume with label {label!r}. Available labels: {[s.label for s in self.volumes_spec]}")
@@ -670,7 +670,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         Raises:
             KeyError: If no volume with the given label exists.
         """
-        for spec, vol in zip(self.volumes_spec, self.block_volumes):
+        for spec, vol in zip(self.volumes_spec, self.block_volumes, strict=False):
             if spec.label == label:
                 return vol
         raise KeyError(f"No volume with label {label!r}. Available labels: {[s.label for s in self.volumes_spec]}")
@@ -687,7 +687,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         Raises:
             KeyError: If no volume with the given label exists.
         """
-        for spec, att in zip(self.volumes_spec, self.volume_attachments):
+        for spec, att in zip(self.volumes_spec, self.volume_attachments, strict=False):
             if spec.label == label:
                 return att
         raise KeyError(

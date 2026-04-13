@@ -48,5 +48,5 @@ check-file:
 # ── Full quality gate (mirrors CI exactly) ───────────────────────────────────
 
 .PHONY: check
-check: lint format-check typecheck test
+check: lint format-check typecheck test deadcode
 	@echo "Quality gate passed."

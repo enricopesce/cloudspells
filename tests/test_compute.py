@@ -659,7 +659,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
     """Tests for ComputeInstance nsg= parameter and subnet inference."""
 
     @pulumi.runtime.test
-    def test_nsg_shorthand_infers_private_subnet(self) -> None:
+    def test_nsg_shorthand_infers_private_subnet(self):
         """ComputeInstance with nsg=APP_SERVER NSG is placed in private subnet."""
         from cloudspells.providers.oci.nsg import Nsg
         from cloudspells.providers.oci.roles import APP_SERVER, DATABASE
@@ -679,7 +679,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
         self.assertEqual(instance.subnet, "private")
 
     @pulumi.runtime.test
-    def test_nsg_shorthand_infers_public_subnet(self) -> None:
+    def test_nsg_shorthand_infers_public_subnet(self):
         """ComputeInstance with nsg=INTERNET_EDGE NSG is placed in public subnet."""
         from cloudspells.providers.oci.nsg import Nsg
         from cloudspells.providers.oci.roles import INTERNET_EDGE
@@ -698,7 +698,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
         self.assertEqual(instance.subnet, "public")
 
     @pulumi.runtime.test
-    def test_nsg_shorthand_infers_secure_subnet(self) -> None:
+    def test_nsg_shorthand_infers_secure_subnet(self):
         """ComputeInstance with nsg=DATABASE NSG is placed in secure subnet."""
         from cloudspells.providers.oci.nsg import Nsg
         from cloudspells.providers.oci.roles import DATABASE
@@ -717,7 +717,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
         self.assertEqual(instance.subnet, "secure")
 
     @pulumi.runtime.test
-    def test_nsg_shorthand_sets_nsg_ids(self) -> None:
+    def test_nsg_shorthand_sets_nsg_ids(self):
         """ComputeInstance with nsg= sets nsg_ids to [nsg.id]."""
         from cloudspells.providers.oci.nsg import Nsg
         from cloudspells.providers.oci.roles import APP_SERVER
@@ -736,7 +736,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
         self.assertEqual(len(instance.nsg_ids), 1)
 
     @pulumi.runtime.test
-    def test_old_api_unchanged(self) -> None:
+    def test_old_api_unchanged(self):
         """ComputeInstance with explicit subnet= and nsg_ids= still works."""
         from cloudspells.providers.oci.network import SUBNET_PRIVATE
         from cloudspells.providers.oci.nsg import Nsg

@@ -19,6 +19,11 @@ Mocked resource types and their injected computed outputs:
 | `oci:Identity/policy:Policy` | `id` |
 | `oci:Identity/group:Group` | `id` |
 | `oci:ObjectStorage/bucket:Bucket` | `name` |
+| `oci:ObjectStorage/objectLifecyclePolicy:ObjectLifecyclePolicy` | `id` |
+| `oci:Logging/logGroup:LogGroup` | `id` |
+| `oci:Logging/log:Log` | `id` |
+| `oci:ContainerEngine/cluster:Cluster` | `id`, `endpoints`, `lifecycle_state` |
+| `oci:ContainerEngine/nodePool:NodePool` | `id`, `lifecycle_state` |
 
 Mocked provider call tokens:
 
@@ -129,6 +134,15 @@ class OCIMocks(pulumi.runtime.Mocks):
             "oci:Logging/log:Log",
         ):
             outputs["id"] = f"{args.name}-id"
+
+        # ── Container Engine ──────────────────────────────────────────────────
+        elif typ == "oci:ContainerEngine/cluster:Cluster":
+            outputs["id"] = f"{args.name}-id"
+            outputs["endpoints"] = [{"kubernetes": f"https://{args.name}.k8s.example.com:6443"}]
+            outputs["lifecycleState"] = "ACTIVE"
+        elif typ == "oci:ContainerEngine/nodePool:NodePool":
+            outputs["id"] = f"{args.name}-id"
+            outputs["lifecycleState"] = "ACTIVE"
 
     def call(self, args: pulumi.runtime.MockCallArgs) -> tuple[dict[Any, Any], list[tuple[str, str]]]:
         """Mock OCI provider function calls (invoke operations).

@@ -114,28 +114,28 @@ class TestNsgWithRole(unittest.TestCase):
         return Vcn(name=name, compartment_id=COMP_ID)
 
     @pulumi.runtime.test
-    def test_nsg_stores_role(self) -> None:
+    def test_nsg_stores_role(self):
         """Nsg stores the role attribute when one is supplied."""
         vcn = self._make_vcn()
         nsg = Nsg("lb", role=INTERNET_EDGE, ports=[80, 443], vcn=vcn, compartment_id=COMP_ID)
         self.assertEqual(nsg.role, INTERNET_EDGE)
 
     @pulumi.runtime.test
-    def test_nsg_role_none_by_default(self) -> None:
+    def test_nsg_role_none_by_default(self):
         """Nsg.role is None when no role is supplied (existing API unchanged)."""
         vcn = self._make_vcn("no-role")
         nsg = Nsg("plain", vcn=vcn, compartment_id=COMP_ID)
         self.assertIsNone(nsg.role)
 
     @pulumi.runtime.test
-    def test_nsg_id_is_output(self) -> None:
+    def test_nsg_id_is_output(self):
         """Nsg.id is a pulumi.Output regardless of role."""
         vcn = self._make_vcn("id-test")
         nsg = Nsg("web", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
         self.assertIsInstance(nsg.id, pulumi.Output)
 
     @pulumi.runtime.test
-    def test_internet_edge_registers_sl_rules(self) -> None:
+    def test_internet_edge_registers_sl_rules(self):
         """INTERNET_EDGE role registers port ingress rules on the public security list."""
         vcn = self._make_vcn("ie-sl")
         Nsg("lb", role=INTERNET_EDGE, ports=[80, 443, 22], vcn=vcn, compartment_id=COMP_ID)
@@ -147,7 +147,7 @@ class TestNsgWithRole(unittest.TestCase):
         self.assertIn("public-ingress-tcp-22", fingerprints)
 
     @pulumi.runtime.test
-    def test_app_server_registers_sl_rules(self) -> None:
+    def test_app_server_registers_sl_rules(self):
         """APP_SERVER role registers egress rules on the private security list."""
         vcn = self._make_vcn("as-sl")
         Nsg("web", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
@@ -157,7 +157,7 @@ class TestNsgWithRole(unittest.TestCase):
         self.assertIn("private-egress-all-internet", fingerprints)
 
     @pulumi.runtime.test
-    def test_database_registers_sl_rules(self) -> None:
+    def test_database_registers_sl_rules(self):
         """DATABASE role registers services-egress rule on the secure security list."""
         vcn = self._make_vcn("db-sl")
         Nsg("db", role=DATABASE, vcn=vcn, compartment_id=COMP_ID)
@@ -167,7 +167,7 @@ class TestNsgWithRole(unittest.TestCase):
         self.assertNotIn("secure-egress-all-internet", fingerprints)
 
     @pulumi.runtime.test
-    def test_duplicate_app_server_nsgs_deduplicates_sl_rules(self) -> None:
+    def test_duplicate_app_server_nsgs_deduplicates_sl_rules(self):
         """Multiple NSGs of the same role add security list rules only once."""
         vcn = self._make_vcn("dedup")
         Nsg("web-1", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
@@ -190,7 +190,7 @@ class TestNsgServes(unittest.TestCase):
         return vcn, lb, web, db
 
     @pulumi.runtime.test
-    def test_serves_registers_cross_subnet_app_port(self) -> None:
+    def test_serves_registers_cross_subnet_app_port(self):
         """serves() registers cross-subnet Security List rules for the app port."""
         vcn, lb, web, _db = self._make_trio("serves-app")
         lb.serves(web, port=8080)
@@ -200,7 +200,7 @@ class TestNsgServes(unittest.TestCase):
         self.assertIn("private-ingress-tcp-8080-from-public", fingerprints)
 
     @pulumi.runtime.test
-    def test_serves_registers_ssh_management_by_default(self) -> None:
+    def test_serves_registers_ssh_management_by_default(self):
         """serves() adds SSH (22) cross-subnet rules when with_ssh=True (default)."""
         vcn, lb, web, _db = self._make_trio("serves-ssh")
         lb.serves(web, port=8080)
@@ -210,7 +210,7 @@ class TestNsgServes(unittest.TestCase):
         self.assertIn("private-ingress-tcp-22-from-public", fingerprints)
 
     @pulumi.runtime.test
-    def test_serves_suppresses_ssh_when_with_ssh_false(self) -> None:
+    def test_serves_suppresses_ssh_when_with_ssh_false(self):
         """serves(with_ssh=False) omits the SSH management channel."""
         vcn, lb, web, _db = self._make_trio("serves-no-ssh")
         lb.serves(web, port=8080, with_ssh=False)
@@ -220,7 +220,7 @@ class TestNsgServes(unittest.TestCase):
         self.assertNotIn("private-ingress-tcp-22-from-public", fingerprints)
 
     @pulumi.runtime.test
-    def test_serves_web_to_db(self) -> None:
+    def test_serves_web_to_db(self):
         """web→db serves() registers private↔secure cross-subnet rules."""
         vcn, _lb, web, db = self._make_trio("serves-web-db")
         web.serves(db, port=5432)
@@ -232,7 +232,7 @@ class TestNsgServes(unittest.TestCase):
         self.assertIn("secure-ingress-tcp-22-from-private", fingerprints)
 
     @pulumi.runtime.test
-    def test_serves_without_roles_skips_sl_rules(self) -> None:
+    def test_serves_without_roles_skips_sl_rules(self):
         """serves() between role-less NSGs creates NSG rules but no SL rules."""
         vcn = Vcn(name="no-role-serves", compartment_id=COMP_ID)
         a = Nsg("a", vcn=vcn, compartment_id=COMP_ID)
@@ -243,7 +243,7 @@ class TestNsgServes(unittest.TestCase):
         self.assertEqual(len(vcn._applied_ambient_rule_fingerprints), 0)
 
     @pulumi.runtime.test
-    def test_serves_same_tier_skips_sl_rules(self) -> None:
+    def test_serves_same_tier_skips_sl_rules(self):
         """serves() between NSGs in the same subnet tier adds no SL cross-subnet rules."""
         vcn = Vcn(name="same-tier", compartment_id=COMP_ID)
         web1 = Nsg("web-1", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)

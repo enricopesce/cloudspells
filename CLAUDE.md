@@ -16,8 +16,8 @@ CloudSpells encodes fixed, opinionated OCI reference architectures via Pulumi Py
 | CS-008 | **`ResourceNamer` for all names.** `self.create_resource_name("suffix")` — never f-string name building. |
 | CS-009 | **Full docs required.** Every public class, method, and module needs a Google-style docstring (`Args:`, `Returns:`, `Raises:`, `Attributes:`, `Example:` as applicable). |
 | CS-010 | **Pure Markdown docstrings.** No RST syntax (`` ``value`` ``, `::` blocks, `*italic*`). |
-
-**Create-time-only inputs** (`availability_domain`, `fault_domain`): auto-resolve via `oci.identity.get_availability_domains_output()` (async only — never the blocking form). Expose as optional overrides (`param: pulumi.Input[str] | None = None`).
+| CS-011 | **DRY via private mixin.** When two or more spell classes in the same module share identical accessor logic, extract it into a private `_<Resource>Mixin`. Not exported; each spell inherits `(_<Resource>Mixin, BaseResource)`. |
+| CS-012 | **Create-time-only inputs.** `availability_domain`, `fault_domain`: auto-resolve via `oci.identity.get_availability_domains_output()` (async only — never the blocking form). Expose as optional overrides (`param: pulumi.Input[str] | None = None`). |
 
 ## Quality Gate
 
@@ -39,7 +39,9 @@ Single test: `pytest tests/test_vcn.py::TestVcn::test_vcn_creates_base_resources
 | Creating any new spell | `new-spell` skill |
 | "review / audit / check / analyse" code | `spell-reviewer` agent |
 | "apply the fixes" / "fix the issues" after a review | `spell-fixer` agent |
-| "audit docs" / "fix the docs" | `docs-auditor` agent |
+| "audit docs" / "check the docs" / "review the docs" | `docs-auditor` agent |
+| "apply the doc fixes" / "fix the docs" / "fix the documentation" | `docs-fixer` agent |
+| "audit standards" / "check standards" / "standards report" / "compliance check" | `standards-auditor` agent |
 | Simple bounded edit to existing code | Direct execution |
 
 ## Operational Protocols

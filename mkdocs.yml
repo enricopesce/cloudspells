@@ -70,6 +70,9 @@ nav:
       - api/providers/autoscale.md
       - api/providers/nsg.md
       - api/providers/volume.md
+      - api/providers/storage.md
+      - api/providers/loadbalancer.md
+      - api/providers/iam.md
       - api/providers/roles.md
       - api/providers/helper.md
       - api/providers/network_logging.md

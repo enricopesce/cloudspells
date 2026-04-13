@@ -648,7 +648,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
 
         if isinstance(self.scaling_policy, MetricScalingPolicy):
             self._create_metric_autoscaling(asc_name)
-        elif isinstance(self.scaling_policy, ScheduleScalingPolicy):
+        else:
             self._create_schedule_autoscaling(asc_name)
 
     def _create_metric_autoscaling(self, asc_name: str) -> None:

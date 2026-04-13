@@ -60,6 +60,8 @@ If `tests/test_<module>.py` exists, also run `pytest tests/test_<module>.py -q`.
 | CS-008 | **`ResourceNamer` for all names.** `{stack}-{resource}-{suffix}` via `self.namer`; no f-string name building. |
 | CS-009 | **No undocumented public API.** Google-style docstrings on every public class, method, and module. |
 | CS-010 | **Docstrings use pure Markdown.** No RST (`` ``value`` ``, `::` blocks, `*italic*`). |
+| CS-011 | **DRY via private mixin.** When two or more spell classes share identical accessor logic, extract into `_<Resource>Mixin`. Not exported; each spell inherits `(_<Resource>Mixin, BaseResource)`. |
+| CS-012 | **Create-time-only inputs.** `availability_domain`, `fault_domain` auto-resolved via `get_availability_domains_output()` (async only). Exposed as optional overrides. |
 
 ---
 

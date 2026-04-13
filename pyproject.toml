@@ -1,6 +1,6 @@
 [tool.ruff]
 line-length = 120
-target-version = "py38"
+target-version = "py311"
 preview = true
 
 [tool.ruff.lint]
@@ -31,7 +31,7 @@ max-complexity = 12
 convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["D", "DOC", "E402"]  # no docstring enforcement; E402 because set_mocks() must precede imports
+"tests/*" = ["D", "DOC", "E402", "C901"]  # no docstring enforcement; E402 because set_mocks() must precede imports; C901 mocks.py dispatch is intentionally long
 # __all__ lists below use deliberate semantic groupings with comments — alphabetical sort would destroy the grouping
 "packages/cloudspells-core/src/cloudspells/core/abstractions/__init__.py" = ["RUF022"]
 "packages/cloudspells-core/src/cloudspells/core/ports.py" = ["RUF022"]

@@ -10,6 +10,8 @@ Exports:
 
 from __future__ import annotations
 
+from typing import Any
+
 import pulumi
 import pulumi_oci as oci
 
@@ -37,7 +39,7 @@ def get_svc_cidr() -> pulumi.Output[str]:
             returns a non-empty list of services for your region.
     """
 
-    def _find_all_services(svcs: list) -> str:
+    def _find_all_services(svcs: list[Any]) -> str:
         result = next((s.cidr_block for s in svcs if s.cidr_block.startswith("all-")), None)
         if result is None:
             raise RuntimeError(
