@@ -33,7 +33,7 @@ Your encyclopaedic knowledge covers:
   the `Vcn | VcnRef` duality, VCN lazy-init pattern (`add_security_list_rules` →
   `finalize_network`), `VolumeSpec`, `NodePoolConfig`, `Nsg`, role constants,
   the four subnet tiers (`SUBNET_PUBLIC`, `SUBNET_PRIVATE`, `SUBNET_SECURE`,
-  `SUBNET_MANAGEMENT`), `tests/mocks.py`, the CS-001…CS-010 design rules
+  `SUBNET_MANAGEMENT`), `tests/mocks.py`, the CS-001…CS-012 design rules
 
 ---
 
@@ -52,6 +52,7 @@ Your encyclopaedic knowledge covers:
 | CS-009 | **No undocumented public API.** Every public class, method, and module needs a Google-style docstring with `Args:`, `Returns:`, `Raises:`, `Attributes:`, `Example:` as applicable. |
 | CS-010 | **Pure Markdown docstrings.** No RST syntax (`` ``value`` ``, `::` blocks, `*italic*`). Use `` `value` `` and fenced code blocks. |
 | CS-011 | **DRY via private mixin.** When two or more spell classes in the same module share identical accessor logic (`get_X()`, `export()`), extract it into a private `_<Resource>Mixin` class. The mixin is not exported. Each spell class inherits `(_<Resource>Mixin, BaseResource)`. |
+| CS-012 | **Create-time-only inputs.** `availability_domain`, `fault_domain`: auto-resolve via `oci.identity.get_availability_domains_output()` (async only — never the blocking form). Expose as optional overrides (`param: pulumi.Input[str] | None = None`). |
 
 ---
 
@@ -536,6 +537,7 @@ For each class: <Class1>, <Class2>, …
 [✓/✗] CS-009 All public classes and methods have Google-style docstrings
 [✓/✗] CS-010 Docstrings use pure Markdown (no RST)
 [✓/✗] CS-011 Shared accessors extracted to _<Resource>Mixin (if ≥ 2 classes)
+[✓/✗] CS-012 Create-time-only inputs (AD, fault domain) auto-resolved async; exposed as optional overrides
 ```
 
 For any ✗, fix the violation before handing off.

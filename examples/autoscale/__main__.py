@@ -20,7 +20,7 @@ user_data_script = """#!/bin/bash
 set -e
 
 # Install and enable nginx
-yum install -y --disablerepo='*' --enablerepo='ol8_appstream,ol8_baseos_latest' nginx
+dnf install -y nginx
 systemctl enable nginx
 systemctl start nginx
 

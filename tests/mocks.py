@@ -11,9 +11,26 @@ Mocked resource types and their injected computed outputs:
 |---|---|
 | `oci:Core/vcn:Vcn` | `defaultRouteTableId`, `defaultSecurityListId` |
 | `oci:Core/subnet:Subnet` | `id` |
+| `oci:Core/internetGateway:InternetGateway` | `id` |
+| `oci:Core/natGateway:NatGateway` | `id` |
+| `oci:Core/serviceGateway:ServiceGateway` | `id` |
+| `oci:Core/drg:Drg` | `id` |
+| `oci:Core/drgAttachment:DrgAttachment` | `id` |
+| `oci:Core/routeTable:RouteTable` | `id` |
+| `oci:Core/securityList:SecurityList` | `id` |
+| `oci:Core/defaultSecurityList:DefaultSecurityList` | `id` |
+| `oci:Core/networkSecurityGroup:NetworkSecurityGroup` | `id` |
+| `oci:Core/networkSecurityGroupSecurityRule:NetworkSecurityGroupSecurityRule` | `id` |
 | `oci:Core/instance:Instance` | `privateIp`, `publicIp` |
+| `oci:Core/instanceConfiguration:InstanceConfiguration` | `id` |
+| `oci:Core/instancePool:InstancePool` | `id` |
 | `oci:Core/volume:Volume` | `id` |
+| `oci:Core/volumeAttachment:VolumeAttachment` | `id` |
+| `oci:AutoScaling/autoScalingConfiguration:AutoScalingConfiguration` | `id` |
 | `oci:LoadBalancer/loadBalancer:LoadBalancer` | `ipAddressDetails` |
+| `oci:LoadBalancer/backendSet:BackendSet` | `name` |
+| `oci:LoadBalancer/ruleSet:RuleSet` | `name` |
+| `oci:LoadBalancer/listener:Listener` | `name` |
 | `oci:Bastion/bastion:Bastion` | `privateEndpointIpAddress` |
 | `oci:Identity/dynamicGroup:DynamicGroup` | `id` |
 | `oci:Identity/policy:Policy` | `id` |
@@ -95,12 +112,30 @@ class OCIMocks(pulumi.runtime.Mocks):
         if typ == "oci:Core/vcn:Vcn":
             outputs["defaultRouteTableId"] = f"{args.name}-default-rt-id"
             outputs["defaultSecurityListId"] = f"{args.name}-default-sl-id"
-        elif typ == "oci:Core/subnet:Subnet":
+        elif typ in (
+            "oci:Core/subnet:Subnet",
+            "oci:Core/internetGateway:InternetGateway",
+            "oci:Core/natGateway:NatGateway",
+            "oci:Core/serviceGateway:ServiceGateway",
+            "oci:Core/drg:Drg",
+            "oci:Core/drgAttachment:DrgAttachment",
+            "oci:Core/routeTable:RouteTable",
+            "oci:Core/securityList:SecurityList",
+            "oci:Core/defaultSecurityList:DefaultSecurityList",
+            "oci:Core/networkSecurityGroup:NetworkSecurityGroup",
+            "oci:Core/networkSecurityGroupSecurityRule:NetworkSecurityGroupSecurityRule",
+            "oci:Core/instanceConfiguration:InstanceConfiguration",
+            "oci:Core/instancePool:InstancePool",
+            "oci:Core/volume:Volume",
+            "oci:Core/volumeAttachment:VolumeAttachment",
+        ):
             outputs["id"] = f"{args.name}-id"
         elif typ == "oci:Core/instance:Instance":
             outputs["privateIp"] = "10.0.128.10"
             outputs["publicIp"] = None
-        elif typ == "oci:Core/volume:Volume":
+
+        # ── AutoScaling ───────────────────────────────────────────────────────
+        elif typ == "oci:AutoScaling/autoScalingConfiguration:AutoScalingConfiguration":
             outputs["id"] = f"{args.name}-id"
 
         # ── Load Balancer ─────────────────────────────────────────────────────
