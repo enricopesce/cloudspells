@@ -43,6 +43,10 @@ nav:
     - Share a VCN Across Stacks: how-to/vcnref.md
     - Configure NSG Rules: how-to/nsg-rules.md
     - Use a Bastion: how-to/bastion.md
+    - Set Up IAM Principals: how-to/iam.md
+    - Deploy a Load Balancer: how-to/loadbalancer.md
+    - Use Object Storage Buckets: how-to/storage.md
+    - Enable VCN Flow Logs: how-to/network-logging.md
   - Concepts:
     - Design Philosophy: concepts/design.md
     - Network Topology: concepts/network-topology.md
