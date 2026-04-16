@@ -853,7 +853,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             empty string if the load balancer has no IP details yet.
         """
         return self.load_balancer.ip_address_details.apply(
-            lambda details: details[0].ip_address or "" if details else ""
+            lambda details: (details[0].ip_address or "") if details else ""
         )
 
     def get_instance_pool_id(self) -> pulumi.Output[str]:

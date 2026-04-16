@@ -156,7 +156,7 @@ class ComputeInstancePrincipal(_PrincipalMixin, BaseResource):
         name: str,
         compartment_id: pulumi.Input[str],
         tenancy_id: pulumi.Input[str],
-        grants: list[str] = ["read object-family", "read secret-family"],  # noqa: B006
+        grants: list[str] | None = None,
         stack_name: str | None = None,
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
@@ -176,24 +176,23 @@ class ComputeInstancePrincipal(_PrincipalMixin, BaseResource):
                 `"<verb> <resource-type>"` (e.g. `"read object-family"`,
                 `"manage volume-family"`). The spell assembles the full
                 statement around each entry. Must contain at least one entry.
-                Defaults to `["read object-family", "read secret-family"]`.
+                Defaults to `["read object-family", "read secret-family"]`
+                when `None`.
             stack_name: Pulumi stack name. Defaults to `pulumi.get_stack()`
                 when `None`.
             opts: Pulumi resource options forwarded to the component.
 
         Raises:
-            ValueError: If `grants` is empty.
+            ValueError: If `grants` is an explicitly empty list.
         """
-        if not grants:
+        if grants is not None and len(grants) == 0:
             raise ValueError("grants must contain at least one policy fragment")
+        grants_copy = list(grants or ["read object-family", "read secret-family"])
 
         super().__init__("custom:iam:ComputeInstancePrincipal", name, compartment_id, stack_name, opts)
 
         dg_name = self.create_resource_name("dg")
         policy_name = self.create_resource_name("policy")
-        # Copy grants into a local list so the apply() closure captures a
-        # stable value rather than the caller's mutable list reference.
-        grants_copy = list(grants)
 
         self.dynamic_group = oci.identity.DynamicGroup(
             dg_name,
