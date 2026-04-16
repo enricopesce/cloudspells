@@ -735,7 +735,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             ],
             freeform_tags=self.create_freeform_tags(asc_name, "autoscaling-configuration"),
             defined_tags=self._defined_tags,  # type: ignore[arg-type]  # OCI stub uses Input[Mapping[str,Input[str]]] but the OCI API accepts nested dicts at runtime
-            opts=pulumi.ResourceOptions(parent=self),
+            opts=pulumi.ResourceOptions(parent=self, delete_before_replace=True),
         )
 
     def _create_schedule_autoscaling(self, asc_name: str) -> None:
@@ -815,7 +815,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             policies=policies,
             freeform_tags=self.create_freeform_tags(asc_name, "autoscaling-configuration"),
             defined_tags=self._defined_tags,  # type: ignore[arg-type]  # OCI stub uses Input[Mapping[str,Input[str]]] but the OCI API accepts nested dicts at runtime
-            opts=pulumi.ResourceOptions(parent=self),
+            opts=pulumi.ResourceOptions(parent=self, delete_before_replace=True),
         )
 
     def export(self) -> None:
