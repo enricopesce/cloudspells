@@ -32,6 +32,7 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["D", "DOC", "E402", "C901"]  # no docstring enforcement; E402 because set_mocks() must precede imports; C901 mocks.py dispatch is intentionally long
+"packages/cloudspells-cli/tests/*" = ["D", "DOC", "E402", "C901"]
 # __all__ lists below use deliberate semantic groupings with comments — alphabetical sort would destroy the grouping
 "packages/cloudspells-core/src/cloudspells/core/abstractions/__init__.py" = ["RUF022"]
 "packages/cloudspells-core/src/cloudspells/core/ports.py" = ["RUF022"]
@@ -40,11 +41,17 @@ convention = "google"
 
 [tool.pytest.ini_options]
 addopts = "--cov=packages --cov-report=term-missing --cov-fail-under=85"
-testpaths = ["tests"]
+testpaths = ["tests", "packages/cloudspells-cli/tests"]
 pythonpath = [
     "packages/cloudspells-core/src",
     "packages/cloudspells-oci/src",
+    "packages/cloudspells-cli/src",
 ]
+
+[tool.vulture]
+# pytest fixtures and Typer callback parameters are wired by decorators/framework
+# introspection, which vulture cannot see — these names are intentionally "unused".
+ignore_names = ["mock_*", "version"]
 
 [tool.coverage.run]
 source = ["cloudspells"]

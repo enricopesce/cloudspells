@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cloudspells-cli"
+version = "0.1.0"
+description = "CloudSpells CLI — stack scaffolding and management"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.12"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+]
+dependencies = [
+    "typer>=0.12",
+    "rich>=13",
+    "pulumi>=3.204.0,<4",
+    "cloudspells-core>=0.2.0",
+    "cloudspells-oci>=0.2.0",
+]
+
+[project.scripts]
+cs = "cloudspells.cli.main:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cloudspells"]

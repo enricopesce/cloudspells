@@ -337,8 +337,6 @@ CloudSpells is actively looking for contributors. See [CONTRIBUTING.md](.github/
 - [ ] GCP provider — same abstraction layer for GCP
 - [ ] Azure provider
 - [ ] CloudSpells CLI tool for stack management
-- [ ] MkDocs documentation site (in progress — `mkdocs.yml` present)
-- [ ] Community spell registry
 
 ---
 
