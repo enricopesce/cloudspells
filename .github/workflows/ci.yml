@@ -41,7 +41,6 @@ jobs:
           python -m venv .venv
           .venv/bin/pip install -r requirements.txt
           .venv/bin/pip install -e packages/cloudspells-core -e packages/cloudspells-oci
-          .venv/bin/pip install --ignore-requires-python -e packages/cloudspells-cli
           PYVER=$(.venv/bin/python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
           echo "$(pwd)/packages/cloudspells-cli/src" > .venv/lib/python${PYVER}/site-packages/cloudspells-cli-src.pth
 
@@ -50,19 +49,6 @@ jobs:
 
       - name: Format check (ruff)
         run: .venv/bin/ruff format --check packages/ tests/
-
-      - name: Debug venv
-        run: |
-          echo "=== .pth files ==="
-          ls .venv/lib/python*/site-packages/*.pth
-          echo "=== cloudspells .pth contents ==="
-          cat .venv/lib/python*/site-packages/*cloudspells*.pth || true
-          echo "=== manual .pth ==="
-          cat .venv/lib/python*/site-packages/cloudspells-cli-src.pth || echo "NOT FOUND"
-          echo "=== python sys.path cloudspells entries ==="
-          .venv/bin/python -c "import sys; [print(p) for p in sys.path if 'cloudspells' in p or 'cli' in p]"
-          echo "=== import test ==="
-          .venv/bin/python -c "import cloudspells.cli.automation.passphrase; print('OK:', cloudspells.cli.automation.passphrase.__file__)"
 
       - name: Type check (pyright)
         run: .venv/bin/pyright
