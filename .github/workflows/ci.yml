@@ -49,7 +49,7 @@ jobs:
         run: ruff format --check packages/ tests/
 
       - name: Type check (pyright)
-        run: pyright
+        run: pyright --pythonpath $(which python)
 
       - name: Tests with coverage
         run: pytest
