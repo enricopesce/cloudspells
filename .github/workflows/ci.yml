@@ -32,30 +32,31 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-${{ matrix.python-version }}-${{ hashFiles('requirements.txt') }}
+          key: pip-${{ matrix.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('packages/*/pyproject.toml') }}
           restore-keys: |
             pip-${{ matrix.python-version }}-
 
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
-          pip install -e packages/cloudspells-core -e packages/cloudspells-oci
-          pip install --ignore-requires-python -e packages/cloudspells-cli
+          python -m venv .venv
+          .venv/bin/pip install -r requirements.txt
+          .venv/bin/pip install -e packages/cloudspells-core -e packages/cloudspells-oci
+          .venv/bin/pip install --ignore-requires-python -e packages/cloudspells-cli
 
       - name: Lint (ruff)
-        run: ruff check packages/ tests/
+        run: .venv/bin/ruff check packages/ tests/
 
       - name: Format check (ruff)
-        run: ruff format --check packages/ tests/
+        run: .venv/bin/ruff format --check packages/ tests/
 
       - name: Type check (pyright)
-        run: pyright --pythonpath $(which python)
+        run: .venv/bin/pyright
 
       - name: Tests with coverage
-        run: pytest
+        run: .venv/bin/pytest
 
       - name: Dead code check (vulture)
-        run: vulture packages/ --min-confidence 80
+        run: .venv/bin/vulture packages/ --min-confidence 80
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
