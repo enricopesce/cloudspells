@@ -37,7 +37,10 @@ jobs:
             pip-${{ matrix.python-version }}-
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          pip install -e packages/cloudspells-core -e packages/cloudspells-oci
+          pip install --ignore-requires-python -e packages/cloudspells-cli
 
       - name: Lint (ruff)
         run: ruff check packages/ tests/
