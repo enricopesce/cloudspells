@@ -6,9 +6,12 @@ This page walks you through installing CloudSpells and its prerequisites from sc
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Python | 3.8+ | Runtime |
+| Python | 3.10+ | Runtime (union type syntax used throughout the packages) |
 | [Pulumi CLI](https://www.pulumi.com/docs/install/) | latest | Deploy infrastructure |
 | [OCI CLI](https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/cliinstall.htm) (optional) | latest | Verify OCI credentials |
+
+!!! note "`cloudspells-cli` requires Python 3.12+"
+    The `cloudspells-cli` package uses features available only in Python 3.12 and later. If you intend to use the `cs` CLI for stack scaffolding and management, ensure Python 3.12+ is installed.
 
 ### Install the Pulumi CLI
 

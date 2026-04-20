@@ -47,8 +47,7 @@ bastion = Bastion(
     name="mgmt",
     compartment_id=compartment_id,
     vcn=vcn,
-    max_session_ttl_in_seconds=10800,            # 3 hours (default)
-    client_cidr_block_allow_list=["0.0.0.0/0"],  # restrict to your IP in production
+    allowed_client_cidrs=["0.0.0.0/0"],  # restrict to your IP in production
 )
 
 # ComputeInstance calls finalize_network() — Bastion rule is already registered.
@@ -135,14 +134,14 @@ Once the session is `ACTIVE`, the SSH command in the session details sets up a l
 
 ## Restrict client access
 
-In production, limit the `client_cidr_block_allow_list` to your team's egress IP range:
+In production, limit the `allowed_client_cidrs` to your team's egress IP range:
 
 ```python
 bastion = Bastion(
     name="mgmt",
     compartment_id=compartment_id,
     vcn=vcn,
-    client_cidr_block_allow_list=["203.0.113.0/24"],  # your office / VPN CIDR
+    allowed_client_cidrs=["203.0.113.0/24"],  # your office / VPN CIDR
 )
 ```
 
@@ -170,7 +169,7 @@ bastion = Bastion(
     name="mgmt",
     compartment_id=compartment_id,
     vcn=vcn,
-    client_cidr_block_allow_list=["203.0.113.0/24"],  # restrict in production
+    allowed_client_cidrs=["203.0.113.0/24"],  # restrict in production
 )
 
 instance = ComputeInstance(
@@ -192,8 +191,7 @@ instance.export()
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `max_session_ttl_in_seconds` | `10800` (3 h) | Maximum TTL for any session created through this bastion |
-| `client_cidr_block_allow_list` | `["0.0.0.0/0"]` | Source CIDRs allowed to create sessions |
+| `allowed_client_cidrs` | `["0.0.0.0/0"]` | Source CIDRs allowed to create sessions |
 
 ---
 

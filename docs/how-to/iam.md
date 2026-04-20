@@ -147,5 +147,4 @@ The instance picks up the principal automatically at runtime via OCI's instance 
 | Spell | Parameter | Default | Description |
 |-------|-----------|---------|-------------|
 | `ComputeInstancePrincipal` | `grants` | `["read object-family", "read secret-family"]` | OCI policy verb+resource fragments |
-| `BackupBucket` | `retention_days` | `90` | Retention before deletion |
 | `CompartmentAdminGroup` | _(none)_ | — | Group is created empty; add users post-deploy |

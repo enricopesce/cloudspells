@@ -206,7 +206,7 @@ Before creating the security lists, `finalize_network` injects a fixed set of ba
 
 | Protocol | Destination | Description |
 |---|---|---|
-| ALL | NAT Gateway | Outbound-only internet egress for image pulls and external API calls |
+| ALL | `0.0.0.0/0` (CIDR_BLOCK) — route table directs traffic to the NAT Gateway | Outbound-only internet egress for image pulls and external API calls |
 | ALL | `<services CIDR>` | Oracle service plane egress (OCIR, Monitoring, Logging) |
 
 **Applied to the private, secure, and management tiers (egress):**
@@ -334,7 +334,7 @@ The following `Vcn.__init__` parameters are all optional. The required parameter
 | `nat_public_ip_id` | `str` | `None` | Reserved public IP OCID to assign to the NAT Gateway |
 | `nat_block_traffic` | `bool` | `False` | Block all NAT Gateway egress without deleting the gateway |
 | `dhcp_options_id` | `str` | `None` | Custom DHCP options OCID — overrides the VCN default |
-| `defined_tags` | `dict[str, str]` | `None` | OCI defined tags applied to the VCN and all child resources |
+| `defined_tags` | `pulumi.Input[dict[str, pulumi.Input[str]]]` | `None` | OCI defined tags applied to the VCN and all child resources |
 
 ---
 

@@ -107,7 +107,7 @@ lb_nsg.serves(web_nsg, port=app_port)   # LB  → web: app port + SSH mgmt
 web_nsg.serves(db_nsg, port=db_port)    # web → DB:  db port  + SSH mgmt
 ```
 
-Each `serves()` call generates **four NSG rules** in one line:
+Each `serves()` call generates **four NSG rules** in one line (this count assumes `with_ssh=True` and a role with `accept_management_ssh=True`; roles with `accept_management_ssh=False` generate two rules):
 
 - `lb-nsg` → EGRESS → `web-nsg` on `app_port`
 - `web-nsg` ← INGRESS ← `lb-nsg` on `app_port`

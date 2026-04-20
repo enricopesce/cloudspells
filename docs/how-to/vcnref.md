@@ -95,7 +95,7 @@ pulumi up
 | Subnet CIDR accessors | Returns computed `Output[str]` | Returns cross-stack `Output[str]` |
 | Usable with spells | Yes | Yes — with conditions (see below) |
 
-`VcnRef.add_security_list_rules()` raises a `RuntimeError` because `VcnRef` cannot modify the security lists of a network it does not own. The error message lists the rule sets that were requested so you know exactly what to add.
+`VcnRef.add_security_list_rules()` raises a `RuntimeError` only when non-empty rule lists are passed — it cannot modify the security lists of a network it does not own. When all arguments are `None` or empty the call is a silent no-op (spells call this unconditionally; the no-op keeps spell code branch-free). The error message lists the non-empty rule sets that were requested so you know exactly what to add.
 
 **This means security rules required by a spell must already exist in the source CloudSpells VCN stack before you deploy that spell against a `VcnRef`.** The workflow is:
 

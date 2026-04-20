@@ -66,7 +66,6 @@ Backends are registered separately — either via `oci.loadbalancer.Backend` res
 
 ```bash
 oci lb backend create \
-    --backend-set-name $(pulumi stack output web_frontend_bs_name) \
     --load-balancer-id $(pulumi stack output web_frontend_lb_id) \
     --ip-address 10.0.128.10 \
     --port 8080
@@ -104,13 +103,11 @@ ilb.export()
 
 ## Using both together
 
-A common pattern places the public LB in front and the internal LB behind it:
+A common pattern places the public LB in front and the internal LB behind it. Both spells can be declared in any order; `finalize_network()` is idempotent.
 
 ```python
 vcn = Vcn(name="prod", compartment_id=compartment_id)
 
-# Public LB must be declared BEFORE InternalLoadBalancer so its
-# security rules are registered before finalize_network().
 public_lb = LoadBalancer(
     name="web",
     compartment_id=compartment_id,

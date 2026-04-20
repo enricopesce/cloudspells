@@ -70,7 +70,7 @@ vcn = Vcn(
 vcn.export()
 ```
 
-Three lines of infrastructure code create a production-grade, fully-routed network. There are no subnet CIDRs to calculate, no route tables to attach, no gateways to wire — CloudSpells handles all of it.
+Two lines of infrastructure code create a production-grade, fully-routed network. There are no subnet CIDRs to calculate, no route tables to attach, no gateways to wire — CloudSpells handles all of it.
 
 ---
 
@@ -97,13 +97,17 @@ pip install -r requirements.txt
 pulumi config set compartment_ocid ocid1.compartment.oc1..aaaa...
 ```
 
-That is the only required value. The VCN CIDR defaults to `10.0.0.0/18`. To use a different range:
+That is the only required value. The VCN CIDR is fixed inside the spell at `10.0.0.0/18` by default. To use a different range, pass `cidr_block=` directly to `Vcn(...)` in your Python program:
 
-```bash
-pulumi config set vcn_cidr_block 10.10.0.0/16
+```python
+vcn = Vcn(
+    name="lab",
+    compartment_id=compartment_id,
+    cidr_block="10.10.0.0/16",
+)
 ```
 
-The CIDR must be an RFC 1918 range with a prefix length between `/16` and `/20`.
+CloudSpells delegates CIDR validation to OCI — any valid RFC 1918 CIDR is accepted.
 
 ---
 
@@ -113,7 +117,7 @@ The CIDR must be an RFC 1918 range with a prefix length between `/16` and `/20`.
 pulumi preview
 ```
 
-You should see roughly 14 resources planned: 1 VCN, 3 gateways, 4 route tables, 4 security lists, and 4 subnets.
+You should see roughly 17 resources planned: 1 VCN, 1 default security list, 3 gateways (IGW + NAT + Service), 4 route tables, 4 security lists, and 4 subnets.
 
 ---
 

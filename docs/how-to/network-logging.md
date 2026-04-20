@@ -52,7 +52,7 @@ When using a `VcnRef`, the spell attaches flow logs to whichever subnets the ups
 from cloudspells.providers.oci.network import VcnRef
 from cloudspells.providers.oci.network_logging import VcnFlowLogs
 
-vcn_ref = VcnRef(name="prod", stack_name="network-prod")
+vcn_ref = VcnRef.from_stack_reference("network-prod")
 
 flow_logs = VcnFlowLogs(
     name="prod",

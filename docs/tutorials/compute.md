@@ -85,6 +85,8 @@ web_nsg = Nsg(
 from cloudspells.providers.oci.compute import ComputeInstance
 from cloudspells.providers.oci.volume import VolumeSpec
 
+ssh_key = config.get("ssh_key")
+
 web_server = ComputeInstance(
     name="web-server",
     compartment_id=compartment_id,
@@ -100,6 +102,15 @@ web_server = ComputeInstance(
 ```
 
 The instance inherits its subnet from the NSG role: because `web_nsg` uses `INTERNET_EDGE`, the instance is automatically placed in the public subnet. No subnet argument needed.
+
+`VolumeSpec` accepts a `vpus_per_gb` performance tier constant:
+
+| Constant | VPUs/GB | Use case |
+|----------|---------|---------|
+| `VolumeSpec.PERF_LOW` | 10 | Low-cost archival / log storage |
+| `VolumeSpec.PERF_BALANCED` | 60 | General-purpose workloads (default) |
+| `VolumeSpec.PERF_HIGH` | 80 | Database and high-IOPS workloads |
+| `VolumeSpec.PERF_ULTRA` | 120 | Latency-sensitive, highest-throughput workloads |
 
 `image_id` is a required parameter — pass the OCID of a boot image for the instance. Obtain it from the OCI Console or CLI and store it in Pulumi config.
 

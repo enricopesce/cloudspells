@@ -12,9 +12,11 @@ CloudSpells encodes proven reference architectures as immutable, composable spel
 
 ## Quick start
 
-A fully-wired 4-tier VCN — public, private, secure, and management subnets, all gateways, and correct routing — in three lines:
+A fully-wired 4-tier VCN — public, private, secure, and management subnets, all gateways, and correct routing — in two lines:
 
 ```python
+from cloudspells.providers.oci.network import Vcn
+
 vcn = Vcn("lab", compartment_id=compartment_id)
 vcn.export()
 ```

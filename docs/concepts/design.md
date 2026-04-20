@@ -107,13 +107,13 @@ This means rule accumulation is order-independent within a stack: you can declar
 CloudSpells started with OCI and is designed from the ground up to add more providers. The three-layer structure enforces this:
 
 ```
-src/core/abstractions/     — cloud-neutral interfaces (AbstractNetwork, …)
-src/providers/oci/         — OCI implementation
-src/providers/aws/         — future
-src/providers/gcp/         — future
+packages/cloudspells-core/src/cloudspells/core/abstractions/   — cloud-neutral interfaces (AbstractNetwork, …)
+packages/cloudspells-oci/src/cloudspells/providers/oci/        — OCI implementation
+packages/cloudspells-aws/src/cloudspells/providers/aws/        — future
+packages/cloudspells-gcp/src/cloudspells/providers/gcp/        — future
 ```
 
-Adding a new provider means implementing the abstractions under a new `src/providers/<cloud>/` directory. No changes to the core layer or to user-facing code are needed. A user who writes `from cloudspells.providers.oci.network import Vcn` today will import `from cloudspells.providers.aws.network import Vpc` tomorrow — same calling convention, same mental model.
+Adding a new provider means implementing the abstractions under a new `packages/cloudspells-<cloud>/` directory. No changes to the core layer or to user-facing code are needed. A user who writes `from cloudspells.providers.oci.network import Vcn` today will import `from cloudspells.providers.aws.network import Vpc` tomorrow — same calling convention, same mental model.
 
 ---
 

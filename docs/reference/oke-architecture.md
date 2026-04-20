@@ -27,7 +27,7 @@ Security lists are not created by `OkeCluster` — rules are accumulated into th
 |---|---|---|
 | Cluster type | `BASIC_CLUSTER` | Enhanced cluster features not required for standard workloads |
 | CNI type | `OCI_VCN_IP_NATIVE` | Every pod gets a real VCN subnet IP |
-| Pod CIDR | `10.2.0.0/16` | Kubernetes virtual address space for pods (not routed in VCN) |
+| Pod CIDR | `10.2.0.0/16` | Kubernetes virtual address space for pods (not routed in VCN). With VCN-native CNI, pod data-plane traffic uses real VCN subnet IPs; the Pod CIDR is a Kubernetes-internal virtual address space. |
 | Services CIDR | `10.3.0.0/16` | Kubernetes virtual address space for `ClusterIP` services |
 | API endpoint | Public subnet | Public IP enabled — reachable by `kubectl` over the internet on port 6443 |
 | API NSG | `api_nsg` | Only traffic matching `api_nsg` rules reaches the API server VNIC |

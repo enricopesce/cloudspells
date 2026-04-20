@@ -21,7 +21,9 @@ Internet (HTTP port 80)
 └─────────────────────────────────────────────────────┘
 ```
 
-**What gets created:** 1 VCN, 1 load balancer, 1 instance configuration, 1 instance pool, 1 autoscaling policy, security list rules for HTTP (80) and HTTPS (443).
+**What gets created:** 1 VCN, 1 load balancer, 1 instance configuration, 1 instance pool, 1 autoscaling policy, security list rules for HTTP (80).
+
+> **Note:** An HTTPS listener and port 443 rules are only created when `ssl_certificate_name` is set in `OciLoadBalancerConfig`.
 
 ---
 
@@ -104,7 +106,7 @@ scalable_pool = ScalableWorkload(
 - CPU autoscaling: scale out when CPU > 80%, scale in when CPU < 20%
 - 300-second cooldown between scaling events
 - Defaults to `VM.Standard.E4.Flex` with 1 OCPU / 16 GB RAM
-- Minimum 1 instance; set `max_instances` to control the ceiling
+- Minimum 1 instance; set `max_instances` to control the ceiling (defaults to 5 if not specified)
 
 ---
 
