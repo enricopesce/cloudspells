@@ -17,3 +17,7 @@ mkdocstrings[python]==0.27.0
 # Runtime utilities
 PyYAML==6.0.3
 Random-Word==1.0.13
+
+# cloudspells-cli dependencies (needed for pyright on CI where no .venv exists)
+typer>=0.12
+rich>=13
