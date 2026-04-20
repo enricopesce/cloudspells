@@ -42,6 +42,8 @@ jobs:
           .venv/bin/pip install -r requirements.txt
           .venv/bin/pip install -e packages/cloudspells-core -e packages/cloudspells-oci
           .venv/bin/pip install --ignore-requires-python -e packages/cloudspells-cli
+          PYVER=$(.venv/bin/python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+          echo "$(pwd)/packages/cloudspells-cli/src" > .venv/lib/python${PYVER}/site-packages/cloudspells-cli-src.pth
 
       - name: Lint (ruff)
         run: .venv/bin/ruff check packages/ tests/
