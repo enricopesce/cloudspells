@@ -10,6 +10,7 @@ oci-stack-statefile
 dist
 .pulumi-passphrase
 *passphrase*
+!**/*.py
 .vscode
 **/.pulumi/
 *.tmp
