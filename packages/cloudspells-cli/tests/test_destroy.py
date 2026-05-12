@@ -42,7 +42,7 @@ def test_destroy_remove_warns_on_remove_failure(mock_get_stack, mock_passphrase,
     mock_get_stack.return_value = mock_stack
     result = runner.invoke(app, ["destroy", str(stack_dir), "--yes", "--remove"])
     assert result.exit_code == 0, result.output
-    assert "Warning" in result.output
+    assert "stack state" in result.output
 
 
 def test_destroy_exits_nonzero_when_no_pulumi_yaml(runner, tmp_path) -> None:

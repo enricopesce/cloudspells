@@ -31,6 +31,7 @@ class TestBastion(unittest.TestCase):
             name="test-bastion",
             compartment_id="ocid1.compartment.test",
             vcn=self._make_vcn(),
+            allowed_client_cidrs=["0.0.0.0/0"],
         )
 
         def check_bastion(bastion_id):
@@ -52,6 +53,7 @@ class TestBastion(unittest.TestCase):
             name="test-bastion",
             compartment_id="ocid1.compartment.test",
             vcn=vcn,
+            allowed_client_cidrs=["0.0.0.0/0"],
         )
 
         self.assertIsNotNone(vcn.public_subnet, "VCN should be finalized by Bastion")
@@ -64,6 +66,7 @@ class TestBastion(unittest.TestCase):
             name="getter-test-bastion",
             compartment_id="ocid1.compartment.test",
             vcn=self._make_vcn(),
+            allowed_client_cidrs=["0.0.0.0/0"],
         )
 
         def check_id(bastion_id):
@@ -77,6 +80,7 @@ class TestBastion(unittest.TestCase):
             name="default-ttl-bastion",
             compartment_id="ocid1.compartment.test",
             vcn=self._make_vcn(),
+            allowed_client_cidrs=["0.0.0.0/0"],
         )
 
         self.assertIsNotNone(bastion.bastion)
@@ -101,6 +105,7 @@ class TestBastion(unittest.TestCase):
             name="endpoint-test-bastion",
             compartment_id="ocid1.compartment.test",
             vcn=self._make_vcn(),
+            allowed_client_cidrs=["0.0.0.0/0"],
         )
 
         def check_endpoint(endpoint):
@@ -115,6 +120,7 @@ class TestBastion(unittest.TestCase):
             name="access-endpoint-bastion",
             compartment_id="ocid1.compartment.test",
             vcn=self._make_vcn(),
+            allowed_client_cidrs=["0.0.0.0/0"],
         )
 
         def check(endpoint):
@@ -135,7 +141,19 @@ class TestBastion(unittest.TestCase):
                 name="late-bastion",
                 compartment_id="ocid1.compartment.test",
                 vcn=vcn,
+                allowed_client_cidrs=["0.0.0.0/0"],
             )
+
+    def test_bastion_raises_when_allowed_client_cidrs_is_none(self):
+        """Bastion raises ValueError when allowed_client_cidrs is not provided."""
+        with self.assertRaises(ValueError) as ctx:
+            Bastion(
+                name="no-cidrs-bastion",
+                compartment_id="ocid1.compartment.test",
+                vcn=self._make_vcn(),
+                allowed_client_cidrs=None,
+            )
+        self.assertIn("allowed_client_cidrs", str(ctx.exception))
 
     def test_second_bastion_on_same_vcn_is_accepted(self):
         """A second Bastion against the same VCN is a no-op (deduplication via fingerprint)."""
@@ -143,9 +161,19 @@ class TestBastion(unittest.TestCase):
             name="dedup-vcn",
             compartment_id="ocid1.compartment.test",
         )
-        Bastion(name="first-bastion", compartment_id="ocid1.compartment.test", vcn=vcn)
+        Bastion(
+            name="first-bastion",
+            compartment_id="ocid1.compartment.test",
+            vcn=vcn,
+            allowed_client_cidrs=["0.0.0.0/0"],
+        )
         # VCN is now finalized; a second Bastion should not raise.
-        Bastion(name="second-bastion", compartment_id="ocid1.compartment.test", vcn=vcn)
+        Bastion(
+            name="second-bastion",
+            compartment_id="ocid1.compartment.test",
+            vcn=vcn,
+            allowed_client_cidrs=["0.0.0.0/0"],
+        )
 
 
 if __name__ == "__main__":

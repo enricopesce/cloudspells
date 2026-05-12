@@ -170,6 +170,12 @@ class LoadBalancerConfig:
         health_check_path: HTTP path for health checks.
             Default: `"/health"`.
         is_public: Whether the load balancer should have a public IP.
+            This also drives subnet placement and ingress-rule topology:
+            when `True` (default), the LB is placed in the public subnet
+            and HTTP/HTTPS ingress is allowed from `0.0.0.0/0`; when
+            `False`, the LB is placed in the private subnet and HTTP/HTTPS
+            ingress is only allowed from within the VCN CIDR — no internet
+            exposure.
             Default: `True`.
         ssl_certificate_name: Name of an SSL certificate for HTTPS
             termination.  When set, an HTTPS listener on port 443 is

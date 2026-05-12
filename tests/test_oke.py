@@ -1,6 +1,8 @@
 """Unit tests for OKE Cluster block."""
 
 import unittest
+import warnings
+from unittest.mock import patch
 
 import pulumi
 
@@ -10,8 +12,12 @@ from tests.mocks import set_mocks
 set_mocks()
 
 # Import AFTER mocks are set
-from cloudspells.providers.oci.kubernetes import NodePoolConfig, OkeCluster
-from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.kubernetes import (
+    NodePoolConfig,
+    OkeCluster,
+    OkeClusterEnhanced,
+)
+from cloudspells.providers.oci.network import Vcn, VcnRef
 
 _DEFAULT_POOL = NodePoolConfig(
     name="default",
@@ -31,6 +37,20 @@ def _make_cluster(vcn: Vcn, node_pools: list[NodePoolConfig] | None = None) -> O
         kubernetes_version="v1.28.2",
         node_pools=node_pools or [_DEFAULT_POOL],
         kubectl_allowed_cidrs=["10.0.0.0/8"],
+    )
+
+
+def _make_vcn_ref() -> VcnRef:
+    """Build a VcnRef populated with plain values suitable for tests."""
+    return VcnRef(
+        vcn_id="ocid1.vcn.test",
+        public_subnet_id="ocid1.subnet.public.test",
+        private_subnet_id="ocid1.subnet.private.test",
+        public_subnet_cidr="10.0.48.0/21",
+        private_subnet_cidr="10.0.0.0/19",
+        cidr_block="10.0.0.0/18",
+        public_security_list_id="ocid1.seclist.public.test",
+        private_security_list_id="ocid1.seclist.private.test",
     )
 
 
@@ -239,14 +259,141 @@ class TestOkeCluster(unittest.TestCase):
 
     def test_kubectl_none_defaults_to_empty(self):
         """Test that omitting kubectl_allowed_cidrs defaults to no external access."""
-        oke = OkeCluster(
-            name="test-kubectl-none",
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            oke = OkeCluster(
+                name="test-kubectl-none",
+                compartment_id="ocid1.compartment.test",
+                vcn=self._make_vcn(),
+                kubernetes_version="v1.28.2",
+                node_pools=[_DEFAULT_POOL],
+            )
+        self.assertEqual(oke.kubectl_allowed_cidrs, [])
+
+    def test_kubectl_none_emits_warning(self):
+        """Test that omitting kubectl_allowed_cidrs emits a pulumi.warn()."""
+        with patch("pulumi.warn") as mock_warn:
+            OkeCluster(
+                name="test-kubectl-warn",
+                compartment_id="ocid1.compartment.test",
+                vcn=self._make_vcn(),
+                kubernetes_version="v1.28.2",
+                node_pools=[_DEFAULT_POOL],
+            )
+        mock_warn.assert_called_once()
+        message = mock_warn.call_args.args[0]
+        self.assertIn("kubectl_allowed_cidrs is not set", message)
+
+    def test_oke_rejects_vcn_ref_without_preexisting_rules(self):
+        """OkeCluster+VcnRef raises RuntimeError by design (rules must live in source stack)."""
+        # VcnRef models a VCN owned by another stack.  Its security lists are
+        # immutable from this stack's perspective, so any spell (including
+        # OkeCluster) that tries to add rules through VcnRef.add_security_list_rules
+        # triggers the documented RuntimeError guard.  The caller must deploy
+        # OkeCluster in the source stack first so the rules are written there.
+        vcn_ref = _make_vcn_ref()
+        with self.assertRaises(RuntimeError) as ctx:
+            OkeCluster(
+                name="test-vcnref",
+                compartment_id="ocid1.compartment.test",
+                vcn=vcn_ref,
+                kubernetes_version="v1.28.2",
+                node_pools=[_DEFAULT_POOL],
+                kubectl_allowed_cidrs=["10.0.0.0/8"],
+            )
+        self.assertIn("VcnRef", str(ctx.exception))
+
+    def test_export_publishes_expected_keys(self):
+        """Test that export() publishes the cluster-id and NSG-id outputs."""
+        oke = _make_cluster(self._make_vcn())
+
+        with patch("pulumi.export") as mock_export:
+            oke.export()
+
+        exported_keys = {call.args[0] for call in mock_export.call_args_list}
+        # Basic keys should always be present (kubeconfig only in real runs).
+        for key in (
+            "test_cluster_cluster_id",
+            "test_cluster_cluster_endpoint",
+            "test_cluster_kubernetes_version",
+            "test_cluster_lb_nsg_id",
+        ):
+            self.assertIn(key, exported_keys, f"export() must publish '{key}'")
+
+    def test_get_public_security_list_ids_returns_single_id(self):
+        """get_public_security_list_ids() returns a one-element list for live Vcn."""
+        oke = _make_cluster(self._make_vcn())
+        ids = oke.get_public_security_list_ids()
+        self.assertEqual(len(ids), 1, "Expected exactly one public security list id")
+
+    def test_get_private_security_list_ids_returns_single_id(self):
+        """get_private_security_list_ids() returns a one-element list for live Vcn."""
+        oke = _make_cluster(self._make_vcn())
+        ids = oke.get_private_security_list_ids()
+        self.assertEqual(len(ids), 1, "Expected exactly one private security list id")
+
+    def test_get_security_list_ids_empty_when_seclists_missing(self):
+        """Both accessors return [] when the underlying VCN exposes no security lists.
+
+        Simulates the VcnRef case where the source stack did not export
+        `public_security_list_id` / `private_security_list_id`: swap in a
+        VcnRef stub with `public_security_list = private_security_list = None`
+        on a live-constructed cluster and assert the accessors return `[]`.
+        """
+        # Start from a valid live-Vcn cluster so construction succeeds.
+        oke = _make_cluster(self._make_vcn())
+
+        # Replace the VCN handle with a VcnRef that reports no security-list
+        # OCIDs (mirrors a source stack that did not export them).
+        vcn_ref = VcnRef(
+            vcn_id="ocid1.vcn.test",
+            public_subnet_id="ocid1.subnet.public.test",
+            private_subnet_id="ocid1.subnet.private.test",
+            public_subnet_cidr="10.0.48.0/21",
+            private_subnet_cidr="10.0.0.0/19",
+            cidr_block="10.0.0.0/18",
+            # No security-list OCIDs → accessors should yield [].
+        )
+        oke.vcn = vcn_ref
+
+        self.assertIsNone(vcn_ref.public_security_list)
+        self.assertIsNone(vcn_ref.private_security_list)
+        self.assertEqual(oke.get_public_security_list_ids(), [])
+        self.assertEqual(oke.get_private_security_list_ids(), [])
+
+
+class TestOkeClusterEnhanced(unittest.TestCase):
+    """Test cases for OkeClusterEnhanced (enhanced cluster variant)."""
+
+    def _make_vcn(self) -> Vcn:
+        """Create a fresh VCN for each test to prevent shared mutable state."""
+        return Vcn(
+            name="oke-enh-test-vcn",
+            compartment_id="ocid1.compartment.test",
+        )
+
+    @pulumi.runtime.test
+    def test_enhanced_cluster_created(self):
+        """Test that OkeClusterEnhanced constructs and exposes a cluster."""
+        oke = OkeClusterEnhanced(
+            name="test-enhanced",
             compartment_id="ocid1.compartment.test",
             vcn=self._make_vcn(),
             kubernetes_version="v1.28.2",
             node_pools=[_DEFAULT_POOL],
+            kubectl_allowed_cidrs=["10.0.0.0/8"],
         )
-        self.assertEqual(oke.kubectl_allowed_cidrs, [])
+        self.assertIsNotNone(oke.cluster)
+
+        def check_cluster(cluster_id):
+            self.assertIsNotNone(cluster_id, "Enhanced OKE cluster must be created")
+
+        return oke.cluster.id.apply(check_cluster)
+
+    def test_enhanced_cluster_type_is_enhanced(self):
+        """OkeClusterEnhanced sets _CLUSTER_TYPE='ENHANCED_CLUSTER'."""
+        self.assertEqual(OkeClusterEnhanced._CLUSTER_TYPE, "ENHANCED_CLUSTER")
+        self.assertEqual(OkeCluster._CLUSTER_TYPE, "BASIC_CLUSTER")
 
 
 if __name__ == "__main__":

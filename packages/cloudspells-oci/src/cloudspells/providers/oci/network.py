@@ -1,9 +1,8 @@
 """OCI VCN (Virtual Cloud Network) provider implementation.
 
-This module is the canonical implementation of
-`AbstractNetwork` for Oracle Cloud
-Infrastructure.  It provides `Vcn`, which creates a complete OCI
-network topology using a lazy initialisation (builder) pattern:
+This module is the canonical `AbstractNetwork` implementation for Oracle Cloud
+Infrastructure. It provides `Vcn`, which creates a complete OCI network
+topology using a lazy initialisation (builder) pattern:
 
 1. Construct the `Vcn` object — the VCN, gateways, and route tables are
    created immediately.
@@ -68,6 +67,8 @@ from cloudspells.core.abstractions.network import (
     SecurityRules,
 )
 from cloudspells.core.base import BaseResource
+
+from ._oci_utils import get_svc_cidr as _get_svc_cidr
 
 # Maps cloud-neutral protocol names to OCI protocol numbers.
 _PROTOCOL_MAP: dict[str, str] = {
@@ -522,7 +523,7 @@ class Vcn(BaseResource, AbstractNetwork):
             ),
         ])
 
-        # Resolve the OCI "All Services" bundle lazily via get_services_output()
+        # Resolve the OCI "All Services" bundle lazily via _get_svc_cidr()
         # so no blocking API call is made during __init__.  Both values are
         # pulumi.Output[str] and are accepted wherever pulumi.Input[str] is
         # expected (ServiceGateway, route rules, security-rule translation).
@@ -530,9 +531,7 @@ class Vcn(BaseResource, AbstractNetwork):
         self._svc_service_id: pulumi.Output[str] = all_services.services.apply(
             lambda svcs: next(s.id for s in svcs if s.cidr_block.startswith("all-"))
         )
-        self._svc_cidr_block: pulumi.Output[str] = all_services.services.apply(
-            lambda svcs: next(s.cidr_block for s in svcs if s.cidr_block.startswith("all-"))
-        )
+        self._svc_cidr_block: pulumi.Output[str] = _get_svc_cidr()
 
         # Create base infrastructure (NOT security lists or subnets yet).
         self._create_vcn()

@@ -210,7 +210,11 @@ class OCIMocks(pulumi.runtime.Mocks):
                 [],
             )
 
-        # Mock get_availability_domains
+        # Mock get_availability_domains — Pulumi's SDK deserialises these dicts
+        # into typed objects where `ad.name` is accessible.  Returning
+        # `SimpleNamespace` here breaks the mock RPC serializer, so the mock
+        # must stay as plain dicts; production code reads `ad.name` on the
+        # deserialised typed object.
         if args.token == "oci:Identity/getAvailabilityDomains:getAvailabilityDomains":
             return (
                 {

@@ -1,17 +1,18 @@
 """Pulumi Automation API workspace factory.
 
-Provides `get_stack`, the single entry point used by all operation commands
-(`up`, `destroy`, `output`) to obtain a configured, plugin-ready Pulumi
-`Stack` backed by a file-based program in `work_dir`.
+Provides `get_stack` and `get_workspace`, the entry points used by all
+operation commands to obtain a configured, plugin-ready Pulumi `Stack` or
+`LocalWorkspace` backed by a file-based program in `work_dir`.
 """
 
-__all__ = ["get_stack"]
+__all__ = ["get_stack", "get_workspace"]
 
 from pathlib import Path
 from typing import Any
 
 from pulumi.automation import (
     CommandError,
+    LocalWorkspace,
     LocalWorkspaceOptions,
     Stack,
     create_or_select_stack,
@@ -19,6 +20,28 @@ from pulumi.automation import (
 
 #: OCI Pulumi resource plugin version to install when not already present.
 _OCI_PLUGIN_VERSION = "v3.9.0"
+
+
+def get_workspace(
+    work_dir: Path,
+    env_vars: dict[str, str] | None = None,
+) -> LocalWorkspace:
+    """Return a bare `LocalWorkspace` for `work_dir` without selecting a stack.
+
+    Useful for operations that operate at the workspace level rather than a
+    specific stack, such as listing stacks (`workspace.list_stacks()`).
+
+    Args:
+        work_dir: Path to the project directory containing `Pulumi.yaml`.
+        env_vars: Optional environment variables to inject into every Pulumi
+            command executed by the workspace.
+
+    Returns:
+        Configured `LocalWorkspace` with the OCI plugin ensured.
+    """
+    ws = LocalWorkspace(work_dir=str(work_dir), env_vars=env_vars or {})
+    _ensure_oci_plugin(ws)
+    return ws
 
 
 def get_stack(

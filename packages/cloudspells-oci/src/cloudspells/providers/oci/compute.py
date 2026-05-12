@@ -76,7 +76,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
             `SUBNET_PUBLIC`, `SUBNET_SECURE`, or `SUBNET_MANAGEMENT`).
             Resolved from `nsg.role.subnet_tier` when `nsg=` is supplied.
         nsg_ids: List of NSG OCIDs attached to the primary VNIC, or an
-            empty list when no NSGs are used.
+            empty list when no `nsg` was supplied.
         auto_generated_keys: `True` when SSH keys were auto-generated.
         fault_domain: Fault domain the instance is placed in, or `None`
             when OCI auto-assigns (default spread behaviour).
@@ -163,7 +163,6 @@ class ComputeInstance(BaseResource, AbstractCompute):
         subnet: SubnetTier = SUBNET_PRIVATE,
         boot_volume_size_in_gbs: pulumi.Input[int] = 50,
         volumes: Sequence[VolumeSpec] | None = None,
-        nsg_ids: list[pulumi.Input[str]] | None = None,
         nsg: Nsg | None = None,
         user_data: str | bytes | None = None,
         fault_domain: str | None = None,
@@ -190,6 +189,12 @@ class ComputeInstance(BaseResource, AbstractCompute):
                 explicit OCID — CloudSpells does not perform
                 auto-discovery.  Obtain the OCID from the OCI Console or
                 CLI and commit it to your Pulumi stack config.
+
+                No default is provided because platform image OCIDs are
+                region-specific.  Callers should source this from
+                `oci.core.get_images_output()` outside the spell or from
+                a stack config value.  Embedding a hardcoded OCID is an
+                anti-pattern.
             availability_domain: OCI Availability Domain name for the
                 instance and its block volumes
                 (e.g. `"IqDk:US-ASHBURN-AD-1"`).  When `None` (default),
@@ -211,16 +216,13 @@ class ComputeInstance(BaseResource, AbstractCompute):
                 balanced-performance data volume (`VolumeSpec(size_in_gbs=100)`).
                 Pass an explicit list to override; an empty list raises
                 `ValueError`.
-            nsg_ids: List of Network Security Group OCIDs to attach to the
-                instance VNIC.  When `None`, no NSGs are attached and
-                security is enforced by the subnet security list alone.
-                Provide NSG OCIDs (e.g. from `Nsg`) to add a second,
-                resource-level security layer.
-            nsg: Shorthand for single-NSG deployments.  When supplied, sets
-                `nsg_ids=[nsg.id]` and, if the NSG carries a `Role`, also
-                infers `subnet` from `nsg.role.subnet_tier`.  Takes
-                precedence over `subnet` and `nsg_ids` when both are
-                provided.
+            nsg: Network Security Group to attach to the instance VNIC.
+                When `None` (default), no NSG is attached and security is
+                enforced by the subnet security list alone.  When supplied,
+                the NSG's OCID is attached to the VNIC and, if the NSG
+                carries a `Role`, `subnet` is inferred from
+                `nsg.role.subnet_tier` (overriding any explicit `subnet=`
+                value).
             user_data: Cloud-init script as a plain `str` or `bytes`.
                 CloudSpells base64-encodes it before passing to OCI.  When
                 `None`, no user data is injected.
@@ -248,13 +250,11 @@ class ComputeInstance(BaseResource, AbstractCompute):
         """
         super().__init__("custom:compute:Instance", name, compartment_id, stack_name, opts)
 
-        # Resolve nsg= shorthand: infer subnet from role and expand nsg_ids.
+        # Resolve nsg= shorthand: infer subnet from role.
         # This block runs after super().__init__ so the Pulumi component context
         # is active before any resource-related attributes are accessed.
-        if nsg is not None:
-            if nsg.role is not None:
-                subnet = nsg.role.subnet_tier
-            nsg_ids = [nsg.id]
+        if nsg is not None and nsg.role is not None:
+            subnet = nsg.role.subnet_tier
 
         self.vcn = vcn
         self.shape = shape
@@ -291,7 +291,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
                 f"VolumeSpec labels must be unique within the list; duplicates found: {sorted(duplicates)}"
             )
 
-        self.nsg_ids = nsg_ids or []
+        self.nsg_ids = [nsg.id] if nsg is not None else []
 
         # SSH key setup
         self._setup_ssh_keys(ssh_public_key)
@@ -306,6 +306,10 @@ class ComputeInstance(BaseResource, AbstractCompute):
         self.vcn.finalize_network()
 
         self._assert_subnets_ready()
+        assert self.vcn.public_subnet is not None
+        assert self.vcn.private_subnet is not None
+        assert self.vcn.secure_subnet is not None
+        assert self.vcn.management_subnet is not None
 
         # ---- Encode cloud-init user data --------------------------------
         encoded_user_data: str | None = None
@@ -326,7 +330,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
             compartment_id=self.compartment_id,
             shape=self.shape,
             display_name=instance_name,
-            fault_domain=fault_domain,
+            fault_domain=self.fault_domain,
             source_details=oci.core.InstanceSourceDetailsArgs(
                 source_type="image",
                 source_id=self.image_id,
@@ -338,7 +342,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
                 assign_public_ip="true" if self.subnet == SUBNET_PUBLIC else "false",
                 display_name=self.create_resource_name("vnic"),
                 nsg_ids=self.nsg_ids if self.nsg_ids else None,
-                hostname_label=hostname_label,
+                hostname_label=self.hostname_label,
                 skip_source_dest_check=False,
             ),
             metadata=instance_metadata,
@@ -380,13 +384,17 @@ class ComputeInstance(BaseResource, AbstractCompute):
 
     def _resolve_subnet_id(self) -> pulumi.Input[str]:
         """Return the subnet OCID for the VNIC based on `self.subnet`."""
+        assert self.vcn.public_subnet is not None
+        assert self.vcn.private_subnet is not None
+        assert self.vcn.secure_subnet is not None
+        assert self.vcn.management_subnet is not None
         if self.subnet == SUBNET_PUBLIC:
-            return self.vcn.public_subnet.id  # type: ignore[union-attr]  # narrowed by _assert_subnets_ready guarantee
+            return self.vcn.public_subnet.id
         if self.subnet == SUBNET_SECURE:
-            return self.vcn.secure_subnet.id  # type: ignore[union-attr]  # narrowed by _assert_subnets_ready guarantee
+            return self.vcn.secure_subnet.id
         if self.subnet == SUBNET_MANAGEMENT:
-            return self.vcn.management_subnet.id  # type: ignore[union-attr]  # narrowed by _assert_subnets_ready guarantee
-        return self.vcn.private_subnet.id  # type: ignore[union-attr]  # narrowed by _assert_subnets_ready guarantee
+            return self.vcn.management_subnet.id
+        return self.vcn.private_subnet.id
 
     def _attach_block_volumes(
         self,
@@ -432,7 +440,11 @@ class ComputeInstance(BaseResource, AbstractCompute):
                 display_name=att_name,
                 is_read_only=spec.is_read_only,
                 device=spec.device,
-                opts=pulumi.ResourceOptions(parent=self, delete_before_replace=True),
+                opts=pulumi.ResourceOptions(
+                    parent=self,
+                    delete_before_replace=True,
+                    depends_on=[self.instance, vol],
+                ),
             )
             self.block_volumes.append(vol)
             self.volume_attachments.append(att)
@@ -585,7 +597,8 @@ class ComputeInstance(BaseResource, AbstractCompute):
         pulumi.export(f"{prefix}_fault_domain", self.instance.fault_domain)
         for spec, vol in zip(self.volumes_spec, self.block_volumes, strict=False):
             pulumi.export(f"{prefix}_{spec.label}_volume_id", vol.id)
-        pulumi.export(f"{prefix}_ssh_public_key", self.get_ssh_public_key())
+        ssh_key_val = pulumi.Output.secret(self.ssh_public_key) if self.auto_generated_keys else self.ssh_public_key
+        pulumi.export(f"{prefix}_ssh_public_key", ssh_key_val)
         if self.auto_generated_keys and self.ssh_private_key:
             pulumi.export(
                 f"{prefix}_ssh_private_key",
@@ -704,23 +717,6 @@ class ComputeInstance(BaseResource, AbstractCompute):
             List of `pulumi.Output[str]` resolving to each volume OCID.
         """
         return [vol.id for vol in self.block_volumes]
-
-    def get_ssh_public_key(self) -> str:
-        """Return the SSH public key installed on the instance.
-
-        Returns:
-            OpenSSH public key string (auto-generated or caller-supplied).
-        """
-        return self.ssh_public_key
-
-    def get_ssh_private_key(self) -> str | None:
-        """Return the SSH private key if it was auto-generated.
-
-        Returns:
-            PEM-encoded private key string when keys were auto-generated,
-            or `None` when the caller supplied their own public key.
-        """
-        return self.ssh_private_key
 
 
 __all__ = ["ComputeInstance"]

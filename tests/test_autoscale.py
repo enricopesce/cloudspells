@@ -312,6 +312,33 @@ class TestAutoscaleWorkload(unittest.TestCase):
         self.assertEqual(workload.load_balancer_config.min_bandwidth_mbps, 50)
         self.assertEqual(workload.load_balancer_config.max_bandwidth_mbps, 200)
 
+    def test_cloud_init_script_requires_shebang(self):
+        """Test that a non-empty cloud_init_script without a shebang raises ValueError."""
+        with self.assertRaises(ValueError) as ctx:
+            ScalableWorkload(
+                name="no-shebang-workload",
+                compartment_id="ocid1.compartment.test",
+                vcn=self._make_vcn(),
+                image_id="ocid1.image.oc1.phx.test",
+                ssh_public_key="ssh-rsa AAAAB3... test-key",
+                cloud_init_script="echo hello",
+            )
+
+        self.assertIn("shebang", str(ctx.exception))
+
+    def test_cloud_init_script_accepts_shebang(self):
+        """Test that a cloud_init_script starting with a shebang is accepted."""
+        workload = ScalableWorkload(
+            name="shebang-workload",
+            compartment_id="ocid1.compartment.test",
+            vcn=self._make_vcn(),
+            image_id="ocid1.image.oc1.phx.test",
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+            cloud_init_script="#!/bin/bash\necho hello\n",
+        )
+
+        self.assertIsNotNone(workload.cloud_init_script, "Encoded cloud-init script should be stored")
+
     def test_getter_methods(self):
         """Test ScalableWorkload getter methods."""
         workload = ScalableWorkload(

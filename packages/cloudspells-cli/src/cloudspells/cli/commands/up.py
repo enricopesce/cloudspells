@@ -6,15 +6,15 @@ the stack in a given directory without requiring the `pulumi` CLI on PATH.
 
 __all__ = ["up"]
 
-from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated
 
 import typer
 from cloudspells.cli.automation.passphrase import resolve_passphrase
 from cloudspells.cli.automation.streaming import make_on_output
 from cloudspells.cli.automation.workspace import get_stack
 from cloudspells.cli.console import console
+from cloudspells.cli.theme import fmt_changes, fmt_result
 
 
 def up(
@@ -45,8 +45,8 @@ def up(
     work_dir = (path or Path(".")).resolve()
 
     if not (work_dir / "Pulumi.yaml").exists():
-        console.print(f"[red]Error:[/red] No Pulumi.yaml found in {work_dir}")
-        console.print("  Run 'cs new <spell> <name>' to scaffold a new stack.")
+        console.print(f"[bold red]✗[/bold red] No Pulumi.yaml found in {work_dir}")
+        console.print("  Run [bold]cs new <template> <name>[/bold] to scaffold a stack.")
         raise typer.Exit(1)
 
     env_vars = resolve_passphrase()
@@ -54,48 +54,29 @@ def up(
     try:
         stack_obj = get_stack(stack, work_dir, env_vars)
     except CommandError as exc:
-        console.print(f"[red]Error:[/red] Failed to initialise stack: {exc}")
+        console.print(f"[bold red]✗[/bold red] Failed to initialise stack: {exc}")
         raise typer.Exit(1) from exc
 
     cb = make_on_output(console)
 
     if preview:
-        console.print(f"[bold]Previewing stack '{stack}' in {work_dir}...[/bold]")
+        console.rule(f"[bold cyan]Preview[/bold cyan] [dim]{work_dir.name} / {stack}[/dim]", style="cyan dim")
         try:
             result = stack_obj.preview(on_output=cb)
         except CommandError as exc:
-            console.print(f"[red]Error:[/red] Preview failed: {exc}")
+            console.print(f"[bold red]✗[/bold red] Preview failed: {exc}")
             raise typer.Exit(1) from exc
         changes = result.change_summary or {}
-        console.print(f"\n[bold]Summary:[/bold] {_format_changes(changes)}")
+        console.print(f"\n[bold]Changes:[/bold] {fmt_changes(changes)}")
     else:
         if not yes:
             typer.confirm(f"Deploy stack '{stack}' in {work_dir}?", abort=True)
-        console.print(f"[bold]Deploying stack '{stack}' in {work_dir}...[/bold]")
+        console.rule(f"[bold cyan]Deploying[/bold cyan] [dim]{work_dir.name} / {stack}[/dim]", style="cyan dim")
         try:
             up_result = stack_obj.up(on_output=cb)
         except CommandError as exc:
-            console.print(f"[red]Error:[/red] Deployment failed: {exc}")
+            console.print(f"[bold red]✗[/bold red] Deployment failed: {exc}")
             raise typer.Exit(1) from exc
         changes = up_result.summary.resource_changes or {}
-        console.print(f"\n[bold]Result:[/bold] {up_result.summary.result}")
-        console.print(f"[bold]Changes:[/bold] {_format_changes(changes)}")
-
-
-def _format_changes(changes: Mapping[Any, int]) -> str:
-    """Format a resource-changes dict as a compact coloured summary string.
-
-    Args:
-        changes: Mapping of change symbol (`"+"`, `"~"`, `"-"`, `"="`) to
-            the count of affected resources.
-
-    Returns:
-        Space-separated Rich markup string (e.g. `"[green]+3[/green] [red]-1[/red]"`),
-        or `"no changes"` when the dict is empty or all counts are zero.
-    """
-    parts = []
-    for sym, color in (("+", "green"), ("~", "yellow"), ("-", "red"), ("=", "dim")):
-        count = int(changes.get(sym, 0))  # type: ignore[arg-type]
-        if count:
-            parts.append(f"[{color}]{sym}{count}[/{color}]")
-    return " ".join(parts) if parts else "no changes"
+        console.print(f"\n[bold]Result:[/bold] {fmt_result(up_result.summary.result)}")
+        console.print(f"[bold]Changes:[/bold] {fmt_changes(changes)}")

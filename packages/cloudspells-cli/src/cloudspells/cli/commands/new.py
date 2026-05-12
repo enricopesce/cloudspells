@@ -22,11 +22,16 @@ def new(
     stack: Annotated[str, typer.Option(help="Pulumi stack name to initialise.")] = "dev",
     force: Annotated[bool, typer.Option("--force", help="Overwrite existing directory.")] = False,
     list_flag: Annotated[bool, typer.Option("--list", help="List available spell templates and exit.")] = False,
+    backend: Annotated[str | None, typer.Option("--backend", help="Pulumi backend URL for remote state.")] = None,
 ) -> None:
     """Scaffold a new CloudSpells stack from a spell template.
 
     Creates a `<NAME>/` directory containing `Pulumi.yaml` and
     `__main__.py` ready to configure and deploy.
+
+    Pass `--backend` to store stack state in a remote backend instead of
+    the local filesystem.  Use `cs backend oci-url` to generate an OCI
+    Object Storage backend URL.
 
     Raises:
         typer.Exit: On `--list`, on missing/unknown arguments, or when the
@@ -37,12 +42,20 @@ def new(
 
         cs new oke my-cluster --stack prod
 
+        cs new vcn my-network --backend "s3://my-bucket?endpoint=..."
+
         cs new --list
     """
     if list_flag:
-        console.print("[bold]Available spell templates:[/bold]")
+        from cloudspells.cli.theme import SPELL_LORE
+
+        console.print("[bold cyan]Available templates[/bold cyan]\n")
         for s in list_spells():
-            console.print(f"  {s}")
+            lore = SPELL_LORE.get(s)
+            if lore:
+                console.print(f"  {lore['glyph']}  [bold cyan]{s}[/bold cyan]  [dim]{lore['lore']}[/dim]")
+            else:
+                console.print(f"  📦  [bold cyan]{s}[/bold cyan]")
         raise typer.Exit()
 
     if spell is None or name is None:
@@ -68,11 +81,29 @@ def new(
     for filename, content in files.items():
         (out_dir / filename).write_text(content)
 
+    if backend:
+        _inject_backend_url(out_dir / "Pulumi.yaml", backend)
+
     console.print(f"[green]✓[/green] Created {name}/Pulumi.yaml")
     console.print(f"[green]✓[/green] Created {name}/__main__.py")
+    if backend:
+        console.print(f"[green]✓[/green] Backend: {backend}")
     console.print()
     console.print("[bold]Next steps:[/bold]")
     console.print(f"  cd {name}")
     console.print("  cs config set compartment_ocid <OCID>")
     console.print("  cs up --preview")
     console.print("  cs up")
+
+
+def _inject_backend_url(yaml_path: Path, url: str) -> None:
+    """Insert a `backend.url` block into an existing `Pulumi.yaml`.
+
+    Args:
+        yaml_path: Path to the `Pulumi.yaml` to modify in-place.
+        url: Pulumi backend URL string.
+    """
+    text = yaml_path.read_text()
+    block = f"backend:\n  url: {url}\n"
+    text = text.replace("config:", f"{block}config:", 1) if "config:" in text else text.rstrip("\n") + f"\n{block}"
+    yaml_path.write_text(text)

@@ -91,7 +91,7 @@ class Bastion(BaseResource, AbstractBastion):
             name="mgmt",
             compartment_id=comp_id,
             vcn=vcn,
-            allowed_client_cidrs=["203.0.113.0/24"],
+            allowed_client_cidrs=["203.0.113.0/24"],  # always required
         )
 
         pulumi.export("bastion_endpoint", bastion.get_bastion_endpoint())
@@ -120,15 +120,19 @@ class Bastion(BaseResource, AbstractBastion):
             vcn: `Vcn` or `VcnRef` instance whose private subnet the Bastion
                 will be attached to.
             allowed_client_cidrs: List of IPv4 CIDR blocks from which
-                Bastion session creation is permitted.  Defaults to
-                `["0.0.0.0/0"]` (unrestricted).  Supply at least one
-                specific CIDR (e.g. `["203.0.113.0/24"]`) in production
-                environments to restrict which clients may open sessions.
+                Bastion session creation is permitted.  Must be provided
+                explicitly — passing `None` raises `ValueError`.  To
+                permit all source IPs pass `["0.0.0.0/0"]`; in production
+                environments supply a specific CIDR (e.g.
+                `["203.0.113.0/24"]`).
             stack_name: Pulumi stack name.  Defaults to
                 `pulumi.get_stack()` when `None`.
             opts: Pulumi resource options forwarded to the component.
 
         Raises:
+            ValueError: If `allowed_client_cidrs` is `None`.  Always provide
+                the list explicitly; pass `["0.0.0.0/0"]` to permit all
+                source IPs when unrestricted access is intentional.
             RuntimeError: If the VCN network has already been finalised by
                 another spell (e.g. `ComputeInstance`, `ScalableWorkload`,
                 `OkeCluster`) and the Bastion SSH ingress rule was not
@@ -140,11 +144,10 @@ class Bastion(BaseResource, AbstractBastion):
         self.vcn = vcn
 
         if allowed_client_cidrs is None:
-            allowed_client_cidrs = ["0.0.0.0/0"]
-            pulumi.warn(
-                f"Bastion '{name}': allowed_client_cidrs defaults to ['0.0.0.0/0'] — "
-                "any client may create sessions.  Supply a specific CIDR list in "
-                "production environments (e.g. allowed_client_cidrs=['203.0.113.0/24'])."
+            raise ValueError(
+                f"Bastion '{name}': allowed_client_cidrs must be provided explicitly. "
+                "To permit all source IPs (not recommended for production), pass "
+                "allowed_client_cidrs=['0.0.0.0/0']."
             )
 
         # Register the Bastion SSH rule before finalising.  OCI Bastion sessions

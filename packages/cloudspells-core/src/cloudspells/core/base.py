@@ -310,6 +310,29 @@ class BaseResource(pulumi.ComponentResource):
                 outputs["ssh_private_key"] = pulumi.Output.secret(self.ssh_private_key)
         return outputs
 
+    def get_ssh_public_key(self) -> str:
+        """Return the SSH public key associated with this resource.
+
+        Available on any spell that invokes `_setup_ssh_keys` during
+        construction (e.g. `ComputeInstance`, `ScalableWorkload`).
+
+        Returns:
+            OpenSSH public key string (auto-generated or caller-supplied).
+        """
+        return self.ssh_public_key
+
+    def get_ssh_private_key(self) -> str | None:
+        """Return the SSH private key if it was auto-generated.
+
+        Available on any spell that invokes `_setup_ssh_keys` during
+        construction (e.g. `ComputeInstance`, `ScalableWorkload`).
+
+        Returns:
+            PEM-encoded private key string when keys were auto-generated,
+            or `None` when the caller supplied their own public key.
+        """
+        return self.ssh_private_key
+
     # ------------------------------------------------------------------
     # Resource introspection
     # ------------------------------------------------------------------

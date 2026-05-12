@@ -14,9 +14,12 @@ fully-implemented provider.
   add rules with `Nsg.add_rule`, then attach to resources via `nsg_ids`.
 - `VcnFlowLogs`: Enables VCN Flow Logs for all four subnet tiers under a
   dedicated Log Group. Opt-in via `flow_logs=True` on `Vcn`.
-- `OkeCluster`: Oracle Kubernetes Engine cluster (BASIC or ENHANCED) with
-  OCI_VCN_IP_NATIVE CNI, fixed pod/service CIDRs, and nodes spread across
-  all availability domains.
+- `OkeCluster`: Oracle Kubernetes Engine BASIC cluster with OCI_VCN_IP_NATIVE
+  CNI, fixed pod/service CIDRs, and nodes spread across all availability
+  domains.
+- `OkeClusterEnhanced`: Oracle Kubernetes Engine ENHANCED cluster — adds OCI
+  Workload Identity, cluster add-on lifecycle management, and OCI DevOps
+  integration on top of `OkeCluster`.
 - `ComputeInstance`: OCI VM with auto-generated SSH keys and optional
   attached block volumes.
 - `Bastion`: OCI Bastion Service endpoint in the private subnet.
@@ -98,7 +101,7 @@ from .autoscale import (
 from .bastion import Bastion
 from .compute import ComputeInstance
 from .iam import CompartmentAdminGroup, ComputeInstancePrincipal, OkeNodePrincipal
-from .kubernetes import NodePoolConfig, OkeCluster
+from .kubernetes import NodePoolConfig, OkeCluster, OkeClusterEnhanced
 from .loadbalancer import InternalLoadBalancer, LoadBalancer
 from .network import (
     SUBNET_MANAGEMENT,
@@ -163,6 +166,7 @@ __all__ = [
     "VcnFlowLogs",
     # Kubernetes
     "OkeCluster",
+    "OkeClusterEnhanced",
     "NodePoolConfig",
     # Compute
     "ComputeInstance",

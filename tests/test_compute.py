@@ -737,7 +737,7 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
 
     @pulumi.runtime.test
     def test_old_api_unchanged(self):
-        """ComputeInstance with explicit subnet= and nsg_ids= still works."""
+        """ComputeInstance with explicit subnet= and nsg= still works."""
         from cloudspells.providers.oci.network import SUBNET_PRIVATE
         from cloudspells.providers.oci.nsg import Nsg
         from cloudspells.providers.oci.roles import APP_SERVER
@@ -752,8 +752,9 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             subnet=SUBNET_PRIVATE,
-            nsg_ids=[web_nsg.id],
+            nsg=web_nsg,
         )
+        # APP_SERVER role is placed in private subnet — matches explicit subnet=.
         self.assertEqual(instance.subnet, "private")
         self.assertEqual(len(instance.nsg_ids), 1)
 

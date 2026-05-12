@@ -25,8 +25,10 @@ def get_ads(
     by the OKE node pool `placement_configs` argument.
 
     Args:
-        ads: List of availability domain dictionaries, each containing
-            at least a `"name"` key (e.g. `[{"name": "AD-1"}, ...]`).
+        ads: List of availability domain entries.  In production, the OCI SDK
+            deserialises these into typed objects where `ad.name` is an
+            attribute; in tests, plain dicts with a `"name"` key are returned.
+            Both access patterns (`getattr` and `.get`) are handled internally.
         subnet_id: Subnet OCID to assign to every placement entry.
 
     Returns:

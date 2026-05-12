@@ -59,6 +59,7 @@ def render(name: str, _stack: str) -> dict[str, str]:
             name="{name}",
             compartment_id=compartment_id,
             vcn=vcn,
+            allowed_client_cidrs=["0.0.0.0/0"],
         )
 
         vcn.export()

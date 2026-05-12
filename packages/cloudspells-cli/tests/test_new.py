@@ -66,3 +66,13 @@ def test_new_all_spell_types(runner, tmp_path) -> None:
             assert result.exit_code == 0, f"Spell '{spell}' failed: {result.output}"
             assert Path(safe_name, "Pulumi.yaml").exists()
             assert Path(safe_name, "__main__.py").exists()
+
+
+def test_new_backend_injects_backend_url(runner, tmp_path) -> None:
+    backend_url = "s3://my-bucket?endpoint=https://ns.compat.objectstorage.eu-frankfurt-1.oraclecloud.com"
+    with runner.isolated_filesystem(temp_dir=tmp_path):
+        result = runner.invoke(app, ["new", "vcn", "test-vcn", "--backend", backend_url])
+        assert result.exit_code == 0, result.output
+        yaml_text = Path("test-vcn/Pulumi.yaml").read_text()
+        assert "backend:" in yaml_text
+        assert backend_url in yaml_text

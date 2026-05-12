@@ -40,14 +40,11 @@ db_nsg.allow_from_nsg("ssh-in", web_nsg, SSH)
 db_nsg.allow_to_services("svc-out")
 
 # Attach the right NSG to each VM — same NSG shared across identical roles
-lb   = ComputeInstance("lb",    ..., nsg_ids=[lb_nsg.id])
-web1 = ComputeInstance("web-1", ..., nsg_ids=[web_nsg.id])
-web2 = ComputeInstance("web-2", ..., nsg_ids=[web_nsg.id])  # same NSG
-db1  = ComputeInstance("db-1",  ..., nsg_ids=[db_nsg.id])
-db2  = ComputeInstance("db-2",  ..., nsg_ids=[db_nsg.id])   # same NSG
-
-# A VM with two roles gets two NSGs
-combo = ComputeInstance("app", ..., nsg_ids=[web_nsg.id, db_nsg.id])
+lb   = ComputeInstance("lb",    ..., nsg=lb_nsg)
+web1 = ComputeInstance("web-1", ..., nsg=web_nsg)
+web2 = ComputeInstance("web-2", ..., nsg=web_nsg)  # same NSG
+db1  = ComputeInstance("db-1",  ..., nsg=db_nsg)
+db2  = ComputeInstance("db-2",  ..., nsg=db_nsg)   # same NSG
 ```
 
 Exports:
@@ -429,11 +426,11 @@ class Nsg(BaseResource):
                         tcp_options=tcp_port(5432))
 
         # Attach — same NSG shared by all VMs of the same role
-        lb   = ComputeInstance("lb",    ..., nsg_ids=[lb_nsg.id])
-        web1 = ComputeInstance("web-1", ..., nsg_ids=[web_nsg.id])
-        web2 = ComputeInstance("web-2", ..., nsg_ids=[web_nsg.id])
-        db1  = ComputeInstance("db-1",  ..., nsg_ids=[db_nsg.id])
-        db2  = ComputeInstance("db-2",  ..., nsg_ids=[db_nsg.id])
+        lb   = ComputeInstance("lb",    ..., nsg=lb_nsg)
+        web1 = ComputeInstance("web-1", ..., nsg=web_nsg)
+        web2 = ComputeInstance("web-2", ..., nsg=web_nsg)
+        db1  = ComputeInstance("db-1",  ..., nsg=db_nsg)
+        db2  = ComputeInstance("db-2",  ..., nsg=db_nsg)
         ```
     """
 

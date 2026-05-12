@@ -3,8 +3,9 @@
 Provides `ScalableWorkload`, which creates a complete horizontally-scalable
 OCI compute tier with load balancing and autoscaling:
 
-- **OCI Load Balancer** (flexible shape) in the VCN's public subnet with HTTP
-  and optional HTTPS listeners.
+- **OCI Load Balancer** (flexible shape) — public-facing in the VCN's public
+  subnet by default, or internal in the private subnet when
+  `OciLoadBalancerConfig.is_public=False`.  HTTP and optional HTTPS listeners.
 - **Instance Configuration** as a launch template for pool instances.
 - **Instance Pool** in the VCN's private subnet, spread across all
   availability domains.
@@ -25,7 +26,7 @@ from __future__ import annotations
 
 import base64
 from dataclasses import dataclass
-from typing import Any
+from typing import cast
 
 import pulumi
 import pulumi_oci as oci
@@ -65,6 +66,12 @@ class OciLoadBalancerConfig(_BaseLoadBalancerConfig):
         health_check_path: HTTP path used for backend health checks.
             Default: `"/health"`.
         is_public: Whether the load balancer is assigned a public IP.
+            This also drives subnet placement and ingress-rule topology:
+            when `True` (default), the LB is placed in the VCN public
+            subnet and HTTP/HTTPS ingress is allowed from `0.0.0.0/0`;
+            when `False`, the LB is placed in the VCN private subnet and
+            HTTP/HTTPS ingress is only allowed from within the VCN CIDR —
+            no internet exposure.
             Default: `True`.
         min_bandwidth_mbps: Minimum bandwidth allocated to the OCI flexible
             load-balancer shape in Mbps.  OCI will not reduce below this value even
@@ -98,8 +105,10 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
     Creates a complete horizontally-scalable compute tier following OCI best
     practices:
 
-    - OCI Load Balancer (flexible shape) in the VCN public subnet —
-      internet-facing, with HTTP and optional HTTPS listeners.
+    - OCI Load Balancer (flexible shape) — public-facing in the VCN public
+      subnet by default, or internal in the private subnet when
+      `OciLoadBalancerConfig.is_public=False`.  HTTP and optional HTTPS
+      listeners.
     - Instance Configuration as the launch template for pool VMs.
     - Instance Pool in the VCN private subnet, spread across all
       availability domains.
@@ -119,7 +128,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         ssh_private_key: Corresponding private key, or `None` when the caller
             supplied their own public key.
         image_id: OCID of the boot image resolved for the pool instances.
-        user_data: Base64-encoded cloud-init user data string stored internally,
+        cloud_init_script: Base64-encoded cloud-init script stored internally,
             or `None`.  Pass a plain `str` or `bytes` to `__init__`; encoding
             is performed automatically.
         min_instances: Minimum (floor) number of instances for autoscaling.
@@ -167,7 +176,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
     ssh_public_key: str
     ssh_private_key: str | None
     image_id: pulumi.Input[str]
-    user_data: str | None
+    cloud_init_script: str | None
     min_instances: int
     max_instances: int
     initial_instances: int
@@ -196,9 +205,8 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         ocpus: pulumi.Input[float] = 1,
         memory_in_gbs: pulumi.Input[float] = 16,
         ssh_public_key: pulumi.Input[str] | None = None,
-        user_data: str | bytes | None = None,
+        cloud_init_script: str | bytes | None = None,
         boot_volume_size_in_gbs: pulumi.Input[int] = 50,
-        nsg_ids: list[pulumi.Input[str]] | None = None,
         # Pool configuration
         min_instances: int = 1,
         max_instances: int = 5,
@@ -207,7 +215,6 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         load_balancer_config: OciLoadBalancerConfig | None = None,
         # Scaling policy (metric OR schedule, not both); pass None to disable autoscaling
         scaling_policy: MetricScalingPolicy | ScheduleScalingPolicy | _UnsetType | None = _UNSET,
-        defined_tags: dict[str, Any] | None = None,
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
         """Create a scalable workload with load balancer, instance pool, and autoscaling.
@@ -232,16 +239,24 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             ssh_public_key: OpenSSH public key to install on instances.
                 When `None` or empty, a key pair is auto-generated and
                 exported as Pulumi secrets.
-            user_data: Cloud-init script as a plain `str` or `bytes`.
-                CloudSpells base64-encodes it before passing to OCI.  When
-                `None`, no user data is injected.
+            cloud_init_script: Cloud-init script as a plain `str` or `bytes`.
+                Must start with a shebang line (e.g. `#!/bin/bash`) when
+                provided as a non-empty `str`; CloudSpells validates this
+                and raises `ValueError` otherwise.  CloudSpells
+                base64-encodes the script before passing to OCI.  When
+                `None`, no cloud-init script is injected.  If the
+                configured `health_check_path` requires a running HTTP
+                server, the script must open the port matching
+                `OciLoadBalancerConfig.backend_port`.
+
+                Security:
+                    Callers must not embed secrets (API keys, passwords,
+                    tokens) in the cloud-init script — it is stored
+                    base64-encoded in OCI instance metadata and is
+                    readable by any user with access to the instance's
+                    metadata service or instance details.
             boot_volume_size_in_gbs: Boot volume size in GiB (default:
                 `50`).
-            nsg_ids: List of Network Security Group OCIDs to attach to each
-                pool instance VNIC.  When `None`, no NSGs are attached and
-                security is enforced by the subnet security list alone.
-                Provide NSG OCIDs (e.g. from `Nsg`) to add a second,
-                resource-level security layer on pool VMs.
             min_instances: Minimum number of instances in the pool
                 (default: `1`).
             max_instances: Maximum number of instances the autoscaler may
@@ -256,15 +271,13 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 (cron-based), or `None` to disable autoscaling entirely.
                 When omitted, defaults to `MetricScalingPolicy()`
                 (80% CPU scale-out).
-            defined_tags: OCI defined tags applied to the load balancer,
-                instance configuration, instance pool, and autoscaling
-                resources, in `{"namespace": {"key": "value"}}` format.
-                When `None` no defined tags are applied.
             opts: Pulumi resource options forwarded to the component.
 
         Raises:
             RuntimeError: If the VCN public or private subnet is absent after
                 `finalize_network()` completes.
+            ValueError: If `cloud_init_script` is a non-empty string that does
+                not start with a shebang line (e.g. `#!/bin/bash`).
 
         """
         super().__init__("custom:compute:ScalableWorkload", name, compartment_id, stack_name, opts)
@@ -282,20 +295,19 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         if scaling_policy is _UNSET:
             self.scaling_policy = MetricScalingPolicy()
         else:
-            self.scaling_policy = scaling_policy  # type: ignore[assignment]  # narrowed by identity check above
+            # cast: _UnsetType is exhausted by the isinstance guard above
+            self.scaling_policy = cast("MetricScalingPolicy | ScheduleScalingPolicy | None", scaling_policy)
         self.listeners = []
         self.autoscaling_configuration = None
-        # Propagate to all sub-resources
-        self._defined_tags = defined_tags
-        # Applied to pool VNIC in InstanceConfiguration
-        self._nsg_ids = nsg_ids or []
 
-        # base64-encode user_data; OCI metadata["user_data"] requires base64.
-        if user_data is not None:
-            raw: bytes = user_data.encode() if isinstance(user_data, str) else user_data
-            self.user_data = base64.b64encode(raw).decode()
+        # Validate + base64-encode cloud_init_script; OCI metadata["user_data"] requires base64.
+        if cloud_init_script is not None:
+            if isinstance(cloud_init_script, str) and cloud_init_script and not cloud_init_script.startswith("#!"):
+                raise ValueError("cloud_init_script must start with a shebang line (e.g. '#!/bin/bash')")
+            raw: bytes = cloud_init_script.encode() if isinstance(cloud_init_script, str) else cloud_init_script
+            self.cloud_init_script = base64.b64encode(raw).decode()
         else:
-            self.user_data = None
+            self.cloud_init_script = None
         # Handle SSH key - either use provided or auto-generate
         self._setup_ssh_keys(ssh_public_key)
 
@@ -334,109 +346,149 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
     def _add_scalable_workload_security_rules(self) -> None:
         """Add security rules for load balancer and instance pool communication.
 
-        Calls `Vcn.add_unique_security_list_rules` for HTTP and HTTPS public-ingress
-        rules (deduplicated against any `INTERNET_EDGE` NSG rules already registered),
-        then calls `Vcn.add_security_list_rules` for workload-specific LB-to-backend
-        and backend-ingress rules.  Summary of rules added:
+        The rule set depends on `OciLoadBalancerConfig.is_public`:
 
-        Public subnet (Load Balancer):
+        **Public load balancer** (`is_public=True`, default):
 
-        - Ingress: HTTP (80) and HTTPS (443) from internet (`0.0.0.0/0`).
-        - Egress: Backend port (`LoadBalancerConfig.backend_port`) to
-          private subnet CIDR.
+        - Public subnet ingress: HTTP (80) and HTTPS (443) from internet
+          (`0.0.0.0/0`).  Added via `Vcn.add_unique_security_list_rules` so
+          that if an `INTERNET_EDGE` NSG with HTTP/HTTPS is also present the
+          rules are deduplicated rather than appearing twice.
+        - Public subnet egress: Backend port
+          (`OciLoadBalancerConfig.backend_port`) to private subnet CIDR.
+        - Private subnet ingress: Backend port from public subnet CIDR
+          (load balancer health checks and forwarded traffic).
 
-        Private subnet (Instance Pool):
+        **Internal load balancer** (`is_public=False`):
 
-        - Ingress: Backend port from public subnet CIDR (load balancer
-          health checks and forwarded traffic).
-        - Egress to OCI services: not added here — the baseline VCN rules
-          already provide all-protocol egress to the OCI service CIDR for
-          every private-tier subnet.
+        - Private subnet ingress: HTTP (80) and HTTPS (443) from the VCN
+          CIDR block only — no internet exposure.  Since the load balancer
+          lives in the private subnet alongside the instance pool, a
+          single ingress rule on `backend_port` from the VCN CIDR also
+          covers LB-to-backend traffic.
 
-        Note:
-            SSH access to pool instances is not managed here.  Deploy a
-            `Bastion` spell alongside this workload to enable time-limited
-            SSH via the OCI Bastion Service.
+        Egress to OCI services is not added here — the baseline VCN rules
+        injected by `Vcn._inject_baseline_rules` already provide
+        all-protocol egress to the OCI service CIDR for every private-tier
+        subnet.
 
-            Must be called before `Vcn.finalize_network`.
+        **Note:** SSH access to pool instances is not managed here.  Deploy a
+        `Bastion` spell alongside this workload to enable time-limited
+        SSH via the OCI Bastion Service.
+
+        Must be called before `Vcn.finalize_network`.
         """
         backend_port = self.load_balancer_config.backend_port
+        is_public = self.load_balancer_config.is_public
 
         # Security list rules are only applicable when vcn is a live Vcn —
         # VcnRef is read-only and raises on any non-empty rule list.
         if isinstance(self.vcn, Vcn):
             public_subnet_cidr: pulumi.Input[str] = self.vcn.get_public_subnet_cidr()
             private_subnet_cidr: pulumi.Input[str] = self.vcn.get_private_subnet_cidr()
+            vcn_cidr: pulumi.Input[str] = self.vcn.cidr_block
 
-            # Public subnet ingress rules (Load Balancer) — use fingerprinted calls
-            # matching the Nsg INTERNET_EDGE convention so that if an INTERNET_EDGE
-            # NSG with HTTP/HTTPS ports is also present in the same VCN, the rules
-            # are deduplicated rather than appearing twice in the security list.
-            self.vcn.add_unique_security_list_rules(
-                "public-ingress-tcp-80",
-                public_ingress=[
-                    oci.core.SecurityListIngressSecurityRuleArgs(
-                        description="HTTP traffic from internet to load balancer",
-                        protocol="6",
-                        source="0.0.0.0/0",
-                        source_type="CIDR_BLOCK",
-                        tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                            min=80,
-                            max=80,
+            if is_public:
+                # Public subnet ingress rules (Load Balancer) — use fingerprinted calls
+                # matching the Nsg INTERNET_EDGE convention so that if an INTERNET_EDGE
+                # NSG with HTTP/HTTPS ports is also present in the same VCN, the rules
+                # are deduplicated rather than appearing twice in the security list.
+                self.vcn.add_unique_security_list_rules(
+                    "public-ingress-tcp-80",
+                    public_ingress=[
+                        oci.core.SecurityListIngressSecurityRuleArgs(
+                            description="HTTP traffic from internet to load balancer",
+                            protocol="6",
+                            source="0.0.0.0/0",
+                            source_type="CIDR_BLOCK",
+                            tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
+                                min=80,
+                                max=80,
+                            ),
                         ),
-                    ),
-                ],
-            )
-            self.vcn.add_unique_security_list_rules(
-                "public-ingress-tcp-443",
-                public_ingress=[
-                    oci.core.SecurityListIngressSecurityRuleArgs(
-                        description="HTTPS traffic from internet to load balancer",
-                        protocol="6",
-                        source="0.0.0.0/0",
-                        source_type="CIDR_BLOCK",
-                        tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                            min=443,
-                            max=443,
+                    ],
+                )
+                self.vcn.add_unique_security_list_rules(
+                    "public-ingress-tcp-443",
+                    public_ingress=[
+                        oci.core.SecurityListIngressSecurityRuleArgs(
+                            description="HTTPS traffic from internet to load balancer",
+                            protocol="6",
+                            source="0.0.0.0/0",
+                            source_type="CIDR_BLOCK",
+                            tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
+                                min=443,
+                                max=443,
+                            ),
                         ),
-                    ),
-                ],
-            )
+                    ],
+                )
 
-            # Workload-specific rules (LB ↔ backend port, instance egress to Oracle
-            # Services) — these are unique to this ScalableWorkload and do not
-            # overlap with any Nsg role rules.
-            self.vcn.add_security_list_rules(
-                public_egress=[
-                    oci.core.SecurityListEgressSecurityRuleArgs(
-                        description=f"Load balancer forwards traffic to backend instances on port {backend_port}",
-                        protocol="6",
-                        destination=private_subnet_cidr,
-                        destination_type="CIDR_BLOCK",
-                        tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                            min=backend_port,
-                            max=backend_port,
+                # Workload-specific rules (LB ↔ backend port).  Egress to OCI
+                # services is already covered by the baseline VCN rules.
+                self.vcn.add_security_list_rules(
+                    public_egress=[
+                        oci.core.SecurityListEgressSecurityRuleArgs(
+                            description=f"Load balancer forwards traffic to backend instances on port {backend_port}",
+                            protocol="6",
+                            destination=private_subnet_cidr,
+                            destination_type="CIDR_BLOCK",
+                            tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
+                                min=backend_port,
+                                max=backend_port,
+                            ),
                         ),
-                    ),
-                ],
-                private_ingress=[
-                    oci.core.SecurityListIngressSecurityRuleArgs(
-                        description=f"Traffic from load balancer to application on port {backend_port}",
-                        protocol="6",
-                        source=public_subnet_cidr,
-                        source_type="CIDR_BLOCK",
-                        tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                            min=backend_port,
-                            max=backend_port,
+                    ],
+                    private_ingress=[
+                        oci.core.SecurityListIngressSecurityRuleArgs(
+                            description=f"Traffic from load balancer to application on port {backend_port}",
+                            protocol="6",
+                            source=public_subnet_cidr,
+                            source_type="CIDR_BLOCK",
+                            tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
+                                min=backend_port,
+                                max=backend_port,
+                            ),
                         ),
-                    ),
-                ],
-                # No private_egress rule for OCI services needed here: the
-                # baseline VCN rules injected by Vcn._inject_baseline_rules
-                # already provide all-protocol egress to the OCI service CIDR
-                # for every private-tier subnet, making a narrower TCP-443 rule
-                # unreachable under OCI union semantics.
-            )
+                    ],
+                )
+            else:
+                # Internal LB — HTTP/HTTPS ingress from the VCN CIDR only, applied to
+                # the private subnet (where both the LB and backend pool reside).
+                self.vcn.add_security_list_rules(
+                    private_ingress=[
+                        oci.core.SecurityListIngressSecurityRuleArgs(
+                            description="HTTP traffic from VCN to internal load balancer",
+                            protocol="6",
+                            source=vcn_cidr,
+                            source_type="CIDR_BLOCK",
+                            tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
+                                min=80,
+                                max=80,
+                            ),
+                        ),
+                        oci.core.SecurityListIngressSecurityRuleArgs(
+                            description="HTTPS traffic from VCN to internal load balancer",
+                            protocol="6",
+                            source=vcn_cidr,
+                            source_type="CIDR_BLOCK",
+                            tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
+                                min=443,
+                                max=443,
+                            ),
+                        ),
+                        oci.core.SecurityListIngressSecurityRuleArgs(
+                            description=f"Traffic from VCN to application on port {backend_port}",
+                            protocol="6",
+                            source=vcn_cidr,
+                            source_type="CIDR_BLOCK",
+                            tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
+                                min=backend_port,
+                                max=backend_port,
+                            ),
+                        ),
+                    ],
+                )
 
     def _create_load_balancer(self) -> None:
         """Create the OCI Load Balancer, backend set, and HTTP/HTTPS listeners.
@@ -468,7 +520,6 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             subnet_ids=[self.vcn.get_public_subnet_id() if lb_config.is_public else self.vcn.get_private_subnet_id()],
             is_private=not lb_config.is_public,
             freeform_tags=self.create_freeform_tags(lb_name, "load-balancer"),
-            defined_tags=self._defined_tags,  # type: ignore[arg-type]  # OCI stub uses Input[Mapping[str,Input[str]]] but the OCI API accepts nested dicts at runtime
             opts=pulumi.ResourceOptions(parent=self),
         )
 
@@ -542,8 +593,8 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         metadata: dict[str, str] = {
             "ssh_authorized_keys": self.ssh_public_key,
         }
-        if self.user_data:
-            metadata["user_data"] = self.user_data
+        if self.cloud_init_script:
+            metadata["user_data"] = self.cloud_init_script
 
         self.instance_configuration = oci.core.InstanceConfiguration(
             ic_name,
@@ -566,10 +617,8 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                     create_vnic_details=oci.core.InstanceConfigurationInstanceDetailsLaunchDetailsCreateVnicDetailsArgs(
                         assign_public_ip=False,
                         subnet_id=self.vcn.get_private_subnet_id(),
-                        nsg_ids=self._nsg_ids if self._nsg_ids else None,
                     ),
                     metadata=metadata,
-                    defined_tags=self._defined_tags,  # type: ignore[arg-type]  # OCI stub uses Input[Mapping[str,Input[str]]] but the OCI API accepts nested dicts at runtime
                 ),
             ),
             freeform_tags=self.create_freeform_tags(ic_name, "instance-configuration"),
@@ -604,7 +653,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         ).apply(
             lambda args: [
                 oci.core.InstancePoolPlacementConfigurationArgs(
-                    availability_domain=getattr(ad, "name", None) or ad.get("name"),  # type: ignore[union-attr]  # handles typed objects (production) and dicts (test mocks)
+                    availability_domain=str(getattr(ad, "name", None) or ad.get("name")),
                     primary_subnet_id=args[1],
                 )
                 for ad in args[0]
@@ -627,8 +676,12 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 ),
             ],
             freeform_tags=self.create_freeform_tags(pool_name, "instance-pool"),
-            defined_tags=self._defined_tags,  # type: ignore[arg-type]  # OCI stub uses Input[Mapping[str,Input[str]]] but the OCI API accepts nested dicts at runtime
-            opts=pulumi.ResourceOptions(parent=self),
+            # OCI rejects pool attachment when the backend set or listeners are
+            # not yet live; pin ordering explicitly.
+            opts=pulumi.ResourceOptions(
+                parent=self,
+                depends_on=[self.backend_set, *self.listeners],
+            ),
         )
 
     def _create_autoscaling_configuration(self) -> None:
@@ -734,7 +787,6 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 ),
             ],
             freeform_tags=self.create_freeform_tags(asc_name, "autoscaling-configuration"),
-            defined_tags=self._defined_tags,  # type: ignore[arg-type]  # OCI stub uses Input[Mapping[str,Input[str]]] but the OCI API accepts nested dicts at runtime
             opts=pulumi.ResourceOptions(parent=self, delete_before_replace=True),
         )
 
@@ -814,7 +866,6 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             is_enabled=True,
             policies=policies,
             freeform_tags=self.create_freeform_tags(asc_name, "autoscaling-configuration"),
-            defined_tags=self._defined_tags,  # type: ignore[arg-type]  # OCI stub uses Input[Mapping[str,Input[str]]] but the OCI API accepts nested dicts at runtime
             opts=pulumi.ResourceOptions(parent=self, delete_before_replace=True),
         )
 
@@ -871,23 +922,6 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             `pulumi.Output[str]` resolving to the load balancer OCID.
         """
         return self.load_balancer.id
-
-    def get_ssh_public_key(self) -> str:
-        """Return the SSH public key installed on pool instances.
-
-        Returns:
-            OpenSSH public key string (auto-generated or caller-supplied).
-        """
-        return self.ssh_public_key
-
-    def get_ssh_private_key(self) -> str | None:
-        """Return the SSH private key if it was auto-generated.
-
-        Returns:
-            PEM-encoded private key string when keys were auto-generated,
-            or `None` when the caller supplied their own public key.
-        """
-        return self.ssh_private_key
 
 
 __all__ = [

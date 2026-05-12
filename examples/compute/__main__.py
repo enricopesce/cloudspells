@@ -75,8 +75,8 @@ web_nsg: Nsg = Nsg(
 
 # ── Step 3 — Compute instance ─────────────────────────────────────────────────
 #
-# nsg= infers subnet=SUBNET_PUBLIC from the INTERNET_EDGE role and sets
-# nsg_ids automatically — do not pass both nsg= and nsg_ids=.
+# nsg= infers subnet=SUBNET_PUBLIC from the INTERNET_EDGE role and attaches
+# the NSG OCID to the primary VNIC automatically.
 # availability_domain is auto-discovered (first AD); override via the
 # availability_domain= kwarg if needed.
 
