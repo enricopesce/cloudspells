@@ -1,6 +1,56 @@
 # Network Topology
 
-Every CloudSpells deployment is built on a fixed 4-tier VCN architecture. This page explains the topology, the CIDR sizing rationale, the routing policy per tier, and the security posture — and why none of it is configurable.
+Every CloudSpells deployment is built on a fixed 4-tier VCN architecture. This page explains why the topology is fixed, what that means for you as a caller, and how the tiers, CIDRs, and routing rules are structured.
+
+---
+
+## The problem
+
+Flexible network topology is the leading source of cloud security misconfigurations. When every team designs its own subnet structure, the result is a mix of flat networks with overly permissive security lists, missing NAT Gateway routes that get added ad hoc, secure resources placed in public subnets by accident, and management traffic co-mingled with application traffic. The number of choices involved — four subnet types, three gateway types, four route tables, two layers of security rules — means that even experienced engineers make mistakes under deadline pressure.
+
+The problem is not that engineers lack skill. The problem is that the network architecture decision gets made repeatedly — once per project, often by different people — when it should be made once and encoded as a reusable artifact.
+
+---
+
+## The CloudSpells solution
+
+CloudSpells encodes a single, opinionated 4-tier VCN architecture and makes it the only choice. You supply one value — the VCN CIDR — and the architecture is derived from it entirely. Subnet CIDRs, route table wiring, gateway placement, and baseline security rules are all computed and created for you.
+
+The architecture is based on Oracle's published OCI reference topology for production workloads, with four tiers that match the four principal security zones in a typical enterprise deployment: a public-facing zone, an application zone, a data zone, and a management zone. Each tier has exactly the network access it needs and no more.
+
+---
+
+## Mental model
+
+Four tiers, four levels of trust:
+
+```
+Internet
+   │
+   ▼  (public)      — receives inbound; Internet Gateway; load balancers and edge hosts
+   │
+   ▼  (private)     — initiates outbound; NAT + Service Gateway; app servers and K8s nodes
+   │
+   ▼  (secure)      — no internet at all; Service Gateway only; databases and secret stores
+   │
+   ▼  (management)  — OCI control-plane only; Service Gateway only; monitoring and bastion
+```
+
+Each tier is a CIDR slice of the VCN, sized by the expected IP demand for that tier's workloads (50 / 25 / 12.5 / 12.5 split). Each tier has its own route table with exactly one routing policy — there is no mixing of routing policies within a tier.
+
+The key constraint: **the secure tier has no default route**. A resource in the secure tier cannot initiate a connection to anything outside the VCN, including the internet. This is enforced at the routing layer, not by a security rule — no application misconfiguration can create an outbound internet path for a database.
+
+---
+
+## Practice implications
+
+**You do not choose where to put resources — the role does.** When you declare an NSG with `role=DATABASE`, CloudSpells places it in the secure tier automatically. You cannot put a database NSG in the public tier by passing a different subnet argument, because there is no subnet argument.
+
+**The secure tier is for resources that must never reach the internet.** If a workload needs to call an external API, it belongs in the private tier, not the secure tier. The secure tier's no-default-route policy is absolute.
+
+**IP capacity planning centres on the private tier.** With VCN-native CNI, every running Kubernetes pod consumes one IP from the private subnet. A cluster with 100 nodes and 30 pods per node needs roughly 3 100 IPs. Size your VCN CIDR accordingly — a `/16` gives the private tier a `/17` (32 766 usable IPs); a `/20` gives a `/21` (2 046 usable IPs).
+
+**You cannot add tiers or change the allocation ratios.** If you need a fifth tier or a different CIDR split, use raw `pulumi_oci` resources. CloudSpells is for deployments where the four-tier model fits — and for those deployments, the fixed topology means you cannot get the architecture wrong.
 
 ---
 

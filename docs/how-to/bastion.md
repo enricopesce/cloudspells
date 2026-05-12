@@ -191,7 +191,7 @@ instance.export()
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `allowed_client_cidrs` | `["0.0.0.0/0"]` | Source CIDRs allowed to create sessions |
+| `allowed_client_cidrs` | (required — no default; raises `ValueError` if omitted) | Source CIDRs allowed to create sessions |
 
 ---
 

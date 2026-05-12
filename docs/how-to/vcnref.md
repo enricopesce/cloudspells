@@ -1,5 +1,7 @@
 # How to Share a VCN Across Stacks
 
+Share a single VCN across multiple Pulumi stacks using `VcnRef`.
+
 By default, each CloudSpells stack owns its own VCN. For larger deployments you often want a single shared network managed by one stack — a **platform stack** — and multiple service stacks that deploy into it without recreating it.
 
 `VcnRef` is a read-only handle to a VCN owned by another stack. Every spell that accepts `Vcn` also accepts `VcnRef`, so service stacks need no changes when you split them.

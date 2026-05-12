@@ -17,6 +17,15 @@ Three gateways (Internet, NAT, Service), four route tables, four security lists,
 
 ---
 
+## Prerequisites
+
+- CloudSpells installed — see [Installation](installation.md)
+- Pulumi CLI installed — see [Installation](installation.md)
+- OCI credentials configured (`~/.oci/config` or environment variables)
+- An OCI compartment OCID where you have permission to create network resources
+
+---
+
 ## Step 1 — Find your compartment OCID
 
 In the OCI Console, navigate to **Identity & Security → Compartments** and copy the OCID of the compartment where you want to deploy.

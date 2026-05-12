@@ -23,7 +23,7 @@ Internet (HTTP port 80)
 
 **What gets created:** 1 VCN, 1 load balancer, 1 instance configuration, 1 instance pool, 1 autoscaling policy, security list rules for HTTP (80).
 
-> **Note:** An HTTPS listener and port 443 rules are only created when `ssl_certificate_name` is set in `OciLoadBalancerConfig`.
+> **Note:** An HTTPS listener and port 443 rules are only created when `ssl_certificate_name` is set in `OciLoadBalancerConfig`. See [Customising the load balancer](#customising-the-load-balancer) below for the full `OciLoadBalancerConfig` reference.
 
 ---
 
@@ -165,6 +165,47 @@ Key outputs:
 | Cooldown | — | 300 seconds between events |
 | Min instances | — | 1 |
 | Max instances | — | Set via `max_instances` |
+
+---
+
+## Customising the load balancer
+
+Pass an `OciLoadBalancerConfig` instance to control the LB port, health check path, SSL, bandwidth, and internal vs public placement:
+
+```python
+from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.autoscale import OciLoadBalancerConfig, ScalableWorkload
+
+vcn = Vcn(name="scalable", compartment_id=compartment_id)
+
+scalable_pool = ScalableWorkload(
+    name="web-pool",
+    compartment_id=compartment_id,
+    vcn=vcn,
+    image_id=config.require("image_ocid"),
+    user_data=user_data_script,
+    load_balancer_config=OciLoadBalancerConfig(
+        backend_port=8080,
+        health_check_path="/api/health",
+        ssl_certificate_name="my-cert",   # triggers HTTPS listener on port 443
+        min_bandwidth_mbps=100,
+        max_bandwidth_mbps=500,
+    ),
+)
+```
+
+`OciLoadBalancerConfig` parameters:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `backend_port` | `80` | Port on backend instances for traffic forwarding and health-check probes |
+| `health_check_path` | `"/health"` | HTTP path polled for backend health checks |
+| `is_public` | `True` | `True` places the LB in the public subnet (internet-facing); `False` places it in the private subnet (VCN-internal only) |
+| `min_bandwidth_mbps` | `10` | Minimum bandwidth allocated to the OCI flexible LB shape (Mbps) |
+| `max_bandwidth_mbps` | `100` | Maximum bandwidth the OCI flexible LB shape may burst to (Mbps) |
+| `ssl_certificate_name` | `None` | Name of a certificate already uploaded to the LB; when set, an HTTPS listener on port 443 is created alongside the HTTP listener |
+
+When `load_balancer_config` is omitted, `ScalableWorkload` uses `OciLoadBalancerConfig()` with all defaults — port 80, `/health` health check, public LB, HTTP only.
 
 ---
 

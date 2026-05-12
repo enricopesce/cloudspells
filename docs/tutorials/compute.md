@@ -107,9 +107,9 @@ The instance inherits its subnet from the NSG role: because `web_nsg` uses `INTE
 
 | Constant | VPUs/GB | Use case |
 |----------|---------|---------|
-| `VolumeSpec.PERF_LOW` | 10 | Low-cost archival / log storage |
-| `VolumeSpec.PERF_BALANCED` | 60 | General-purpose workloads (default) |
-| `VolumeSpec.PERF_HIGH` | 80 | Database and high-IOPS workloads |
+| `VolumeSpec.PERF_LOW` | 0 | Low-cost archival / log storage |
+| `VolumeSpec.PERF_BALANCED` | 10 | General-purpose workloads (default) |
+| `VolumeSpec.PERF_HIGH` | 20 | Database and high-IOPS workloads |
 | `VolumeSpec.PERF_ULTRA` | 120 | Latency-sensitive, highest-throughput workloads |
 
 `image_id` is a required parameter — pass the OCID of a boot image for the instance. Obtain it from the OCI Console or CLI and store it in Pulumi config.

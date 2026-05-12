@@ -66,11 +66,36 @@ A two-tier relationship (LB → app server) requires four NSG rules and potentia
 
 ## Port constants
 
-```python
-from cloudspells.providers.oci.nsg import SSH, HTTP, HTTPS, POSTGRES, MYSQL, ORACLE_DB, REDIS, KAFKA, NFS
+All 29 port constants exported from `cloudspells.providers.oci.nsg`:
 
-# SSH=22, HTTP=80, HTTPS=443, POSTGRES=5432, MYSQL=3306
-# ORACLE_DB=1521, REDIS=6379, KAFKA=9092, NFS=2049
+```python
+# Web / access
+from cloudspells.providers.oci.nsg import HTTP, HTTPS, HTTP_ALT, HTTPS_ALT, SSH, RDP
+# HTTP=80, HTTPS=443, HTTP_ALT=8080, HTTPS_ALT=8443, SSH=22, RDP=3389
+
+# Databases
+from cloudspells.providers.oci.nsg import MYSQL, POSTGRES, ORACLE_DB, MSSQL, CASSANDRA, MONGODB
+# MYSQL=3306, POSTGRES=5432, ORACLE_DB=1521, MSSQL=1433, CASSANDRA=9042, MONGODB=27017
+
+# Caching / messaging
+from cloudspells.providers.oci.nsg import REDIS, MEMCACHED, RABBITMQ, KAFKA
+# REDIS=6379, MEMCACHED=11211, RABBITMQ=5672, KAFKA=9092
+
+# File / directory
+from cloudspells.providers.oci.nsg import NFS, SMB, LDAP, LDAPS
+# NFS=2049, SMB=445, LDAP=389, LDAPS=636
+
+# Search / observability
+from cloudspells.providers.oci.nsg import ELASTICSEARCH
+# ELASTICSEARCH=9200
+
+# Mail
+from cloudspells.providers.oci.nsg import SMTP, SMTPS
+# SMTP=25, SMTPS=587
+
+# DNS
+from cloudspells.providers.oci.nsg import DNS
+# DNS=53
 ```
 
 Or construct a custom port:

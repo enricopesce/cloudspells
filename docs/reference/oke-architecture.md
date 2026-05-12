@@ -15,7 +15,7 @@ Complete technical reference for the `OkeCluster` spell. This page covers the cl
 | `oci.containerengine.Cluster` | 1 | `BASIC_CLUSTER` type |
 | `oci.containerengine.NodePool` | 1 | Spread across all ADs |
 | `oci.core.NetworkSecurityGroup` | 4 | api, lb, worker, pod |
-| `oci.core.NetworkSecurityGroupSecurityRule` | 32 | See NSG rules section |
+| `oci.core.NetworkSecurityGroupSecurityRule` | 34 | See NSG rules section |
 
 Security lists are not created by `OkeCluster` — rules are accumulated into the parent `Vcn` via `add_security_list_rules`, which creates them when `finalize_network` is called.
 
@@ -27,8 +27,8 @@ Security lists are not created by `OkeCluster` — rules are accumulated into th
 |---|---|---|
 | Cluster type | `BASIC_CLUSTER` | Enhanced cluster features not required for standard workloads |
 | CNI type | `OCI_VCN_IP_NATIVE` | Every pod gets a real VCN subnet IP |
-| Pod CIDR | `10.2.0.0/16` | Kubernetes virtual address space for pods (not routed in VCN). With VCN-native CNI, pod data-plane traffic uses real VCN subnet IPs; the Pod CIDR is a Kubernetes-internal virtual address space. |
-| Services CIDR | `10.3.0.0/16` | Kubernetes virtual address space for `ClusterIP` services |
+| Pod CIDR | `10.244.0.0/16` | Kubernetes virtual address space for pods (not routed in VCN). With VCN-native CNI, pod data-plane traffic uses real VCN subnet IPs; the Pod CIDR is a Kubernetes-internal virtual address space. |
+| Services CIDR | `10.96.0.0/16` | Kubernetes virtual address space for `ClusterIP` services |
 | API endpoint | Public subnet | Public IP enabled — reachable by `kubectl` over the internet on port 6443 |
 | API NSG | `api_nsg` | Only traffic matching `api_nsg` rules reaches the API server VNIC |
 
@@ -306,7 +306,7 @@ NSG rules use NSG OCIDs as source/destination (not CIDRs), providing VNIC-level 
 | TCP | `0.0.0.0/0` (CIDR) | 443 | Pods call external APIs and download dependencies via HTTPS |
 | TCP | `0.0.0.0/0` (CIDR) | 80 | Pods access HTTP endpoints and OCI pre-authenticated URLs |
 
-**Total NSG rules created:** 5 api_nsg + 4 lb_nsg + 6 worker_nsg ingress + 7 worker_nsg egress + 3 pod_nsg ingress + 7 pod_nsg egress = **32 rules** (the `_r` helper creates one `NetworkSecurityGroupSecurityRule` resource per rule).
+**Total NSG rules created:** 5 api_nsg ingress + 3 api_nsg egress + 2 lb_nsg ingress + 2 lb_nsg egress + 5 worker_nsg ingress + 7 worker_nsg egress + 3 pod_nsg ingress + 7 pod_nsg egress = **34 rules** (the `_r` helper creates one `NetworkSecurityGroupSecurityRule` resource per rule).
 
 ---
 
@@ -492,7 +492,7 @@ cluster = OkeCluster(
 cluster.export()
 ```
 
-This creates the complete stack: 1 VCN, 4 subnets, 3 gateways, 4 route tables, 4 security lists (with 19 rules), 4 NSGs (with 32 rules), 1 OKE cluster, 1 node pool.
+This creates the complete stack: 1 VCN, 4 subnets, 3 gateways, 4 route tables, 4 security lists (with 19 rules), 4 NSGs (with 34 rules), 1 OKE cluster, 1 node pool.
 
 ---
 

@@ -98,10 +98,9 @@ compartment_id = config.require("compartment_ocid")
 vcn = Vcn("prod", compartment_id=compartment_id)
 nsg = Nsg("app", role=APP_SERVER, vcn=vcn, compartment_id=compartment_id)
 
-# Flow logs must be declared BEFORE any spell that calls finalize_network()
-# if you want the flow logs to trigger finalization. However, VcnFlowLogs
-# calls finalize_network() itself, so ordering with other spells is safe
-# either way — finalize_network() is idempotent.
+# Declaration order relative to other spells does not matter.
+# VcnFlowLogs calls finalize_network() itself; subsequent calls from
+# other spells are no-ops because finalize_network() is idempotent.
 flow_logs = VcnFlowLogs(name="prod", vcn=vcn, retention_duration=180)
 
 instance = ComputeInstance(
