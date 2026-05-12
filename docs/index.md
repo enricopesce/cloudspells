@@ -39,6 +39,7 @@ vcn.export()
 | Understand the 4-tier network topology | [Concepts → Network Topology](concepts/network-topology.md) |
 | Deep-dive VCN architecture (CIDR math, routing, security lists, VcnRef) | [Reference → VCN Architecture](reference/vcn-architecture.md) |
 | Deep-dive OKE architecture (NSG rules, CNI, traffic flows, ports) | [Reference → OKE Architecture](reference/oke-architecture.md) |
+| Deploy a RAG AI agent | [How-to → Deploy a Generative AI RAG Agent](how-to/genai-agent-rag.md) |
 | Browse the full API | [API Reference → OCI Provider](api/providers/network.md) |
 
 ## Design principles

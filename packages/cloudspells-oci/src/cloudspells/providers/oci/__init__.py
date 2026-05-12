@@ -100,6 +100,7 @@ from .autoscale import (
 )
 from .bastion import Bastion
 from .compute import ComputeInstance
+from .genai_agent_rag import GenAiAgentRag
 from .iam import CompartmentAdminGroup, ComputeInstancePrincipal, OkeNodePrincipal
 from .kubernetes import NodePoolConfig, OkeCluster, OkeClusterEnhanced
 from .loadbalancer import InternalLoadBalancer, LoadBalancer
@@ -180,6 +181,8 @@ __all__ = [
     "CompartmentAdminGroup",
     "ComputeInstancePrincipal",
     "OkeNodePrincipal",
+    # Generative AI
+    "GenAiAgentRag",
     # Storage
     "ObjectStorageBucket",
     "BackupBucket",

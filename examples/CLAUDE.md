@@ -25,6 +25,7 @@ pulumi destroy   # tear down
 | `secure-vcn/` | `Vcn` (with `flow_logs=True`), `Nsg` ×4, `ComputeInstancePrincipal`, `CompartmentAdminGroup` | Flow logs, four-tier NSGs, management-tier SSH controls, zero-credential app tier via instance principal |
 | `loadbalancer/` | `Vcn`, `LoadBalancer` | Internet-facing HTTPS LB with TLS termination and HTTP→HTTPS redirect |
 | `storage/` | `BackupBucket`, `DataLakeBucket` | Object Storage retention patterns: versioned backup and tiered lifecycle |
+| `genai_agent_rag/` | `GenAiAgentRag` | Generative AI RAG pipeline: document bucket, knowledge base, agent, RAG tool, and endpoint |
 
 ## Config (Pulumi.\<stack\>.yaml)
 

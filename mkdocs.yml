@@ -47,6 +47,7 @@ nav:
     - Deploy a Load Balancer: how-to/loadbalancer.md
     - Use Object Storage Buckets: how-to/storage.md
     - Enable VCN Flow Logs: how-to/network-logging.md
+    - Deploy a Generative AI RAG Agent: how-to/genai-agent-rag.md
   - Concepts:
     - Design Philosophy: concepts/design.md
     - Network Topology: concepts/network-topology.md
@@ -80,3 +81,4 @@ nav:
       - api/providers/roles.md
       - api/providers/helper.md
       - api/providers/network_logging.md
+      - api/providers/genai_agent_rag.md

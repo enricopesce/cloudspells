@@ -41,6 +41,11 @@ Mocked resource types and their injected computed outputs:
 | `oci:Logging/log:Log` | `id` |
 | `oci:ContainerEngine/cluster:Cluster` | `id`, `endpoints`, `lifecycle_state` |
 | `oci:ContainerEngine/nodePool:NodePool` | `id`, `lifecycle_state` |
+| `oci:GenerativeAi/agentKnowledgeBase:AgentKnowledgeBase` | `id`, `state` |
+| `oci:GenerativeAi/agentDataSource:AgentDataSource` | `id`, `state` |
+| `oci:GenerativeAi/agentAgent:AgentAgent` | `id`, `state` |
+| `oci:GenerativeAi/agentTool:AgentTool` | `id`, `state` |
+| `oci:GenerativeAi/agentAgentEndpoint:AgentAgentEndpoint` | `id`, `state` |
 
 Mocked provider call tokens:
 
@@ -178,6 +183,17 @@ class OCIMocks(pulumi.runtime.Mocks):
         elif typ == "oci:ContainerEngine/nodePool:NodePool":
             outputs["id"] = f"{args.name}-id"
             outputs["lifecycleState"] = "ACTIVE"
+
+        # ── Generative AI ─────────────────────────────────────────────────────
+        elif typ in (
+            "oci:GenerativeAi/agentKnowledgeBase:AgentKnowledgeBase",
+            "oci:GenerativeAi/agentDataSource:AgentDataSource",
+            "oci:GenerativeAi/agentAgent:AgentAgent",
+            "oci:GenerativeAi/agentTool:AgentTool",
+            "oci:GenerativeAi/agentAgentEndpoint:AgentAgentEndpoint",
+        ):
+            outputs["id"] = f"{args.name}-id"
+            outputs["state"] = "ACTIVE"
 
     def call(self, args: pulumi.runtime.MockCallArgs) -> tuple[dict[Any, Any], list[tuple[str, str]]]:
         """Mock OCI provider function calls (invoke operations).
