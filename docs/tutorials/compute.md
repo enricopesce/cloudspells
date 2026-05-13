@@ -90,10 +90,9 @@ ssh_key = config.get("ssh_key")
 web_server = ComputeInstance(
     name="web-server",
     compartment_id=compartment_id,
-    vcn=vcn,
     image_id=config.require("image_ocid"),
-    ssh_public_key=ssh_key,
     nsg=web_nsg,
+    ssh_public_key=ssh_key,
     volumes=[
         VolumeSpec(size_in_gbs=100, label="data"),
         VolumeSpec(size_in_gbs=200, label="logs", vpus_per_gb=VolumeSpec.PERF_LOW),
@@ -101,7 +100,7 @@ web_server = ComputeInstance(
 )
 ```
 
-The instance inherits its subnet from the NSG role: because `web_nsg` uses `INTERNET_EDGE`, the instance is automatically placed in the public subnet. No subnet argument needed.
+The instance inherits its VCN and subnet from the NSG role: because `web_nsg` uses `INTERNET_EDGE`, the instance is automatically placed in the public subnet. No `vcn=` or `subnet=` argument is needed.
 
 `VolumeSpec` accepts a `vpus_per_gb` performance tier constant:
 
@@ -114,7 +113,7 @@ The instance inherits its subnet from the NSG role: because `web_nsg` uses `INTE
 
 `image_id` is a required parameter — pass the OCID of a boot image for the instance. Obtain it from the OCI Console or CLI and store it in Pulumi config.
 
-`ComputeInstance` calls `vcn.finalize_network()` automatically — security lists and subnets are materialised at this point.
+`ComputeInstance` finalizes the VCN carried by its NSG automatically — security lists and subnets are materialised at this point.
 
 ---
 

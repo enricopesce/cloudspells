@@ -4,6 +4,8 @@ Share a single VCN across multiple Pulumi stacks using `VcnRef`.
 
 By default, each CloudSpells stack owns its own VCN. For larger deployments you often want a single shared network managed by one stack — a **platform stack** — and multiple service stacks that deploy into it without recreating it.
 
+`VcnRef` is not a generic OCI VCN import mechanism. It only references VCNs created by CloudSpells and exported with the CloudSpells OCI VCN schema. The source stack must publish the standard `Vcn.export()` outputs, including `cloudspells_network_schema` and `cloudspells_network_profiles`.
+
 `VcnRef` is a read-only handle to a VCN owned by another stack. Every spell that accepts `Vcn` also accepts `VcnRef`, so service stacks need no changes when you split them.
 
 ---
@@ -60,6 +62,8 @@ Note the stack reference string. Its format depends on your state backend:
 from cloudspells.core import Config
 from cloudspells.providers.oci.network import VcnRef
 from cloudspells.providers.oci.compute import ComputeInstance
+from cloudspells.providers.oci.nsg import Nsg
+from cloudspells.providers.oci.roles import APP_SERVER
 
 config = Config()
 compartment_id = config.require("compartment_ocid")
@@ -67,11 +71,13 @@ vcn_stack = config.require("vcn_stack")
 
 # VcnRef reads live outputs from the platform stack — no network resources created
 vcn = VcnRef.from_stack_reference(vcn_stack)
+app_nsg = Nsg("app-server", role=APP_SERVER, vcn=vcn, compartment_id=compartment_id)
 
 instance = ComputeInstance(
     name="app-server",
     compartment_id=compartment_id,
-    vcn=vcn,          # identical API to a live Vcn
+    image_id=config.require("image_ocid"),
+    nsg=app_nsg,      # carries the referenced VCN into ComputeInstance
 )
 
 instance.export()
@@ -92,12 +98,15 @@ pulumi up
 | | `Vcn` | `VcnRef` |
 |---|-------|---------|
 | Creates network resources | Yes | No |
-| `add_security_list_rules()` | Accumulates rules | Raises `RuntimeError` (deliberate) |
+| Accepts arbitrary OCI VCNs | No | No |
+| Validates CloudSpells schema | Owns schema | Requires exported schema |
+| Network profiles | Installs and exports profiles | Requires pre-exported profiles |
+| `add_security_rules()` | Accumulates rules | Raises `RuntimeError` for non-empty rules |
 | `finalize_network()` | Materialises subnets | No-op (deliberate) |
 | Subnet CIDR accessors | Returns computed `Output[str]` | Returns cross-stack `Output[str]` |
 | Usable with spells | Yes | Yes — with conditions (see below) |
 
-`VcnRef.add_security_list_rules()` raises a `RuntimeError` only when non-empty rule lists are passed — it cannot modify the security lists of a network it does not own. When all arguments are `None` or empty the call is a silent no-op (spells call this unconditionally; the no-op keeps spell code branch-free). The error message lists the non-empty rule sets that were requested so you know exactly what to add.
+`VcnRef.add_security_rules()` raises a `RuntimeError` only when non-empty rule lists are passed — it cannot modify the security lists of a network it does not own. Empty `SecurityRules()` is accepted as a no-op. The error message lists the non-empty rule sets that were requested so you know exactly what to add.
 
 **This means security rules required by a spell must already exist in the source CloudSpells VCN stack before you deploy that spell against a `VcnRef`.** The workflow is:
 
@@ -106,6 +115,34 @@ pulumi up
 3. Deploy the spell against the `VcnRef` in this stack.
 
 In practice this is straightforward: the platform team owns the VCN stack and provisions the baseline security rules; application teams deploy spells against the `VcnRef` knowing the rules are already in place.
+
+---
+
+## OKE with VcnRef
+
+OKE requires subnet-level security-list rules. Because `VcnRef` is read-only, those rules must be installed in the source VCN stack before the OKE stack references it:
+
+```python
+# platform/vcn/__main__.py
+vcn = Vcn(name="platform", compartment_id=compartment_id)
+vcn.enable_oke_profile(kubectl_allowed_cidrs=["203.0.113.0/24"])
+vcn.export()
+```
+
+```python
+# services/oke/__main__.py
+vcn = VcnRef.from_stack_reference("org/platform/prod")
+cluster = OkeCluster(
+    name="app",
+    compartment_id=compartment_id,
+    vcn=vcn,
+    kubernetes_version="v1.32.1",
+    node_pools=[pool],
+    kubectl_allowed_cidrs=["203.0.113.0/24"],
+)
+```
+
+The `kubectl_allowed_cidrs` list must match between the source VCN profile and the OKE stack. If it does not match, `OkeCluster` fails with a required network profile error.
 
 ---
 
@@ -137,6 +174,8 @@ If you delete or rename a VCN output that a service stack depends on, `pulumi pr
 | `private_security_list_id` | Security list attach points |
 | `secure_security_list_id` | Security list attach points |
 | `management_security_list_id` | Security list attach points |
-| `drg_id` | DRG attach points (optional — `None` when no DRG) |
+| `drg_id` | DRG attach points (required output key; value is `None` when no DRG is attached) |
+| `cloudspells_network_schema` | CloudSpells VCN compatibility contract |
+| `cloudspells_network_profiles` | Pre-installed network profiles available to service stacks |
 
-All fourteen outputs must exist in the source stack (except `drg_id`, which is `None` when no DRG is attached) or `VcnRef.from_stack_reference()` will fail. All are exported automatically by `vcn.export()`.
+All listed output keys must exist in the source stack or `VcnRef.from_stack_reference()` will fail. `drg_id` is exported explicitly with value `None` when no DRG is attached. All are exported automatically by `vcn.export()`.

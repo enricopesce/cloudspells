@@ -95,10 +95,10 @@ app_nsg = Nsg("app", role=APP_SERVER, vcn=vcn, ...)
 app_nsg.serves(db_nsg, port=5432)
 
 # ComputeInstance calls finalize_network() automatically
-instance = ComputeInstance("web", vcn=vcn, nsg=app_nsg, ...)
+instance = ComputeInstance("web", nsg=app_nsg, ...)
 ```
 
-This means rule accumulation is order-independent within a stack: you can declare NSGs in any order and the final security list will be correct. `finalize_network()` is idempotent — calling it multiple times has no effect after the first.
+This means rule accumulation is order-independent within a stack: you can declare NSGs in any order, pass the role-bearing NSG to `ComputeInstance`, and the final security list will be correct. `finalize_network()` is idempotent — calling it multiple times has no effect after the first.
 
 ---
 

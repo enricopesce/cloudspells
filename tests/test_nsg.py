@@ -20,9 +20,6 @@ from cloudspells.providers.oci.nsg import (
     SSH,
     TCP,
     Nsg,
-    icmp_opts,
-    tcp_port,
-    udp_port,
 )
 from cloudspells.providers.oci.roles import APP_SERVER, INTERNET_EDGE
 
@@ -68,6 +65,13 @@ class TestNsgCreation(unittest.TestCase):
         vcn = self._make_vcn()
         nsg = Nsg("edge", role=INTERNET_EDGE, ports=[HTTP, HTTPS], vcn=vcn, compartment_id=COMP_ID)
         self.assertIsNotNone(nsg)
+
+    def test_vcn_property_returns_host_network(self):
+        """vcn returns the network that hosts the NSG."""
+        vcn = self._make_vcn()
+        nsg = Nsg("app-vcn-ref", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
+
+        self.assertIs(nsg.vcn, vcn)
 
 
 class TestNsgRuleHelpers(unittest.TestCase):
@@ -163,17 +167,43 @@ class TestNsgRuleHelpers(unittest.TestCase):
         return pulumi.Output.all(rule.direction, rule.protocol).apply(check)
 
     @pulumi.runtime.test
-    def test_add_rule_stateless_is_false(self):
-        """add_rule always produces a stateful (stateless=False) rule."""
+    def test_allow_udp_from_cidr_uses_udp_protocol(self):
+        """allow_udp_from_cidr creates an INGRESS UDP rule."""
         _, src, _ = self._make_pair()
-        rule = src.add_rule(
-            "custom",
-            direction="INGRESS",
-            protocol=TCP,
-            source=INTERNET,
-            source_type="CIDR_BLOCK",
-            tcp_options=tcp_port(8080),
-        )
+        rule = src.allow_udp_from_cidr("dns-in", 53, "10.0.0.0/16")
+
+        def check(args):
+            direction, protocol, source_type = args
+            self.assertEqual(direction, "INGRESS")
+            self.assertEqual(protocol, "17")
+            self.assertEqual(source_type, "CIDR_BLOCK")
+
+        return pulumi.Output.all(rule.direction, rule.protocol, rule.source_type).apply(check)
+
+    @pulumi.runtime.test
+    def test_allow_udp_to_cidr_uses_udp_protocol(self):
+        """allow_udp_to_cidr creates an EGRESS UDP rule."""
+        _, src, _ = self._make_pair()
+        rule = src.allow_udp_to_cidr("dns-out", 53, "10.0.0.0/16")
+
+        def check(args):
+            direction, protocol, destination_type = args
+            self.assertEqual(direction, "EGRESS")
+            self.assertEqual(protocol, "17")
+            self.assertEqual(destination_type, "CIDR_BLOCK")
+
+        return pulumi.Output.all(rule.direction, rule.protocol, rule.destination_type).apply(check)
+
+    @pulumi.runtime.test
+    def test_raw_add_rule_is_not_public_api(self):
+        """Nsg does not expose raw OCI security rule creation publicly."""
+        self.assertFalse(hasattr(Nsg, "add_rule"))
+
+    @pulumi.runtime.test
+    def test_allow_from_cidr_stateless_is_false(self):
+        """allow_from_cidr produces a stateful (stateless=False) rule."""
+        _, src, _ = self._make_pair()
+        rule = src.allow_from_cidr("custom", 8080, INTERNET)
 
         def check(stateless):
             self.assertFalse(stateless)
@@ -239,31 +269,3 @@ class TestNsgServes(unittest.TestCase):
         after = frozenset(vcn._applied_ambient_rule_fingerprints)
 
         self.assertEqual(before, after, "No SL fingerprints expected when NSGs have no role")
-
-
-class TestPortHelpers(unittest.TestCase):
-    """Tests for tcp_port, udp_port, icmp_opts factory functions."""
-
-    def test_tcp_port_sets_min_max(self):
-        """tcp_port(n) returns args with min=max=n."""
-        opts = tcp_port(443)
-        self.assertEqual(opts.destination_port_range.min, 443)  # type: ignore[union-attr]  # Args object at construction time
-        self.assertEqual(opts.destination_port_range.max, 443)  # type: ignore[union-attr]
-
-    def test_udp_port_sets_min_max(self):
-        """udp_port(n) returns args with min=max=n."""
-        opts = udp_port(53)
-        self.assertEqual(opts.destination_port_range.min, 53)  # type: ignore[union-attr]  # Args object at construction time — not a pulumi.Output
-        self.assertEqual(opts.destination_port_range.max, 53)  # type: ignore[union-attr]  # Args object at construction time — not a pulumi.Output
-
-    def test_icmp_opts_type_only(self):
-        """icmp_opts(type) returns args with type set and code=-1."""
-        opts = icmp_opts(3)
-        self.assertEqual(opts.type, 3)
-        self.assertEqual(opts.code, -1)
-
-    def test_icmp_opts_type_and_code(self):
-        """icmp_opts(type, code) returns args with both set."""
-        opts = icmp_opts(3, 4)
-        self.assertEqual(opts.type, 3)
-        self.assertEqual(opts.code, 4)

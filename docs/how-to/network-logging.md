@@ -106,7 +106,6 @@ flow_logs = VcnFlowLogs(name="prod", vcn=vcn, retention_duration=180)
 instance = ComputeInstance(
     name="web",
     compartment_id=compartment_id,
-    vcn=vcn,
     image_id=config.require("image_ocid"),
     nsg=nsg,
 )

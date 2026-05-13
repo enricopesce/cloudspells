@@ -33,9 +33,11 @@ OKE resources are placed across two of the four VCN tiers:
 Security strategy — two complementary layers:
 
 1. **Security lists** (subnet-level): enforce coarse-grained, subnet-to-subnet
-   routing policy.  Rules are added directly to the VCN's shared security
-   lists via `Vcn.add_security_list_rules`, consuming only 1 list per subnet
-   and leaving 4 slots free for additional services.
+   routing policy.  Live `Vcn` instances install the CloudSpells OKE network
+   profile before subnet creation, while `VcnRef` instances verify that the
+   source stack already exported the exact profile.  The underlying rules
+   still consume only 1 list per subnet and leave 4 slots free for additional
+   services.
 
 2. **Network Security Groups** (VNIC-level): enforce fine-grained,
    component-to-component rules.  Four NSGs are created and assigned to OKE
@@ -58,7 +60,7 @@ Pods and services CIDR blocks are hard-coded as opinionated internal defaults
 upstream Kubernetes defaults and are intentionally not exposed as constructor
 parameters (CS-001, CS-003).
 
-Security list rules added by these spells:
+Security list rules installed by the OKE network profile:
 
 Public subnet (API endpoint + Load Balancer):
 
@@ -89,16 +91,35 @@ import pulumi_oci as oci
 from cloudspells.core.abstractions.kubernetes import AbstractKubernetes
 from cloudspells.core.base import BaseResource
 
+from ._network_profiles import oke_profile_id
 from ._oci_utils import get_svc_cidr as _get_svc_cidr
 from .helper import get_ads
 from .network import Vcn, VcnRef
-from .nsg import ALL, INTERNET, TCP, tcp_port, tcp_port_range
+from .nsg import ALL, INTERNET, TCP
 
 # Opinionated internal defaults for pod and service CIDRs.  Match common
 # upstream Kubernetes defaults and stay out of OCI's `10.0.0.0/16` VCN range.
 # Not exposed as constructor parameters (CS-001, CS-003).
 _PODS_CIDR = "10.244.0.0/16"
 _SERVICES_CIDR = "10.96.0.0/16"
+
+
+def _nsg_tcp_port(port: int) -> oci.core.NetworkSecurityGroupSecurityRuleTcpOptionsArgs:
+    return oci.core.NetworkSecurityGroupSecurityRuleTcpOptionsArgs(
+        destination_port_range=oci.core.NetworkSecurityGroupSecurityRuleTcpOptionsDestinationPortRangeArgs(
+            min=port,
+            max=port,
+        )
+    )
+
+
+def _nsg_tcp_port_range(min_port: int, max_port: int) -> oci.core.NetworkSecurityGroupSecurityRuleTcpOptionsArgs:
+    return oci.core.NetworkSecurityGroupSecurityRuleTcpOptionsArgs(
+        destination_port_range=oci.core.NetworkSecurityGroupSecurityRuleTcpOptionsDestinationPortRangeArgs(
+            min=min_port,
+            max=max_port,
+        )
+    )
 
 
 class _HasId(Protocol):
@@ -287,8 +308,12 @@ class _OkeClusterMixin:
         self.vcn = vcn
         self.kubernetes_version = kubernetes_version
 
-        # Layer 1: subnet-level security list rules
-        self._add_oke_security_lists_rules()
+        # Layer 1: subnet-level security profile
+        network_profile_check: str | pulumi.Output[str] | None = None
+        if isinstance(self.vcn, Vcn):
+            self.vcn.enable_oke_profile(self.kubectl_allowed_cidrs)
+        else:
+            network_profile_check = self.vcn.require_network_profile(oke_profile_id(self.kubectl_allowed_cidrs))
         self.vcn.finalize_network()
 
         # Aliases pointing to the VCN security lists (None when using VcnRef)
@@ -412,290 +437,17 @@ class _OkeClusterMixin:
         # Silence unused in static analysis when no rules are added.
         _ = child_opts
 
-        self.register_outputs({  # type: ignore[attr-defined]
+        outputs: dict[str, pulumi.Output[str] | str] = {
             "cluster_id": self.cluster.id,
             "api_nsg_id": self.api_nsg.id,
             "lb_nsg_id": self.lb_nsg.id,
             "worker_nsg_id": self.worker_nsg.id,
             "pod_nsg_id": self.pod_nsg.id,
-        })
+        }
+        if network_profile_check is not None:
+            outputs["network_profile_check"] = network_profile_check
 
-    # ------------------------------------------------------------------
-    # Private: security list rules (subnet-level, Layer 1)
-    # ------------------------------------------------------------------
-
-    def _add_oke_security_lists_rules(self) -> None:
-        """Add all OKE-required security rules to the VCN security lists.
-
-        Calls `Vcn.add_security_list_rules` once with the complete set of
-        ingress and egress rules for the public (API endpoint + Load Balancer)
-        and private (worker nodes + pods) subnets.
-
-        Must be called before `Vcn.finalize_network`.
-
-        Rules added:
-
-        Public subnet ingress: Kubernetes API (6443) and control-plane port
-        (12250) from private subnet (workers + pods); HTTPS (443) and HTTP (80)
-        from internet (Load Balancer); Kubernetes API (6443) from each CIDR in
-        `self.kubectl_allowed_cidrs` (kubectl).
-
-        Public subnet egress: OCI services (telemetry, management); kubelet
-        (10250), NodePort (30000-32767), and kube-proxy (10256) to private;
-        all traffic to private (webhooks, admission controllers).
-
-        Private subnet ingress: kubelet (10250), NodePort (30000-32767), and
-        kube-proxy (10256) from public; all traffic from public (control plane
-        to pods for webhooks).
-
-        Private subnet egress: OCI services (OCIR, monitoring, logging);
-        Kubernetes API (6443) and control-plane port (12250) to public;
-        HTTPS (443) and HTTP (80) to internet (image pulls and pod external
-        API calls).
-        """
-        # ═══════════════════════════════════════════════════════════════
-        # PUBLIC SUBNET – API Endpoint + Load Balancer
-        # ═══════════════════════════════════════════════════════════════
-
-        private_subnet_cidr: pulumi.Input[str] = self.vcn.get_private_subnet_cidr()
-        public_subnet_cidr: pulumi.Input[str] = self.vcn.get_public_subnet_cidr()
-        svc_cidr: pulumi.Output[str] = _get_svc_cidr()
-
-        # ───────────────────────────────────────────────────────────────
-        # PUBLIC – INGRESS
-        # ───────────────────────────────────────────────────────────────
-        public_ingress_rules: list[oci.core.SecurityListIngressSecurityRuleArgs] = [
-            # Workers + pods → API server
-            oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Workers and pods communicate with Kubernetes API server for cluster operations and service discovery",  # noqa: E501
-                protocol="6",  # TCP
-                source=private_subnet_cidr,
-                source_type="CIDR_BLOCK",
-                tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                    min=6443,
-                    max=6443,
-                ),
-            ),
-            # Workers + pods → control plane internal port
-            oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Workers and pods communicate with Kubernetes control plane for internal cluster operations",  # noqa: E501
-                protocol="6",  # TCP
-                source=private_subnet_cidr,
-                source_type="CIDR_BLOCK",
-                tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                    min=12250,
-                    max=12250,
-                ),
-            ),
-            # Internet → Load Balancer HTTPS
-            oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Load Balancer receives HTTPS traffic from internet for public web applications and APIs",
-                protocol="6",  # TCP
-                source="0.0.0.0/0",
-                source_type="CIDR_BLOCK",
-                tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                    min=443,
-                    max=443,
-                ),
-            ),
-            # Internet → Load Balancer HTTP
-            oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Load Balancer receives HTTP traffic from internet for public applications (consider HTTPS redirect)",  # noqa: E501
-                protocol="6",  # TCP
-                source="0.0.0.0/0",
-                source_type="CIDR_BLOCK",
-                tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                    min=80,
-                    max=80,
-                ),
-            ),
-        ]
-
-        # External clients (kubectl) → API server — one rule per allowed CIDR.
-        # An empty list means no external kubectl access is provisioned.
-        for cidr in self.kubectl_allowed_cidrs:
-            public_ingress_rules.append(
-                oci.core.SecurityListIngressSecurityRuleArgs(
-                    description=f"Allow kubectl access to Kubernetes API from {cidr}",
-                    protocol="6",  # TCP
-                    source=cidr,
-                    source_type="CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                        min=6443,
-                        max=6443,
-                    ),
-                )
-            )
-
-        # ───────────────────────────────────────────────────────────────
-        # PUBLIC – EGRESS
-        # ───────────────────────────────────────────────────────────────
-        public_egress_rules: list[oci.core.SecurityListEgressSecurityRuleArgs] = [
-            # Control plane → OCI services (telemetry, management)
-            oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Control plane communicates with OCI services for cluster management and telemetry",
-                protocol="6",  # TCP
-                destination=svc_cidr,
-                destination_type="SERVICE_CIDR_BLOCK",
-            ),
-            # Control plane → kubelet API on worker nodes
-            oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Control plane manages worker nodes via kubelet for pod operations and health monitoring",
-                protocol="6",  # TCP
-                destination=private_subnet_cidr,
-                destination_type="CIDR_BLOCK",
-                tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                    min=10250,
-                    max=10250,
-                ),
-            ),
-            # LB → NodePort range on worker nodes
-            oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Load Balancer forwards traffic to worker nodes via NodePort for Kubernetes service routing",  # noqa: E501
-                protocol="6",  # TCP
-                destination=private_subnet_cidr,
-                destination_type="CIDR_BLOCK",
-                tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                    min=30000,
-                    max=32767,
-                ),
-            ),
-            # LB → kube-proxy health check
-            oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Load Balancer checks worker node health via kube-proxy to ensure traffic routing availability",  # noqa: E501
-                protocol="6",  # TCP
-                destination=private_subnet_cidr,
-                destination_type="CIDR_BLOCK",
-                tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                    min=10256,
-                    max=10256,
-                ),
-            ),
-            # Control plane → pods (webhooks, admission controllers, metrics)
-            # Admission controller webhook ports are arbitrary; allow all protocols.
-            oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Control plane reaches pods on arbitrary ports for webhooks, admission controllers, and metrics",  # noqa: E501
-                protocol="all",
-                destination=private_subnet_cidr,
-                destination_type="CIDR_BLOCK",
-            ),
-        ]
-
-        # ═══════════════════════════════════════════════════════════════
-        # PRIVATE SUBNET – Worker Nodes + Pods
-        # ═══════════════════════════════════════════════════════════════
-
-        # ───────────────────────────────────────────────────────────────
-        # PRIVATE – INGRESS
-        # ───────────────────────────────────────────────────────────────
-        private_ingress_rules: list[oci.core.SecurityListIngressSecurityRuleArgs] = [
-            # Control plane → kubelet API
-            oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Control plane manages pods on worker nodes via kubelet for commands, logs, and health monitoring",  # noqa: E501
-                protocol="6",  # TCP
-                source=public_subnet_cidr,
-                source_type="CIDR_BLOCK",
-                tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                    min=10250,
-                    max=10250,
-                ),
-            ),
-            # LB → NodePort range
-            oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Load Balancer forwards traffic to worker nodes via NodePort to reach Kubernetes services",
-                protocol="6",  # TCP
-                source=public_subnet_cidr,
-                source_type="CIDR_BLOCK",
-                tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                    min=30000,
-                    max=32767,
-                ),
-            ),
-            # LB → kube-proxy health check
-            oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Load Balancer verifies worker node health via kube-proxy endpoint before routing traffic",
-                protocol="6",  # TCP
-                source=public_subnet_cidr,
-                source_type="CIDR_BLOCK",
-                tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                    min=10256,
-                    max=10256,
-                ),
-            ),
-            # Control plane → pods (webhooks, admission controllers)
-            # Ports are arbitrary per admission controller; allow all from public.
-            oci.core.SecurityListIngressSecurityRuleArgs(
-                description="Control plane reaches pods on arbitrary ports for webhooks and admission controllers",
-                protocol="all",
-                source=public_subnet_cidr,
-                source_type="CIDR_BLOCK",
-            ),
-        ]
-
-        # ───────────────────────────────────────────────────────────────
-        # PRIVATE – EGRESS
-        # ───────────────────────────────────────────────────────────────
-        private_egress_rules: list[oci.core.SecurityListEgressSecurityRuleArgs] = [
-            # Workers + pods → OCI services (OCIR, monitoring, logging)
-            oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Workers and pods communicate with OCI services for container images, logging, and monitoring",  # noqa: E501
-                protocol="6",  # TCP
-                destination=svc_cidr,
-                destination_type="SERVICE_CIDR_BLOCK",
-            ),
-            # Workers + pods → Kubernetes API server
-            oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Workers and pods communicate with Kubernetes API to register, report status, and access resources",  # noqa: E501
-                protocol="6",  # TCP
-                destination=public_subnet_cidr,
-                destination_type="CIDR_BLOCK",
-                tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                    min=6443,
-                    max=6443,
-                ),
-            ),
-            # Workers + pods → control plane internal port
-            oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Workers and pods communicate with control plane for internal cluster operations",
-                protocol="6",  # TCP
-                destination=public_subnet_cidr,
-                destination_type="CIDR_BLOCK",
-                tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                    min=12250,
-                    max=12250,
-                ),
-            ),
-            # Workers + pods → internet via HTTPS (image pulls, external APIs)
-            oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Workers pull container images and pods call external APIs via HTTPS",
-                protocol="6",  # TCP
-                destination="0.0.0.0/0",
-                destination_type="CIDR_BLOCK",
-                tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                    min=443,
-                    max=443,
-                ),
-            ),
-            # Workers + pods → internet via HTTP (some registries, OCI pre-auth URLs)
-            oci.core.SecurityListEgressSecurityRuleArgs(
-                description="Workers pull container images from HTTP registries and access OCI pre-authenticated URLs",
-                protocol="6",  # TCP
-                destination="0.0.0.0/0",
-                destination_type="CIDR_BLOCK",
-                tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                    min=80,
-                    max=80,
-                ),
-            ),
-        ]
-
-        # Add all collected rules to the VCN security lists in a single call
-        self.vcn.add_security_list_rules(
-            public_ingress=public_ingress_rules,
-            public_egress=public_egress_rules,
-            private_ingress=private_ingress_rules,
-            private_egress=private_egress_rules,
-        )
+        self.register_outputs(outputs)  # type: ignore[attr-defined]
 
     # ------------------------------------------------------------------
     # Private: NSG creation and rules (VNIC-level, Layer 2)
@@ -793,9 +545,8 @@ class _OkeClusterMixin:
             destination: Destination CIDR or NSG OCID (egress rules).
             destination_type: `"CIDR_BLOCK"`, `"NETWORK_SECURITY_GROUP"`,
                 or `"SERVICE_CIDR_BLOCK"`.
-            tcp_options: TCP port restriction — build with `tcp_port` or
-                `tcp_port_range`.
-            icmp_options: ICMP type/code — build with `icmp_opts`.
+            tcp_options: TCP port restriction built internally.
+            icmp_options: ICMP type/code options built internally.
             description: Human-readable description shown in the OCI Console.
             opts: Pulumi resource options forwarded to the rule resource.
 
@@ -844,7 +595,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 source=self.worker_nsg.id,
                 source_type="NETWORK_SECURITY_GROUP",
-                tcp_options=tcp_port(6443),
+                tcp_options=_nsg_tcp_port(6443),
                 description="Worker nodes reach Kubernetes API server",
                 opts=opts,
             )
@@ -857,7 +608,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 source=self.worker_nsg.id,
                 source_type="NETWORK_SECURITY_GROUP",
-                tcp_options=tcp_port(12250),
+                tcp_options=_nsg_tcp_port(12250),
                 description="Worker nodes reach Kubernetes control-plane internal port",
                 opts=opts,
             )
@@ -870,7 +621,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 source=self.pod_nsg.id,
                 source_type="NETWORK_SECURITY_GROUP",
-                tcp_options=tcp_port(6443),
+                tcp_options=_nsg_tcp_port(6443),
                 description="Pods reach Kubernetes API server for service discovery and RBAC",
                 opts=opts,
             )
@@ -883,7 +634,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 source=self.pod_nsg.id,
                 source_type="NETWORK_SECURITY_GROUP",
-                tcp_options=tcp_port(12250),
+                tcp_options=_nsg_tcp_port(12250),
                 description="Pods reach Kubernetes control-plane internal port",
                 opts=opts,
             )
@@ -899,7 +650,7 @@ class _OkeClusterMixin:
                     protocol=TCP,
                     source=cidr,
                     source_type="CIDR_BLOCK",
-                    tcp_options=tcp_port(6443),
+                    tcp_options=_nsg_tcp_port(6443),
                     description=f"External kubectl and CI tooling reach the Kubernetes API from {cidr}",
                     opts=opts,
                 )
@@ -926,7 +677,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 destination=self.worker_nsg.id,
                 destination_type="NETWORK_SECURITY_GROUP",
-                tcp_options=tcp_port(10250),
+                tcp_options=_nsg_tcp_port(10250),
                 description="Control plane calls kubelet on worker nodes for pod lifecycle operations",
                 opts=opts,
             )
@@ -967,7 +718,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 source=INTERNET,
                 source_type="CIDR_BLOCK",
-                tcp_options=tcp_port(443),
+                tcp_options=_nsg_tcp_port(443),
                 description="Internet reaches the load balancer on HTTPS",
                 opts=opts,
             )
@@ -980,7 +731,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 source=INTERNET,
                 source_type="CIDR_BLOCK",
-                tcp_options=tcp_port(80),
+                tcp_options=_nsg_tcp_port(80),
                 description="Internet reaches the load balancer on HTTP",
                 opts=opts,
             )
@@ -995,7 +746,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 destination=self.worker_nsg.id,
                 destination_type="NETWORK_SECURITY_GROUP",
-                tcp_options=tcp_port_range(30000, 32767),
+                tcp_options=_nsg_tcp_port_range(30000, 32767),
                 description="Load balancer forwards requests to worker nodes via NodePort",
                 opts=opts,
             )
@@ -1008,7 +759,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 destination=self.worker_nsg.id,
                 destination_type="NETWORK_SECURITY_GROUP",
-                tcp_options=tcp_port(10256),
+                tcp_options=_nsg_tcp_port(10256),
                 description="Load balancer queries kube-proxy health check before routing",
                 opts=opts,
             )
@@ -1040,7 +791,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 source=self.api_nsg.id,
                 source_type="NETWORK_SECURITY_GROUP",
-                tcp_options=tcp_port(10250),
+                tcp_options=_nsg_tcp_port(10250),
                 description="Control plane calls kubelet for pod lifecycle, logs, and exec",
                 opts=opts,
             )
@@ -1053,7 +804,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 source=self.lb_nsg.id,
                 source_type="NETWORK_SECURITY_GROUP",
-                tcp_options=tcp_port_range(30000, 32767),
+                tcp_options=_nsg_tcp_port_range(30000, 32767),
                 description="Load balancer forwards requests to workers via NodePort",
                 opts=opts,
             )
@@ -1066,7 +817,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 source=self.lb_nsg.id,
                 source_type="NETWORK_SECURITY_GROUP",
-                tcp_options=tcp_port(10256),
+                tcp_options=_nsg_tcp_port(10256),
                 description="Load balancer health-checks worker via kube-proxy",
                 opts=opts,
             )
@@ -1104,7 +855,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 destination=self.api_nsg.id,
                 destination_type="NETWORK_SECURITY_GROUP",
-                tcp_options=tcp_port(6443),
+                tcp_options=_nsg_tcp_port(6443),
                 description="Workers register with and query the Kubernetes API server",
                 opts=opts,
             )
@@ -1117,7 +868,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 destination=self.api_nsg.id,
                 destination_type="NETWORK_SECURITY_GROUP",
-                tcp_options=tcp_port(12250),
+                tcp_options=_nsg_tcp_port(12250),
                 description="Workers communicate with control plane on internal port",
                 opts=opts,
             )
@@ -1166,7 +917,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 destination=INTERNET,
                 destination_type="CIDR_BLOCK",
-                tcp_options=tcp_port(443),
+                tcp_options=_nsg_tcp_port(443),
                 description="Workers pull container images and call external APIs via HTTPS",
                 opts=opts,
             )
@@ -1179,7 +930,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 destination=INTERNET,
                 destination_type="CIDR_BLOCK",
-                tcp_options=tcp_port(80),
+                tcp_options=_nsg_tcp_port(80),
                 description="Workers pull images from HTTP registries and access OCI pre-authenticated URLs",
                 opts=opts,
             )
@@ -1273,7 +1024,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 destination=self.api_nsg.id,
                 destination_type="NETWORK_SECURITY_GROUP",
-                tcp_options=tcp_port(6443),
+                tcp_options=_nsg_tcp_port(6443),
                 description="Pods reach Kubernetes API server for service discovery and RBAC",
                 opts=opts,
             )
@@ -1286,7 +1037,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 destination=self.api_nsg.id,
                 destination_type="NETWORK_SECURITY_GROUP",
-                tcp_options=tcp_port(12250),
+                tcp_options=_nsg_tcp_port(12250),
                 description="Pods reach control-plane internal port",
                 opts=opts,
             )
@@ -1311,7 +1062,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 destination=INTERNET,
                 destination_type="CIDR_BLOCK",
-                tcp_options=tcp_port(443),
+                tcp_options=_nsg_tcp_port(443),
                 description="Pods call external APIs and download dependencies via HTTPS",
                 opts=opts,
             )
@@ -1324,7 +1075,7 @@ class _OkeClusterMixin:
                 protocol=TCP,
                 destination=INTERNET,
                 destination_type="CIDR_BLOCK",
-                tcp_options=tcp_port(80),
+                tcp_options=_nsg_tcp_port(80),
                 description="Pods access HTTP endpoints and OCI pre-authenticated URLs",
                 opts=opts,
             )

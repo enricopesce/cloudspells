@@ -35,13 +35,14 @@ from collections.abc import Sequence
 import pulumi
 import pulumi_oci as oci
 from cloudspells.core.abstractions.bastion import AbstractBastion
+from cloudspells.core.abstractions.network import IngressRule, SecurityRules
 from cloudspells.core.base import BaseResource
 
 from .network import Vcn, VcnRef
 
 # Fingerprint used to deduplicate the Bastion SSH ingress rule across multiple
 # Bastion instances that share the same Vcn.  Declared as a module constant so
-# both the guard check and _add_unique_security_list_rules always reference the
+# both the guard check and add_unique_security_rules always reference the
 # same string — changing one without the other would silently break deduplication.
 _BASTION_SSH_RULE_FINGERPRINT = "bastion-private-ingress-tcp-22"
 
@@ -80,18 +81,20 @@ class Bastion(BaseResource, AbstractBastion):
     Example:
         ```python
         vcn = Vcn(name="lab", compartment_id=comp_id, stack_name="prod")
-
-        instance = ComputeInstance(
-            name="web",
-            compartment_id=comp_id,
-            vcn=vcn,
-        )
+        app_nsg = Nsg("app", role=APP_SERVER, vcn=vcn, compartment_id=comp_id)
 
         bastion = Bastion(
             name="mgmt",
             compartment_id=comp_id,
             vcn=vcn,
             allowed_client_cidrs=["203.0.113.0/24"],  # always required
+        )
+
+        instance = ComputeInstance(
+            name="web",
+            compartment_id=comp_id,
+            image_id=image_id,
+            nsg=app_nsg,
         )
 
         pulumi.export("bastion_endpoint", bastion.get_bastion_endpoint())
@@ -212,20 +215,19 @@ class Bastion(BaseResource, AbstractBastion):
         before any spell that triggers finalisation (e.g. `ComputeInstance`)
         ensures the correct ordering.
         """
-        self.vcn.add_unique_security_list_rules(  # type: ignore[union-attr]  # narrowed to Vcn by isinstance guard above
+        self.vcn.add_unique_security_rules(  # type: ignore[union-attr]  # narrowed to Vcn by isinstance guard above
             _BASTION_SSH_RULE_FINGERPRINT,
-            private_ingress=[
-                oci.core.SecurityListIngressSecurityRuleArgs(
-                    description="SSH access from OCI Bastion service to private subnet instances",
-                    protocol="6",  # TCP
-                    source="0.0.0.0/0",
-                    source_type="CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                        min=22,
-                        max=22,
+            SecurityRules(
+                private_ingress=[
+                    IngressRule(
+                        protocol="tcp",
+                        source="0.0.0.0/0",
+                        port_min=22,
+                        port_max=22,
+                        description="SSH access from OCI Bastion service to private subnet instances",
                     ),
-                ),
-            ],
+                ],
+            ),
         )
 
     # ------------------------------------------------------------------

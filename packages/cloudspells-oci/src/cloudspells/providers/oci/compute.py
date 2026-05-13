@@ -1,14 +1,13 @@
 """Compute Instance spell for CloudSpells.
 
-Provides `ComputeInstance`, which deploys a single OCI VM into a chosen VCN
-subnet and attaches one or more block volumes for persistent storage.
+Provides `ComputeInstance`, which deploys a single OCI VM into the subnet tier
+declared by its required role-bearing NSG and attaches one or more block
+volumes for persistent storage.
 
 Key behaviours:
 
-- Deploys to the VCN's private subnet by default (not directly
-  internet-facing).
-- Adds a minimal SSH ingress rule to the appropriate security list
-  (port 22 from the public subnet CIDR for bastion-host access).
+- Requires an `Nsg` with a `Role`; the role decides subnet placement.
+- Derives the VCN from the NSG so callers cannot pass inconsistent networks.
 - Auto-generates an RSA 4096-bit SSH key pair when no key is supplied;
   the keys are exported as Pulumi secrets.
 - Accepts a list of `VolumeSpec` objects to attach any number of block
@@ -31,7 +30,6 @@ from cloudspells.core.base import BaseResource
 
 from .network import (
     SUBNET_MANAGEMENT,
-    SUBNET_PRIVATE,
     SUBNET_PUBLIC,
     SUBNET_SECURE,
     SubnetTier,
@@ -45,13 +43,14 @@ from .volume import VolumeSpec
 class ComputeInstance(BaseResource, AbstractCompute):
     """OCI Compute Instance with one or more attached block volumes.
 
-    Creates a single VM in the chosen VCN subnet together with the block
-    volumes described by the `volumes` parameter.  Each `VolumeSpec` in the
-    list produces one `oci.core.Volume` and one `oci.core.VolumeAttachment`;
-    all are created at the same time as the instance.
+    Creates a single VM in the subnet tier declared by `nsg.role`, together
+    with the block volumes described by the `volumes` parameter.  Each
+    `VolumeSpec` in the list produces one `oci.core.Volume` and one
+    `oci.core.VolumeAttachment`; all are created at the same time as the
+    instance.
 
     Attributes:
-        vcn: The `Vcn` this instance is deployed into.
+        vcn: The `Vcn` or `VcnRef` derived from the required NSG.
         shape: Compute shape (e.g. `"VM.Standard.E4.Flex"`).
         ocpus: Number of OCPUs allocated to the instance.
         memory_in_gbs: RAM in GiB allocated to the instance.
@@ -66,6 +65,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         boot_volume_size_in_gbs: Size of the boot volume in GiB.
         volumes_spec: Resolved list of `VolumeSpec` objects used to create
             the attached block volumes.
+        nsg: Role-bearing `Nsg` attached to the instance VNIC.
         instance: The underlying `oci.core.Instance` resource.
         block_volumes: Ordered list of `oci.core.Volume` resources, one per
             entry in `volumes_spec`.
@@ -74,9 +74,8 @@ class ComputeInstance(BaseResource, AbstractCompute):
         id: `pulumi.Output[str]` of the instance OCID.
         subnet: Subnet tier the instance is placed in (`SUBNET_PRIVATE`,
             `SUBNET_PUBLIC`, `SUBNET_SECURE`, or `SUBNET_MANAGEMENT`).
-            Resolved from `nsg.role.subnet_tier` when `nsg=` is supplied.
-        nsg_ids: List of NSG OCIDs attached to the primary VNIC, or an
-            empty list when no `nsg` was supplied.
+            Resolved from `nsg.role.subnet_tier`.
+        nsg_ids: List containing the NSG OCID attached to the primary VNIC.
         auto_generated_keys: `True` when SSH keys were auto-generated.
         fault_domain: Fault domain the instance is placed in, or `None`
             when OCI auto-assigns (default spread behaviour).
@@ -84,13 +83,15 @@ class ComputeInstance(BaseResource, AbstractCompute):
 
     Usage patterns:
 
-    1. **Minimal — single default data volume, auto-generated SSH keys**:
+    1. **Minimal private instance — single default data volume**:
         ```python
         vcn = Vcn(name="lab", compartment_id=comp_id, stack_name="prod")
+        app_nsg = Nsg("app", role=APP_SERVER, vcn=vcn, compartment_id=comp_id)
         instance = ComputeInstance(
             name="web",
-            vcn=vcn,
             compartment_id=comp_id,
+            image_id=image_id,
+            nsg=app_nsg,
         )
         private_key = instance.get_ssh_private_key()
         ```
@@ -99,8 +100,9 @@ class ComputeInstance(BaseResource, AbstractCompute):
         ```python
         instance = ComputeInstance(
             name="app",
-            vcn=vcn,
             compartment_id=comp_id,
+            image_id=image_id,
+            nsg=app_nsg,
             volumes=[
                 VolumeSpec(size_in_gbs=200, label="app"),
                 VolumeSpec(size_in_gbs=500, label="db",
@@ -116,8 +118,9 @@ class ComputeInstance(BaseResource, AbstractCompute):
         ```python
         instance = ComputeInstance(
             name="heavy",
-            vcn=vcn,
             compartment_id=comp_id,
+            image_id=image_id,
+            nsg=app_nsg,
             shape="VM.Standard.E4.Flex",
             ocpus=8,
             memory_in_gbs=128,
@@ -139,6 +142,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
     boot_volume_size_in_gbs: pulumi.Input[int]
     volumes_spec: list[VolumeSpec]
     subnet: SubnetTier
+    nsg: Nsg
     nsg_ids: list[pulumi.Input[str]]
     instance: oci.core.Instance
     block_volumes: list[oci.core.Volume]
@@ -152,18 +156,16 @@ class ComputeInstance(BaseResource, AbstractCompute):
         self,
         name: str,
         compartment_id: pulumi.Input[str],
-        vcn: Vcn | VcnRef,
         image_id: pulumi.Input[str],
+        nsg: Nsg,
         availability_domain: pulumi.Input[str] | None = None,
         stack_name: str | None = None,
         ssh_public_key: pulumi.Input[str] | None = None,
         shape: pulumi.Input[str] = "VM.Standard.E4.Flex",
         ocpus: pulumi.Input[float] = 1,
         memory_in_gbs: pulumi.Input[float] = 16,
-        subnet: SubnetTier = SUBNET_PRIVATE,
         boot_volume_size_in_gbs: pulumi.Input[int] = 50,
         volumes: Sequence[VolumeSpec] | None = None,
-        nsg: Nsg | None = None,
         user_data: str | bytes | None = None,
         fault_domain: str | None = None,
         hostname_label: str | None = None,
@@ -174,16 +176,6 @@ class ComputeInstance(BaseResource, AbstractCompute):
         Args:
             name: Logical name for the instance (e.g. `"web-server"`).
             compartment_id: OCID of the OCI compartment to deploy into.
-            vcn: `Vcn` instance that provides the subnet and security list
-                for this instance.
-            stack_name: Pulumi stack name.  Defaults to
-                `pulumi.get_stack()` when `None`.
-            ssh_public_key: OpenSSH public key string to install on the
-                instance.  When `None` or empty, a new RSA 4096-bit key
-                pair is auto-generated and exported as Pulumi secrets.
-            shape: OCI compute shape (default: `"VM.Standard.E4.Flex"`).
-            ocpus: Number of OCPUs (default: `1`).
-            memory_in_gbs: Memory in GiB (default: `16`).
             image_id: Boot image OCID for the instance
                 (e.g. `"ocid1.image.oc1.phx.aaaaaa..."`).  Must be an
                 explicit OCID — CloudSpells does not perform
@@ -195,18 +187,23 @@ class ComputeInstance(BaseResource, AbstractCompute):
                 `oci.core.get_images_output()` outside the spell or from
                 a stack config value.  Embedding a hardcoded OCID is an
                 anti-pattern.
+            nsg: Role-bearing Network Security Group to attach to the
+                instance VNIC.  The NSG's VCN provides network context, and
+                `nsg.role.subnet_tier` decides subnet placement.
+            stack_name: Pulumi stack name.  Defaults to
+                `pulumi.get_stack()` when `None`.
+            ssh_public_key: OpenSSH public key string to install on the
+                instance.  When `None` or empty, a new RSA 4096-bit key
+                pair is auto-generated and exported as Pulumi secrets.
+            shape: OCI compute shape (default: `"VM.Standard.E4.Flex"`).
+            ocpus: Number of OCPUs (default: `1`).
+            memory_in_gbs: Memory in GiB (default: `16`).
             availability_domain: OCI Availability Domain name for the
                 instance and its block volumes
                 (e.g. `"IqDk:US-ASHBURN-AD-1"`).  When `None` (default),
                 CloudSpells auto-discovers the first AD in the compartment
                 via `oci.identity.get_availability_domains_output()`.
                 Provide an explicit value to pin placement to a specific AD.
-            subnet: Which VCN tier to place the instance in.  Use the
-                constants `SUBNET_PRIVATE` (default), `SUBNET_PUBLIC`,
-                `SUBNET_SECURE`, or `SUBNET_MANAGEMENT` from
-                `cloudspells.providers.oci.network`.  Ignored when `nsg`
-                is supplied and the NSG has a `Role` — the role's
-                `subnet_tier` takes precedence.
             boot_volume_size_in_gbs: Boot volume size in GiB (default:
                 `50`).
             volumes: Ordered list of `VolumeSpec` objects describing the
@@ -216,13 +213,6 @@ class ComputeInstance(BaseResource, AbstractCompute):
                 balanced-performance data volume (`VolumeSpec(size_in_gbs=100)`).
                 Pass an explicit list to override; an empty list raises
                 `ValueError`.
-            nsg: Network Security Group to attach to the instance VNIC.
-                When `None` (default), no NSG is attached and security is
-                enforced by the subnet security list alone.  When supplied,
-                the NSG's OCID is attached to the VNIC and, if the NSG
-                carries a `Role`, `subnet` is inferred from
-                `nsg.role.subnet_tier` (overriding any explicit `subnet=`
-                value).
             user_data: Cloud-init script as a plain `str` or `bytes`.
                 CloudSpells base64-encodes it before passing to OCI.  When
                 `None`, no user data is injected.
@@ -235,33 +225,38 @@ class ComputeInstance(BaseResource, AbstractCompute):
             opts: Pulumi resource options forwarded to the component.
 
         Raises:
-            ValueError: If `volumes` is an explicitly empty list, or if any
-                two `VolumeSpec` entries share the same `label`.
+            ValueError: If `nsg` has no role, if `volumes` is an explicitly
+                empty list, or if any two `VolumeSpec` entries share the same
+                `label`.
             RuntimeError: If any of the four VCN subnets is absent after
                 `finalize_network()` completes.
 
         Example:
             ```python
-            # Role-based shorthand — subnet inferred from NSG role
-            web = ComputeInstance("web-1", compartment_id=comp_id, vcn=vcn, nsg=web_nsg)
-            db  = ComputeInstance("db-1",  compartment_id=comp_id, vcn=vcn, nsg=db_nsg,
+            # Role-based placement — VCN and subnet are inferred from the NSG
+            web = ComputeInstance("web-1", compartment_id=comp_id,
+                                  image_id=image_id, nsg=web_nsg)
+            db  = ComputeInstance("db-1",  compartment_id=comp_id,
+                                  image_id=image_id, nsg=db_nsg,
                                   volumes=[VolumeSpec(size_in_gbs=200, label="data")])
             ```
         """
         super().__init__("custom:compute:Instance", name, compartment_id, stack_name, opts)
 
-        # Resolve nsg= shorthand: infer subnet from role.
-        # This block runs after super().__init__ so the Pulumi component context
-        # is active before any resource-related attributes are accessed.
-        if nsg is not None and nsg.role is not None:
-            subnet = nsg.role.subnet_tier
+        role = nsg.role
+        if role is None:
+            raise ValueError(
+                f"ComputeInstance '{name}' requires nsg.role to determine VCN placement. "
+                "Construct the NSG with a role such as APP_SERVER, DATABASE, MANAGEMENT, or INTERNET_EDGE."
+            )
 
-        self.vcn = vcn
+        self.nsg = nsg
+        self.vcn = nsg.vcn
         self.shape = shape
         self.ocpus = ocpus
         self.memory_in_gbs = memory_in_gbs
 
-        self.subnet = subnet
+        self.subnet = role.subnet_tier
         self.image_id = image_id
         if availability_domain is not None:
             self.availability_domain = pulumi.Output.from_input(availability_domain)
@@ -291,18 +286,13 @@ class ComputeInstance(BaseResource, AbstractCompute):
                 f"VolumeSpec labels must be unique within the list; duplicates found: {sorted(duplicates)}"
             )
 
-        self.nsg_ids = [nsg.id] if nsg is not None else []
+        self.nsg_ids = [nsg.id]
 
         # SSH key setup
         self._setup_ssh_keys(ssh_public_key)
 
-        # Accumulate security rules, then materialise the VCN.
-        # Skip rule-addition when the network is already finalised (e.g. a
-        # sibling ComputeInstance was constructed first); the caller is
-        # responsible for adding any additional rules before the first spell
-        # triggers finalisation.
-        if isinstance(self.vcn, Vcn) and not self.vcn.is_finalized:
-            self._add_compute_security_rules()
+        # Materialise the network after role-bearing NSGs and other rule-owning
+        # spells have registered their security list requirements.
         self.vcn.finalize_network()
 
         self._assert_subnets_ready()
@@ -503,58 +493,6 @@ class ComputeInstance(BaseResource, AbstractCompute):
             if getattr(self.vcn, attr) is None:
                 raise RuntimeError(f"VCN {label} subnet must exist after finalize_network().")
 
-    def _add_compute_security_rules(self) -> None:
-        """Add SSH ingress rule to the appropriate VCN security list.
-
-        For **private** subnet instances: allows TCP port 22 from the public
-        subnet CIDR (bastion-host pattern).
-
-        For **secure** / **management** subnet instances: allows TCP port 22
-        from the private subnet CIDR.
-
-        For **public** subnet instances: allows TCP port 22 from anywhere
-        (`0.0.0.0/0`).  Uses the same fingerprint (`"public-ingress-tcp-22"`)
-        as `Nsg._apply_role_ambient_rules` so that when an `INTERNET_EDGE`
-        NSG with `SSH` in `ports` has already registered the rule, this call
-        is silently ignored and no duplicate is created in the security list.
-        """
-        assert isinstance(self.vcn, Vcn)
-        ssh_rule = oci.core.SecurityListIngressSecurityRuleArgs(
-            protocol="6",
-            source_type="CIDR_BLOCK",
-            tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(min=22, max=22),
-            description=(
-                "SSH access from private subnet"
-                if self.subnet in (SUBNET_SECURE, SUBNET_MANAGEMENT)
-                else "SSH access from public subnet (bastion host)"
-                if self.subnet == SUBNET_PRIVATE
-                else "SSH access from the internet"
-            ),
-            source=(
-                self.vcn.get_private_subnet_cidr()
-                if self.subnet in (SUBNET_SECURE, SUBNET_MANAGEMENT)
-                else self.vcn.get_public_subnet_cidr()
-                if self.subnet == SUBNET_PRIVATE
-                else "0.0.0.0/0"
-            ),
-        )
-
-        if self.subnet == SUBNET_PRIVATE:
-            self.vcn.add_unique_security_list_rules("compute-private-ingress-tcp-22", private_ingress=[ssh_rule])
-        elif self.subnet == SUBNET_SECURE:
-            self.vcn.add_unique_security_list_rules("compute-secure-ingress-tcp-22", secure_ingress=[ssh_rule])
-        elif self.subnet == SUBNET_MANAGEMENT:
-            self.vcn.add_unique_security_list_rules("compute-management-ingress-tcp-22", management_ingress=[ssh_rule])
-        else:
-            # Use the same fingerprint as Nsg._apply_role_ambient_rules so the
-            # rule is deduplicated when an INTERNET_EDGE NSG already added it.
-            pulumi.warn(
-                f"ComputeInstance '{self.name}': SSH (port 22) is open to 0.0.0.0/0 on the "
-                "public subnet. Restrict access by placing this instance behind a bastion or "
-                "using an NSG with a narrower source CIDR."
-            )
-            self.vcn.add_unique_security_list_rules("public-ingress-tcp-22", public_ingress=[ssh_rule])
-
     # ------------------------------------------------------------------
     # Public accessors
     # ------------------------------------------------------------------
@@ -572,8 +510,9 @@ class ComputeInstance(BaseResource, AbstractCompute):
             ```python
             instance = ComputeInstance(
                 name="app",
-                vcn=vcn,
                 compartment_id=comp_id,
+                image_id=image_id,
+                nsg=app_nsg,
                 volumes=[
                     VolumeSpec(size_in_gbs=100, label="data"),
                     VolumeSpec(size_in_gbs=500, label="db"),

@@ -34,6 +34,8 @@ def render(name: str, _stack: str) -> dict[str, str]:
         from cloudspells.providers.oci.bastion import Bastion
         from cloudspells.providers.oci.compute import ComputeInstance
         from cloudspells.providers.oci.network import Vcn
+        from cloudspells.providers.oci.nsg import Nsg
+        from cloudspells.providers.oci.roles import APP_SERVER
 
         config = Config()
         compartment_id = config.require("compartment_ocid")
@@ -46,20 +48,21 @@ def render(name: str, _stack: str) -> dict[str, str]:
             compartment_id=compartment_id,
             cidr_block=cidr_block,
         )
-
-        instance = ComputeInstance(
-            name="{name}",
-            compartment_id=compartment_id,
-            vcn=vcn,
-            image_id=image_id,
-            ssh_public_key=ssh_key,
-        )
+        app_nsg = Nsg("{name}-app", role=APP_SERVER, vcn=vcn, compartment_id=compartment_id)
 
         bastion = Bastion(
             name="{name}",
             compartment_id=compartment_id,
             vcn=vcn,
             allowed_client_cidrs=["0.0.0.0/0"],
+        )
+
+        instance = ComputeInstance(
+            name="{name}",
+            compartment_id=compartment_id,
+            image_id=image_id,
+            nsg=app_nsg,
+            ssh_public_key=ssh_key,
         )
 
         vcn.export()

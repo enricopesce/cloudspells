@@ -1,45 +1,30 @@
 """Network Security Group (NSG) spell for CloudSpells.
 
-Provides `Nsg`, a single named Network Security Group with
-caller-defined rules.  NSGs are **role-based policies** — one NSG represents
-the security policy for a class of resources (e.g. all web servers, all
-databases, all load balancers).  The same NSG can be attached to any number
-of VMs, and a single VM can hold multiple NSGs.
-
-This is intentionally **not** tied to subnet topology.  Place the
-`ComputeInstance` in whatever subnet tier makes sense; attach the NSG that
-matches its role.
+Provides `Nsg`, a single named Network Security Group with opinionated
+role-based rules.  NSGs are **role-based policies** — one NSG represents the
+security policy and subnet tier for a class of resources (e.g. all web
+servers, all databases, all load balancers).  The same NSG can be reused by
+any number of VMs.
 
 Typical usage:
 
 ```python
-from cloudspells.providers.oci.nsg import (
-    Nsg, TCP, ALL, SVC_CIDR, INTERNET,
-    HTTP, HTTPS, SSH, POSTGRES,
-    tcp_port,
-)
+from cloudspells.providers.oci.nsg import Nsg, HTTP, HTTPS, SSH, POSTGRES
+from cloudspells.providers.oci.roles import APP_SERVER, DATABASE, INTERNET_EDGE
 
-# One NSG per service role
-lb_nsg  = Nsg("load-balancer", vcn=vcn, compartment_id=compartment_id)
-web_nsg = Nsg("web-backend",   vcn=vcn, compartment_id=compartment_id)
-db_nsg  = Nsg("database",      vcn=vcn, compartment_id=compartment_id)
+# One role-bearing NSG per service role
+lb_nsg  = Nsg("load-balancer", role=INTERNET_EDGE, ports=[HTTP, HTTPS],
+              vcn=vcn, compartment_id=compartment_id)
+web_nsg = Nsg("web-backend",   role=APP_SERVER,
+              vcn=vcn, compartment_id=compartment_id)
+db_nsg  = Nsg("database",      role=DATABASE,
+              vcn=vcn, compartment_id=compartment_id)
 
-# Internet edge — INTERNET constant replaces hard-coded "0.0.0.0/0"
-lb_nsg.allow_from_cidr("https-in", HTTPS, INTERNET)
-lb_nsg.allow_from_cidr("http-in",  HTTP,  INTERNET)
-lb_nsg.allow_to_nsg("app-out", web_nsg, 8080)
+# Relationships add bilateral NSG rules and cross-subnet security-list rules.
+lb_nsg.serves(web_nsg, port=8080)
+web_nsg.serves(db_nsg, port=POSTGRES)
 
-web_nsg.allow_from_nsg("app-in", lb_nsg, 8080)
-web_nsg.allow_from_nsg("ssh-in", lb_nsg, SSH)
-web_nsg.allow_to_nsg("db-out",   db_nsg, POSTGRES)
-web_nsg.allow_to_services("svc-out")
-web_nsg.allow_to_cidr("inet-out", INTERNET)
-
-db_nsg.allow_from_nsg("db-in",  web_nsg, POSTGRES)
-db_nsg.allow_from_nsg("ssh-in", web_nsg, SSH)
-db_nsg.allow_to_services("svc-out")
-
-# Attach the right NSG to each VM — same NSG shared across identical roles
+# ComputeInstance derives VCN and subnet placement from its NSG.
 lb   = ComputeInstance("lb",    ..., nsg=lb_nsg)
 web1 = ComputeInstance("web-1", ..., nsg=web_nsg)
 web2 = ComputeInstance("web-2", ..., nsg=web_nsg)  # same NSG
@@ -51,9 +36,6 @@ Exports:
 
 Protocol and CIDR constants:
     `TCP`, `UDP`, `ICMP`, `ALL`, `SVC_CIDR`, `INTERNET`
-
-Rule-option builders:
-    `tcp_port`, `tcp_port_range`, `udp_port`, `udp_port_range`, `icmp_opts`
 
 Well-known port integers (plain `int`, re-exported from `cloudspells.core.ports`):
     Web: `HTTP`, `HTTPS`, `HTTP_ALT`, `HTTPS_ALT`
@@ -73,6 +55,7 @@ from __future__ import annotations
 
 import pulumi
 import pulumi_oci as oci
+from cloudspells.core.abstractions.network import EgressRule, IngressRule, SecurityRules
 from cloudspells.core.abstractions.tiers import (
     SUBNET_MANAGEMENT,
     SUBNET_PRIVATE,
@@ -150,7 +133,7 @@ and `Nsg.allow_to_cidr` for edge-facing rules."""
 # ── Rule-options helpers ──────────────────────────────────────────────────────
 
 
-def tcp_port(port: int) -> oci.core.NetworkSecurityGroupSecurityRuleTcpOptionsArgs:
+def _tcp_port(port: int) -> oci.core.NetworkSecurityGroupSecurityRuleTcpOptionsArgs:
     """Return TCP options restricting traffic to a single destination port.
 
     Args:
@@ -160,10 +143,8 @@ def tcp_port(port: int) -> oci.core.NetworkSecurityGroupSecurityRuleTcpOptionsAr
         `NetworkSecurityGroupSecurityRuleTcpOptionsArgs` with a single-port
         destination range.
 
-    Example:
-        ```python
-        nsg.add_rule("https-in", ..., tcp_options=tcp_port(443))
-        ```
+    This helper is provider-internal plumbing for the opinionated NSG
+    rule helpers.
     """
     return oci.core.NetworkSecurityGroupSecurityRuleTcpOptionsArgs(
         destination_port_range=oci.core.NetworkSecurityGroupSecurityRuleTcpOptionsDestinationPortRangeArgs(
@@ -173,31 +154,7 @@ def tcp_port(port: int) -> oci.core.NetworkSecurityGroupSecurityRuleTcpOptionsAr
     )
 
 
-def tcp_port_range(min_port: int, max_port: int) -> oci.core.NetworkSecurityGroupSecurityRuleTcpOptionsArgs:
-    """Return TCP options restricting traffic to a destination port range.
-
-    Args:
-        min_port: Lowest destination port (inclusive).
-        max_port: Highest destination port (inclusive).
-
-    Returns:
-        `NetworkSecurityGroupSecurityRuleTcpOptionsArgs` with the specified
-        destination port range.
-
-    Example:
-        ```python
-        nsg.add_rule("ephemeral-out", ..., tcp_options=tcp_port_range(1024, 65535))
-        ```
-    """
-    return oci.core.NetworkSecurityGroupSecurityRuleTcpOptionsArgs(
-        destination_port_range=oci.core.NetworkSecurityGroupSecurityRuleTcpOptionsDestinationPortRangeArgs(
-            min=min_port,
-            max=max_port,
-        )
-    )
-
-
-def udp_port(port: int) -> oci.core.NetworkSecurityGroupSecurityRuleUdpOptionsArgs:
+def _udp_port(port: int) -> oci.core.NetworkSecurityGroupSecurityRuleUdpOptionsArgs:
     """Return UDP options restricting traffic to a single destination port.
 
     Args:
@@ -207,13 +164,8 @@ def udp_port(port: int) -> oci.core.NetworkSecurityGroupSecurityRuleUdpOptionsAr
         `NetworkSecurityGroupSecurityRuleUdpOptionsArgs` with a single-port
         destination range.
 
-    Example:
-        ```python
-        # DNS over UDP
-        nsg.add_rule("dns-out", direction="EGRESS", protocol=UDP,
-                     destination=resolver_cidr, destination_type="CIDR_BLOCK",
-                     udp_options=udp_port(DNS))
-        ```
+    This helper is provider-internal plumbing for the opinionated NSG
+    rule helpers.
     """
     return oci.core.NetworkSecurityGroupSecurityRuleUdpOptionsArgs(
         destination_port_range=oci.core.NetworkSecurityGroupSecurityRuleUdpOptionsDestinationPortRangeArgs(
@@ -223,31 +175,7 @@ def udp_port(port: int) -> oci.core.NetworkSecurityGroupSecurityRuleUdpOptionsAr
     )
 
 
-def udp_port_range(min_port: int, max_port: int) -> oci.core.NetworkSecurityGroupSecurityRuleUdpOptionsArgs:
-    """Return UDP options restricting traffic to a destination port range.
-
-    Args:
-        min_port: Lowest destination port (inclusive).
-        max_port: Highest destination port (inclusive).
-
-    Returns:
-        `NetworkSecurityGroupSecurityRuleUdpOptionsArgs` with the specified
-        destination port range.
-
-    Example:
-        ```python
-        nsg.add_rule("rtp-out", ..., udp_options=udp_port_range(16384, 32767))
-        ```
-    """
-    return oci.core.NetworkSecurityGroupSecurityRuleUdpOptionsArgs(
-        destination_port_range=oci.core.NetworkSecurityGroupSecurityRuleUdpOptionsDestinationPortRangeArgs(
-            min=min_port,
-            max=max_port,
-        )
-    )
-
-
-def icmp_opts(
+def _icmp_opts(
     icmp_type: int,
     code: int = -1,
 ) -> oci.core.NetworkSecurityGroupSecurityRuleIcmpOptionsArgs:
@@ -260,105 +188,11 @@ def icmp_opts(
 
     Returns:
         `NetworkSecurityGroupSecurityRuleIcmpOptionsArgs` ready for use in
-        `Nsg.add_rule` or `Nsg.allow_icmp_from_cidr`.
-
-    Example:
-        ```python
-        nsg.add_rule("icmp-unreachable", direction="INGRESS", protocol=ICMP,
-                     source="0.0.0.0/0", source_type="CIDR_BLOCK",
-                     icmp_options=icmp_opts(3, 4))
-        ```
+        `Nsg.allow_icmp_from_cidr`.
     """
     return oci.core.NetworkSecurityGroupSecurityRuleIcmpOptionsArgs(
         type=icmp_type,
         code=code,
-    )
-
-
-# ── Security-list rule builders (private helpers used by role/serves) ─────────
-# These translate the role and relationship declarations into OCI SecurityList
-# args so that nsg.py does not need to import from network.py's translation
-# layer.  They mirror the private _translate_* functions inside Vcn.add_security_rules
-# but live here to keep the NSG module self-contained.
-
-
-def _sl_ingress_tcp(
-    port: int,
-    source: pulumi.Input[str],
-    description: str = "",
-) -> oci.core.SecurityListIngressSecurityRuleArgs:
-    """Build a TCP ingress `SecurityListIngressSecurityRuleArgs` for `port` from `source`.
-
-    Args:
-        port: Destination TCP port number (1–65535).
-        source: Source CIDR block or service CIDR string.
-        description: Optional human-readable description for the rule.
-
-    Returns:
-        `SecurityListIngressSecurityRuleArgs` configured for TCP ingress on `port`
-        from `source`.
-    """
-    return oci.core.SecurityListIngressSecurityRuleArgs(
-        protocol="6",
-        source=source,
-        source_type="CIDR_BLOCK",
-        tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(min=port, max=port),
-        description=description or f"TCP {port} ingress",
-    )
-
-
-def _sl_egress_tcp(
-    port: int,
-    destination: pulumi.Input[str],
-    description: str = "",
-) -> oci.core.SecurityListEgressSecurityRuleArgs:
-    """Build a TCP egress `SecurityListEgressSecurityRuleArgs` for `port` to `destination`.
-
-    Args:
-        port: Destination TCP port number (1–65535).
-        destination: Destination CIDR block or service CIDR string.
-        description: Optional human-readable description for the rule.
-
-    Returns:
-        `SecurityListEgressSecurityRuleArgs` configured for TCP egress on `port`
-        to `destination`.
-    """
-    return oci.core.SecurityListEgressSecurityRuleArgs(
-        protocol="6",
-        destination=destination,
-        destination_type="CIDR_BLOCK",
-        tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(min=port, max=port),
-        description=description or f"TCP {port} egress",
-    )
-
-
-def _sl_egress_all_services() -> oci.core.SecurityListEgressSecurityRuleArgs:
-    """Build an all-protocol egress rule to the OCI Service Gateway CIDR.
-
-    Returns:
-        `SecurityListEgressSecurityRuleArgs` allowing all-protocol egress to
-        the OCI All-Services CIDR (`SERVICE_CIDR_BLOCK` destination type).
-    """
-    return oci.core.SecurityListEgressSecurityRuleArgs(
-        protocol="all",
-        destination=_get_svc_cidr(),
-        destination_type="SERVICE_CIDR_BLOCK",
-        description="All traffic to Oracle Services",
-    )
-
-
-def _sl_egress_all_internet() -> oci.core.SecurityListEgressSecurityRuleArgs:
-    """Build an all-protocol egress rule to the internet (`0.0.0.0/0`).
-
-    Returns:
-        `SecurityListEgressSecurityRuleArgs` allowing all-protocol egress to
-        `0.0.0.0/0` via the NAT Gateway (`CIDR_BLOCK` destination type).
-    """
-    return oci.core.SecurityListEgressSecurityRuleArgs(
-        protocol="all",
-        destination="0.0.0.0/0",
-        destination_type="CIDR_BLOCK",
-        description="All outbound traffic via NAT Gateway",
     )
 
 
@@ -368,19 +202,19 @@ def _sl_egress_all_internet() -> oci.core.SecurityListEgressSecurityRuleArgs:
 class Nsg(BaseResource):
     """A single named Network Security Group with caller-defined rules.
 
-    Represents the security policy for one **service role** (e.g. all web
-    servers, all databases, all load balancers).  Multiple VMs of the same
-    role share the same `Nsg`; a VM with multiple roles receives multiple
-    `Nsg` IDs via `nsg_ids`.
+    Represents the security policy and subnet tier for one **service role**
+    (e.g. all web servers, all databases, all load balancers).  Multiple VMs
+    of the same role share the same `Nsg`; `ComputeInstance` requires one
+    role-bearing `Nsg` via `nsg=`.
 
     OCI enforces implicit deny-all for NSGs with no rules — every allowed
-    traffic flow must be stated explicitly with `add_rule`.
+    traffic flow must be stated explicitly with the opinionated rule helpers.
 
     Attributes:
         nsg: The underlying `oci.core.NetworkSecurityGroup` resource.
-        id: `pulumi.Output[str]` OCID of this NSG.  Pass this to
-            `ComputeInstance` via `nsg_ids` or reference it in another
-            NSG's rule as `source` / `destination`.
+        id: `pulumi.Output[str]` OCID of this NSG.  `ComputeInstance` reads
+            this from the required `nsg=` object, and other NSG rules can
+            reference it as `source` / `destination`.
         role: The `Role` that governs this NSG's ambient rules and subnet
             tier placement, or `None` when the NSG was created without a
             role and all rules are managed manually.  Read by `serves` to
@@ -389,43 +223,20 @@ class Nsg(BaseResource):
 
     Example:
         ```python
-        from cloudspells.providers.oci.nsg import Nsg, TCP, ALL, SVC_CIDR, tcp_port
+        from cloudspells.providers.oci.nsg import Nsg, HTTP, HTTPS, POSTGRES
+        from cloudspells.providers.oci.roles import APP_SERVER, DATABASE, INTERNET_EDGE
 
-        lb_nsg  = Nsg("load-balancer", vcn=vcn, compartment_id=compartment_id)
-        web_nsg = Nsg("web-backend",   vcn=vcn, compartment_id=compartment_id)
-        db_nsg  = Nsg("database",      vcn=vcn, compartment_id=compartment_id)
+        lb_nsg  = Nsg("load-balancer", role=INTERNET_EDGE, ports=[HTTP, HTTPS],
+                      vcn=vcn, compartment_id=compartment_id)
+        web_nsg = Nsg("web-backend",   role=APP_SERVER,
+                      vcn=vcn, compartment_id=compartment_id)
+        db_nsg  = Nsg("database",      role=DATABASE,
+                      vcn=vcn, compartment_id=compartment_id)
 
-        # internet → load balancer
-        lb_nsg.add_rule("https-in",
-                        direction="INGRESS", protocol=TCP,
-                        source="0.0.0.0/0", source_type="CIDR_BLOCK",
-                        tcp_options=tcp_port(443))
+        lb_nsg.serves(web_nsg, port=8080)
+        web_nsg.serves(db_nsg, port=POSTGRES)
 
-        # load balancer → web backends  (NSG-to-NSG, no CIDRs)
-        lb_nsg.add_rule("app-out",
-                        direction="EGRESS", protocol=TCP,
-                        destination=web_nsg.id,
-                        destination_type="NETWORK_SECURITY_GROUP",
-                        tcp_options=tcp_port(8080))
-        web_nsg.add_rule("app-in",
-                         direction="INGRESS", protocol=TCP,
-                         source=lb_nsg.id,
-                         source_type="NETWORK_SECURITY_GROUP",
-                         tcp_options=tcp_port(8080))
-
-        # web backends → databases  (NSG-to-NSG, no CIDRs)
-        web_nsg.add_rule("db-out",
-                         direction="EGRESS", protocol=TCP,
-                         destination=db_nsg.id,
-                         destination_type="NETWORK_SECURITY_GROUP",
-                         tcp_options=tcp_port(5432))
-        db_nsg.add_rule("db-in",
-                        direction="INGRESS", protocol=TCP,
-                        source=web_nsg.id,
-                        source_type="NETWORK_SECURITY_GROUP",
-                        tcp_options=tcp_port(5432))
-
-        # Attach — same NSG shared by all VMs of the same role
+        # Attach — ComputeInstance derives VCN and subnet from the role-bearing NSG
         lb   = ComputeInstance("lb",    ..., nsg=lb_nsg)
         web1 = ComputeInstance("web-1", ..., nsg=web_nsg)
         web2 = ComputeInstance("web-2", ..., nsg=web_nsg)
@@ -458,7 +269,7 @@ class Nsg(BaseResource):
         `Vcn.add_security_rules` call.
 
         When `role` is `None` the NSG is created empty and all rules must be
-        added explicitly via `add_rule` and the convenience helpers.
+        added explicitly via the convenience helpers.
 
         Args:
             name: Role name for this NSG (e.g. `"load-balancer"`,
@@ -529,6 +340,16 @@ class Nsg(BaseResource):
 
         self.register_outputs({"id": self.id})
 
+    @property
+    def vcn(self) -> Vcn | VcnRef:
+        """Return the VCN that hosts this NSG.
+
+        Returns:
+            The live `Vcn` or imported `VcnRef` supplied when the NSG was
+            constructed.
+        """
+        return self._vcn
+
     # ------------------------------------------------------------------
     # Role and relationship methods
     # ------------------------------------------------------------------
@@ -537,12 +358,12 @@ class Nsg(BaseResource):
         self,
         fingerprint: str,
         tier: str,
-        ingress: list[oci.core.SecurityListIngressSecurityRuleArgs] | None = None,
-        egress: list[oci.core.SecurityListEgressSecurityRuleArgs] | None = None,
+        ingress: list[IngressRule] | None = None,
+        egress: list[EgressRule] | None = None,
     ) -> None:
         """Dispatch a uniquely-fingerprinted security list rule to the correct tier.
 
-        Wraps `Vcn.add_unique_security_list_rules` with an explicit
+        Wraps `Vcn.add_unique_security_rules` with an explicit
         `if`/`elif` tier dispatch so Pyright can verify that ingress args go
         to ingress parameters and egress args to egress parameters (dynamic
         `**kwargs` unpacking defeats the type checker).
@@ -562,13 +383,25 @@ class Nsg(BaseResource):
             return
         vcn = self._vcn
         if tier == SUBNET_PUBLIC:
-            vcn.add_unique_security_list_rules(fingerprint, public_ingress=ingress, public_egress=egress)
+            vcn.add_unique_security_rules(
+                fingerprint,
+                SecurityRules(public_ingress=ingress or [], public_egress=egress or []),
+            )
         elif tier == SUBNET_PRIVATE:
-            vcn.add_unique_security_list_rules(fingerprint, private_ingress=ingress, private_egress=egress)
+            vcn.add_unique_security_rules(
+                fingerprint,
+                SecurityRules(private_ingress=ingress or [], private_egress=egress or []),
+            )
         elif tier == SUBNET_SECURE:
-            vcn.add_unique_security_list_rules(fingerprint, secure_ingress=ingress, secure_egress=egress)
+            vcn.add_unique_security_rules(
+                fingerprint,
+                SecurityRules(secure_ingress=ingress or [], secure_egress=egress or []),
+            )
         elif tier == SUBNET_MANAGEMENT:
-            vcn.add_unique_security_list_rules(fingerprint, management_ingress=ingress, management_egress=egress)
+            vcn.add_unique_security_rules(
+                fingerprint,
+                SecurityRules(management_ingress=ingress or [], management_egress=egress or []),
+            )
 
     def _cidr_for_tier(self, tier: str) -> pulumi.Input[str]:
         """Return the subnet CIDR for `tier` from the backing VCN.
@@ -611,7 +444,7 @@ class Nsg(BaseResource):
 
         When the backing network is a live `Vcn` (not a `VcnRef`), the
         equivalent subnet security list rules are also registered via
-        `Vcn.add_unique_security_list_rules` so that `Vcn.finalize_network`
+        `Vcn.add_unique_security_rules` so that `Vcn.finalize_network`
         can emit them without any manual `Vcn.add_security_rules` call by the
         user.
 
@@ -638,15 +471,45 @@ class Nsg(BaseResource):
 
         if is_internet_edge:
             for port in ports:
-                self._vcn.add_unique_security_list_rules(
+                self._vcn.add_unique_security_rules(
                     f"public-ingress-tcp-{port}",
-                    public_ingress=[_sl_ingress_tcp(port, "0.0.0.0/0", f"TCP {port} from internet")],
+                    SecurityRules(
+                        public_ingress=[
+                            IngressRule(
+                                protocol="tcp",
+                                source=INTERNET,
+                                port_min=port,
+                                port_max=port,
+                                description=f"TCP {port} from internet",
+                            )
+                        ],
+                    ),
                 )
 
         if role.egress_services:
-            self._sl_for_tier(f"{tier}-egress-all-services", tier, egress=[_sl_egress_all_services()])
+            self._sl_for_tier(
+                f"{tier}-egress-all-services",
+                tier,
+                egress=[
+                    EgressRule(
+                        protocol="all",
+                        destination="cloud-services",
+                        description="All traffic to Oracle Services",
+                    )
+                ],
+            )
         if role.egress_internet:
-            self._sl_for_tier(f"{tier}-egress-all-internet", tier, egress=[_sl_egress_all_internet()])
+            self._sl_for_tier(
+                f"{tier}-egress-all-internet",
+                tier,
+                egress=[
+                    EgressRule(
+                        protocol="all",
+                        destination=INTERNET,
+                        description="All outbound traffic via NAT Gateway",
+                    )
+                ],
+            )
 
     def serves(
         self,
@@ -724,31 +587,59 @@ class Nsg(BaseResource):
         self._sl_for_tier(
             f"{src_tier}-egress-tcp-{port}-to-{tgt_tier}",
             src_tier,
-            egress=[_sl_egress_tcp(port, tgt_cidr, f"TCP {port} to {tgt_tier} tier")],
+            egress=[
+                EgressRule(
+                    protocol="tcp",
+                    destination=tgt_cidr,
+                    port_min=port,
+                    port_max=port,
+                    description=f"TCP {port} to {tgt_tier} tier",
+                )
+            ],
         )
         self._sl_for_tier(
             f"{tgt_tier}-ingress-tcp-{port}-from-{src_tier}",
             tgt_tier,
-            ingress=[_sl_ingress_tcp(port, src_cidr, f"TCP {port} from {src_tier} tier")],
+            ingress=[
+                IngressRule(
+                    protocol="tcp",
+                    source=src_cidr,
+                    port_min=port,
+                    port_max=port,
+                    description=f"TCP {port} from {src_tier} tier",
+                )
+            ],
         )
 
         if needs_ssh:
             self._sl_for_tier(
                 f"{src_tier}-egress-tcp-22-to-{tgt_tier}",
                 src_tier,
-                egress=[_sl_egress_tcp(SSH, tgt_cidr, f"SSH to {tgt_tier} tier")],
+                egress=[
+                    EgressRule(
+                        protocol="tcp",
+                        destination=tgt_cidr,
+                        port_min=SSH,
+                        port_max=SSH,
+                        description=f"SSH to {tgt_tier} tier",
+                    )
+                ],
             )
             self._sl_for_tier(
                 f"{tgt_tier}-ingress-tcp-22-from-{src_tier}",
                 tgt_tier,
-                ingress=[_sl_ingress_tcp(SSH, src_cidr, f"SSH from {src_tier} tier")],
+                ingress=[
+                    IngressRule(
+                        protocol="tcp",
+                        source=src_cidr,
+                        port_min=SSH,
+                        port_max=SSH,
+                        description=f"SSH from {src_tier} tier",
+                    )
+                ],
             )
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
-    def add_rule(
+    def _add_rule(
         self,
         label: str,
         *,
@@ -763,7 +654,7 @@ class Nsg(BaseResource):
         icmp_options: oci.core.NetworkSecurityGroupSecurityRuleIcmpOptionsArgs | None = None,
         description: str = "",
     ) -> oci.core.NetworkSecurityGroupSecurityRule:
-        """Add a single stateful security rule to this NSG.
+        """Create a single stateful security rule for this NSG.
 
         The Pulumi resource name is `{stack}-{nsg-name}-nsg-rule-{label}`.
         `label` must be unique within this NSG.
@@ -780,35 +671,17 @@ class Nsg(BaseResource):
             destination: Destination CIDR or NSG OCID.  Required for egress.
             destination_type: `"CIDR_BLOCK"`, `"NETWORK_SECURITY_GROUP"`,
                 or `"SERVICE_CIDR_BLOCK"`.
-            tcp_options: TCP port restriction — build with `tcp_port`
-                or `tcp_port_range`.
-            udp_options: UDP port restriction — build with `udp_port`
-                or `udp_port_range`.
-            icmp_options: ICMP type/code restriction — build with `icmp_opts`.
+            tcp_options: TCP port restriction built internally.
+            udp_options: UDP port restriction built internally.
+            icmp_options: ICMP type/code restriction built internally.
             description: Human-readable description shown in the OCI Console.
 
         Returns:
             The `oci.core.NetworkSecurityGroupSecurityRule` resource.
 
-        Example:
-            ```python
-            web_nsg.add_rule(
-                "app-in",
-                direction="INGRESS", protocol=TCP,
-                source=lb_nsg.id,
-                source_type="NETWORK_SECURITY_GROUP",
-                tcp_options=tcp_port(8080),
-                description="HTTP traffic from load-balancer NSG",
-            )
-
-            # DNS over UDP (requires udp_options — previously impossible)
-            dns_nsg.add_rule(
-                "dns-out",
-                direction="EGRESS", protocol=UDP,
-                destination=resolver_ip, destination_type="CIDR_BLOCK",
-                udp_options=udp_port(DNS),
-            )
-            ```
+        This is provider-internal plumbing. Public callers should use
+        `allow_from_cidr`, `allow_from_nsg`, `allow_to_nsg`,
+        `allow_to_services`, `allow_to_cidr`, or `allow_icmp_from_cidr`.
         """
         resource_name = self.create_resource_name(f"nsg-rule-{label}")
         return oci.core.NetworkSecurityGroupSecurityRule(
@@ -862,14 +735,48 @@ class Nsg(BaseResource):
             db_nsg.allow_from_cidr("db-peered",   POSTGRES, "172.16.0.0/12")
             ```
         """
-        return self.add_rule(
+        return self._add_rule(
             label,
             direction="INGRESS",
             protocol=TCP,
             source=cidr,
             source_type="CIDR_BLOCK",
-            tcp_options=tcp_port(port),
+            tcp_options=_tcp_port(port),
             description=description or f"TCP {port} from {cidr}",
+        )
+
+    def allow_udp_from_cidr(
+        self,
+        label: str,
+        port: int,
+        cidr: str,
+        description: str = "",
+    ) -> oci.core.NetworkSecurityGroupSecurityRule:
+        """Add an INGRESS UDP rule allowing traffic from a CIDR block.
+
+        Args:
+            label: Unique label for this rule within the NSG.
+            port: Destination UDP port.
+            cidr: Source CIDR block. Use `INTERNET` for `"0.0.0.0/0"`.
+            description: Optional human-readable description. Defaults to
+                `"UDP {port} from {cidr}"`.
+
+        Returns:
+            The `oci.core.NetworkSecurityGroupSecurityRule` resource.
+
+        Example:
+            ```python
+            resolver_nsg.allow_udp_from_cidr("dns-in", DNS, "10.0.0.0/16")
+            ```
+        """
+        return self._add_rule(
+            label,
+            direction="INGRESS",
+            protocol=UDP,
+            source=cidr,
+            source_type="CIDR_BLOCK",
+            udp_options=_udp_port(port),
+            description=description or f"UDP {port} from {cidr}",
         )
 
     def allow_from_nsg(
@@ -901,13 +808,13 @@ class Nsg(BaseResource):
             db_nsg.allow_from_nsg("db-in",  web_nsg, POSTGRES)
             ```
         """
-        return self.add_rule(
+        return self._add_rule(
             label,
             direction="INGRESS",
             protocol=TCP,
             source=source.id,
             source_type="NETWORK_SECURITY_GROUP",
-            tcp_options=tcp_port(port),
+            tcp_options=_tcp_port(port),
             description=description or f"TCP {port} from NSG",
         )
 
@@ -940,13 +847,13 @@ class Nsg(BaseResource):
             web_nsg.allow_to_nsg("ssh-db-out", db_nsg,  SSH)
             ```
         """
-        return self.add_rule(
+        return self._add_rule(
             label,
             direction="EGRESS",
             protocol=TCP,
             destination=destination.id,
             destination_type="NETWORK_SECURITY_GROUP",
-            tcp_options=tcp_port(port),
+            tcp_options=_tcp_port(port),
             description=description or f"TCP {port} to NSG",
         )
 
@@ -975,7 +882,7 @@ class Nsg(BaseResource):
             db_nsg.allow_to_services("svc-out")
             ```
         """
-        return self.add_rule(
+        return self._add_rule(
             label,
             direction="EGRESS",
             protocol=ALL,
@@ -1010,13 +917,47 @@ class Nsg(BaseResource):
             web_nsg.allow_to_cidr("peered-out",  "10.1.0.0/16")
             ```
         """
-        return self.add_rule(
+        return self._add_rule(
             label,
             direction="EGRESS",
             protocol=ALL,
             destination=cidr,
             destination_type="CIDR_BLOCK",
             description=description or f"All traffic to {cidr}",
+        )
+
+    def allow_udp_to_cidr(
+        self,
+        label: str,
+        port: int,
+        cidr: str,
+        description: str = "",
+    ) -> oci.core.NetworkSecurityGroupSecurityRule:
+        """Add an EGRESS UDP rule allowing traffic to a CIDR block.
+
+        Args:
+            label: Unique label for this rule within the NSG.
+            port: Destination UDP port.
+            cidr: Destination CIDR block. Use `INTERNET` for `"0.0.0.0/0"`.
+            description: Optional human-readable description. Defaults to
+                `"UDP {port} to {cidr}"`.
+
+        Returns:
+            The `oci.core.NetworkSecurityGroupSecurityRule` resource.
+
+        Example:
+            ```python
+            app_nsg.allow_udp_to_cidr("dns-out", DNS, "10.0.0.2/32")
+            ```
+        """
+        return self._add_rule(
+            label,
+            direction="EGRESS",
+            protocol=UDP,
+            destination=cidr,
+            destination_type="CIDR_BLOCK",
+            udp_options=_udp_port(port),
+            description=description or f"UDP {port} to {cidr}",
         )
 
     def allow_icmp_from_cidr(
@@ -1044,13 +985,13 @@ class Nsg(BaseResource):
             nsg.allow_icmp_from_cidr("icmp-unreachable", INTERNET, icmp_type=3, code=4)
             ```
         """
-        return self.add_rule(
+        return self._add_rule(
             label,
             direction="INGRESS",
             protocol=ICMP,
             source=cidr,
             source_type="CIDR_BLOCK",
-            icmp_options=icmp_opts(icmp_type, code),
+            icmp_options=_icmp_opts(icmp_type, code),
             description=description or f"ICMP type {icmp_type} code {code} from {cidr}",
         )
 
@@ -1094,11 +1035,6 @@ __all__ = [
     "SMTPS",
     # DNS
     "DNS",
-    "tcp_port",
-    "tcp_port_range",
-    "udp_port",
-    "udp_port_range",
-    "icmp_opts",
     # Role system (re-exported for convenience — canonical source is providers.oci.roles)
     "Role",
 ]

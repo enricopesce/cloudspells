@@ -17,7 +17,9 @@ Complete technical reference for the `OkeCluster` spell. This page covers the cl
 | `oci.core.NetworkSecurityGroup` | 4 | api, lb, worker, pod |
 | `oci.core.NetworkSecurityGroupSecurityRule` | 34 | See NSG rules section |
 
-Security lists are not created by `OkeCluster` — rules are accumulated into the parent `Vcn` via `add_security_list_rules`, which creates them when `finalize_network` is called.
+Security lists are not created by `OkeCluster` — OKE subnet rules are installed through the parent `Vcn` network profile and materialised when `finalize_network` is called.
+
+When OKE uses a live `Vcn`, `OkeCluster` installs the OKE network profile before `finalize_network()`. When OKE uses `VcnRef`, it does not mutate the referenced VCN; it requires the source stack to have exported the exact OKE profile first. Enable that in the VCN stack with `vcn.enable_oke_profile(kubectl_allowed_cidrs=[...])`.
 
 ---
 
@@ -136,7 +138,7 @@ The total node count (`size`) is divided as evenly as possible across ADs by the
 
 ### Layer 1 — Security lists (subnet boundary)
 
-Security lists enforce coarse-grained, subnet-to-subnet routing policy. They are evaluated on every packet entering or leaving a subnet. `OkeCluster` calls `vcn.add_security_list_rules()` with a complete set of public and private subnet rules before calling `vcn.finalize_network()`.
+Security lists enforce coarse-grained, subnet-to-subnet routing policy. They are evaluated on every packet entering or leaving a subnet. `OkeCluster` installs the OKE network profile with a complete set of public and private subnet rules before calling `vcn.finalize_network()`.
 
 In addition to the OKE-specific rules documented below, `finalize_network` always injects a set of **VCN baseline rules** before materialising the security lists. These include NAT Gateway egress for the private tier, Service Gateway egress for the private/secure/management tiers, and a TCP ingress rule permitting the private subnet to initiate connections into the secure subnet. See [Baseline security rules](vcn-architecture.md#baseline-security-rules) in the VCN Architecture reference for the full list.
 
@@ -175,7 +177,7 @@ The OCID is available via `cluster.lb_nsg.id` (in Pulumi) or `pulumi stack outpu
 
 ## Security list rules
 
-The following rules are added to the shared VCN security lists by `OkeCluster._add_oke_security_lists_rules()`.
+The following rules are added to the shared VCN security lists by the OKE network profile.
 
 ### Public subnet — Ingress
 
@@ -438,9 +440,8 @@ Vcn.__init__()
   └─ creates VCN, gateways, route tables (NOT security lists or subnets)
 
 OkeCluster.__init__()
-  ├─ _add_oke_security_lists_rules()
-  │    └─ vcn.add_security_list_rules(public_ingress, public_egress,
-  │                                   private_ingress, private_egress)
+  ├─ vcn.enable_oke_profile(kubectl_allowed_cidrs=[...])
+  │    └─ installs OKE security-list rules and exports the profile ID
   │
   ├─ vcn.finalize_network()
   │    ├─ _inject_baseline_rules()   ← NAT/Service GW egress + private→secure TCP
@@ -455,7 +456,7 @@ OkeCluster.__init__()
   └─ oci.containerengine.NodePool(...)
 ```
 
-`finalize_network` is idempotent — only the first call creates resources. If `OkeCluster` is combined with `ComputeInstance` or `ScalableWorkload`, each spell adds its rules before the first call to `finalize_network` completes, and subsequent calls from other spells are no-ops.
+`finalize_network` is idempotent — only the first call creates resources. If `OkeCluster` is combined with `ComputeInstance` or `ScalableWorkload`, rule-owning dependencies such as role-bearing NSGs must be constructed before the first call to `finalize_network` completes, and subsequent calls from other spells are no-ops.
 
 ---
 

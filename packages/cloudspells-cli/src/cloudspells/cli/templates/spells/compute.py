@@ -33,6 +33,8 @@ def render(name: str, _stack: str) -> dict[str, str]:
         from cloudspells.core import Config
         from cloudspells.providers.oci.compute import ComputeInstance
         from cloudspells.providers.oci.network import Vcn
+        from cloudspells.providers.oci.nsg import Nsg
+        from cloudspells.providers.oci.roles import APP_SERVER
 
         config = Config()
         compartment_id = config.require("compartment_ocid")
@@ -45,12 +47,13 @@ def render(name: str, _stack: str) -> dict[str, str]:
             compartment_id=compartment_id,
             cidr_block=cidr_block,
         )
+        app_nsg = Nsg("{name}-app", role=APP_SERVER, vcn=vcn, compartment_id=compartment_id)
 
         instance = ComputeInstance(
             name="{name}",
             compartment_id=compartment_id,
-            vcn=vcn,
             image_id=image_id,
+            nsg=app_nsg,
             ssh_public_key=ssh_key,
         )
 

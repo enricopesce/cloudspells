@@ -54,7 +54,6 @@ bastion = Bastion(
 instance = ComputeInstance(
     name="web-server",
     compartment_id=compartment_id,
-    vcn=vcn,
     image_id=config.require("image_ocid"),
     nsg=app_nsg,
 )
@@ -175,7 +174,6 @@ bastion = Bastion(
 instance = ComputeInstance(
     name="web-server",
     compartment_id=compartment_id,
-    vcn=vcn,
     image_id=config.require("image_ocid"),
     nsg=app_nsg,
 )

@@ -97,11 +97,17 @@ vcn: Vcn = Vcn(
 # Each NSG declares what it IS (its role/posture).  Ambient rules are
 # generated automatically — no boilerplate allow_* calls needed.
 #
-#   INTERNET_EDGE  → public subnet, accepts HTTP/HTTPS/SSH from 0.0.0.0/0
+#   INTERNET_EDGE  → public subnet, accepts declared edge ports from 0.0.0.0/0
 #   APP_SERVER     → private subnet, egresses to services + internet (NAT)
 #   DATABASE       → secure subnet, egresses to Oracle Services only
 
-lb_nsg: Nsg = Nsg("load-balancer", role=INTERNET_EDGE, ports=[HTTP, HTTPS, SSH], vcn=vcn, compartment_id=compartment_id)
+lb_nsg: Nsg = Nsg(
+    "load-balancer",
+    role=INTERNET_EDGE,
+    ports=[HTTP, HTTPS, SSH],
+    vcn=vcn,
+    compartment_id=compartment_id,
+)
 web_nsg: Nsg = Nsg("web-backend", role=APP_SERVER, vcn=vcn, compartment_id=compartment_id)
 db_nsg: Nsg = Nsg("database", role=DATABASE, vcn=vcn, compartment_id=compartment_id)
 
@@ -115,33 +121,31 @@ web_nsg.serves(db_nsg, port=db_port)  # web → DB: db port + SSH mgmt
 
 # ── Step 4 — Compute instances ────────────────────────────────────────────────
 #
-# nsg= infers the subnet tier from the role — no explicit subnet= needed.
+# nsg= carries both the VCN and the subnet tier role — no explicit vcn= or
+# subnet= needed on ComputeInstance.
 # Adding more VMs of the same role requires no NSG changes.
 
 load_balancer: ComputeInstance = ComputeInstance(
     name="load-balancer",
     compartment_id=compartment_id,
-    vcn=vcn,
     image_id=config.require("image_ocid"),
     availability_domain=availability_domain,
     ssh_public_key=ssh_key,
-    nsg=lb_nsg,  # subnet=SUBNET_PUBLIC inferred
+    nsg=lb_nsg,  # VCN and public placement come from INTERNET_EDGE.
 )
 
 web_backend_1: ComputeInstance = ComputeInstance(
     name="web-backend-1",
     compartment_id=compartment_id,
-    vcn=vcn,
     image_id=config.require("image_ocid"),
     availability_domain=availability_domain,
     ssh_public_key=ssh_key,
-    nsg=web_nsg,  # subnet=SUBNET_PRIVATE inferred
+    nsg=web_nsg,  # VCN and private placement come from APP_SERVER.
 )
 
 web_backend_2: ComputeInstance = ComputeInstance(
     name="web-backend-2",
     compartment_id=compartment_id,
-    vcn=vcn,
     image_id=config.require("image_ocid"),
     availability_domain=availability_domain,
     ssh_public_key=ssh_key,
@@ -151,18 +155,16 @@ web_backend_2: ComputeInstance = ComputeInstance(
 db_1: ComputeInstance = ComputeInstance(
     name="db-1",
     compartment_id=compartment_id,
-    vcn=vcn,
     image_id=config.require("image_ocid"),
     availability_domain=availability_domain,
     ssh_public_key=ssh_key,
-    nsg=db_nsg,  # subnet=SUBNET_SECURE inferred
+    nsg=db_nsg,  # VCN and secure placement come from DATABASE.
     volumes=[VolumeSpec(size_in_gbs=200, label="data", vpus_per_gb=VolumeSpec.PERF_HIGH)],
 )
 
 db_2: ComputeInstance = ComputeInstance(
     name="db-2",
     compartment_id=compartment_id,
-    vcn=vcn,
     image_id=config.require("image_ocid"),
     availability_domain=availability_domain,
     ssh_public_key=ssh_key,

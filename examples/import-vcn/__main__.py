@@ -5,9 +5,9 @@ Uses `VcnRef` to import a VCN from a separately-managed stack
 
 No network resources are created or modified here.
 
-> **Note:** Security rules required by the services deployed here (Compute,
-> etc.) must already exist in the source VCN stack.  `VcnRef` does not add or
-> modify security lists.
+> **Note:** `VcnRef` is read-only. Role-bearing NSGs created here still add
+> their own NSG rules, but any matching subnet security list rules required by
+> the role must already exist in the source VCN stack.
 
 ## Prerequisites
 
@@ -27,8 +27,11 @@ The referenced VCN stack must already have run `pulumi up` and export:
 - `private_security_list_id`
 - `secure_security_list_id`
 - `management_security_list_id`
+- `drg_id`
+- `cloudspells_network_schema`
+- `cloudspells_network_profiles`
 
-All fourteen values are exported by `examples/vcn` via `vcn.export()`.
+All values are exported by `examples/vcn` via `vcn.export()`.
 
 ## Quick start
 
@@ -55,6 +58,8 @@ sys.path.insert(0, os.path.join(_root, "packages/cloudspells-oci/src"))
 from cloudspells.core import Config
 from cloudspells.providers.oci.compute import ComputeInstance
 from cloudspells.providers.oci.network import VcnRef
+from cloudspells.providers.oci.nsg import Nsg
+from cloudspells.providers.oci.roles import APP_SERVER
 
 config = Config()
 compartment_id: str = config.require("compartment_ocid")
@@ -65,13 +70,20 @@ ssh_key: str | None = config.get("ssh_key") or None
 
 vcn: VcnRef = VcnRef.from_stack_reference(vcn_stack)
 
+app_nsg: Nsg = Nsg(
+    "app-server",
+    role=APP_SERVER,
+    vcn=vcn,
+    compartment_id=compartment_id,
+)
+
 instance: ComputeInstance = ComputeInstance(
     name="app-server",
     compartment_id=compartment_id,
-    vcn=vcn,
     image_id=config.require("image_ocid"),
     availability_domain=availability_domain,
     ssh_public_key=ssh_key,
+    nsg=app_nsg,
 )
 
 instance.export()

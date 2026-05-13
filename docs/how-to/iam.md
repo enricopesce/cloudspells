@@ -119,7 +119,6 @@ principal = ComputeInstancePrincipal(
 instance = ComputeInstance(
     name="web",
     compartment_id=compartment_id,
-    vcn=vcn,
     image_id=image_id,
     nsg=nsg,
 )

@@ -155,8 +155,8 @@ Security lists and subnets are **not** created in `Vcn.__init__`. They are creat
 ```
 Vcn.__init__()                     ← creates VCN, gateways, route tables
   │
-  ├─ spell1.add_security_list_rules(...)   ← accumulate rules
-  ├─ spell2.add_security_list_rules(...)   ← accumulate rules
+  ├─ spell1.add_security_rules(...)        ← accumulate rules
+  ├─ spell2.add_security_rules(...)        ← accumulate rules
   │
   └─ vcn.finalize_network()               ← creates security lists + subnets
        (idempotent: subsequent calls are no-ops)
@@ -164,21 +164,21 @@ Vcn.__init__()                     ← creates VCN, gateways, route tables
 
 When other CloudSpells spells are used (OKE, Compute, ScalableWorkload), they call `finalize_network` automatically at the end of their `__init__`. In standalone mode — a VCN without other spells — call `finalize_network` explicitly.
 
-### `add_security_list_rules`
+### `add_security_rules`
 
-Accumulates rules into eight internal lists (one ingress + one egress per tier). Must be called **before** `finalize_network`. Raises `RuntimeError` if called after.
+Accumulates cloud-neutral rules into eight internal lists (one ingress + one egress per tier). Must be called **before** `finalize_network`. Raises `RuntimeError` if called after.
 
 ```python
-vcn.add_security_list_rules(
-    public_ingress=[...],
-    public_egress=[...],
-    private_ingress=[...],
-    private_egress=[...],
-    secure_ingress=[...],
-    secure_egress=[...],
-    management_ingress=[...],
-    management_egress=[...],
-)
+from cloudspells.core.abstractions.network import SecurityRules, IngressRule, EgressRule
+
+vcn.add_security_rules(SecurityRules(
+    public_ingress=[
+        IngressRule(protocol="tcp", source="internet", port_min=443, port_max=443),
+    ],
+    private_egress=[
+        EgressRule(protocol="all", destination="cloud-services"),
+    ],
+))
 ```
 
 All parameters are optional. Omit tiers you are not modifying.
@@ -250,9 +250,9 @@ Flow logs are **not enabled by default** — the additional OCI Logging cost may
 
 `VcnRef` is a read-only handle to a CloudSpells VCN managed by a separate Pulumi stack. It exposes the same interface as `Vcn` (subnet accessors, security list references) so spells that accept `Vcn | VcnRef` work identically with either.
 
-**`VcnRef` is only supported for VCNs created by CloudSpells.** The source stack must export the standard CloudSpells output keys (all emitted automatically by `Vcn.export()`).
+**`VcnRef` is only supported for VCNs created by CloudSpells and exported with `Vcn.export()`.** The source stack must publish `cloudspells_network_schema="cloudspells.oci.vcn/v1"` and a `cloudspells_network_profiles` list. These outputs are the compatibility contract between the network-owning stack and service stacks.
 
-**When `add_security_list_rules` is called on a `VcnRef`:** a `RuntimeError` is raised immediately, listing the rule sets that cannot be applied. Any security rules required by the deployed spells must already exist in the source CloudSpells VCN stack — add them there first, then re-run this stack.
+**When `add_security_rules` is called on a `VcnRef` with non-empty rules:** a `RuntimeError` is raised immediately, listing the rule sets that cannot be applied. Any security rules required by the deployed spells must already exist in the source CloudSpells VCN stack — add them there first, then re-run this stack.
 
 ### Constructing a `VcnRef` from a stack reference
 
@@ -278,11 +278,13 @@ The source stack must export the following keys (all emitted automatically by `V
 | `private_security_list_id` | `str` | Private security list OCID |
 | `secure_security_list_id` | `str` | Secure security list OCID |
 | `management_security_list_id` | `str` | Management security list OCID |
-| `drg_id` | `str \| None` | DRG OCID (optional — `None` when no DRG is attached) |
+| `drg_id` | `str \| None` | DRG OCID; output key is always exported, value is `None` when no DRG is attached |
+| `cloudspells_network_schema` | `str` | CloudSpells OCI VCN schema marker |
+| `cloudspells_network_profiles` | `list[str]` | Network profiles installed in the source VCN stack |
 
 ### Constructing a `VcnRef` manually
 
-When consuming a CloudSpells VCN that does not publish a Pulumi stack reference (e.g. a VCN created by an older CloudSpells deployment without `export()`), you can construct `VcnRef` directly with the OCID and CIDR values:
+Prefer `VcnRef.from_stack_reference()` so the schema and network profile contract is read directly from the source stack. Manual construction is only for advanced cases where those same CloudSpells `Vcn.export()` values are already available through another typed configuration path. It is not a generic OCI VCN import path.
 
 ```python
 vcn = VcnRef(
@@ -296,10 +298,14 @@ vcn = VcnRef(
     private_subnet_cidr="10.0.0.0/19",
     secure_subnet_cidr="10.0.32.0/20",
     management_subnet_cidr="10.0.56.0/21",
+    cloudspells_network_schema="cloudspells.oci.vcn/v1",
+    network_profiles=[
+        "cloudspells.oci.vcn.profile/base/v1",
+    ],
 )
 ```
 
-`cidr_block` is **required**. Omitting it raises `ValueError` immediately — the constructor will not silently fall back to an incorrect value.
+`cidr_block` and the CloudSpells schema marker are **required**. Omitting either raises immediately — the constructor will not silently fall back to an incorrect network contract.
 
 ---
 

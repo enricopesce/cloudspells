@@ -106,8 +106,11 @@ pulumi up
 | `management_subnet_id` | OCID of the management subnet |
 | `management_subnet_cidr` | Management subnet CIDR |
 | `management_security_list_id` | Management security list OCID |
+| `drg_id` | DRG OCID, or `None` when no DRG is attached |
+| `cloudspells_network_schema` | CloudSpells OCI VCN schema marker |
+| `cloudspells_network_profiles` | Network profiles installed in this VCN stack |
 
-All 14 outputs are consumed automatically by `VcnRef.from_stack_reference()`
+All outputs are consumed automatically by `VcnRef.from_stack_reference()`
 when another stack imports this VCN.
 
 ## Teardown

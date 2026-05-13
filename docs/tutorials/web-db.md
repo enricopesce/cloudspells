@@ -122,17 +122,16 @@ It also creates the matching cross-subnet Security List rules, so OCI's two enfo
 from cloudspells.providers.oci.compute import ComputeInstance
 from cloudspells.providers.oci.volume import VolumeSpec
 
-load_balancer = ComputeInstance("load-balancer", compartment_id=compartment_id, vcn=vcn,
+load_balancer = ComputeInstance("load-balancer", compartment_id=compartment_id,
                                 image_id=config.require("image_ocid"), ssh_public_key=ssh_key, nsg=lb_nsg)
-web_backend_1 = ComputeInstance("web-backend-1", compartment_id=compartment_id, vcn=vcn,
+web_backend_1 = ComputeInstance("web-backend-1", compartment_id=compartment_id,
                                 image_id=config.require("image_ocid"), ssh_public_key=ssh_key, nsg=web_nsg)
-web_backend_2 = ComputeInstance("web-backend-2", compartment_id=compartment_id, vcn=vcn,
+web_backend_2 = ComputeInstance("web-backend-2", compartment_id=compartment_id,
                                 image_id=config.require("image_ocid"), ssh_public_key=ssh_key, nsg=web_nsg)
 
 db_1 = ComputeInstance(
     "db-1",
     compartment_id=compartment_id,
-    vcn=vcn,
     image_id=config.require("image_ocid"),
     ssh_public_key=ssh_key,
     nsg=db_nsg,
@@ -141,7 +140,6 @@ db_1 = ComputeInstance(
 db_2 = ComputeInstance(
     "db-2",
     compartment_id=compartment_id,
-    vcn=vcn,
     image_id=config.require("image_ocid"),
     ssh_public_key=ssh_key,
     nsg=db_nsg,
@@ -149,7 +147,7 @@ db_2 = ComputeInstance(
 )
 ```
 
-Every instance inherits its subnet from its NSG role — no `subnet=` argument needed. Both `web_backend_1` and `web_backend_2` share `web_nsg`; the shared NSG covers both instances automatically with no extra rules.
+Every instance inherits its VCN and subnet from its NSG role — no `vcn=` or `subnet=` argument needed. Both `web_backend_1` and `web_backend_2` share `web_nsg`; the shared NSG covers both instances automatically with no extra rules.
 
 The database nodes each get a 200 GB block volume at `PERF_HIGH` (higher IOPS/throughput, suitable for database workloads).
 
@@ -192,7 +190,6 @@ Because all web instances share `web_nsg`, adding another backend requires no NS
 web_backend_3 = ComputeInstance(
     "web-backend-3",
     compartment_id=compartment_id,
-    vcn=vcn,
     image_id=config.require("image_ocid"),
     ssh_public_key=ssh_key,
     nsg=web_nsg,   # same NSG — zero rule changes

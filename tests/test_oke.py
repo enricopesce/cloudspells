@@ -12,6 +12,11 @@ from tests.mocks import set_mocks
 set_mocks()
 
 # Import AFTER mocks are set
+from cloudspells.providers.oci._network_profiles import (
+    CLOUDSPELLS_OCI_VCN_SCHEMA,
+    NETWORK_PROFILE_BASELINE,
+    oke_profile_id,
+)
 from cloudspells.providers.oci.kubernetes import (
     NodePoolConfig,
     OkeCluster,
@@ -40,18 +45,22 @@ def _make_cluster(vcn: Vcn, node_pools: list[NodePoolConfig] | None = None) -> O
     )
 
 
-def _make_vcn_ref() -> VcnRef:
+def _make_vcn_ref(**kwargs) -> VcnRef:
     """Build a VcnRef populated with plain values suitable for tests."""
-    return VcnRef(
+    defaults = dict(
         vcn_id="ocid1.vcn.test",
         public_subnet_id="ocid1.subnet.public.test",
         private_subnet_id="ocid1.subnet.private.test",
         public_subnet_cidr="10.0.48.0/21",
         private_subnet_cidr="10.0.0.0/19",
         cidr_block="10.0.0.0/18",
+        cloudspells_network_schema=CLOUDSPELLS_OCI_VCN_SCHEMA,
+        network_profiles=[NETWORK_PROFILE_BASELINE],
         public_security_list_id="ocid1.seclist.public.test",
         private_security_list_id="ocid1.seclist.private.test",
     )
+    defaults.update(kwargs)
+    return VcnRef(**defaults)
 
 
 class TestOkeCluster(unittest.TestCase):
@@ -284,14 +293,10 @@ class TestOkeCluster(unittest.TestCase):
         message = mock_warn.call_args.args[0]
         self.assertIn("kubectl_allowed_cidrs is not set", message)
 
-    def test_oke_rejects_vcn_ref_without_preexisting_rules(self):
-        """OkeCluster+VcnRef raises RuntimeError by design (rules must live in source stack)."""
-        # VcnRef models a VCN owned by another stack.  Its security lists are
-        # immutable from this stack's perspective, so any spell (including
-        # OkeCluster) that tries to add rules through VcnRef.add_security_list_rules
-        # triggers the documented RuntimeError guard.  The caller must deploy
-        # OkeCluster in the source stack first so the rules are written there.
+    def test_oke_rejects_vcn_ref_without_oke_network_profile(self):
+        """OkeCluster+VcnRef raises when the source VCN lacks the exact OKE profile."""
         vcn_ref = _make_vcn_ref()
+
         with self.assertRaises(RuntimeError) as ctx:
             OkeCluster(
                 name="test-vcnref",
@@ -301,7 +306,40 @@ class TestOkeCluster(unittest.TestCase):
                 node_pools=[_DEFAULT_POOL],
                 kubectl_allowed_cidrs=["10.0.0.0/8"],
             )
-        self.assertIn("VcnRef", str(ctx.exception))
+
+        self.assertIn("required network profile", str(ctx.exception))
+
+    def test_oke_accepts_vcn_ref_with_oke_network_profile(self):
+        """OkeCluster can deploy against a VcnRef when the source VCN exports the exact OKE profile."""
+        profile_id = oke_profile_id(["10.0.0.0/8"])
+        vcn_ref = _make_vcn_ref(network_profiles=[NETWORK_PROFILE_BASELINE, profile_id])
+
+        oke = OkeCluster(
+            name="test-vcnref-profile",
+            compartment_id="ocid1.compartment.test",
+            vcn=vcn_ref,
+            kubernetes_version="v1.28.2",
+            node_pools=[_DEFAULT_POOL],
+            kubectl_allowed_cidrs=["10.0.0.0/8"],
+        )
+
+        self.assertIs(oke.vcn, vcn_ref)
+
+    def test_oke_registers_oke_network_profile_on_live_vcn(self):
+        """OkeCluster registers the exact OKE network profile on live Vcn."""
+        vcn = self._make_vcn()
+        cidrs = ["10.0.0.0/8"]
+
+        OkeCluster(
+            name="test-live-profile",
+            compartment_id="ocid1.compartment.test",
+            vcn=vcn,
+            kubernetes_version="v1.28.2",
+            node_pools=[_DEFAULT_POOL],
+            kubectl_allowed_cidrs=cidrs,
+        )
+
+        self.assertTrue(vcn.has_network_profile(oke_profile_id(cidrs)))
 
     def test_export_publishes_expected_keys(self):
         """Test that export() publishes the cluster-id and NSG-id outputs."""
@@ -352,6 +390,8 @@ class TestOkeCluster(unittest.TestCase):
             public_subnet_cidr="10.0.48.0/21",
             private_subnet_cidr="10.0.0.0/19",
             cidr_block="10.0.0.0/18",
+            cloudspells_network_schema=CLOUDSPELLS_OCI_VCN_SCHEMA,
+            network_profiles=[NETWORK_PROFILE_BASELINE],
             # No security-list OCIDs → accessors should yield [].
         )
         oke.vcn = vcn_ref

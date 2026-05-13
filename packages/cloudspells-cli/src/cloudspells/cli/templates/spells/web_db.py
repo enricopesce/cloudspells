@@ -66,7 +66,6 @@ def render(name: str, _stack: str) -> dict[str, str]:
         web = ComputeInstance(
             name="{name}-web",
             compartment_id=compartment_id,
-            vcn=vcn,
             image_id=image_id,
             ssh_public_key=ssh_key,
             nsg=web_nsg,
@@ -75,7 +74,6 @@ def render(name: str, _stack: str) -> dict[str, str]:
         db = ComputeInstance(
             name="{name}-db",
             compartment_id=compartment_id,
-            vcn=vcn,
             image_id=image_id,
             ssh_public_key=ssh_key,
             nsg=db_nsg,

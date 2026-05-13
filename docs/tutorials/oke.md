@@ -109,6 +109,8 @@ oke.create_kubeconfig(os.path.join(os.path.dirname(__file__), "kubeconfig"))
 - Spreads nodes across all Availability Domains automatically
 - Calls `vcn.finalize_network()` to materialise subnets and security lists
 
+When OKE uses a live `Vcn`, `OkeCluster` installs the OKE network profile before `finalize_network()`. When OKE uses `VcnRef`, it does not mutate the referenced VCN; it requires the source stack to have exported the exact OKE profile first. Enable that in the VCN stack with `vcn.enable_oke_profile(kubectl_allowed_cidrs=[...])`.
+
 ### The NSG security model
 
 Workers and pods share the private subnet CIDR. Four NSGs segment them at the VNIC level:

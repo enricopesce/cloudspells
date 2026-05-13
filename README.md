@@ -98,14 +98,13 @@ web_nsg = Nsg(
     compartment_id=compartment_id,
 )
 
-# nsg= infers subnet=SUBNET_PUBLIC from the INTERNET_EDGE role
+# nsg= carries the VCN and infers public placement from INTERNET_EDGE
 web_server = ComputeInstance(
     name="web-server",
     compartment_id=compartment_id,
-    vcn=vcn,
-    ssh_public_key=ssh_public_key,
+    image_id="ocid1.image.oc1..<your-image-ocid>",
     nsg=web_nsg,
-    image="ocid1.image.oc1..<your-image-ocid>",
+    ssh_public_key=ssh_public_key,
     volumes=[
         VolumeSpec(size_in_gbs=100, label="data"),
         VolumeSpec(size_in_gbs=200, label="logs", vpus_per_gb=VolumeSpec.PERF_LOW),
@@ -144,16 +143,27 @@ db_nsg  = Nsg("database",      role=DATABASE,        vcn=vcn, compartment_id=com
 lb_nsg.serves(web_nsg, port=HTTP)      # LB → web: HTTP + SSH mgmt
 web_nsg.serves(db_nsg, port=POSTGRES)  # web → DB: Postgres + SSH mgmt
 
-# Subnet tier inferred from role — no explicit subnet= parameter
-load_balancer = ComputeInstance("load-balancer", compartment_id=compartment_id, vcn=vcn, ssh_public_key=ssh_public_key, image=image, nsg=lb_nsg)
-web_backend_1 = ComputeInstance("web-backend-1", compartment_id=compartment_id, vcn=vcn, ssh_public_key=ssh_public_key, image=image, nsg=web_nsg)
-web_backend_2 = ComputeInstance("web-backend-2", compartment_id=compartment_id, vcn=vcn, ssh_public_key=ssh_public_key, image=image, nsg=web_nsg)
+# VCN and subnet tier are inferred from the role-bearing NSG
+load_balancer = ComputeInstance(
+    "load-balancer", compartment_id=compartment_id, image_id=image,
+    ssh_public_key=ssh_public_key, nsg=lb_nsg,
+)
+web_backend_1 = ComputeInstance(
+    "web-backend-1", compartment_id=compartment_id, image_id=image,
+    ssh_public_key=ssh_public_key, nsg=web_nsg,
+)
+web_backend_2 = ComputeInstance(
+    "web-backend-2", compartment_id=compartment_id, image_id=image,
+    ssh_public_key=ssh_public_key, nsg=web_nsg,
+)
 db_1 = ComputeInstance(
-    "db-1", compartment_id=compartment_id, vcn=vcn, ssh_public_key=ssh_public_key, image=image, nsg=db_nsg,
+    "db-1", compartment_id=compartment_id, image_id=image,
+    ssh_public_key=ssh_public_key, nsg=db_nsg,
     volumes=[VolumeSpec(size_in_gbs=200, label="data", vpus_per_gb=VolumeSpec.PERF_HIGH)],
 )
 db_2 = ComputeInstance(
-    "db-2", compartment_id=compartment_id, vcn=vcn, ssh_public_key=ssh_public_key, image=image, nsg=db_nsg,
+    "db-2", compartment_id=compartment_id, image_id=image,
+    ssh_public_key=ssh_public_key, nsg=db_nsg,
     volumes=[VolumeSpec(size_in_gbs=200, label="data", vpus_per_gb=VolumeSpec.PERF_HIGH)],
 )
 ```
@@ -168,7 +178,7 @@ Adding a third web backend? Attach `web_nsg` to a new `ComputeInstance`. Zero NS
 |-------|-------|----------------------|--------|
 | `Vcn` | OCI | 4-tier VCN (public/private/secure/management), all gateways, route tables, security lists | Alpha |
 | `OkeCluster` | OCI | Oracle Kubernetes Engine cluster, node pool, OCI_VCN_IP_NATIVE CNI, multi-AD node placement | Alpha |
-| `ComputeInstance` | OCI | VM instance, SSH key management, block volume attachments | Alpha |
+| `ComputeInstance` | OCI | VM instance attached through a role-bearing NSG, SSH key management, block volume attachments | Alpha |
 | `Bastion` | OCI | OCI Bastion service in the private subnet, ready for session-based access | Alpha |
 | `ScalableWorkload` | OCI | Load balancer (public) + instance pool (private) + CPU/schedule autoscaling | Alpha |
 | `LoadBalancer` | OCI | Flexible-shape public load balancer with HTTP/HTTPS listeners and health checks | Alpha |

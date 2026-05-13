@@ -11,7 +11,8 @@ fully-implemented provider.
 - `VcnRef`: Read-only handle to a `Vcn` owned by another Pulumi stack.
   Accepts the same subnet CIDR accessors as `Vcn`.
 - `Nsg`: Role-based Network Security Group. Create one per service role,
-  add rules with `Nsg.add_rule`, then attach to resources via `nsg_ids`.
+  add rules with opinionated helpers, then pass the role-bearing NSG to
+  `ComputeInstance` via its required `nsg=` argument.
 - `VcnFlowLogs`: Enables VCN Flow Logs for all four subnet tiers under a
   dedicated Log Group. Opt-in via `flow_logs=True` on `Vcn`.
 - `OkeCluster`: Oracle Kubernetes Engine BASIC cluster with OCI_VCN_IP_NATIVE
@@ -20,8 +21,8 @@ fully-implemented provider.
 - `OkeClusterEnhanced`: Oracle Kubernetes Engine ENHANCED cluster — adds OCI
   Workload Identity, cluster add-on lifecycle management, and OCI DevOps
   integration on top of `OkeCluster`.
-- `ComputeInstance`: OCI VM with auto-generated SSH keys and optional
-  attached block volumes.
+- `ComputeInstance`: OCI VM attached through a required role-bearing NSG,
+  with auto-generated SSH keys and optional attached block volumes.
 - `Bastion`: OCI Bastion Service endpoint in the private subnet.
 - `ScalableWorkload`: OCI Load Balancer in the public subnet backed by an
   Instance Pool in the private subnet with CPU autoscaling.
@@ -69,10 +70,9 @@ fully-implemented provider.
 
 ### Network security helpers
 
-- `TCP`, `UDP`, `ALL`: Protocol constants for NSG rules.
-- `SVC_CIDR`: Sentinel used in NSG rules to target the OCI Services CIDR.
-- `tcp_port`: Build a single-port TCP NSG rule destination.
-- `tcp_port_range`: Build a port-range TCP NSG rule destination.
+- `INTERNET`: CIDR constant for internet-facing allow helpers.
+- `TCP`, `UDP`, `ICMP`, `ALL`, `SVC_CIDR`: Protocol and service constants
+  retained for import compatibility.
 
 **Role constants** (use with `Nsg` to express intent):
 
@@ -122,11 +122,6 @@ from .nsg import (
     TCP,
     UDP,
     Nsg,
-    icmp_opts,
-    tcp_port,
-    tcp_port_range,
-    udp_port,
-    udp_port_range,
 )
 from .roles import APP_SERVER, CACHE, DATABASE, INTERNET_EDGE, MANAGEMENT, Role
 from .storage import ArchiveBucket, BackupBucket, DataLakeBucket, ObjectStorageBucket, StaticWebsiteBucket
@@ -151,11 +146,6 @@ __all__ = [
     "ALL",
     "SVC_CIDR",
     "INTERNET",
-    "tcp_port",
-    "tcp_port_range",
-    "udp_port",
-    "udp_port_range",
-    "icmp_opts",
     # Security — Roles
     "Role",
     "INTERNET_EDGE",

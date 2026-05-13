@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import pulumi
 import pulumi_oci as oci
+from cloudspells.core.abstractions.network import EgressRule, IngressRule, SecurityRules
 from cloudspells.core.base import BaseResource
 
 from .network import Vcn, VcnRef
@@ -325,61 +326,55 @@ class LoadBalancer(BaseResource, _LbMixin):
         public_subnet_cidr: pulumi.Input[str] = self.vcn.get_public_subnet_cidr()
         private_subnet_cidr: pulumi.Input[str] = self.vcn.get_private_subnet_cidr()
 
-        self.vcn.add_unique_security_list_rules(
+        self.vcn.add_unique_security_rules(
             "lb-public-ingress-tcp-80",
-            public_ingress=[
-                oci.core.SecurityListIngressSecurityRuleArgs(
-                    description="HTTP traffic from internet to load balancer",
-                    protocol="6",
-                    source="0.0.0.0/0",
-                    source_type="CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                        min=80,
-                        max=80,
+            SecurityRules(
+                public_ingress=[
+                    IngressRule(
+                        protocol="tcp",
+                        source="0.0.0.0/0",
+                        port_min=80,
+                        port_max=80,
+                        description="HTTP traffic from internet to load balancer",
                     ),
-                ),
-            ],
+                ],
+            ),
         )
-        self.vcn.add_unique_security_list_rules(
+        self.vcn.add_unique_security_rules(
             "lb-public-ingress-tcp-443",
-            public_ingress=[
-                oci.core.SecurityListIngressSecurityRuleArgs(
-                    description="HTTPS traffic from internet to load balancer",
-                    protocol="6",
-                    source="0.0.0.0/0",
-                    source_type="CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                        min=443,
-                        max=443,
+            SecurityRules(
+                public_ingress=[
+                    IngressRule(
+                        protocol="tcp",
+                        source="0.0.0.0/0",
+                        port_min=443,
+                        port_max=443,
+                        description="HTTPS traffic from internet to load balancer",
                     ),
-                ),
-            ],
+                ],
+            ),
         )
-        self.vcn.add_security_list_rules(
-            public_egress=[
-                oci.core.SecurityListEgressSecurityRuleArgs(
-                    description=f"Load balancer forwards traffic to backend instances on port {backend_port}",
-                    protocol="6",
-                    destination=private_subnet_cidr,
-                    destination_type="CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                        min=backend_port,
-                        max=backend_port,
+        self.vcn.add_security_rules(
+            SecurityRules(
+                public_egress=[
+                    EgressRule(
+                        protocol="tcp",
+                        destination=private_subnet_cidr,
+                        port_min=backend_port,
+                        port_max=backend_port,
+                        description=f"Load balancer forwards traffic to backend instances on port {backend_port}",
                     ),
-                ),
-            ],
-            private_ingress=[
-                oci.core.SecurityListIngressSecurityRuleArgs(
-                    description=f"Traffic from load balancer to backend instances on port {backend_port}",
-                    protocol="6",
-                    source=public_subnet_cidr,
-                    source_type="CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                        min=backend_port,
-                        max=backend_port,
+                ],
+                private_ingress=[
+                    IngressRule(
+                        protocol="tcp",
+                        source=public_subnet_cidr,
+                        port_min=backend_port,
+                        port_max=backend_port,
+                        description=f"Traffic from load balancer to backend instances on port {backend_port}",
                     ),
-                ),
-            ],
+                ],
+            )
         )
 
 
@@ -559,34 +554,34 @@ class InternalLoadBalancer(BaseResource, _LbMixin):
 
         private_subnet_cidr: pulumi.Input[str] = self.vcn.get_private_subnet_cidr()
 
-        self.vcn.add_unique_security_list_rules(
+        self.vcn.add_unique_security_rules(
             "lb-private-ingress-tcp-80",
-            private_ingress=[
-                oci.core.SecurityListIngressSecurityRuleArgs(
-                    description="HTTP traffic to internal load balancer from VCN-internal sources only",
-                    protocol="6",
-                    source=self.vcn.cidr_block,
-                    source_type="CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                        min=80,
-                        max=80,
+            SecurityRules(
+                private_ingress=[
+                    IngressRule(
+                        protocol="tcp",
+                        source=self.vcn.cidr_block,
+                        port_min=80,
+                        port_max=80,
+                        description="HTTP traffic to internal load balancer from VCN-internal sources only",
                     ),
-                ),
-            ],
+                ],
+            ),
         )
-        self.vcn.add_security_list_rules(
-            private_egress=[
-                oci.core.SecurityListEgressSecurityRuleArgs(
-                    description=f"Internal load balancer forwards traffic to backend instances on port {backend_port}",
-                    protocol="6",
-                    destination=private_subnet_cidr,
-                    destination_type="CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                        min=backend_port,
-                        max=backend_port,
+        self.vcn.add_security_rules(
+            SecurityRules(
+                private_egress=[
+                    EgressRule(
+                        protocol="tcp",
+                        destination=private_subnet_cidr,
+                        port_min=backend_port,
+                        port_max=backend_port,
+                        description=(
+                            f"Internal load balancer forwards traffic to backend instances on port {backend_port}"
+                        ),
                     ),
-                ),
-            ],
+                ],
+            )
         )
 
 

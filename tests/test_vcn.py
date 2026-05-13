@@ -1,6 +1,8 @@
 """Unit tests for VCN block."""
 
+import asyncio
 import unittest
+from unittest.mock import patch
 
 import pulumi
 
@@ -11,11 +13,24 @@ set_mocks()
 
 # Import AFTER mocks are set
 from cloudspells.core.abstractions.network import EgressRule, IngressRule, SecurityRules
+from cloudspells.providers.oci._network_profiles import (
+    CLOUDSPELLS_OCI_VCN_SCHEMA,
+    NETWORK_PROFILE_BASELINE,
+    oke_profile_id,
+)
 from cloudspells.providers.oci.network import Vcn, VcnRef
 
 
 class TestVcn(unittest.TestCase):
     """Test cases for VCN block."""
+
+    def _make_vcn(self, **kwargs):
+        defaults = dict(
+            name="test-vcn",
+            compartment_id="ocid1.compartment.test",
+        )
+        defaults.update(kwargs)
+        return Vcn(**defaults)
 
     @pulumi.runtime.test
     def test_vcn_creates_base_resources(self):
@@ -151,6 +166,19 @@ class TestVcn(unittest.TestCase):
         self.assertEqual(secure_cidr, "10.0.128.0/18", "Secure subnet should be /18 (25% of VCN)")
         self.assertEqual(public_cidr, "10.0.192.0/19", "Public subnet should be /19 (12.5% of VCN)")
         self.assertEqual(management_cidr, "10.0.224.0/19", "Management subnet should be /19 (12.5% of VCN)")
+
+    def test_export_publishes_cloudspells_schema_profiles_and_null_drg(self):
+        """Vcn.export() publishes CloudSpells contract metadata and an explicit null DRG."""
+        vcn = self._make_vcn(drg=False)
+
+        with patch("pulumi.export") as mock_export:
+            vcn.export()
+
+        exports = {call.args[0]: call.args[1] for call in mock_export.call_args_list}
+        self.assertEqual(exports["cloudspells_network_schema"], CLOUDSPELLS_OCI_VCN_SCHEMA)
+        self.assertEqual(exports["cloudspells_network_profiles"], [NETWORK_PROFILE_BASELINE])
+        self.assertIn("drg_id", exports)
+        self.assertIsNone(exports["drg_id"])
 
     def test_vcn_custom_cidr(self):
         """Test VCN with custom CIDR block."""
@@ -371,15 +399,20 @@ class TestVcn(unittest.TestCase):
         self.assertIsNone(vcn.drg, "drg must be None when drg=False even with on_premise_cidrs set")
 
     # ------------------------------------------------------------------
-    # add_security_list_rules / add_security_rules
+    # add_security_rules
     # ------------------------------------------------------------------
 
-    def test_add_security_list_rules_after_finalize_raises(self):
-        """add_security_list_rules() raises RuntimeError when called after finalize_network."""
+    def test_raw_security_list_accumulator_is_not_public_api(self):
+        """Vcn does not expose raw OCI security-list rule accumulation publicly."""
+        self.assertFalse(hasattr(Vcn, "add_security_list_rules"))
+        self.assertFalse(hasattr(Vcn, "add_unique_security_list_rules"))
+
+    def test_add_security_rules_after_finalize_raises(self):
+        """add_security_rules() raises RuntimeError when called after finalize_network."""
         vcn = Vcn(name="test-vcn", compartment_id="ocid1.compartment.test")
         vcn.finalize_network()
         with self.assertRaises(RuntimeError):
-            vcn.add_security_list_rules(public_ingress=[])
+            vcn.add_security_rules(SecurityRules())
 
     @pulumi.runtime.test
     def test_add_security_rules_translates_ingress_and_egress(self):
@@ -436,9 +469,163 @@ class TestVcnRef(unittest.TestCase):
             secure_subnet_cidr="10.0.128.0/18",
             management_subnet_id="ocid1.subnet.mgmt.test",
             management_subnet_cidr="10.0.224.0/19",
+            cloudspells_network_schema=CLOUDSPELLS_OCI_VCN_SCHEMA,
+            network_profiles=[NETWORK_PROFILE_BASELINE],
         )
         defaults.update(kwargs)
         return VcnRef(**defaults)
+
+    def _resolve_output(self, output):
+        """Resolve a Pulumi output in synchronous unit tests."""
+        return asyncio.get_event_loop().run_until_complete(output.future())
+
+    def test_vcnref_requires_cloudspells_schema(self):
+        """VcnRef rejects direct references that do not assert the CloudSpells VCN schema."""
+        with self.assertRaises(ValueError) as ctx:
+            VcnRef(
+                vcn_id="ocid1.vcn.test",
+                public_subnet_id="ocid1.subnet.pub.test",
+                private_subnet_id="ocid1.subnet.priv.test",
+                public_subnet_cidr="10.0.0.0/19",
+                private_subnet_cidr="10.0.0.0/17",
+                cidr_block="10.0.0.0/16",
+            )
+        self.assertIn("CloudSpells OCI VCN schema", str(ctx.exception))
+
+    def test_vcnref_rejects_wrong_cloudspells_schema(self):
+        """VcnRef rejects references whose schema marker is not the supported CloudSpells VCN schema."""
+        with self.assertRaises(ValueError) as ctx:
+            self._make_ref(cloudspells_network_schema="cloudspells.oci.vcn/v0")
+        self.assertIn("Unsupported CloudSpells OCI VCN schema", str(ctx.exception))
+
+    def test_vcnref_requires_network_profiles(self):
+        """VcnRef rejects references that do not provide CloudSpells network profile metadata."""
+        with self.assertRaises(ValueError) as ctx:
+            VcnRef(
+                vcn_id="ocid1.vcn.test",
+                public_subnet_id="ocid1.subnet.pub.test",
+                private_subnet_id="ocid1.subnet.priv.test",
+                public_subnet_cidr="10.0.0.0/19",
+                private_subnet_cidr="10.0.0.0/17",
+                cidr_block="10.0.0.0/16",
+                cloudspells_network_schema=CLOUDSPELLS_OCI_VCN_SCHEMA,
+            )
+        self.assertIn("CloudSpells network profile", str(ctx.exception))
+
+    def test_vcnref_require_network_profile_accepts_existing_profile(self):
+        """VcnRef.require_network_profile() accepts a profile exported by the source VCN."""
+        profile_id = oke_profile_id(["203.0.113.0/24"])
+        ref = self._make_ref(network_profiles=[NETWORK_PROFILE_BASELINE, profile_id])
+
+        check = ref.require_network_profile(profile_id)
+
+        self.assertEqual(check, profile_id)
+
+    def test_vcnref_require_network_profile_rejects_missing_profile(self):
+        """VcnRef.require_network_profile() rejects profiles not exported by the source VCN."""
+        profile_id = oke_profile_id(["203.0.113.0/24"])
+        ref = self._make_ref(network_profiles=[NETWORK_PROFILE_BASELINE])
+
+        with self.assertRaises(RuntimeError) as ctx:
+            ref.require_network_profile(profile_id)
+
+        self.assertIn("source CloudSpells VCN stack does not export required network profile", str(ctx.exception))
+
+    def test_vcnref_output_schema_validation_materializes_on_reference_ids(self):
+        """Output-backed schema validation is attached to normal referenced IDs."""
+        ref = self._make_ref(
+            cloudspells_network_schema=pulumi.Output.from_input("cloudspells.oci.vcn/v0"),
+            public_security_list_id="ocid1.sl.public.test",
+        )
+
+        with self.assertRaises(ValueError) as ctx:
+            self._resolve_output(ref.public_subnet.id)
+
+        self.assertIn("Unsupported CloudSpells OCI VCN schema", str(ctx.exception))
+
+    def test_vcnref_output_profile_items_use_output_validation(self):
+        """Profile lists containing Output items are not treated as plain profile lists."""
+        profile_id = oke_profile_id(["203.0.113.0/24"])
+        ref = self._make_ref(network_profiles=[pulumi.Output.from_input(profile_id)])
+
+        check = ref.require_network_profile(profile_id)
+
+        self.assertIsInstance(check, pulumi.Output)
+        self.assertEqual(self._resolve_output(check), profile_id)
+
+    def test_vcnref_from_stack_reference_consumes_cloudspells_contract(self):
+        """VcnRef.from_stack_reference() requires CloudSpells schema and profile outputs."""
+        required_outputs = {
+            "vcn_id": "ocid1.vcn.oc1.phx.test",
+            "cidr_block": "10.0.0.0/16",
+            "public_subnet_id": "ocid1.subnet.public.test",
+            "private_subnet_id": "ocid1.subnet.private.test",
+            "secure_subnet_id": "ocid1.subnet.secure.test",
+            "management_subnet_id": "ocid1.subnet.mgmt.test",
+            "public_subnet_cidr": "10.0.192.0/19",
+            "private_subnet_cidr": "10.0.0.0/17",
+            "secure_subnet_cidr": "10.0.128.0/18",
+            "management_subnet_cidr": "10.0.224.0/19",
+            "public_security_list_id": "ocid1.sl.public.test",
+            "private_security_list_id": "ocid1.sl.private.test",
+            "secure_security_list_id": "ocid1.sl.secure.test",
+            "management_security_list_id": "ocid1.sl.management.test",
+            "cloudspells_network_schema": CLOUDSPELLS_OCI_VCN_SCHEMA,
+            "cloudspells_network_profiles": [NETWORK_PROFILE_BASELINE],
+            "drg_id": pulumi.Output.from_input(None),
+        }
+        with patch("pulumi.StackReference") as mock_stack_reference:
+            stack_ref = mock_stack_reference.return_value
+            stack_ref.require_output.side_effect = lambda key: required_outputs[key]
+
+            ref = VcnRef.from_stack_reference("org/platform/prod")
+
+        mock_stack_reference.assert_called_once_with("org/platform/prod")
+        stack_ref.require_output.assert_any_call("cloudspells_network_schema")
+        stack_ref.require_output.assert_any_call("cloudspells_network_profiles")
+        self.assertEqual(ref.require_network_profile(NETWORK_PROFILE_BASELINE), NETWORK_PROFILE_BASELINE)
+
+    def test_vcnref_from_stack_reference_requires_explicit_drg_output(self):
+        """VcnRef.from_stack_reference() treats drg_id as an explicit contract output."""
+        required_outputs = {
+            "vcn_id": "ocid1.vcn.oc1.phx.test",
+            "cidr_block": "10.0.0.0/16",
+            "public_subnet_id": "ocid1.subnet.public.test",
+            "private_subnet_id": "ocid1.subnet.private.test",
+            "secure_subnet_id": "ocid1.subnet.secure.test",
+            "management_subnet_id": "ocid1.subnet.mgmt.test",
+            "public_subnet_cidr": "10.0.192.0/19",
+            "private_subnet_cidr": "10.0.0.0/17",
+            "secure_subnet_cidr": "10.0.128.0/18",
+            "management_subnet_cidr": "10.0.224.0/19",
+            "public_security_list_id": "ocid1.sl.public.test",
+            "private_security_list_id": "ocid1.sl.private.test",
+            "secure_security_list_id": "ocid1.sl.secure.test",
+            "management_security_list_id": "ocid1.sl.management.test",
+            "cloudspells_network_schema": CLOUDSPELLS_OCI_VCN_SCHEMA,
+            "cloudspells_network_profiles": [NETWORK_PROFILE_BASELINE],
+            "drg_id": pulumi.Output.from_input(None),
+        }
+        with patch("pulumi.StackReference") as mock_stack_reference:
+            stack_ref = mock_stack_reference.return_value
+            stack_ref.require_output.side_effect = lambda key: required_outputs[key]
+
+            ref = VcnRef.from_stack_reference("org/platform/prod")
+
+        stack_ref.require_output.assert_any_call("drg_id")
+        stack_ref.get_output.assert_not_called()
+        self.assertIsNotNone(ref.drg_id)
+        self.assertIsNone(self._resolve_output(ref.drg_id))
+
+    def test_vcnref_required_output_ids_reject_resolved_none(self):
+        """VcnRef required IDs raise clearly if an Output resolves to None."""
+        ref = self._make_ref(public_subnet_id=pulumi.Output.from_input(None))
+
+        with self.assertRaises(ValueError) as ctx:
+            self._resolve_output(ref.public_subnet.id)
+
+        self.assertIn("public_subnet_id", str(ctx.exception))
+        self.assertIn("resolved to None", str(ctx.exception))
 
     def test_vcnref_requires_cidr_block(self):
         """VcnRef raises ValueError when cidr_block is None."""
@@ -450,6 +637,8 @@ class TestVcnRef(unittest.TestCase):
                 public_subnet_cidr="10.0.0.0/19",
                 private_subnet_cidr="10.0.0.0/17",
                 cidr_block=None,
+                cloudspells_network_schema=CLOUDSPELLS_OCI_VCN_SCHEMA,
+                network_profiles=[NETWORK_PROFILE_BASELINE],
             )
 
     def test_vcnref_cidr_accessors(self):
@@ -469,6 +658,8 @@ class TestVcnRef(unittest.TestCase):
             public_subnet_cidr="10.0.0.0/19",
             private_subnet_cidr="10.0.0.0/17",
             cidr_block="10.0.0.0/16",
+            cloudspells_network_schema=CLOUDSPELLS_OCI_VCN_SCHEMA,
+            network_profiles=[NETWORK_PROFILE_BASELINE],
         )
         self.assertIsNone(ref.secure_subnet)
         self.assertIsNone(ref.management_subnet)
@@ -487,21 +678,49 @@ class TestVcnRef(unittest.TestCase):
         ref = self._make_ref(drg_id="ocid1.drg.test")
         self.assertIsNotNone(ref.drg_id)
 
-    def test_vcnref_add_security_list_rules_nonempty_raises(self):
-        """VcnRef.add_security_list_rules() raises RuntimeError for non-empty rule lists."""
-        import pulumi_oci as oci
+    def test_vcnref_require_drg_id_accepts_present_drg(self):
+        """VcnRef.require_drg_id() returns the DRG OCID when present."""
+        ref = self._make_ref(drg_id=pulumi.Output.from_input("ocid1.drg.test"))
 
+        self.assertEqual(self._resolve_output(ref.require_drg_id()), "ocid1.drg.test")
+
+    def test_vcnref_require_drg_id_rejects_missing_plain_drg(self):
+        """VcnRef.require_drg_id() raises immediately when no DRG was supplied."""
         ref = self._make_ref()
-        dummy_rule = oci.core.SecurityListIngressSecurityRuleArgs(
-            protocol="6", source="0.0.0.0/0", source_type="CIDR_BLOCK"
-        )
+
+        with self.assertRaises(RuntimeError) as ctx:
+            ref.require_drg_id()
+
+        self.assertIn("without a drg_id", str(ctx.exception))
+
+    def test_vcnref_require_drg_id_rejects_output_none_drg(self):
+        """VcnRef.require_drg_id() raises when the DRG output resolves to None."""
+        ref = self._make_ref(drg_id=pulumi.Output.from_input(None))
+
+        with self.assertRaises(RuntimeError) as ctx:
+            self._resolve_output(ref.require_drg_id())
+
+        self.assertIn("resolved to None", str(ctx.exception))
+
+    def test_vcnref_raw_security_list_accumulator_is_not_public_api(self):
+        """VcnRef does not expose raw OCI security-list rule accumulation publicly."""
+        self.assertFalse(hasattr(VcnRef, "add_security_list_rules"))
+        self.assertFalse(hasattr(VcnRef, "add_unique_security_list_rules"))
+
+    def test_vcnref_add_security_rules_empty_is_noop(self):
+        """VcnRef.add_security_rules() accepts empty cloud-neutral rules."""
+        ref = self._make_ref()
+        ref.add_security_rules(SecurityRules())
+
+    def test_vcnref_add_security_rules_nonempty_raises(self):
+        """VcnRef.add_security_rules() rejects non-empty cloud-neutral rules."""
+        ref = self._make_ref()
         with self.assertRaises(RuntimeError):
-            ref.add_security_list_rules(public_ingress=[dummy_rule])
-
-    def test_vcnref_add_security_list_rules_all_none_is_noop(self):
-        """VcnRef.add_security_list_rules() accepts all-None without raising."""
-        ref = self._make_ref()
-        ref.add_security_list_rules()  # must not raise
+            ref.add_security_rules(
+                SecurityRules(
+                    public_ingress=[IngressRule(protocol="tcp", source="internet", port_min=443, port_max=443)]
+                )
+            )
 
     def test_vcnref_finalize_network_is_noop(self):
         """VcnRef.finalize_network() is a no-op and does not raise."""

@@ -182,7 +182,7 @@ class VcnFlowLogs(BaseResource):
         )
         self.log_group_id = self.log_group.id
 
-    def _flow_log(self, tier: str, subnet_id: pulumi.Input[str]) -> oci.logging.Log:
+    def _flow_log(self, tier: str, suffix: str, subnet_id: pulumi.Input[str]) -> oci.logging.Log:
         """Create a VCN Flow Log `oci.logging.Log` for a single subnet.
 
         Accepts a plain `pulumi.Input[str]` subnet OCID so the method works
@@ -191,14 +191,15 @@ class VcnFlowLogs(BaseResource):
 
         Args:
             tier: Short tier label (`"public"`, `"private"`, etc.)
-                used in the resource name.
+                used for tags.
+            suffix: Literal resource-name suffix.
             subnet_id: The subnet OCID to attach the flow log to.
                 Pass `subnet.id` for both `oci.core.Subnet` and `_SubnetRef`.
 
         Returns:
             The newly created `oci.logging.Log` resource.
         """
-        log_name = self.create_resource_name(f"flow-log-{tier}")
+        log_name = self.create_resource_name(suffix)
         return oci.logging.Log(
             log_name,
             display_name=log_name,
@@ -251,13 +252,13 @@ class VcnFlowLogs(BaseResource):
         if priv is None:
             raise RuntimeError("private_subnet must exist after finalize_network()")
 
-        self.public_flow_log = self._flow_log("public", pub.id)
-        self.private_flow_log = self._flow_log("private", priv.id)
+        self.public_flow_log = self._flow_log("public", "flow-log-public", pub.id)
+        self.private_flow_log = self._flow_log("private", "flow-log-private", priv.id)
 
         # Bridge gap: secure/management may be absent on a VcnRef — guard and
         # set attributes to None so callers can check before using them.
-        self.secure_flow_log = self._flow_log("secure", sec.id) if sec else None
-        self.management_flow_log = self._flow_log("management", mgmt.id) if mgmt else None
+        self.secure_flow_log = self._flow_log("secure", "flow-log-secure", sec.id) if sec else None
+        self.management_flow_log = self._flow_log("management", "flow-log-management", mgmt.id) if mgmt else None
 
     def export(self) -> None:
         """Export the network-audit log group OCID as a Pulumi stack output.

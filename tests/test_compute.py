@@ -10,6 +10,8 @@ set_mocks()
 
 from cloudspells.providers.oci.compute import ComputeInstance
 from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.nsg import Nsg
+from cloudspells.providers.oci.roles import APP_SERVER, DATABASE, INTERNET_EDGE, MANAGEMENT
 from cloudspells.providers.oci.volume import VolumeSpec
 
 
@@ -91,6 +93,15 @@ class TestComputeInstance(unittest.TestCase):
         """Create a fresh VCN for each test to prevent shared mutable state."""
         return Vcn(name="compute-test-vcn", compartment_id="ocid1.compartment.test")
 
+    def _make_nsg(self, name: str = "compute-test-nsg", vcn: Vcn | None = None) -> Nsg:
+        """Create a role-bearing NSG for a compute instance test."""
+        return Nsg(
+            name=name,
+            compartment_id="ocid1.compartment.test",
+            vcn=vcn or self._make_vcn(),
+            role=APP_SERVER,
+        )
+
     # ------ resource creation -----------------------------------------
 
     @pulumi.runtime.test
@@ -99,7 +110,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="test-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -112,7 +123,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="auto-ad-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
         )
         return instance.availability_domain.apply(lambda ad: self.assertEqual(ad, "AD-1"))
@@ -123,7 +134,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="test-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -138,7 +149,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="multi-vol-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -158,7 +169,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="test-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -174,7 +185,7 @@ class TestComputeInstance(unittest.TestCase):
         ComputeInstance(
             name="test-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=vcn,
+            nsg=self._make_nsg(vcn=vcn),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -193,7 +204,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="compat-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -207,7 +218,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="compat-attach-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -223,7 +234,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="label-lookup-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -239,7 +250,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="keyerror-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -252,7 +263,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="all-ids-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -272,7 +283,7 @@ class TestComputeInstance(unittest.TestCase):
             ComputeInstance(
                 name="dup-label-instance",
                 compartment_id="ocid1.compartment.test",
-                vcn=self._make_vcn(),
+                nsg=self._make_nsg(),
                 image_id="ocid1.image.oc1.phx.test",
                 availability_domain="AD-1",
                 ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -288,7 +299,7 @@ class TestComputeInstance(unittest.TestCase):
             ComputeInstance(
                 name="empty-vols-instance",
                 compartment_id="ocid1.compartment.test",
-                vcn=self._make_vcn(),
+                nsg=self._make_nsg(),
                 image_id="ocid1.image.oc1.phx.test",
                 availability_domain="AD-1",
                 ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -302,7 +313,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="auto-key-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
         )
@@ -317,7 +328,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="provided-key-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key=provided_key,
@@ -331,7 +342,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="empty-key-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="",
@@ -345,7 +356,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="default-shape-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -357,7 +368,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="custom-shape-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -378,7 +389,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="spec-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -393,7 +404,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="getter-test-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -411,7 +422,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="userdata-str-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -424,7 +435,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="userdata-bytes-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -437,7 +448,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="fd-default-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -449,7 +460,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="fd-explicit-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -462,7 +473,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="hl-default-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -474,7 +485,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="hl-set-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -502,7 +513,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="full-params-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -519,37 +530,77 @@ class TestComputeInstance(unittest.TestCase):
         )
         return instance.instance.id.apply(lambda iid: self.assertIsNotNone(iid))
 
-    # ------ subnet placement ------------------------------------------
+    # ------ role-based placement --------------------------------------
 
     def test_management_subnet_placement(self):
-        """ComputeInstance with subnet=SUBNET_MANAGEMENT is accepted."""
-        from cloudspells.providers.oci.network import SUBNET_MANAGEMENT
+        """ComputeInstance with MANAGEMENT NSG is placed in management subnet."""
+        vcn = self._make_vcn()
+        nsg = Nsg("mgmt", role=MANAGEMENT, vcn=vcn, compartment_id="ocid1.compartment.test")
 
         instance = ComputeInstance(
             name="mgmt-subnet-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
             image_id="ocid1.image.oc1.phx.test",
+            nsg=nsg,
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
-            subnet=SUBNET_MANAGEMENT,
         )
-        self.assertIsNotNone(instance.instance)
+        self.assertEqual(instance.subnet, "management")
+        self.assertIs(instance.vcn, vcn)
 
     def test_public_subnet_placement(self):
-        """ComputeInstance with subnet=SUBNET_PUBLIC is accepted."""
-        from cloudspells.providers.oci.network import SUBNET_PUBLIC
+        """ComputeInstance with INTERNET_EDGE NSG is placed in public subnet."""
+        vcn = self._make_vcn()
+        nsg = Nsg("public", role=INTERNET_EDGE, ports=[22], vcn=vcn, compartment_id="ocid1.compartment.test")
 
         instance = ComputeInstance(
             name="public-subnet-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
             image_id="ocid1.image.oc1.phx.test",
+            nsg=nsg,
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
-            subnet=SUBNET_PUBLIC,
         )
-        self.assertIsNotNone(instance.instance)
+        self.assertEqual(instance.subnet, "public")
+        self.assertIs(instance.vcn, vcn)
+
+    def test_rejects_nsg_without_role(self):
+        """ComputeInstance requires a role-bearing NSG to determine placement."""
+        raw_nsg = Nsg("raw", vcn=self._make_vcn(), compartment_id="ocid1.compartment.test")
+
+        with self.assertRaisesRegex(ValueError, "requires nsg.role"):
+            ComputeInstance(
+                name="raw-nsg-instance",
+                compartment_id="ocid1.compartment.test",
+                image_id="ocid1.image.oc1.phx.test",
+                availability_domain="AD-1",
+                ssh_public_key="ssh-rsa AAAAB3... test-key",
+                nsg=raw_nsg,
+            )
+
+    def test_rejects_direct_vcn_parameter(self):
+        """ComputeInstance derives the VCN from nsg and rejects direct vcn input."""
+        with self.assertRaises(TypeError):
+            ComputeInstance(
+                name="direct-vcn-instance",
+                compartment_id="ocid1.compartment.test",
+                image_id="ocid1.image.oc1.phx.test",
+                nsg=self._make_nsg(),
+                vcn=self._make_vcn(),
+            )
+
+    def test_rejects_direct_subnet_parameter(self):
+        """ComputeInstance derives placement from nsg.role and rejects subnet input."""
+        from cloudspells.providers.oci.network import SUBNET_PUBLIC
+
+        with self.assertRaises(TypeError):
+            ComputeInstance(
+                name="direct-subnet-instance",
+                compartment_id="ocid1.compartment.test",
+                image_id="ocid1.image.oc1.phx.test",
+                nsg=self._make_nsg(),
+                subnet=SUBNET_PUBLIC,
+            )
 
     # ------ additional accessor methods --------------------------------
 
@@ -558,7 +609,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="disk-id-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -571,7 +622,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="disk-keyerror-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -584,7 +635,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="get-vol-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -597,7 +648,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="get-vol-keyerror-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -610,7 +661,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="get-att-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -623,7 +674,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="get-att-keyerror-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -636,7 +687,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="privkey-none-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             ssh_public_key="ssh-rsa AAAAB3... test-key",
@@ -648,7 +699,7 @@ class TestComputeInstance(unittest.TestCase):
         instance = ComputeInstance(
             name="privkey-auto-instance",
             compartment_id="ocid1.compartment.test",
-            vcn=self._make_vcn(),
+            nsg=self._make_nsg(),
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
         )
@@ -661,9 +712,6 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
     @pulumi.runtime.test
     def test_nsg_shorthand_infers_private_subnet(self):
         """ComputeInstance with nsg=APP_SERVER NSG is placed in private subnet."""
-        from cloudspells.providers.oci.nsg import Nsg
-        from cloudspells.providers.oci.roles import APP_SERVER, DATABASE
-
         vcn = Vcn(name="ci-priv", compartment_id="ocid1.compartment.oc1..test")
         web_nsg = Nsg("web", role=APP_SERVER, vcn=vcn, compartment_id="ocid1.compartment.oc1..test")
         web_nsg.serves(Nsg("db", role=DATABASE, vcn=vcn, compartment_id="ocid1.compartment.oc1..test"), port=5432)
@@ -671,7 +719,6 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
         instance = ComputeInstance(
             name="web-1",
             compartment_id="ocid1.compartment.oc1..test",
-            vcn=vcn,
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             nsg=web_nsg,
@@ -681,16 +728,12 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
     @pulumi.runtime.test
     def test_nsg_shorthand_infers_public_subnet(self):
         """ComputeInstance with nsg=INTERNET_EDGE NSG is placed in public subnet."""
-        from cloudspells.providers.oci.nsg import Nsg
-        from cloudspells.providers.oci.roles import INTERNET_EDGE
-
         vcn = Vcn(name="ci-pub", compartment_id="ocid1.compartment.oc1..test")
         lb_nsg = Nsg("lb", role=INTERNET_EDGE, ports=[80], vcn=vcn, compartment_id="ocid1.compartment.oc1..test")
 
         instance = ComputeInstance(
             name="lb-1",
             compartment_id="ocid1.compartment.oc1..test",
-            vcn=vcn,
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             nsg=lb_nsg,
@@ -698,18 +741,32 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
         self.assertEqual(instance.subnet, "public")
 
     @pulumi.runtime.test
+    def test_public_compute_does_not_register_implicit_ssh_rule(self):
+        """INTERNET_EDGE ComputeInstance uses NSG ports instead of implicit SSH."""
+        vcn = Vcn(name="ci-pub-http-only", compartment_id="ocid1.compartment.oc1..test")
+        lb_nsg = Nsg("lb-http", role=INTERNET_EDGE, ports=[80], vcn=vcn, compartment_id="ocid1.compartment.oc1..test")
+
+        ComputeInstance(
+            name="lb-http-1",
+            compartment_id="ocid1.compartment.oc1..test",
+            image_id="ocid1.image.oc1.phx.test",
+            availability_domain="AD-1",
+            nsg=lb_nsg,
+        )
+
+        fingerprints = vcn._applied_ambient_rule_fingerprints
+        self.assertIn("public-ingress-tcp-80", fingerprints)
+        self.assertNotIn("public-ingress-tcp-22", fingerprints)
+
+    @pulumi.runtime.test
     def test_nsg_shorthand_infers_secure_subnet(self):
         """ComputeInstance with nsg=DATABASE NSG is placed in secure subnet."""
-        from cloudspells.providers.oci.nsg import Nsg
-        from cloudspells.providers.oci.roles import DATABASE
-
         vcn = Vcn(name="ci-sec", compartment_id="ocid1.compartment.oc1..test")
         db_nsg = Nsg("db", role=DATABASE, vcn=vcn, compartment_id="ocid1.compartment.oc1..test")
 
         instance = ComputeInstance(
             name="db-1",
             compartment_id="ocid1.compartment.oc1..test",
-            vcn=vcn,
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             nsg=db_nsg,
@@ -719,16 +776,12 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
     @pulumi.runtime.test
     def test_nsg_shorthand_sets_nsg_ids(self):
         """ComputeInstance with nsg= sets nsg_ids to [nsg.id]."""
-        from cloudspells.providers.oci.nsg import Nsg
-        from cloudspells.providers.oci.roles import APP_SERVER
-
         vcn = Vcn(name="ci-ids", compartment_id="ocid1.compartment.oc1..test")
         web_nsg = Nsg("web", role=APP_SERVER, vcn=vcn, compartment_id="ocid1.compartment.oc1..test")
 
         instance = ComputeInstance(
             name="web-x",
             compartment_id="ocid1.compartment.oc1..test",
-            vcn=vcn,
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
             nsg=web_nsg,
@@ -736,27 +789,18 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
         self.assertEqual(len(instance.nsg_ids), 1)
 
     @pulumi.runtime.test
-    def test_old_api_unchanged(self):
-        """ComputeInstance with explicit subnet= and nsg= still works."""
-        from cloudspells.providers.oci.network import SUBNET_PRIVATE
-        from cloudspells.providers.oci.nsg import Nsg
-        from cloudspells.providers.oci.roles import APP_SERVER
-
-        vcn = Vcn(name="ci-old", compartment_id="ocid1.compartment.oc1..test")
-        web_nsg = Nsg("web-old", role=APP_SERVER, vcn=vcn, compartment_id="ocid1.compartment.oc1..test")
-
+    def test_nsg_shorthand_sets_vcn_from_nsg(self):
+        """ComputeInstance derives its VCN from the attached NSG."""
+        vcn = Vcn(name="ci-vcn-source", compartment_id="ocid1.compartment.oc1..test")
+        web_nsg = Nsg("web-vcn-source", role=APP_SERVER, vcn=vcn, compartment_id="ocid1.compartment.oc1..test")
         instance = ComputeInstance(
-            name="web-old",
+            name="web-vcn-source",
             compartment_id="ocid1.compartment.oc1..test",
-            vcn=vcn,
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
-            subnet=SUBNET_PRIVATE,
             nsg=web_nsg,
         )
-        # APP_SERVER role is placed in private subnet — matches explicit subnet=.
-        self.assertEqual(instance.subnet, "private")
-        self.assertEqual(len(instance.nsg_ids), 1)
+        self.assertIs(instance.vcn, vcn)
 
 
 if __name__ == "__main__":

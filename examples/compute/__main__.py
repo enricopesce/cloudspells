@@ -12,11 +12,11 @@ Internet
 └─────────────────────────────────────────────────────┘
 ```
 
-The `INTERNET_EDGE` role is **self-registering**: `Nsg.__init__` accumulates
-the inbound TCP security list rules on the `Vcn` object.  `ComputeInstance.__init__`
-then calls `vcn.finalize_network()` automatically, materialising all subnets with
-every accumulated rule in a single pass.  No manual `add_security_list_rules` or
-`finalize_network` calls are needed from the caller.
+The `INTERNET_EDGE` role is **explicit but compact**: the caller chooses a
+public posture by attaching a role-bearing `Nsg` with declared edge ports.
+That NSG carries both the VCN handle and the subnet tier, so `ComputeInstance`
+does not accept separate `vcn=` or `subnet=` placement inputs.  No manual
+`add_security_rules` or `finalize_network` calls are needed from the caller.
 
 ## Configuration
 
@@ -61,9 +61,9 @@ vcn: Vcn = Vcn(
 
 # ── Step 2 — NSG role ─────────────────────────────────────────────────────────
 #
-# INTERNET_EDGE: public subnet, accepts HTTP/HTTPS/SSH from 0.0.0.0/0.
-# Nsg.__init__ registers security list rules on `vcn`; finalize_network() is
-# called later by ComputeInstance.__init__.
+# INTERNET_EDGE: public subnet, accepts the declared ports from 0.0.0.0/0.
+# Nsg.__init__ registers matching VCN security list rules; ComputeInstance
+# finalizes the NSG's VCN later.
 
 web_nsg: Nsg = Nsg(
     "web-server",
@@ -75,15 +75,14 @@ web_nsg: Nsg = Nsg(
 
 # ── Step 3 — Compute instance ─────────────────────────────────────────────────
 #
-# nsg= infers subnet=SUBNET_PUBLIC from the INTERNET_EDGE role and attaches
-# the NSG OCID to the primary VNIC automatically.
+# nsg= carries both the VCN and the INTERNET_EDGE role, so the instance is
+# placed in the public subnet and the NSG OCID is attached to the primary VNIC.
 # availability_domain is auto-discovered (first AD); override via the
 # availability_domain= kwarg if needed.
 
 web_server: ComputeInstance = ComputeInstance(
     name="web-server",
     compartment_id=compartment_id,
-    vcn=vcn,
     image_id=config.require("image_ocid"),
     ssh_public_key=ssh_key,
     nsg=web_nsg,
