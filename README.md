@@ -116,6 +116,8 @@ vcn.export()
 web_server.export()
 ```
 
+`VolumeSpec.label` is application metadata for lookup helpers, outputs, and tags. CloudSpells assigns deterministic ordinal names to the underlying block-volume resources.
+
 ### 3. A Production Web + DB Stack
 
 Three-tier architecture with a load balancer, web backends, and isolated database nodes. Role-based security generates all NSG and Security List rules from traffic relationship declarations.

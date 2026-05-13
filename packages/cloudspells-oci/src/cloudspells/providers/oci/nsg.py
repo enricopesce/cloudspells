@@ -107,6 +107,7 @@ from cloudspells.core.ports import (
     SSH,
 )
 
+from ._naming import ordinal_suffix
 from ._oci_utils import get_svc_cidr as _get_svc_cidr
 from .network import Vcn, VcnRef
 from .roles import INTERNET_EDGE, Role
@@ -505,6 +506,8 @@ class Nsg(BaseResource):
 
         self._vcn = vcn
         self.role = role
+        self._rule_labels: set[str] = set()
+        self._next_rule_index = 0
 
         if role is INTERNET_EDGE and not ports:
             raise ValueError(
@@ -765,8 +768,9 @@ class Nsg(BaseResource):
     ) -> oci.core.NetworkSecurityGroupSecurityRule:
         """Add a single stateful security rule to this NSG.
 
-        The Pulumi resource name is `{stack}-{nsg-name}-nsg-rule-{label}`.
-        `label` must be unique within this NSG.
+        The Pulumi resource name uses an internal ordinal suffix such as
+        `{stack}-{nsg-name}-nsg-rule-1`. `label` remains the human-readable
+        unique key for this rule within the NSG.
 
         Args:
             label: Short unique label for this rule within the NSG
@@ -790,6 +794,10 @@ class Nsg(BaseResource):
         Returns:
             The `oci.core.NetworkSecurityGroupSecurityRule` resource.
 
+        Raises:
+            ValueError: If `label` duplicates an existing rule label on this
+                NSG.
+
         Example:
             ```python
             web_nsg.add_rule(
@@ -810,7 +818,14 @@ class Nsg(BaseResource):
             )
             ```
         """
-        resource_name = self.create_resource_name(f"nsg-rule-{label}")
+        if label in self._rule_labels:
+            raise ValueError(f"Nsg rule label must be unique within this NSG; duplicate label: {label!r}")
+        self._rule_labels.add(label)
+        rule_index = self._next_rule_index
+        self._next_rule_index += 1
+
+        legacy_rule_name = f"{self.stack_name}-{self.name}-nsg-rule-{label}"
+        resource_name = self.create_resource_name(ordinal_suffix("nsg-rule", rule_index))
         return oci.core.NetworkSecurityGroupSecurityRule(
             resource_name,
             network_security_group_id=self.nsg.id,
@@ -824,8 +839,11 @@ class Nsg(BaseResource):
             udp_options=udp_options,
             icmp_options=icmp_options,
             stateless=False,
-            description=description or resource_name,
-            opts=pulumi.ResourceOptions(parent=self),
+            description=description or label,
+            opts=pulumi.ResourceOptions(
+                parent=self,
+                aliases=[pulumi.Alias(name=legacy_rule_name)],
+            ),
         )
 
     # ------------------------------------------------------------------

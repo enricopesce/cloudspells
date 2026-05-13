@@ -109,6 +109,8 @@ oke.create_kubeconfig(os.path.join(os.path.dirname(__file__), "kubeconfig"))
 - Spreads nodes across all Availability Domains automatically
 - Calls `vcn.finalize_network()` to materialise subnets and security lists
 
+`NodePoolConfig.name` is a semantic pool label written to tags and examples. CloudSpells assigns deterministic ordinal names to the underlying node-pool resources.
+
 ### The NSG security model
 
 Workers and pods share the private subnet CIDR. Four NSGs segment them at the VNIC level:

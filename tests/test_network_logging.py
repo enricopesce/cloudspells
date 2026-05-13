@@ -52,6 +52,33 @@ class TestVcnFlowLogsCreation(unittest.TestCase):
 
         return fl.private_flow_log.id.apply(check)
 
+    @pulumi.runtime.test
+    def test_flow_log_resource_names_use_literal_suffixes(self):
+        """VcnFlowLogs uses fixed suffixes for per-tier logs."""
+        vcn = Vcn(name="fl-literal-vcn", compartment_id=COMP_ID, stack_name="unit")
+        fl = VcnFlowLogs(name="fl-literal", vcn=vcn, stack_name="unit")
+
+        assert fl.secure_flow_log is not None
+        assert fl.management_flow_log is not None
+
+        def check(ids):
+            self.assertEqual(
+                list(ids),
+                [
+                    "unit-fl-literal-flow-log-public-id",
+                    "unit-fl-literal-flow-log-private-id",
+                    "unit-fl-literal-flow-log-secure-id",
+                    "unit-fl-literal-flow-log-management-id",
+                ],
+            )
+
+        return pulumi.Output.all(
+            fl.public_flow_log.id,
+            fl.private_flow_log.id,
+            fl.secure_flow_log.id,
+            fl.management_flow_log.id,
+        ).apply(check)
+
     def test_secure_flow_log_present_for_live_vcn(self) -> None:
         """VcnFlowLogs creates a secure flow log when vcn is a live Vcn."""
         vcn = Vcn(name="fl-sec", compartment_id=COMP_ID)

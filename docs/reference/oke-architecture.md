@@ -115,6 +115,8 @@ placement_configs = [
 
 The total node count (`size`) is divided as evenly as possible across ADs by the OCI control plane. If one AD has a capacity constraint, OCI places additional nodes in the remaining ADs.
 
+`NodePoolConfig.name` is a semantic pool label. CloudSpells keeps it in tags (`PoolLabel`) and examples, while the Pulumi resource names use CloudSpells-owned ordinal suffixes such as `pool-1`.
+
 ### Node configuration
 
 | Parameter | Source | Notes |

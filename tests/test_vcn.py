@@ -133,6 +133,60 @@ class TestVcn(unittest.TestCase):
             vcn.management_security_list.id,
         ).apply(check_security_lists)
 
+    @pulumi.runtime.test
+    def test_vcn_tier_resource_names_are_literal_suffixes(self):
+        """Test that tier resources keep their literal suffix names."""
+        vcn = Vcn(
+            name="literal-vcn",
+            compartment_id="ocid1.compartment.test",
+            stack_name="unit",
+        )
+        vcn.finalize_network()
+
+        self.assertIsNotNone(vcn.public_subnet)
+        self.assertIsNotNone(vcn.private_subnet)
+        self.assertIsNotNone(vcn.secure_subnet)
+        self.assertIsNotNone(vcn.management_subnet)
+
+        assert vcn.public_subnet is not None
+        assert vcn.private_subnet is not None
+        assert vcn.secure_subnet is not None
+        assert vcn.management_subnet is not None
+
+        def check_ids(args):
+            self.assertEqual(
+                list(args),
+                [
+                    "unit-literal-vcn-sl-public-id",
+                    "unit-literal-vcn-sl-private-id",
+                    "unit-literal-vcn-sl-secure-id",
+                    "unit-literal-vcn-sl-management-id",
+                    "unit-literal-vcn-rt-public-id",
+                    "unit-literal-vcn-rt-private-id",
+                    "unit-literal-vcn-rt-secure-id",
+                    "unit-literal-vcn-rt-management-id",
+                    "unit-literal-vcn-sn-public-id",
+                    "unit-literal-vcn-sn-private-id",
+                    "unit-literal-vcn-sn-secure-id",
+                    "unit-literal-vcn-sn-management-id",
+                ],
+            )
+
+        return pulumi.Output.all(
+            vcn.public_security_list.id,
+            vcn.private_security_list.id,
+            vcn.secure_security_list.id,
+            vcn.management_security_list.id,
+            vcn.public_route_table.id,
+            vcn.private_route_table.id,
+            vcn.secure_route_table.id,
+            vcn.management_route_table.id,
+            vcn.public_subnet.id,
+            vcn.private_subnet.id,
+            vcn.secure_subnet.id,
+            vcn.management_subnet.id,
+        ).apply(check_ids)
+
     def test_vcn_cidr_calculation(self):
         """Test that subnet CIDRs are correctly calculated."""
         vcn = Vcn(

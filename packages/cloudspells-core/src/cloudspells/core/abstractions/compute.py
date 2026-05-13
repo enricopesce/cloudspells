@@ -52,9 +52,9 @@ class DiskSpec:
 
     Attributes:
         size_in_gbs: Disk capacity in GiB.
-        label: Logical slug used to derive the resource name suffix and to
-            address the disk via `AbstractCompute.get_disk_id`.  Must
-            be unique within the instance's disk list.
+        label: Logical slug used by provider implementations for lookup
+            helpers, outputs, and tags. Must be unique within the instance's
+            disk list.
         performance_tier: Workload-tier hint.  Accepted values: `"low"`,
             `"balanced"` (default), `"high"`, `"ultra"`.  Pyright enforces
             valid values at call sites via the `Literal` type annotation.

@@ -196,19 +196,23 @@ class _SubnetConfig:
     resolved during `Vcn.finalize_network`.
 
     Attributes:
+        tier: Subnet tier name used for attributes and OCI tags.
         cidr: IPv4 CIDR block assigned to the subnet (e.g. `"10.0.0.0/17"`).
         is_public: `True` for a public subnet (instances may receive public
             IPs); `False` for a private subnet.
         dns_label: Short DNS label prefix passed to
             `BaseResource.create_dns_label`.
+        subnet_suffix: Literal resource-name suffix for the tier's subnet.
         ipv6_cidr: IPv6 `/64` CIDR to assign to the subnet, or `None` for
             IPv4-only.  Set automatically by `Vcn._create_subnets` when
             `ipv6_enabled=True` was passed to `Vcn.__init__`.
     """
 
+    tier: SubnetTier
     cidr: str
     is_public: bool
     dns_label: str
+    subnet_suffix: str
     ipv6_cidr: pulumi.Input[str] | None = None
 
 
@@ -774,11 +778,11 @@ class Vcn(BaseResource, AbstractNetwork):
         """
 
         def _make(
+            name: str,
             tier: str,
             ingress: list[oci.core.SecurityListIngressSecurityRuleArgs],
             egress: list[oci.core.SecurityListEgressSecurityRuleArgs],
         ) -> oci.core.SecurityList:
-            name = self.create_resource_name(f"sl-{tier}")
             return oci.core.SecurityList(
                 name,
                 compartment_id=self.compartment_id,
@@ -791,11 +795,29 @@ class Vcn(BaseResource, AbstractNetwork):
                 opts=pulumi.ResourceOptions(parent=self),
             )
 
-        self.public_security_list = _make("public", self._public_ingress_rules, self._public_egress_rules)
-        self.private_security_list = _make("private", self._private_ingress_rules, self._private_egress_rules)
-        self.secure_security_list = _make("secure", self._secure_ingress_rules, self._secure_egress_rules)
+        self.public_security_list = _make(
+            self.create_resource_name("sl-public"),
+            "public",
+            self._public_ingress_rules,
+            self._public_egress_rules,
+        )
+        self.private_security_list = _make(
+            self.create_resource_name("sl-private"),
+            "private",
+            self._private_ingress_rules,
+            self._private_egress_rules,
+        )
+        self.secure_security_list = _make(
+            self.create_resource_name("sl-secure"),
+            "secure",
+            self._secure_ingress_rules,
+            self._secure_egress_rules,
+        )
         self.management_security_list = _make(
-            "management", self._management_ingress_rules, self._management_egress_rules
+            self.create_resource_name("sl-management"),
+            "management",
+            self._management_ingress_rules,
+            self._management_egress_rules,
         )
 
     def _create_route_tables(self) -> None:
@@ -860,8 +882,7 @@ class Vcn(BaseResource, AbstractNetwork):
                         )
                     )
 
-        def _make_rt(tier: str, rules: list[oci.core.RouteTableRouteRuleArgs]) -> oci.core.RouteTable:
-            name = self.create_resource_name(f"rt-{tier}")
+        def _make_rt(name: str, tier: str, rules: list[oci.core.RouteTableRouteRuleArgs]) -> oci.core.RouteTable:
             return oci.core.RouteTable(
                 name,
                 compartment_id=self.compartment_id,
@@ -873,10 +894,14 @@ class Vcn(BaseResource, AbstractNetwork):
                 opts=pulumi.ResourceOptions(parent=self),
             )
 
-        self.public_route_table = _make_rt("public", public_route_rules)
-        self.private_route_table = _make_rt("private", private_route_rules)
-        self.secure_route_table = _make_rt("secure", secure_route_rules)
-        self.management_route_table = _make_rt("management", management_route_rules)
+        self.public_route_table = _make_rt(self.create_resource_name("rt-public"), "public", public_route_rules)
+        self.private_route_table = _make_rt(self.create_resource_name("rt-private"), "private", private_route_rules)
+        self.secure_route_table = _make_rt(self.create_resource_name("rt-secure"), "secure", secure_route_rules)
+        self.management_route_table = _make_rt(
+            self.create_resource_name("rt-management"),
+            "management",
+            management_route_rules,
+        )
 
     def _create_subnet(
         self,
@@ -894,10 +919,9 @@ class Vcn(BaseResource, AbstractNetwork):
                 label for this subnet.
             security_list: Security list to attach to the subnet.
             route_table: Route table to attach to the subnet.
-            tier: Subnet tier name — `"public"`, `"private"`, `"secure"`, or
-                `"management"`.  Used for the `NetworkType` and `SubnetGroup`
-                freeform tags so each tier is correctly identified in OCI
-                tag-based queries.
+            tier: Subnet tier name. Used for the `NetworkType` and
+                `SubnetGroup` freeform tags so each tier is correctly
+                identified in OCI tag-based queries.
 
         Returns:
             The newly created `oci.core.Subnet` resource.
@@ -939,42 +963,50 @@ class Vcn(BaseResource, AbstractNetwork):
         # IPv6 slot assignments mirror the IPv4 tier layout: private=0
         # (largest tier), secure=1, public=2, management=3.  Stable indices
         # ensure subnets always get the same /64 on re-plan.
-        subnet_configs: dict[str, _SubnetConfig] = {
-            "public": _SubnetConfig(
-                public_cidr,
-                True,
-                "pub",
-                self._compute_ipv6_subnet_cidr(2) if self._ipv6_enabled else None,
+        subnet_configs = (
+            _SubnetConfig(
+                tier=SUBNET_PUBLIC,
+                cidr=public_cidr,
+                is_public=True,
+                dns_label="pub",
+                subnet_suffix="sn-public",
+                ipv6_cidr=self._compute_ipv6_subnet_cidr(2) if self._ipv6_enabled else None,
             ),
-            "private": _SubnetConfig(
-                private_cidr,
-                False,
-                "priv",
-                self._compute_ipv6_subnet_cidr(0) if self._ipv6_enabled else None,
+            _SubnetConfig(
+                tier=SUBNET_PRIVATE,
+                cidr=private_cidr,
+                is_public=False,
+                dns_label="priv",
+                subnet_suffix="sn-private",
+                ipv6_cidr=self._compute_ipv6_subnet_cidr(0) if self._ipv6_enabled else None,
             ),
-            "secure": _SubnetConfig(
-                secure_cidr,
-                False,
-                "sec",
-                self._compute_ipv6_subnet_cidr(1) if self._ipv6_enabled else None,
+            _SubnetConfig(
+                tier=SUBNET_SECURE,
+                cidr=secure_cidr,
+                is_public=False,
+                dns_label="sec",
+                subnet_suffix="sn-secure",
+                ipv6_cidr=self._compute_ipv6_subnet_cidr(1) if self._ipv6_enabled else None,
             ),
-            "management": _SubnetConfig(
-                management_cidr,
-                False,
-                "mgmt",
-                self._compute_ipv6_subnet_cidr(3) if self._ipv6_enabled else None,
+            _SubnetConfig(
+                tier=SUBNET_MANAGEMENT,
+                cidr=management_cidr,
+                is_public=False,
+                dns_label="mgmt",
+                subnet_suffix="sn-management",
+                ipv6_cidr=self._compute_ipv6_subnet_cidr(3) if self._ipv6_enabled else None,
             ),
-        }
+        )
 
-        for tier, config in subnet_configs.items():
-            security_list: oci.core.SecurityList = getattr(self, f"{tier}_security_list")
-            route_table: oci.core.RouteTable = getattr(self, f"{tier}_route_table")
+        for config in subnet_configs:
+            security_list: oci.core.SecurityList = getattr(self, f"{config.tier}_security_list")
+            route_table: oci.core.RouteTable = getattr(self, f"{config.tier}_route_table")
 
-            subnet_name: str = self.create_resource_name(f"sn-{tier}")
+            subnet_name: str = self.create_resource_name(config.subnet_suffix)
             setattr(
                 self,
-                f"{tier}_subnet",
-                self._create_subnet(subnet_name, config, security_list, route_table, tier),
+                f"{config.tier}_subnet",
+                self._create_subnet(subnet_name, config, security_list, route_table, config.tier),
             )
 
     def _inject_baseline_rules(self) -> None:

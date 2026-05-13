@@ -103,6 +103,8 @@ web_server = ComputeInstance(
 
 The instance inherits its subnet from the NSG role: because `web_nsg` uses `INTERNET_EDGE`, the instance is automatically placed in the public subnet. No subnet argument needed.
 
+`VolumeSpec.label` is used for lookup helpers, outputs, and tags. It does not shape Pulumi resource names; repeated child resources use CloudSpells-owned ordinal suffixes.
+
 `VolumeSpec` accepts a `vpus_per_gb` performance tier constant:
 
 | Constant | VPUs/GB | Use case |

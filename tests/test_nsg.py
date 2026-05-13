@@ -91,6 +91,27 @@ class TestNsgRuleHelpers(unittest.TestCase):
         return rule.direction.apply(check)
 
     @pulumi.runtime.test
+    def test_nsg_rule_resource_name_uses_ordinal_slot_not_label(self):
+        """NSG rule resource names use internal ordinal slots."""
+        vcn = Vcn(name="rule-name-vcn", compartment_id=COMP_ID, stack_name="unit")
+        nsg = Nsg("rule-name", vcn=vcn, compartment_id=COMP_ID, stack_name="unit")
+        rule = nsg.allow_from_cidr("https-in", HTTPS, INTERNET)
+
+        def check(rule_id):
+            self.assertEqual(rule_id, "unit-rule-name-nsg-rule-1-id")
+
+        return rule.id.apply(check)
+
+    def test_duplicate_nsg_rule_label_raises(self):
+        """NSG rule labels remain unique even though they no longer name resources."""
+        vcn = Vcn(name="rule-dupe-vcn", compartment_id=COMP_ID, stack_name="unit")
+        nsg = Nsg("rule-dupe", vcn=vcn, compartment_id=COMP_ID, stack_name="unit")
+
+        nsg.allow_to_cidr("inet-out", INTERNET)
+        with self.assertRaises(ValueError):
+            nsg.allow_to_cidr("inet-out", INTERNET)
+
+    @pulumi.runtime.test
     def test_allow_from_cidr_protocol_is_tcp(self):
         """allow_from_cidr uses TCP protocol."""
         _, src, _ = self._make_pair()
