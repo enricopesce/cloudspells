@@ -36,6 +36,7 @@ Internet
 
 - Completed [Installation](../getting-started/installation.md)
 - OCI compartment OCID at hand
+- Availability Domain name for the compute instances
 - Boot image OCID for the instances (OCI Console → Compute → Images, or use the OCI CLI)
 
 ---
@@ -47,6 +48,7 @@ cd examples/web-db
 
 pulumi stack init dev
 pulumi config set compartment_ocid ocid1.compartment.oc1..example
+pulumi config set availability_domain "example:EU-FRANKFURT-1-AD-1"
 pulumi config set image_ocid        ocid1.image.oc1..example
 ```
 
@@ -118,21 +120,28 @@ It also creates the matching cross-subnet Security List rules, so OCI's two enfo
 
 ### 2d. Create the compute instances
 
+The example reads `availability_domain = config.require("availability_domain")`
+once during configuration and passes it to each instance.
+
 ```python
 from cloudspells.providers.oci.compute import ComputeInstance
 from cloudspells.providers.oci.volume import VolumeSpec
 
 load_balancer = ComputeInstance("load-balancer", compartment_id=compartment_id,
-                                image_id=config.require("image_ocid"), ssh_public_key=ssh_key, nsg=lb_nsg)
+                                image_id=config.require("image_ocid"), availability_domain=availability_domain,
+                                ssh_public_key=ssh_key, nsg=lb_nsg)
 web_backend_1 = ComputeInstance("web-backend-1", compartment_id=compartment_id,
-                                image_id=config.require("image_ocid"), ssh_public_key=ssh_key, nsg=web_nsg)
+                                image_id=config.require("image_ocid"), availability_domain=availability_domain,
+                                ssh_public_key=ssh_key, nsg=web_nsg)
 web_backend_2 = ComputeInstance("web-backend-2", compartment_id=compartment_id,
-                                image_id=config.require("image_ocid"), ssh_public_key=ssh_key, nsg=web_nsg)
+                                image_id=config.require("image_ocid"), availability_domain=availability_domain,
+                                ssh_public_key=ssh_key, nsg=web_nsg)
 
 db_1 = ComputeInstance(
     "db-1",
     compartment_id=compartment_id,
     image_id=config.require("image_ocid"),
+    availability_domain=availability_domain,
     ssh_public_key=ssh_key,
     nsg=db_nsg,
     volumes=[VolumeSpec(size_in_gbs=200, label="data", vpus_per_gb=VolumeSpec.PERF_HIGH)],
@@ -141,6 +150,7 @@ db_2 = ComputeInstance(
     "db-2",
     compartment_id=compartment_id,
     image_id=config.require("image_ocid"),
+    availability_domain=availability_domain,
     ssh_public_key=ssh_key,
     nsg=db_nsg,
     volumes=[VolumeSpec(size_in_gbs=200, label="data", vpus_per_gb=VolumeSpec.PERF_HIGH)],

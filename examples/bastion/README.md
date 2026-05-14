@@ -4,19 +4,20 @@ Deploys a private compute instance accessible only through an OCI managed Bastio
 
 ## What Gets Created
 
-- VCN with public and private subnets
+- VCN with public, private, secure, and management subnets
+- Role-bearing `APP_SERVER` NSG for private instance placement
 - Compute instance in the private subnet (no public IP)
 - OCI Bastion service attached to the private subnet
 - SSH key pair (auto-generated if not provided)
-- Security list rules allowing SSH from the public subnet to the private subnet
+- Bastion-owned SSH security-list rule registered before the VCN is finalized
 
 ## Architecture
 
 ```
-Internet → Bastion (public subnet) → Port-forwarding session → Instance (private subnet)
+Internet -> OCI Bastion service (private subnet) -> managed SSH session -> Instance (private subnet)
 ```
 
-The Bastion acts as a managed jump host. You create a session through the OCI Console or CLI and tunnel your SSH connection through it.
+The Bastion service is an OCI-managed access point, not a VM jump host. The example constructs `Bastion` before `ComputeInstance` so the Bastion SSH rule is registered before `ComputeInstance` finalizes the VCN.
 
 ## Prerequisites
 
@@ -34,7 +35,8 @@ The Bastion acts as a managed jump host. You create a session through the OCI Co
 | Key | Required | Default | Description |
 |-----|----------|---------|-------------|
 | `compartment_ocid` | Yes | — | OCI compartment OCID |
-| `vcn_cidr_block` | No | `10.0.0.0/16` | CIDR block for the VCN |
+| `availability_domain` | Yes | — | Availability Domain for the compute instance |
+| `image_ocid` | Yes | — | Compute image OCID for the instance |
 | `ssh_key` | No | _(auto-generated)_ | SSH public key to deploy to the instance |
 
 ## Deploy
@@ -47,6 +49,8 @@ pulumi stack init dev
 
 # Set required config
 pulumi config set compartment_ocid <your-compartment-ocid>
+pulumi config set availability_domain "<availability-domain-name>"
+pulumi config set image_ocid <your-image-ocid>
 
 # Optional: provide your SSH public key (skip to auto-generate)
 pulumi config set ssh_key "$(cat ~/.ssh/id_dsa.key.pub)"
@@ -66,7 +70,7 @@ pulumi up
 ### Retrieve an auto-generated private key
 
 ```bash
-pulumi stack output ssh_private_key --show-secrets > ~/.ssh/oci_bastion
+pulumi stack output web_server_ssh_private_key --show-secrets > ~/.ssh/oci_bastion
 chmod 600 ~/.ssh/oci_bastion
 ```
 
@@ -74,17 +78,17 @@ chmod 600 ~/.ssh/oci_bastion
 
 1. Get the outputs:
    ```bash
-   pulumi stack output bastion_endpoint
-   pulumi stack output instance_private_ip
+   pulumi stack output mgmt_bastion_endpoint
+   pulumi stack output web_server_private_ip
    ```
 
-2. Create a Bastion session (OCI CLI):
+2. Create a managed SSH session (OCI CLI):
    ```bash
-   oci bastion session create-port-forwarding \
-     --bastion-id $(pulumi stack output bastion_id) \
-     --target-private-ip $(pulumi stack output instance_private_ip) \
-     --target-port 22 \
-     --session-ttl 3600
+   oci bastion session create-managed-ssh \
+     --bastion-id $(pulumi stack output mgmt_bastion_id) \
+     --target-resource-id $(pulumi stack output web_server_id) \
+     --target-os-username ubuntu \
+     --ssh-public-key-file ~/.ssh/id_rsa.pub
    ```
 
 3. Follow the SSH proxy command provided in the session details to connect.
@@ -96,12 +100,17 @@ chmod 600 ~/.ssh/oci_bastion
 | `vcn_id` | OCID of the VCN |
 | `public_subnet_id` | OCID of the public subnet |
 | `private_subnet_id` | OCID of the private subnet |
-| `instance_id` | OCID of the compute instance |
-| `instance_private_ip` | Private IP of the instance |
-| `bastion_id` | OCID of the Bastion service |
-| `bastion_endpoint` | Bastion endpoint hostname |
-| `ssh_public_key` | Public key deployed to the instance |
-| `ssh_private_key` | _(secret)_ Private key, only present when auto-generated |
+| `secure_subnet_id` | OCID of the secure subnet |
+| `management_subnet_id` | OCID of the management subnet |
+| `web_server_id` | OCID of the compute instance |
+| `web_server_private_ip` | Private IP of the instance |
+| `web_server_availability_domain` | Availability Domain used by the instance |
+| `web_server_shape` | Compute shape |
+| `web_server_fault_domain` | Fault domain, if set |
+| `mgmt_bastion_id` | OCID of the Bastion service |
+| `mgmt_bastion_endpoint` | Bastion private endpoint IP address |
+| `web_server_ssh_public_key` | Public key deployed to the instance |
+| `web_server_ssh_private_key` | _(secret)_ Private key, only present when auto-generated |
 
 ## Teardown
 

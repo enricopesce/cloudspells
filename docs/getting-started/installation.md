@@ -11,7 +11,7 @@ This page walks you through installing CloudSpells and its prerequisites from sc
 | [OCI CLI](https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/cliinstall.htm) (optional) | latest | Verify OCI credentials |
 
 !!! note "`cloudspells-cli` requires Python 3.12+"
-    The `cloudspells-cli` package uses features available only in Python 3.12 and later. If you intend to use the `cs` CLI for stack scaffolding and management, ensure Python 3.12+ is installed.
+    The `cloudspells-cli` package uses features available only in Python 3.12 and later. It lives in this repository, but the current publish workflow does not publish a CLI wheel to PyPI.
 
 ### Install the Pulumi CLI
 
@@ -86,6 +86,33 @@ pip install cloudspells-oci
     cd cloudspells
     pip install -e packages/cloudspells-core -e packages/cloudspells-oci
     ```
+
+    To use the source CLI, install it in the same Python 3.12+ environment:
+
+    ```bash
+    pip install -e packages/cloudspells-cli
+    ```
+
+## CloudSpells CLI
+
+The source-installed `cs` command wraps common Pulumi Automation API workflows:
+
+| Command | Purpose |
+|---------|---------|
+| `cs wizard` | Interactive guided flow for scaffolding, deploy, status, refresh, destroy, and project workflows |
+| `cs new <spell> <name>` | Scaffold a stack directory from a spell template; use `--list` to show available templates |
+| `cs up [path]` | Deploy a stack; use `--preview` to preview without applying changes |
+| `cs destroy [path]` | Destroy stack resources; use `--remove` to remove stack state after destroy |
+| `cs output [path]` | Read stack outputs; use `--key` for one output or `--json` for JSON |
+| `cs refresh [path]` | Reconcile Pulumi state with live OCI resources |
+| `cs status [path]` | Display the resource tree from Pulumi state without live OCI API calls |
+| `cs config set/get/list` | Manage stack configuration keys, including `--secret` values |
+| `cs stack list/rm` | List or remove Pulumi stacks for a project directory |
+| `cs backend oci-url` | Generate an OCI Object Storage backend URL for Pulumi state |
+| `cs project new/up/destroy/status` | Scaffold and operate ordered multi-spell projects from `project.yaml` |
+
+`cs new` currently includes templates for `autoscale`, `bastion`, `compute`,
+`iam`, `lb`, `oke`, `storage`, `vcn`, and `web-db`.
 
 ### 3. Configure a Pulumi state backend
 

@@ -20,7 +20,7 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
-          paths: [packages/cloudspells-core/src, packages/cloudspells-oci/src]
+          paths: [packages/cloudspells-core/src, packages/cloudspells-oci/src, packages/cloudspells-cli/src]
           options:
             docstring_style: google
             show_source: true
@@ -33,6 +33,8 @@ nav:
   - Getting Started:
     - Installation: getting-started/installation.md
     - First Deploy: getting-started/first-deploy.md
+  - CLI:
+    - Commands: getting-started/installation.md
   - Tutorials:
     - Compute Instance: tutorials/compute.md
     - OKE Cluster: tutorials/oke.md
@@ -59,7 +61,7 @@ nav:
       - api/core/base.md
       - api/core/naming.md
       - api/core/tagging.md
-      - api/core/helper.md
+      - Config and Helpers: api/core/helper.md
     - Abstractions:
       - api/core/abstractions/network.md
       - api/core/abstractions/compute.md

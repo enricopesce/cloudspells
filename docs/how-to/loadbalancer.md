@@ -52,6 +52,11 @@ lb = LoadBalancer(
 lb.export()
 ```
 
+`LoadBalancer` registers VCN security-list rules and calls
+`finalize_network()` during construction. Declare any other spell that must add
+rules to the same live `Vcn` before the load balancer. After finalization,
+`Vcn.add_security_rules()` raises for new non-empty rule sets.
+
 ### What gets created
 
 - 1 flexible-shape Load Balancer (public subnet, public IP)
@@ -92,6 +97,9 @@ ilb = InternalLoadBalancer(
 ilb.export()
 ```
 
+`InternalLoadBalancer` follows the same rule: it registers its private subnet
+rules, then finalizes the VCN. Declare rule-registering dependencies first.
+
 ### What gets created
 
 - 1 flexible-shape Load Balancer (private subnet, `is_private=True`)
@@ -101,31 +109,17 @@ ilb.export()
 
 ---
 
-## Using both together
+## Composition order
 
-A common pattern places the public LB in front and the internal LB behind it. Both spells can be declared in any order; `finalize_network()` is idempotent.
+The first spell that calls `finalize_network()` materializes the VCN security
+lists and subnets. Later calls are no-ops, but later attempts to add new VCN
+security-list rules fail. For a live `Vcn`, construct all NSGs, Bastion
+components, and other rule-registering dependencies before the load balancer
+spell that finalizes the network.
 
-```python
-vcn = Vcn(name="prod", compartment_id=compartment_id)
-
-public_lb = LoadBalancer(
-    name="web",
-    compartment_id=compartment_id,
-    vcn=vcn,
-    certificate_name="my-tls-cert",
-    backend_port=80,
-)
-
-internal_lb = InternalLoadBalancer(
-    name="api",
-    compartment_id=compartment_id,
-    vcn=vcn,
-    backend_port=8080,
-)
-
-public_lb.export()
-internal_lb.export()
-```
+Do not use separate live `LoadBalancer` and `InternalLoadBalancer` declarations
+against the same unfinalized `Vcn` as an order-independent pattern. Each spell
+registers its own VCN rules and finalizes during construction.
 
 ---
 

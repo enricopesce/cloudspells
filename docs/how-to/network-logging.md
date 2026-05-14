@@ -41,12 +41,17 @@ flow_logs.export()
 ```
 
 `compartment_id` is inferred from the live `Vcn` — no need to pass it separately.
+Because this finalizes the network, declare any NSGs, Bastion components, load
+balancers, or other spells that need to register VCN security-list rules before
+`VcnFlowLogs`.
 
 ---
 
 ## Cross-stack usage with VcnRef
 
-When using a `VcnRef`, the spell attaches flow logs to whichever subnets the upstream stack exported. `compartment_id` must be supplied explicitly because `VcnRef` does not carry a compartment ID:
+When using a `VcnRef`, the spell attaches flow logs to the subnets exported by
+the upstream stack. `compartment_id` must be supplied explicitly because
+`VcnRef` does not carry a compartment ID:
 
 ```python
 from cloudspells.providers.oci.network import VcnRef
@@ -62,7 +67,11 @@ flow_logs = VcnFlowLogs(
 flow_logs.export()
 ```
 
-Secure and management flow logs are created only when those subnets exist in the `VcnRef`. If the upstream stack did not export those subnet IDs, the attributes are `None`.
+`VcnRef.from_stack_reference()` now requires all four CloudSpells subnet
+outputs: public, private, secure, and management. Use `Vcn.export()` in the
+source stack so the secure and management subnet IDs and CIDRs are present.
+Only manually constructed `VcnRef` objects may omit secure or management
+subnets; in that case the corresponding flow log attributes are `None`.
 
 ---
 
@@ -98,17 +107,16 @@ compartment_id = config.require("compartment_ocid")
 vcn = Vcn("prod", compartment_id=compartment_id)
 nsg = Nsg("app", role=APP_SERVER, vcn=vcn, compartment_id=compartment_id)
 
-# Declaration order relative to other spells does not matter.
-# VcnFlowLogs calls finalize_network() itself; subsequent calls from
-# other spells are no-ops because finalize_network() is idempotent.
-flow_logs = VcnFlowLogs(name="prod", vcn=vcn, retention_duration=180)
-
 instance = ComputeInstance(
     name="web",
     compartment_id=compartment_id,
     image_id=config.require("image_ocid"),
     nsg=nsg,
 )
+
+# ComputeInstance finalizes the VCN after the NSG has registered its rules.
+# VcnFlowLogs can be declared after that and attaches logs to the created subnets.
+flow_logs = VcnFlowLogs(name="prod", vcn=vcn, retention_duration=180)
 
 vcn.export()
 flow_logs.export()

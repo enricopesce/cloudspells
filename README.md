@@ -3,7 +3,7 @@
 **Stop configuring infrastructure. Start deploying architectures.**
 
 [![CI](https://github.com/enricopesce/cloudspells/actions/workflows/ci.yml/badge.svg)](https://github.com/enricopesce/cloudspells/actions/workflows/ci.yml)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/downloads/)
+[![Python 3.8+ / CLI 3.12+](https://img.shields.io/badge/python-3.8%2B%20%7C%20CLI%203.12%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/github/license/enricopesce/cloudspells)](LICENSE)
 [![Pulumi 3.x](https://img.shields.io/badge/pulumi-3.x-blueviolet)](https://www.pulumi.com/)
 [![OCI](https://img.shields.io/badge/cloud-OCI-red)](https://www.oracle.com/cloud/)
@@ -36,12 +36,16 @@ CloudSpells makes **the architecture the product**. Network topology, subnet tie
 
 ### Install
 
-CloudSpells is split into two independently-installable packages:
+CloudSpells publishes the runtime packages independently:
 
 ```bash
-pip install cloudspells-core   # cloud-neutral abstractions and utilities
-pip install cloudspells-oci    # OCI spells (installs cloudspells-core automatically)
+pip install cloudspells-core      # cloud-neutral abstractions and utilities
+pip install cloudspells-oci       # OCI spells (installs cloudspells-core automatically)
 ```
+
+The optional `cs` CLI lives in this repository but is not part of the current
+PyPI publish workflow. Install it from source when you need stack scaffolding
+and management commands.
 
 For local development from source:
 
@@ -50,6 +54,18 @@ git clone https://github.com/enricopesce/cloudspells.git
 cd cloudspells
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+pip install -e packages/cloudspells-core -e packages/cloudspells-oci -e packages/cloudspells-cli
+```
+
+Prefer the CLI path? The `cs` tool scaffolds stacks, manages config, previews/deploys, reads outputs, refreshes state, and orchestrates multi-spell projects:
+
+```bash
+cs wizard
+cs new vcn my-network
+cd my-network
+cs config set compartment_ocid <compartment-ocid>
+cs up --preview
+cs up
 ```
 
 ### 1. Deploy a VCN
@@ -177,22 +193,24 @@ Adding a third web backend? Attach `web_nsg` to a new `ComputeInstance`. Zero NS
 | Spell | Cloud | What it encapsulates | Status |
 |-------|-------|----------------------|--------|
 | `Vcn` | OCI | 4-tier VCN (public/private/secure/management), all gateways, route tables, security lists | Alpha |
-| `OkeCluster` | OCI | Oracle Kubernetes Engine cluster, node pool, OCI_VCN_IP_NATIVE CNI, multi-AD node placement | Alpha |
+| `OkeCluster` | OCI | Oracle Kubernetes Engine BASIC cluster, node pool, OCI_VCN_IP_NATIVE CNI, multi-AD node placement | Alpha |
+| `OkeClusterEnhanced` | OCI | ENHANCED OKE cluster with workload identity, add-on lifecycle management, and OCI DevOps integration | Alpha |
 | `ComputeInstance` | OCI | VM instance attached through a role-bearing NSG, SSH key management, block volume attachments | Alpha |
 | `Bastion` | OCI | OCI Bastion service in the private subnet, ready for session-based access | Alpha |
 | `ScalableWorkload` | OCI | Load balancer (public) + instance pool (private) + CPU/schedule autoscaling | Alpha |
 | `LoadBalancer` | OCI | Flexible-shape public load balancer with HTTP/HTTPS listeners and health checks | Alpha |
-| `InternalLoadBalancer` | OCI | Private load balancer in the secure subnet for internal service-to-service traffic | Alpha |
+| `InternalLoadBalancer` | OCI | Private load balancer in the private subnet for internal service-to-service traffic | Alpha |
 | `Nsg` | OCI | Network Security Group with role-based rule generation and port constants | Alpha |
 | `VcnFlowLogs` | OCI | VCN flow log capture for network audit and compliance | Alpha |
 | `ObjectStorageBucket` | OCI | Standard object storage bucket with lifecycle and versioning defaults | Alpha |
 | `BackupBucket` | OCI | Versioned bucket with permanent-delete retention for backups | Alpha |
-| `DataLakeBucket` | OCI | Archive-tier bucket optimised for large-scale data lake storage | Alpha |
-| `ArchiveBucket` | OCI | Deep-archive bucket for long-term cold storage | Alpha |
+| `DataLakeBucket` | OCI | Standard-tier bucket with hot-to-archive-to-delete lifecycle rules for analytics workloads | Alpha |
+| `ArchiveBucket` | OCI | Archive-tier bucket with a retention rule for long-term compliance storage | Alpha |
 | `StaticWebsiteBucket` | OCI | Public-read bucket with static website hosting enabled | Alpha |
 | `ComputeInstancePrincipal` | OCI | Dynamic group + policy granting selected compute instances access to explicit OCI IAM grants (e.g. Object Storage, Vault Secrets) | Alpha |
 | `OkeNodePrincipal` | OCI | Dynamic group + policy granting OKE node pool instances the full permission set required for cluster operation | Alpha |
 | `CompartmentAdminGroup` | OCI | IAM group + `manage all-resources` policy delegating compartment administration to a human operator group | Alpha |
+| `GenAiAgentRag` | OCI | OCI Generative AI Agent RAG pipeline: document bucket, knowledge base, data source, agent, RAG tool, and endpoint | Alpha |
 | AWS provider | AWS | Full spell library for AWS | Planned |
 | GCP provider | GCP | Full spell library for GCP | Planned |
 
@@ -200,7 +218,7 @@ Adding a third web backend? Attach `web_nsg` to a new `ComputeInstance`. Zero NS
 
 ## Architecture
 
-CloudSpells uses a strict three-layer design that separates cloud-neutral contracts from cloud-specific implementations. The codebase is published as two independent packages:
+CloudSpells uses a strict three-layer design that separates cloud-neutral contracts from cloud-specific implementations. The runtime packages are published independently; the repository also includes an optional source-installed CLI for scaffolding and stack operations:
 
 ```
 packages/
@@ -214,22 +232,30 @@ packages/
 │           ├── ports.py         ← TCP/UDP port constants (HTTP, HTTPS, SSH, …)
 │           └── tagging.py       ← ResourceTagger: consistent tag sets across all resources
 │
-└── cloudspells-oci/             ← pip install cloudspells-oci
+├── cloudspells-oci/             ← pip install cloudspells-oci
+│   └── src/cloudspells/
+│       └── providers/
+│           └── oci/             ← OCI implementation (canonical, use this for new code)
+│               ├── network.py           ← Vcn, VcnRef
+│               ├── kubernetes.py        ← OkeCluster, OkeClusterEnhanced
+│               ├── compute.py           ← ComputeInstance
+│               ├── bastion.py           ← Bastion
+│               ├── autoscale.py         ← ScalableWorkload
+│               ├── loadbalancer.py      ← LoadBalancer, InternalLoadBalancer
+│               ├── nsg.py               ← Nsg + role-based rule generation
+│               ├── roles.py             ← role constants (INTERNET_EDGE, APP_SERVER, DATABASE, …)
+│               ├── storage.py           ← ObjectStorageBucket, BackupBucket, DataLakeBucket, ArchiveBucket, StaticWebsiteBucket
+│               ├── volume.py            ← VolumeSpec
+│               ├── network_logging.py   ← VcnFlowLogs
+│               ├── iam.py               ← ComputeInstancePrincipal, OkeNodePrincipal, CompartmentAdminGroup
+│               └── genai_agent_rag.py   ← GenAiAgentRag
+└── cloudspells-cli/             ← source install only in the current workflow
     └── src/cloudspells/
-        └── providers/
-            └── oci/             ← OCI implementation (canonical, use this for new code)
-                ├── network.py           ← Vcn, VcnRef
-                ├── kubernetes.py        ← OkeCluster
-                ├── compute.py           ← ComputeInstance
-                ├── bastion.py           ← Bastion
-                ├── autoscale.py         ← ScalableWorkload
-                ├── loadbalancer.py      ← LoadBalancer, InternalLoadBalancer
-                ├── nsg.py               ← Nsg + role-based rule generation
-                ├── roles.py             ← role constants (INTERNET_EDGE, APP_SERVER, DATABASE, …)
-                ├── storage.py           ← ObjectStorageBucket, BackupBucket, DataLakeBucket, ArchiveBucket, StaticWebsiteBucket
-                ├── volume.py            ← VolumeSpec
-                ├── network_logging.py   ← VcnFlowLogs
-                └── iam.py               ← ComputeInstancePrincipal, OkeNodePrincipal, CompartmentAdminGroup
+        └── cli/                 ← cs command: wizard, new, up, destroy, output, refresh, status,
+            ├── commands/        ← config, stack, backend, and project subcommands
+            ├── templates/       ← stack templates for vcn, compute, oke, autoscale, lb, bastion,
+            │                       storage, iam, and web-db
+            └── project/         ← multi-spell project model and runner
 ```
 
 **The key design insight:** adding a new cloud provider means implementing the abstractions under `packages/cloudspells-<cloud>/src/cloudspells/providers/<cloud>/` — zero changes to the user-facing API. An application written against `AbstractNetwork` works identically across OCI, AWS, and GCP once the provider implementations exist.
@@ -264,7 +290,8 @@ Subnet tier, gateway routing, and security posture are not configurable — they
 
 ### Prerequisites
 
-- Python 3.8 or later
+- Python 3.8 or later for `cloudspells-core` and `cloudspells-oci`
+- Python 3.12 or later for the optional source-installed `cloudspells-cli` package
 - [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/) installed and on your `PATH`
 - OCI credentials configured at `~/.oci/config` (see [OCI SDK and CLI Configuration](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/sdkconfig.htm))
 
@@ -274,6 +301,9 @@ Subnet tier, gateway routing, and security posture are not configurable — they
 pip install cloudspells-oci
 ```
 
+The `cloudspells-cli` package is not currently published by the release
+workflow. Use the source install below for the `cs` command.
+
 For local development from source:
 
 ```bash
@@ -282,6 +312,7 @@ cd cloudspells
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+pip install -e packages/cloudspells-core -e packages/cloudspells-oci -e packages/cloudspells-cli
 ```
 
 ### Configure Pulumi OCI provider
@@ -318,6 +349,7 @@ Each example is a self-contained Pulumi stack in `examples/`:
 | [`autoscale`](examples/autoscale/) | VCN + load balancer + auto-scaling instance pool with CPU policies. |
 | [`loadbalancer`](examples/loadbalancer/) | VCN + HTTPS load balancer with HTTP→HTTPS redirect and health checks. |
 | [`storage`](examples/storage/) | Backup bucket + data lake bucket with lifecycle and versioning defaults. |
+| [`genai_agent_rag`](examples/genai_agent_rag/) | OCI Generative AI Agent RAG pipeline with document bucket, knowledge base, agent, RAG tool, and endpoint. |
 | [`web-db`](examples/web-db/) | Three-tier web+DB stack: LB (public) → app servers (private) → DB nodes (secure). |
 | [`iam`](examples/iam/) | `ComputeInstancePrincipal` + `OkeNodePrincipal` + `CompartmentAdminGroup` — instance principals and compartment admin group; requires `compartment_ocid`, `tenancy_ocid`, and `app_instance_ocid`. |
 | [`secure-vcn`](examples/secure-vcn/) | VCN with flow logs, four-tier NSGs, management-tier SSH controls, and zero-credential app tier via exact-instance `ComputeInstancePrincipal`; requires `tenancy_ocid` and `app_instance_ocid` for IAM. |
@@ -341,12 +373,14 @@ CloudSpells is actively looking for contributors. See [CONTRIBUTING.md](.github/
 - [x] `VcnFlowLogs` for network audit and compliance
 - [x] `LoadBalancer` and `InternalLoadBalancer` spells
 - [x] Object storage spells (ObjectStorageBucket, BackupBucket, DataLakeBucket, ArchiveBucket, StaticWebsiteBucket)
+- [x] `GenAiAgentRag` for OCI Generative AI Agents RAG architectures
+- [x] `OkeClusterEnhanced` for enhanced OKE clusters
 - [x] Split into `cloudspells-core` and `cloudspells-oci` packages for independent versioning
-- [x] PyPI publishing via GitHub Actions
+- [x] `cloudspells-cli` (`cs`) in source for stack scaffolding, config, deploy/destroy, outputs, refresh/status, backend URLs, and multi-spell projects
+- [x] PyPI publishing via GitHub Actions for `cloudspells-core` and `cloudspells-oci`
 - [ ] AWS provider — implement `AbstractNetwork`, `AbstractScalableWorkload`, etc. for AWS
 - [ ] GCP provider — same abstraction layer for GCP
 - [ ] Azure provider
-- [ ] CloudSpells CLI tool for stack management
 
 ---
 

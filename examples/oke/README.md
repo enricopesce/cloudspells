@@ -1,9 +1,9 @@
 # OKE Example
 
 Deploys an Oracle Kubernetes Engine (OKE) cluster with a managed node pool
-using the full 4-tier VCN architecture.  Worker node VNICs and pod IPs are
-placed in separate subnets, following Oracle's recommended topology for
-VCN-native pod networking (`OCI_VCN_IP_NATIVE`).
+using the full 4-tier VCN architecture. Worker node VNICs and pod IPs both
+use the private subnet with separate worker and pod NSGs for VCN-native pod
+networking (`OCI_VCN_IP_NATIVE`).
 
 ## Network architecture
 
@@ -75,13 +75,13 @@ traffic bypasses security list rules entirely.  Use Kubernetes
 | Key | Required | Default | Description |
 |-----|----------|---------|-------------|
 | `compartment_ocid` | Yes | — | OCI compartment OCID |
-| `vcn_cidr_block` | No | `10.0.0.0/18` | VCN CIDR — RFC 1918, prefix `/16`–`/20` |
-| `kubernetes_version` | No | `v1.32.1` | Kubernetes version |
-| `node_shape` | No | `VM.Standard.A1.Flex` | Shape for worker nodes |
-| `oke_ocpus` | No | `2` | OCPUs per worker node |
-| `oke_memory_in_gbs` | No | `12` | Memory in GB per worker node |
-| `oke_min_nodes` | No | `2` | Number of worker nodes in the pool |
-| `node_image_id` | No | _(latest Oracle Linux)_ | Custom image OCID for worker nodes |
+| `kubernetes_version` | Yes | — | OKE Kubernetes version |
+| `node_shape` | Yes | — | Shape for worker nodes |
+| `node_image_id` | Yes | — | Image OCID for worker nodes |
+| `node_count` | Yes | — | Number of worker nodes in the default pool |
+| `oke_ocpus` | Yes | — | OCPUs per worker node |
+| `oke_memory_in_gbs` | Yes | — | Memory in GB per worker node |
+| `kubectl_allowed_cidrs` | No | empty | Comma-separated CIDRs allowed to reach the public API endpoint |
 
 ## Deploy
 
@@ -90,16 +90,15 @@ cd examples/oke
 
 pulumi stack init dev
 pulumi config set compartment_ocid <your-compartment-ocid>
-
-# Optional: larger VCN for big clusters (more pod IPs in secure subnet)
-pulumi config set vcn_cidr_block 10.0.0.0/16
-
-# Optional: tune the node pool
 pulumi config set kubernetes_version v1.32.1
 pulumi config set node_shape VM.Standard.E4.Flex
+pulumi config set node_image_id <your-node-image-ocid>
+pulumi config set node_count 3
 pulumi config set oke_ocpus 4
 pulumi config set oke_memory_in_gbs 24
-pulumi config set oke_min_nodes 3
+
+# Optional: limit public Kubernetes API access
+pulumi config set kubectl_allowed_cidrs 203.0.113.0/24
 
 pulumi preview
 pulumi up
@@ -111,13 +110,16 @@ After deployment, download the kubeconfig using the OCI CLI:
 
 ```bash
 oci ce cluster create-kubeconfig \
-  --cluster-id $(pulumi stack output cluster_id) \
+  --cluster-id $(pulumi stack output okeinfra_cluster_id) \
   --file ~/.kube/config \
   --region <your-region> \
   --token-version 2.0.0
 
 kubectl get nodes
 ```
+
+The example also writes a local `kubeconfig` file in `examples/oke` after a
+successful deployment.
 
 ## Outputs
 
@@ -126,10 +128,14 @@ kubectl get nodes
 | `vcn_id` | OCID of the VCN |
 | `cidr_block` | VCN CIDR block |
 | `public_subnet_id` | OCID of the public subnet (API endpoint + LB) |
-| `private_subnet_id` | OCID of the private subnet (worker nodes) |
-| `secure_subnet_id` | OCID of the secure subnet (pod IPs) |
+| `private_subnet_id` | OCID of the private subnet (worker nodes and pod IPs) |
+| `secure_subnet_id` | OCID of the secure subnet (not used by OKE) |
 | `management_subnet_id` | OCID of the management subnet |
-| `cluster_id` | OCID of the OKE cluster |
+| `okeinfra_cluster_id` | OCID of the OKE cluster |
+| `okeinfra_cluster_endpoint` | Public Kubernetes API endpoint |
+| `okeinfra_kubernetes_version` | Kubernetes version deployed |
+| `okeinfra_lb_nsg_id` | NSG OCID for OCI-managed Kubernetes load balancers |
+| `okeinfra_kubeconfig` | _(secret)_ Kubeconfig, exported after `pulumi up` |
 
 ## Teardown
 
