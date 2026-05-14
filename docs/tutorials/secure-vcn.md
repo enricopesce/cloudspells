@@ -1,6 +1,6 @@
 # Tutorial: Secure, Monitored Network
 
-This tutorial deploys a production-ready OCI network with all four security tiers, VCN Flow Logs for audit, a dedicated management tier, and Zero Trust Packet Routing (ZPR) labels — no compute instances required.
+This tutorial deploys a production-ready OCI network with all four security tiers, VCN Flow Logs for audit, a dedicated management tier, Zero Trust Packet Routing (ZPR) labels, and IAM bindings for an existing app-tier instance. The stack does not create compute instances; `app_instance_ocid` identifies the VM that should receive the app instance-principal grants.
 
 **What you will build:**
 
@@ -29,7 +29,7 @@ This tutorial deploys a production-ready OCI network with all four security tier
              ↕ all traffic captured by VCN Flow Logs
 ```
 
-**What gets created:** 1 VCN (4 subnets + 3 gateways), 4 NSGs, 1 Log Group + 4 Flow Log objects.
+**What gets created:** 1 VCN (4 subnets + 3 gateways), 4 NSGs, 1 Log Group + 4 Flow Log objects, 1 exact-instance dynamic group, 1 app IAM policy, 1 operator IAM group, and 1 operator policy.
 
 ---
 
@@ -37,6 +37,8 @@ This tutorial deploys a production-ready OCI network with all four security tier
 
 - Completed [Installation](../getting-started/installation.md)
 - OCI compartment OCID at hand
+- OCI tenancy OCID at hand
+- Existing app-tier compute instance OCID for the instance-principal dynamic group
 
 ---
 
@@ -47,6 +49,8 @@ cd examples/secure-vcn
 
 pulumi stack init dev
 pulumi config set compartment_ocid ocid1.compartment.oc1..example
+pulumi config set tenancy_ocid ocid1.tenancy.oc1..example
+pulumi config set app_instance_ocid ocid1.instance.oc1..example
 ```
 
 Optionally override defaults:
@@ -64,7 +68,7 @@ pulumi config set log_retention_days 90                  # flow log retention: 3
 
 ## Step 2 — Walk through the code
 
-Open `examples/secure-vcn/__main__.py`. It has three logical steps.
+Open `examples/secure-vcn/__main__.py`. It has four logical steps.
 
 ### 2a. Create the VCN with flow logs enabled
 
@@ -128,6 +132,31 @@ mgmt_nsg.serves(db_nsg,  port=SSH, with_ssh=False)   # mgmt → DB
 
 The `with_ssh=False` flag on the management `serves()` calls suppresses the automatic SSH management channel that `serves()` normally adds alongside the application port. Since the declared `port` here is already `SSH`, adding a second SSH channel would create duplicate rules.
 
+### 2d. Bind IAM to one app instance
+
+```python
+from cloudspells.providers.oci.iam import CompartmentAdminGroup, ComputeInstancePrincipal, IamGrant
+
+app_principal = ComputeInstancePrincipal(
+    name="app",
+    tenancy_id=tenancy_id,
+    compartment_id=compartment_id,
+    instance_ids=[app_instance_id],
+    grants=[
+        IamGrant.read_secrets(),
+        IamGrant.read_objects(),
+    ],
+)
+
+ops_group = CompartmentAdminGroup(
+    name="ops",
+    compartment_id=compartment_id,
+    tenancy_id=tenancy_id,
+)
+```
+
+The app dynamic group matches only `app_instance_ocid`, not every instance in the compartment. `IamGrant` helpers cover the common read-only Object Storage and Vault Secret grants; use `IamGrant.raw(...)` only when a workload needs an OCI IAM grant CloudSpells does not model.
+
 ---
 
 ## Step 3 — Deploy
@@ -157,6 +186,10 @@ Key outputs:
 | `secure_subnet_id` | Secure (DB) subnet OCID |
 | `management_subnet_id` | Management subnet OCID |
 | `network_audit_log_group_id` | Log Group OCID — subscribe your SIEM here |
+| `app_dynamic_group_id` | Dynamic group OCID for the selected app instance |
+| `app_policy_id` | Policy OCID granting the app instance Object Storage and Vault Secret reads |
+| `ops_group_id` | IAM group OCID for compartment administrators |
+| `ops_policy_id` | Policy OCID granting compartment administration |
 
 ---
 

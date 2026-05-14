@@ -30,7 +30,7 @@ principals so every workload authenticates by identity, not by stored credential
 └─────────────────────────────────────────────────────────────────┘
 
 Tenancy (root compartment)
- ├── DynamicGroup: {stack}-app-dg   ← all instances in compartment
+ ├── DynamicGroup: {stack}-app-dg   ← app_instance_ocid exactly
  └── Group:        {stack}-ops-group
 
 Compartment
@@ -60,8 +60,8 @@ role auto-generates:
 
 ### IAM layer — zero-credential workloads
 
-`ComputeInstancePrincipal` creates a dynamic group matching every instance in
-the compartment and a policy granting `read secret-family` and
+`ComputeInstancePrincipal` creates a dynamic group matching the configured app
+instance OCID and a policy granting `read secret-family` and
 `read object-family`.  App-tier instances authenticate as **instance
 principals** — the OCI SDK picks up the credential automatically from the
 instance metadata endpoint.  No API keys, no passwords in user-data or
@@ -103,6 +103,8 @@ Required Pulumi config values (set with `pulumi config set`):
 - `tenancy_ocid` — OCID of the tenancy root compartment (Tenancy Details →
   OCID in the OCI Console).  Required to create the dynamic group and ops
   group at the tenancy level.
+- `app_instance_ocid` — OCID of the app-tier compute instance that should
+  receive the instance-principal grants.
 
 Optional:
 
@@ -135,7 +137,7 @@ sys.path.insert(0, os.path.join(_root, "packages/cloudspells-core/src"))
 sys.path.insert(0, os.path.join(_root, "packages/cloudspells-oci/src"))
 
 from cloudspells.core import Config
-from cloudspells.providers.oci.iam import CompartmentAdminGroup, ComputeInstancePrincipal
+from cloudspells.providers.oci.iam import CompartmentAdminGroup, ComputeInstancePrincipal, IamGrant
 from cloudspells.providers.oci.network import Vcn
 from cloudspells.providers.oci.nsg import HTTP, HTTPS, SSH, Nsg
 from cloudspells.providers.oci.roles import APP_SERVER, DATABASE, INTERNET_EDGE, MANAGEMENT
@@ -146,6 +148,7 @@ config = Config()
 
 compartment_id: str = config.require("compartment_ocid")
 tenancy_id: str = config.require("tenancy_ocid")
+app_instance_id: str = config.require("app_instance_ocid")
 vcn_cidr: str = config.get("vcn_cidr") or "10.0.0.0/18"
 management_ingress_cidr: str = config.get("management_ingress_cidr") or "0.0.0.0/0"
 app_port: int = config.get_int("app_port") or 8080
@@ -204,15 +207,12 @@ mgmt_nsg.serves(db_nsg, port=SSH, with_ssh=False)  # mgmt → DB: SSH only
 # ComputeInstancePrincipal creates:
 #
 #   DynamicGroup matching rule:
-#     instance.compartment.id = '<compartment_id>'
-#     → every instance launched into this compartment is a member, including
-#       load-balancer, app-server, database, and management tier VMs.
-#       Scope the dynamic group to a specific node pool or tag if you need
-#       finer-grained membership.
+#     instance.id = '<app_instance_ocid>'
+#     → only the configured app-tier instance is a member.
 #
 #   Policy statements (scoped to this compartment):
-#     Allow dynamic-group {stack}-app-dg to read object-family in compartment id <compartment_id>
-#     Allow dynamic-group {stack}-app-dg to read secret-family in compartment id <compartment_id>
+#     Allow dynamic-group id <dynamic_group_ocid> to read object-family in compartment id <compartment_id>
+#     Allow dynamic-group id <dynamic_group_ocid> to read secret-family in compartment id <compartment_id>
 #
 #   What instances can access:
 #     - Object Storage: list buckets, read objects (GET/HEAD). Cannot write or delete.
@@ -241,11 +241,12 @@ mgmt_nsg.serves(db_nsg, port=SSH, with_ssh=False)  # mgmt → DB: SSH only
 
 app_principal: ComputeInstancePrincipal = ComputeInstancePrincipal(
     name="app",
-    compartment_id=compartment_id,
     tenancy_id=tenancy_id,
+    compartment_id=compartment_id,
+    instance_ids=[app_instance_id],
     grants=[
-        "read secret-family",   # fetch DB password from Vault — no credentials on the VM
-        "read object-family",   # read app config from Object Storage
+        IamGrant.read_secrets(),  # fetch DB password from Vault — no credentials on the VM
+        IamGrant.read_objects(),  # read app config from Object Storage
     ],
 )
 

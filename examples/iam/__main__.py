@@ -2,12 +2,14 @@
 
 Demonstrates the three IAM spells for common workload patterns:
 
-- `ComputeInstancePrincipal`: Dynamic group + policy so compute instances in
-  the compartment can authenticate as instance principals and read from Object
+- `ComputeInstancePrincipal`: Dynamic group + policy so selected compute
+  instances can authenticate as instance principals and read from Object
   Storage and Vault Secrets — no API keys on the VM needed.
 - `OkeNodePrincipal`: Dynamic group + policy granting OKE node pool instances
   the full permission set required for cluster operation (networking, volumes,
-  load balancers, container registry).
+  load balancers, container registry). This principal remains compartment-
+  scoped; use a dedicated OKE node compartment until CloudSpells adds a worker
+  node tag boundary.
 - `CompartmentAdminGroup`: IAM group + policy delegating full compartment
   management to a human operator group without granting tenancy-level access.
 
@@ -15,7 +17,7 @@ Demonstrates the three IAM spells for common workload patterns:
 
 ```
 Tenancy (root compartment)
- ├── DynamicGroup: {stack}-app-dg     ← matches all instances in compartment
+ ├── DynamicGroup: {stack}-app-dg     ← matches app_instance_ocid exactly
  ├── DynamicGroup: {stack}-k8s-dg     ← matches all instances in compartment
  └── Group:        {stack}-ops-group
 
@@ -32,6 +34,8 @@ Required:
 - `compartment_ocid` — OCID of the workload compartment.
 - `tenancy_ocid` — OCID of the tenancy root compartment (visible in OCI
   Console under Tenancy Details → OCID).
+- `app_instance_ocid` — OCID of the compute instance that should receive the
+  app instance-principal grants.
 """
 
 import os
@@ -47,31 +51,30 @@ from cloudspells.core import Config
 from cloudspells.providers.oci.iam import (
     CompartmentAdminGroup,
     ComputeInstancePrincipal,
+    IamGrant,
     OkeNodePrincipal,
 )
 
 config = Config()
 compartment_id: str = config.require("compartment_ocid")
 tenancy_id: str = config.require("tenancy_ocid")
+app_instance_id: str = config.require("app_instance_ocid")
 
 # ── 1. Compute instance principal ─────────────────────────────────────────────
 #
-# All instances in the compartment become members of this dynamic group.
-# grants= controls what the instances can access — each entry is an OCI policy
-# verb+resource fragment. The spell assembles:
-#   Allow dynamic-group <dg> to <grant> in compartment id <cid>
-#
-# Common verbs:  inspect | read | use | manage
-# Common resources: object-family, secret-family, volume-family,
-#                   virtual-network-family, repos, stream-family, ...
+# Only app_instance_ocid becomes a member of this dynamic group.
+# Use IamGrant helpers for common CloudSpells permissions and
+# IamGrant.raw("<verb> <resource-type>") for OCI grant fragments CloudSpells
+# does not model.
 
 app_principal: ComputeInstancePrincipal = ComputeInstancePrincipal(
     name="app",
-    compartment_id=compartment_id,
     tenancy_id=tenancy_id,
+    compartment_id=compartment_id,
+    instance_ids=[app_instance_id],
     grants=[
-        "read secret-family",   # fetch DB passwords and API keys from Vault
-        "read object-family",   # read app config and assets from Object Storage
+        IamGrant.read_secrets(),  # fetch DB passwords and API keys from Vault
+        IamGrant.read_objects(),  # read app config and assets from Object Storage
     ],
 )
 
@@ -79,7 +82,9 @@ app_principal: ComputeInstancePrincipal = ComputeInstancePrincipal(
 #
 # OKE node pool instances need permissions to manage cluster resources:
 # networking, block volumes, load balancers, and container registry pulls.
-# This dynamic group + policy provides the full required permission set.
+# This dynamic group + policy provides the full required permission set. It
+# matches all compute instances in compartment_id, so keep OKE nodes isolated
+# in a dedicated compartment when using this spell.
 
 oke_principal: OkeNodePrincipal = OkeNodePrincipal(
     name="k8s",

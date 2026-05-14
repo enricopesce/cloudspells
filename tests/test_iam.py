@@ -1,6 +1,7 @@
 """Unit tests for IAM spells."""
 
 import unittest
+from dataclasses import dataclass
 
 import pulumi
 
@@ -11,11 +12,27 @@ set_mocks()
 from cloudspells.providers.oci.iam import (
     CompartmentAdminGroup,
     ComputeInstancePrincipal,
+    IamGrant,
     OkeNodePrincipal,
 )
 
 _COMP = "ocid1.compartment.oc1..test"
 _TENANCY = "ocid1.tenancy.oc1..test"
+_INSTANCE_1 = "ocid1.instance.oc1..app1"
+_INSTANCE_2 = "ocid1.instance.oc1..app2"
+
+
+@dataclass(frozen=True)
+class _PrincipalInstance:
+    """Minimal compute-instance stand-in for IAM membership tests."""
+
+    id: pulumi.Output[str]
+    compartment_id: pulumi.Input[str]
+
+
+def _instance(instance_id: str, compartment_id: pulumi.Input[str] = _COMP) -> _PrincipalInstance:
+    """Return a fake principal member with an instance OCID output."""
+    return _PrincipalInstance(id=pulumi.Output.from_input(instance_id), compartment_id=compartment_id)
 
 
 class TestComputeInstancePrincipal(unittest.TestCase):
@@ -26,9 +43,9 @@ class TestComputeInstancePrincipal(unittest.TestCase):
         """Test that a DynamicGroup resource is created."""
         spell = ComputeInstancePrincipal(
             name="test-app",
-            compartment_id=_COMP,
             tenancy_id=_TENANCY,
-            grants=["read secret-family", "read object-family"],
+            instances=[_instance(_INSTANCE_1)],
+            grants=[IamGrant.read_secrets(), IamGrant.read_objects()],
         )
 
         def check(value: str) -> None:
@@ -37,13 +54,92 @@ class TestComputeInstancePrincipal(unittest.TestCase):
         return spell.dynamic_group.id.apply(check)
 
     @pulumi.runtime.test
+    def test_dynamic_group_matches_single_instance_id(self):
+        """Test that a single-instance principal matches only that instance OCID."""
+        spell = ComputeInstancePrincipal(
+            name="test-app",
+            tenancy_id=_TENANCY,
+            instances=[_instance(_INSTANCE_1)],
+            grants=[IamGrant.read_secrets()],
+        )
+
+        def check(value: str) -> None:
+            self.assertEqual(value, f"instance.id = '{_INSTANCE_1}'")
+
+        return spell.dynamic_group.matching_rule.apply(check)
+
+    @pulumi.runtime.test
+    def test_dynamic_group_matches_multiple_instance_ids(self):
+        """Test that a multi-instance principal uses an explicit instance OCID set."""
+        spell = ComputeInstancePrincipal(
+            name="test-app",
+            tenancy_id=_TENANCY,
+            instances=[_instance(_INSTANCE_1), _instance(_INSTANCE_2)],
+            grants=[IamGrant.read_secrets()],
+        )
+
+        def check(value: str) -> None:
+            self.assertEqual(
+                value,
+                f"any {{instance.id = '{_INSTANCE_1}', instance.id = '{_INSTANCE_2}'}}",
+            )
+
+        return spell.dynamic_group.matching_rule.apply(check)
+
+    @pulumi.runtime.test
+    def test_dynamic_group_can_match_existing_instance_ids(self):
+        """Test that pre-existing instance OCIDs can be used as exact members."""
+        spell = ComputeInstancePrincipal(
+            name="test-app",
+            tenancy_id=_TENANCY,
+            compartment_id=_COMP,
+            instance_ids=[_INSTANCE_1],
+            grants=[IamGrant.read_secrets()],
+        )
+
+        def check(value: str) -> None:
+            self.assertEqual(value, f"instance.id = '{_INSTANCE_1}'")
+
+        return spell.dynamic_group.matching_rule.apply(check)
+
+    @pulumi.runtime.test
+    def test_policy_uses_grant_objects(self):
+        """Test that policy statements are generated from explicit IAM grants."""
+        spell = ComputeInstancePrincipal(
+            name="test-app",
+            tenancy_id=_TENANCY,
+            instances=[_instance(_INSTANCE_1)],
+            grants=[IamGrant.raw("read secret-family")],
+            stack_name="prod",
+        )
+
+        def check(args: list[object]) -> None:
+            statements, dynamic_group_id = args
+            self.assertEqual(
+                statements,
+                [f"Allow dynamic-group id {dynamic_group_id} to read secret-family in compartment id {_COMP}"],
+            )
+
+        return pulumi.Output.all(spell.policy.statements, spell.dynamic_group.id).apply(check)
+
+    def test_instance_ids_require_compartment_id(self) -> None:
+        """Test that explicit instance OCIDs require an explicit policy compartment."""
+        with self.assertRaises(ValueError):
+            ComputeInstancePrincipal(
+                name="bad-app",
+                tenancy_id=_TENANCY,
+                instance_ids=[_INSTANCE_1],
+                grants=[IamGrant.read_secrets()],
+            )
+
+    @pulumi.runtime.test
     def test_policy_created(self):
         """Test that a Policy resource is created."""
         spell = ComputeInstancePrincipal(
             name="test-app",
-            compartment_id=_COMP,
             tenancy_id=_TENANCY,
-            grants=["read secret-family"],
+            instances=[_instance(_INSTANCE_1)],
+            grants=[IamGrant.read_secrets()],
         )
 
         def check(value: str) -> None:
@@ -56,9 +152,9 @@ class TestComputeInstancePrincipal(unittest.TestCase):
         """Test that dynamic group name uses ResourceNamer pattern."""
         spell = ComputeInstancePrincipal(
             name="app",
-            compartment_id=_COMP,
             tenancy_id=_TENANCY,
-            grants=["read secret-family"],
+            instances=[_instance(_INSTANCE_1)],
+            grants=[IamGrant.read_secrets()],
             stack_name="prod",
         )
 
@@ -73,9 +169,9 @@ class TestComputeInstancePrincipal(unittest.TestCase):
         """Test that export() publishes dynamic_group_id and policy_id outputs."""
         spell = ComputeInstancePrincipal(
             name="export-app",
-            compartment_id=_COMP,
             tenancy_id=_TENANCY,
-            grants=["read secret-family"],
+            instances=[_instance(_INSTANCE_1)],
+            grants=[IamGrant.read_secrets()],
         )
         spell.export()
 
@@ -88,9 +184,9 @@ class TestComputeInstancePrincipal(unittest.TestCase):
         """Test that dynamic_group_id and policy_id attributes are set."""
         spell = ComputeInstancePrincipal(
             name="attr-app",
-            compartment_id=_COMP,
             tenancy_id=_TENANCY,
-            grants=["read secret-family"],
+            instances=[_instance(_INSTANCE_1)],
+            grants=[IamGrant.read_secrets()],
         )
         self.assertIsNotNone(spell.dynamic_group_id)
         self.assertIsNotNone(spell.policy_id)
@@ -100,10 +196,25 @@ class TestComputeInstancePrincipal(unittest.TestCase):
         with self.assertRaises(ValueError):
             ComputeInstancePrincipal(
                 name="bad-app",
-                compartment_id=_COMP,
                 tenancy_id=_TENANCY,
+                instances=[_instance(_INSTANCE_1)],
                 grants=[],
             )
+
+    def test_empty_instances_raises(self) -> None:
+        """Test that an empty instance list raises ValueError."""
+        with self.assertRaises(ValueError):
+            ComputeInstancePrincipal(
+                name="bad-app",
+                tenancy_id=_TENANCY,
+                instances=[],
+                grants=[IamGrant.read_secrets()],
+            )
+
+    def test_raw_grant_rejects_full_policy_statement(self) -> None:
+        """Test that raw grants remain grant fragments, not full statements."""
+        with self.assertRaises(ValueError):
+            IamGrant.raw("Allow dynamic-group app to read secret-family in tenancy")
 
 
 class TestOkeNodePrincipal(unittest.TestCase):

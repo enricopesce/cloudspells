@@ -11,34 +11,48 @@ This guide shows you how to grant compute instances access to OCI services using
 
 ## Instance principal for compute workloads
 
-`ComputeInstancePrincipal` creates a dynamic group matching all instances in a compartment, plus an IAM policy granting caller-specified permissions.
+`ComputeInstancePrincipal` creates a dynamic group matching selected compute instance OCIDs, plus an IAM policy granting explicit permissions.
 
 ```python
-from cloudspells.providers.oci.iam import ComputeInstancePrincipal
+from cloudspells.providers.oci.iam import ComputeInstancePrincipal, IamGrant
 
 principal = ComputeInstancePrincipal(
     name="app",
-    compartment_id=compartment_id,
     tenancy_id=tenancy_id,
+    compartment_id=compartment_id,
+    instance_ids=[
+        "ocid1.instance.oc1..aaaa...",
+    ],
     grants=[
-        "read secret-family",     # fetch DB password from Vault
-        "read object-family",     # read app config from Object Storage
+        IamGrant.read_secrets(),  # fetch DB password from Vault
+        IamGrant.read_objects(),  # read app config from Object Storage
     ],
 )
 principal.export()
 ```
 
-Each entry in `grants` is a `"<verb> <resource-type>"` fragment in OCI's policy language. The spell assembles the full statement:
+Each entry in `grants` is an `IamGrant`. Use named helpers for common CloudSpells access patterns, or `IamGrant.raw("<verb> <resource-type>")` when OCI IAM exposes a permission CloudSpells does not model. The spell assembles the full statement:
 
 ```text
-Allow dynamic-group <stack>-app-dg to read secret-family in compartment id <cid>
+Allow dynamic-group id <dynamic_group_ocid> to read secret-family in compartment id <cid>
 ```
 
-If you omit `grants`, the defaults are `["read object-family", "read secret-family"]`.
+If you omit `grants`, the defaults are `IamGrant.read_objects()` and `IamGrant.read_secrets()`.
+
+When the principal is declared in the same stack as CloudSpells compute instances, pass the objects directly instead of raw OCIDs:
+
+```python
+principal = ComputeInstancePrincipal(
+    name="app",
+    tenancy_id=tenancy_id,
+    instances=[web],
+    grants=[IamGrant.read_secrets(), IamGrant.read_objects()],
+)
+```
 
 ### Why `tenancy_id` is required
 
-OCI creates dynamic groups at the tenancy root compartment level. The workload compartment is used only for policy scoping. Both OCIDs must be supplied.
+OCI creates dynamic groups at the tenancy root compartment level. The workload compartment is used only for policy scoping. When you pass `instances=[...]`, CloudSpells derives the policy compartment from the first instance. When you pass `instance_ids=[...]`, you must also pass `compartment_id=...` because raw OCIDs do not carry their compartment.
 
 ---
 
@@ -66,6 +80,8 @@ The policy grants:
 - `read repos`
 
 No `grants` parameter is needed or accepted.
+
+`OkeNodePrincipal` currently follows OCI's compartment-scoped node principal pattern and matches all compute instances in `compartment_id`. Deploy OKE nodes in a compartment dedicated to that cluster or node tier until CloudSpells grows a worker-node defined-tag boundary.
 
 ---
 
@@ -99,7 +115,7 @@ oci iam group add-user \
 A typical production stack grants instance principal access alongside the workload:
 
 ```python
-from cloudspells.providers.oci.iam import ComputeInstancePrincipal, OkeNodePrincipal
+from cloudspells.providers.oci.iam import ComputeInstancePrincipal, IamGrant, OkeNodePrincipal
 from cloudspells.providers.oci.compute import ComputeInstance
 from cloudspells.providers.oci.network import Vcn
 from cloudspells.providers.oci.nsg import Nsg
@@ -108,19 +124,18 @@ from cloudspells.providers.oci.roles import APP_SERVER
 vcn = Vcn("prod", compartment_id=compartment_id)
 nsg = Nsg("app", role=APP_SERVER, vcn=vcn, compartment_id=compartment_id)
 
-# IAM — no VCN dependency, can be declared in any order.
-principal = ComputeInstancePrincipal(
-    name="app",
-    compartment_id=compartment_id,
-    tenancy_id=tenancy_id,
-    grants=["read secret-family", "read object-family"],
-)
-
 instance = ComputeInstance(
     name="web",
     compartment_id=compartment_id,
     image_id=image_id,
     nsg=nsg,
+)
+
+principal = ComputeInstancePrincipal(
+    name="app",
+    tenancy_id=tenancy_id,
+    instances=[instance],
+    grants=[IamGrant.read_secrets(), IamGrant.read_objects()],
 )
 
 principal.export()
@@ -145,5 +160,7 @@ The instance picks up the principal automatically at runtime via OCI's instance 
 
 | Spell | Parameter | Default | Description |
 |-------|-----------|---------|-------------|
-| `ComputeInstancePrincipal` | `grants` | `["read object-family", "read secret-family"]` | OCI policy verb+resource fragments |
+| `ComputeInstancePrincipal` | `instances` | _(none)_ | CloudSpells compute instances that should be dynamic-group members |
+| `ComputeInstancePrincipal` | `instance_ids` | _(none)_ | Existing compute instance OCIDs; requires `compartment_id` |
+| `ComputeInstancePrincipal` | `grants` | `IamGrant.read_objects()`, `IamGrant.read_secrets()` | Explicit `IamGrant` values; use `IamGrant.raw(...)` for custom OCI grant fragments |
 | `CompartmentAdminGroup` | _(none)_ | — | Group is created empty; add users post-deploy |

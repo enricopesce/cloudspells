@@ -190,7 +190,7 @@ Adding a third web backend? Attach `web_nsg` to a new `ComputeInstance`. Zero NS
 | `DataLakeBucket` | OCI | Archive-tier bucket optimised for large-scale data lake storage | Alpha |
 | `ArchiveBucket` | OCI | Deep-archive bucket for long-term cold storage | Alpha |
 | `StaticWebsiteBucket` | OCI | Public-read bucket with static website hosting enabled | Alpha |
-| `ComputeInstancePrincipal` | OCI | Dynamic group + policy granting compute instances in a compartment access to caller-specified OCI services (e.g. Object Storage, Vault Secrets) | Alpha |
+| `ComputeInstancePrincipal` | OCI | Dynamic group + policy granting selected compute instances access to explicit OCI IAM grants (e.g. Object Storage, Vault Secrets) | Alpha |
 | `OkeNodePrincipal` | OCI | Dynamic group + policy granting OKE node pool instances the full permission set required for cluster operation | Alpha |
 | `CompartmentAdminGroup` | OCI | IAM group + `manage all-resources` policy delegating compartment administration to a human operator group | Alpha |
 | AWS provider | AWS | Full spell library for AWS | Planned |
@@ -319,8 +319,8 @@ Each example is a self-contained Pulumi stack in `examples/`:
 | [`loadbalancer`](examples/loadbalancer/) | VCN + HTTPS load balancer with HTTP→HTTPS redirect and health checks. |
 | [`storage`](examples/storage/) | Backup bucket + data lake bucket with lifecycle and versioning defaults. |
 | [`web-db`](examples/web-db/) | Three-tier web+DB stack: LB (public) → app servers (private) → DB nodes (secure). |
-| [`iam`](examples/iam/) | `ComputeInstancePrincipal` + `OkeNodePrincipal` + `CompartmentAdminGroup` — instance principals and compartment admin group; `tenancy_ocid` config key. |
-| [`secure-vcn`](examples/secure-vcn/) | VCN with flow logs, four-tier NSGs, management-tier SSH controls, and zero-credential app tier via `ComputeInstancePrincipal`. |
+| [`iam`](examples/iam/) | `ComputeInstancePrincipal` + `OkeNodePrincipal` + `CompartmentAdminGroup` — instance principals and compartment admin group; requires `compartment_ocid`, `tenancy_ocid`, and `app_instance_ocid`. |
+| [`secure-vcn`](examples/secure-vcn/) | VCN with flow logs, four-tier NSGs, management-tier SSH controls, and zero-credential app tier via exact-instance `ComputeInstancePrincipal`; requires `tenancy_ocid` and `app_instance_ocid` for IAM. |
 | [`import-vcn`](examples/import-vcn/) | Consume a VCN owned by a separate stack via `VcnRef.from_stack_reference()`. |
 
 ---

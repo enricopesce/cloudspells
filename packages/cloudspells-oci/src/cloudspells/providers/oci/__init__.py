@@ -40,10 +40,11 @@ fully-implemented provider.
   subnet with TLS termination and automatic HTTP→HTTPS redirect.
 - `InternalLoadBalancer`: Private HTTP load balancer in the VCN private
   subnet for internal service-to-service routing.
-- `ComputeInstancePrincipal`: Dynamic group and policy granting compute
-  instances in a compartment access to caller-specified OCI services. Pass
-  `grants=["<verb> <resource-type>", ...]` to control what the instances can
-  access. Defaults to `["read object-family", "read secret-family"]`.
+- `ComputeInstancePrincipal`: Dynamic group and policy granting selected
+  compute instances access to OCI services. Pass `instances=[...]` for
+  CloudSpells-managed VMs or `instance_ids=[...]` with `compartment_id=...` for
+  pre-existing VMs. Use `IamGrant` helpers or `IamGrant.raw(...)` for custom
+  OCI IAM grant fragments.
 - `OkeNodePrincipal`: Dynamic group and policy granting OKE node pool instances
   the full permission set required for OKE cluster operation.
 - `CompartmentAdminGroup`: IAM group and policy granting human operators full
@@ -101,7 +102,7 @@ from .autoscale import (
 from .bastion import Bastion
 from .compute import ComputeInstance
 from .genai_agent_rag import GenAiAgentRag
-from .iam import CompartmentAdminGroup, ComputeInstancePrincipal, OkeNodePrincipal
+from .iam import CompartmentAdminGroup, ComputeInstancePrincipal, IamGrant, OkeNodePrincipal
 from .kubernetes import NodePoolConfig, OkeCluster, OkeClusterEnhanced
 from .loadbalancer import InternalLoadBalancer, LoadBalancer
 from .network import (
@@ -170,6 +171,7 @@ __all__ = [
     # IAM
     "CompartmentAdminGroup",
     "ComputeInstancePrincipal",
+    "IamGrant",
     "OkeNodePrincipal",
     # Generative AI
     "GenAiAgentRag",

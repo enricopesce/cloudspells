@@ -6,6 +6,12 @@ runtime:
     pythonpath: ../../src
 description: IAM — instance principals and compartment admin group
 config:
+  compartment_ocid:
+    type: string
+    description: OCID of the workload compartment
   tenancy_ocid:
     type: string
     description: OCID of the tenancy root compartment (Tenancy Details → OCID in OCI Console)
+  app_instance_ocid:
+    type: string
+    description: OCID of the compute instance that should receive app instance-principal grants

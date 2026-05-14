@@ -4,39 +4,278 @@ Provides purpose-built OCI IAM spells for common workload principal patterns.
 Each spell creates either a dynamic group or an IAM group, plus the associated
 IAM policy.
 
-`ComputeInstancePrincipal` accepts a `grants` list — each entry is a
-`"<verb> <resource-type>"` fragment in OCI's own policy language (e.g.
-`"read object-family"`). The spell assembles the full policy statement
-structure internally:
+`ComputeInstancePrincipal` accepts explicit compute instance members, plus a
+list of `IamGrant` objects. `IamGrant` provides named helpers for the common
+CloudSpells access patterns while keeping arbitrary OCI IAM fragments behind
+the explicit `IamGrant.raw(...)` escape hatch. The spell assembles the full
+policy statement structure internally:
 
 ```
-Allow dynamic-group <dg> to <grant> in compartment id <cid>
+Allow dynamic-group id <dg_ocid> to <grant> in compartment id <cid>
 ```
 
-This is a deliberate CS-001 exception: the OCI IAM policy DSL cannot be
-fully enumerated into typed constants without replicating Oracle's entire
-resource catalogue. Accepting the verb+resource fragment keeps the interface
-thin while the spell still owns the structural boilerplate (dynamic group
-name, compartment scoping, resource naming, tagging).
+The OCI IAM policy DSL cannot be fully enumerated into typed constants without
+replicating Oracle's entire resource catalogue. `IamGrant.raw(...)` keeps that
+provider-specific surface explicit, while the spell still owns the dynamic
+group membership, compartment scoping, resource naming, and tagging.
 
 `OkeNodePrincipal` and `CompartmentAdminGroup` have fixed grants because
-their permission sets are well-defined by OCI.
+their permission sets are well-defined by OCI. `OkeNodePrincipal` remains
+compartment-scoped for membership; deploy OKE nodes in a dedicated compartment
+until CloudSpells adds an internal worker-node tag boundary.
 
-All three spells require `tenancy_id` in addition to `compartment_id` because
-OCI creates dynamic groups and IAM groups at the tenancy root compartment level,
-while matching rules and policies are scoped to the specific workload compartment.
+All IAM spells require `tenancy_id` because OCI creates dynamic groups and IAM
+groups at the tenancy root compartment level. Workload policies remain scoped to
+the specific workload compartment, either derived from the supplied compute
+instances or passed directly for existing instance OCIDs.
 
 Exports:
     CompartmentAdminGroup: IAM group and compartment-admin policy for human operators.
-    ComputeInstancePrincipal: Instance principal with caller-specified grants.
+    ComputeInstancePrincipal: Instance principal for selected compute instances.
     OkeNodePrincipal: Instance principal for OKE node pool cluster operations.
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import Protocol
+
 import pulumi
 import pulumi_oci as oci
 from cloudspells.core.base import BaseResource
+
+# ── IAM grant helpers ─────────────────────────────────────────────────────────
+
+_ALLOWED_GRANT_VERBS = frozenset({"inspect", "read", "use", "manage"})
+
+
+def _validate_grant_fragment(fragment: str) -> str:
+    """Validate and normalize an OCI IAM grant fragment.
+
+    Args:
+        fragment: OCI IAM policy grant fragment in the shape
+            `"<verb> <resource-type>"`, optionally followed by an OCI `where`
+            clause.
+
+    Returns:
+        Trimmed grant fragment.
+
+    Raises:
+        ValueError: If the value is empty, spans multiple lines, looks like a
+            full policy statement, or does not start with a supported OCI IAM
+            grant verb.
+    """
+    cleaned = fragment.strip()
+    lowered = cleaned.lower()
+
+    if not cleaned:
+        raise ValueError("IAM grant fragment must not be empty")
+    if "\n" in cleaned or "\r" in cleaned:
+        raise ValueError("IAM grant fragment must be a single line")
+    if lowered.startswith("allow "):
+        raise ValueError("IAM grant fragment must not include the full Allow statement")
+    if " in compartment" in lowered or " in tenancy" in lowered:
+        raise ValueError("IAM grant fragment must not include the policy scope")
+
+    verb, separator, resource = cleaned.partition(" ")
+    if separator == "" or not resource.strip() or verb.lower() not in _ALLOWED_GRANT_VERBS:
+        raise ValueError(f"IAM grant fragment must start with one of: {', '.join(sorted(_ALLOWED_GRANT_VERBS))}")
+
+    return cleaned
+
+
+@dataclass(frozen=True)
+class IamGrant:
+    """Explicit OCI IAM grant fragment for workload principals.
+
+    `IamGrant` does not try to enumerate the full OCI IAM policy language.
+    Use named helpers for common CloudSpells access patterns, and use
+    `IamGrant.raw(...)` when the workload needs an OCI permission CloudSpells
+    does not model.
+
+    Attributes:
+        fragment: OCI IAM grant fragment inserted into a generated policy
+            statement.
+    """
+
+    fragment: str
+
+    @classmethod
+    def read_objects(cls) -> IamGrant:
+        """Return a grant for read-only Object Storage access.
+
+        Returns:
+            `IamGrant` for `read object-family`.
+        """
+        return cls("read object-family")
+
+    @classmethod
+    def read_secrets(cls) -> IamGrant:
+        """Return a grant for read-only Vault secret access.
+
+        Returns:
+            `IamGrant` for `read secret-family`.
+        """
+        return cls("read secret-family")
+
+    @classmethod
+    def raw(cls, fragment: str) -> IamGrant:
+        """Return an explicit raw OCI IAM grant fragment.
+
+        Args:
+            fragment: OCI IAM grant fragment in the shape
+                `"<verb> <resource-type>"`, optionally followed by an OCI
+                `where` clause.
+
+        Returns:
+            `IamGrant` wrapping the validated fragment.
+
+        Raises:
+            ValueError: If `fragment` is empty, spans multiple lines, includes
+                the full policy statement, includes the policy scope, or does
+                not start with a supported OCI IAM grant verb.
+        """
+        return cls(_validate_grant_fragment(fragment))
+
+
+class InstancePrincipalMember(Protocol):
+    """Compute-like resource that can join an instance-principal dynamic group.
+
+    Attributes:
+        id: OCID output for the backing compute instance.
+        compartment_id: Workload compartment used for IAM policy scope.
+    """
+
+    @property
+    def id(self) -> pulumi.Input[str]:
+        """Return the compute instance OCID."""
+        ...
+
+    @property
+    def compartment_id(self) -> pulumi.Input[str]:
+        """Return the compute instance workload compartment OCID."""
+        ...
+
+
+@dataclass(frozen=True)
+class _InstancePrincipalMemberRef:
+    """Exact instance OCID member for cross-stack principal membership."""
+
+    id: pulumi.Input[str]
+    compartment_id: pulumi.Input[str]
+
+
+def _normalize_grants(grants: Sequence[object] | None) -> list[IamGrant]:
+    """Return a validated grant list with CloudSpells defaults.
+
+    Args:
+        grants: Optional sequence of values that must be `IamGrant` objects.
+
+    Returns:
+        Grant list, defaulting to object and secret reads.
+
+    Raises:
+        TypeError: If any entry is not an `IamGrant`.
+        ValueError: If `grants` is explicitly empty.
+    """
+    if grants is not None and len(grants) == 0:
+        raise ValueError("grants must contain at least one IamGrant")
+
+    grant_values = list(grants or [IamGrant.read_objects(), IamGrant.read_secrets()])
+    grant_list: list[IamGrant] = []
+    for grant in grant_values:
+        if not isinstance(grant, IamGrant):
+            raise TypeError("grants must contain IamGrant values; use IamGrant.raw(...) for custom OCI IAM")
+        grant_list.append(grant)
+    return grant_list
+
+
+def _normalize_principal_members(
+    instances: Sequence[InstancePrincipalMember] | None,
+    instance_ids: Sequence[pulumi.Input[str]] | None,
+    compartment_id: pulumi.Input[str] | None,
+) -> list[InstancePrincipalMember]:
+    """Return exact principal members from resources or existing instance OCIDs.
+
+    Args:
+        instances: Optional compute-like resources whose instance OCIDs should
+            be dynamic-group members.
+        instance_ids: Optional explicit instance OCIDs for members outside the
+            current stack.
+        compartment_id: Workload compartment that scopes policies for explicit
+            `instance_ids`.
+
+    Returns:
+        Non-empty list of principal members.
+
+    Raises:
+        ValueError: If no members are supplied, both member styles are supplied,
+            `instance_ids` is empty, or `instance_ids` is used without
+            `compartment_id`.
+    """
+    if instances is not None and instance_ids is not None:
+        raise ValueError("pass either instances or instance_ids, not both")
+
+    if instances is not None:
+        members = list(instances)
+        if not members:
+            raise ValueError("instances must contain at least one principal member")
+        return members
+
+    if instance_ids is not None:
+        ids = list(instance_ids)
+        if not ids:
+            raise ValueError("instance_ids must contain at least one instance OCID")
+        if compartment_id is None:
+            raise ValueError("compartment_id is required when using instance_ids")
+        members: list[InstancePrincipalMember] = []
+        for instance_id in ids:
+            members.append(_InstancePrincipalMemberRef(id=instance_id, compartment_id=compartment_id))
+        return members
+
+    raise ValueError("instances or instance_ids must contain at least one principal member")
+
+
+def _member_compartment_id(instances: Sequence[InstancePrincipalMember]) -> pulumi.Input[str]:
+    """Return the common workload compartment for principal members.
+
+    Args:
+        instances: Non-empty sequence of principal members.
+
+    Returns:
+        Compartment input from the first member.
+
+    Raises:
+        ValueError: If multiple plain-string compartment IDs differ.
+    """
+    compartment_id = instances[0].compartment_id
+    for member in instances[1:]:
+        if (
+            not isinstance(compartment_id, pulumi.Output)
+            and not isinstance(member.compartment_id, pulumi.Output)
+            and member.compartment_id != compartment_id
+        ):
+            raise ValueError("all principal instances must be in the same compartment")
+    return compartment_id
+
+
+def _instance_matching_rule(instances: Sequence[InstancePrincipalMember]) -> pulumi.Output[str]:
+    """Build a dynamic-group matching rule for exact compute instance OCIDs.
+
+    Args:
+        instances: Non-empty sequence of principal members.
+
+    Returns:
+        Pulumi output resolving to an OCI dynamic-group matching rule.
+    """
+    ids = [pulumi.Output.from_input(instance.id) for instance in instances]
+    if len(ids) == 1:
+        return ids[0].apply(lambda instance_id: f"instance.id = '{instance_id}'")
+    return pulumi.Output.all(*ids).apply(
+        lambda instance_ids: "any {" + ", ".join(f"instance.id = '{instance_id}'" for instance_id in instance_ids) + "}"
+    )
+
 
 # ── Private mixin ─────────────────────────────────────────────────────────────
 
@@ -98,22 +337,20 @@ class _PrincipalMixin:
 
 
 class ComputeInstancePrincipal(_PrincipalMixin, BaseResource):
-    """Instance principal granting compute instances access to caller-specified OCI services.
+    """Instance principal granting selected compute instances OCI service access.
 
-    Creates an OCI Dynamic Group that matches all compute instances in the
-    supplied compartment, plus an IAM Policy whose statements are assembled from
-    the `grants` list. Each entry is a `"<verb> <resource-type>"` fragment in
-    OCI's policy language; the spell wraps it into a full statement:
+    Creates an OCI Dynamic Group that matches only the supplied compute
+    instance OCIDs, plus an IAM Policy whose statements are assembled from the
+    `IamGrant` list. Each grant is wrapped into a full statement:
 
     ```
-    Allow dynamic-group <dg> to <grant> in compartment id <cid>
+    Allow dynamic-group id <dg_ocid> to <grant> in compartment id <cid>
     ```
 
-    **CS-001 exception:** `grants` accepts raw OCI policy verb+resource
-    fragments rather than typed constants because the OCI IAM resource
-    catalogue is too large to enumerate. The spell still owns all structural
-    boilerplate — naming, tagging, compartment scoping — so callers only
-    supply the access intent, not provider-level resource options.
+    The OCI IAM resource catalogue is too large to model exhaustively. Use
+    named `IamGrant` helpers for common CloudSpells access patterns, and use
+    `IamGrant.raw(...)` when the workload needs an OCI grant fragment that
+    CloudSpells does not model.
 
     The dynamic group is created in the tenancy root compartment (as required
     by OCI) while the policy is scoped to the workload compartment.
@@ -121,7 +358,7 @@ class ComputeInstancePrincipal(_PrincipalMixin, BaseResource):
     Resources created:
 
     - One `oci.identity.DynamicGroup` in the tenancy root compartment, matching
-      all instances in `compartment_id`.
+      only the supplied instance OCIDs.
     - One `oci.identity.Policy` in `compartment_id` with one statement per
       entry in `grants`.
 
@@ -133,13 +370,14 @@ class ComputeInstancePrincipal(_PrincipalMixin, BaseResource):
 
     Example:
         ```python
+        web = ComputeInstance(name="web", compartment_id=comp_id, image_id=image_id, nsg=app_nsg)
         principal = ComputeInstancePrincipal(
             name="app",
-            compartment_id=comp_id,
             tenancy_id=tenancy_id,
+            instances=[web],
             grants=[
-                "read secret-family",    # fetch DB password from Vault
-                "read object-family",    # read app config from Object Storage
+                IamGrant.read_secrets(),  # fetch DB password from Vault
+                IamGrant.read_objects(),  # read app config from Object Storage
             ],
         )
         principal.export()
@@ -154,40 +392,51 @@ class ComputeInstancePrincipal(_PrincipalMixin, BaseResource):
     def __init__(
         self,
         name: str,
-        compartment_id: pulumi.Input[str],
         tenancy_id: pulumi.Input[str],
-        grants: list[str] | None = None,
+        instances: Sequence[InstancePrincipalMember] | None = None,
+        grants: Sequence[IamGrant] | None = None,
         stack_name: str | None = None,
         opts: pulumi.ResourceOptions | None = None,
+        *,
+        instance_ids: Sequence[pulumi.Input[str]] | None = None,
+        compartment_id: pulumi.Input[str] | None = None,
     ) -> None:
-        """Create a compute instance principal with caller-specified service access.
+        """Create a compute instance principal with exact instance membership.
 
         Args:
             name: Logical name for the principal (e.g. `"app"`). Combined with
                 the stack name to form `"{stack}-{name}-dg"` and
                 `"{stack}-{name}-policy"`.
-            compartment_id: OCID of the OCI compartment whose instances will be
-                members of the dynamic group. Also used to scope the policy.
             tenancy_id: OCID of the OCI tenancy root compartment. Required
                 because OCI creates dynamic groups at the tenancy level, not
                 within child compartments.
-            grants: OCI policy verb+resource fragments, one per desired
-                permission. Each entry must follow OCI policy syntax:
-                `"<verb> <resource-type>"` (e.g. `"read object-family"`,
-                `"manage volume-family"`). The spell assembles the full
-                statement around each entry. Must contain at least one entry.
-                Defaults to `["read object-family", "read secret-family"]`
-                when `None`.
+            instances: Compute-like resources whose instance OCIDs should be
+                members of the dynamic group. The first instance's compartment
+                scopes the IAM policy.
+            grants: `IamGrant` values, one per desired permission. Use
+                `IamGrant.raw(...)` for OCI IAM grant fragments not covered by
+                named helpers. Must contain at least one entry. Defaults to
+                `IamGrant.read_objects()` and `IamGrant.read_secrets()` when
+                `None`.
             stack_name: Pulumi stack name. Defaults to `pulumi.get_stack()`
                 when `None`.
             opts: Pulumi resource options forwarded to the component.
+            instance_ids: Existing compute instance OCIDs to include when the
+                principal is declared outside the stack that creates the
+                instances. Mutually exclusive with `instances`.
+            compartment_id: Workload compartment used to scope the policy when
+                `instance_ids` is supplied.
 
         Raises:
-            ValueError: If `grants` is an explicitly empty list.
+            TypeError: If any grant is not an `IamGrant`.
+            ValueError: If no members are supplied, both member styles are
+                supplied, `grants` is explicitly empty, `instance_ids` is used
+                without `compartment_id`, or if multiple plain-string instance
+                compartments differ.
         """
-        if grants is not None and len(grants) == 0:
-            raise ValueError("grants must contain at least one policy fragment")
-        grants_copy = list(grants or ["read object-family", "read secret-family"])
+        instances_copy = _normalize_principal_members(instances, instance_ids, compartment_id)
+        compartment_id = _member_compartment_id(instances_copy)
+        grants_copy = _normalize_grants(grants)
 
         super().__init__("custom:iam:ComputeInstancePrincipal", name, compartment_id, stack_name, opts)
 
@@ -198,7 +447,7 @@ class ComputeInstancePrincipal(_PrincipalMixin, BaseResource):
             dg_name,
             compartment_id=tenancy_id,
             description=f"Instance principal for {self.display_name}",
-            matching_rule=pulumi.Output.format("instance.compartment.id = '{0}'", compartment_id),
+            matching_rule=_instance_matching_rule(instances_copy),
             name=dg_name,
             freeform_tags=self.create_freeform_tags(dg_name, "dynamic-group"),
             opts=pulumi.ResourceOptions(parent=self),
@@ -208,9 +457,10 @@ class ComputeInstancePrincipal(_PrincipalMixin, BaseResource):
             policy_name,
             compartment_id=compartment_id,
             description=f"Instance principal policy for {dg_name}",
-            statements=pulumi.Output.from_input(compartment_id).apply(
-                lambda cid: [
-                    f"Allow dynamic-group {dg_name} to {grant} in compartment id {cid}" for grant in grants_copy
+            statements=pulumi.Output.all(compartment_id, self.dynamic_group.id).apply(
+                lambda args: [
+                    f"Allow dynamic-group id {args[1]} to {grant.fragment} in compartment id {args[0]}"
+                    for grant in grants_copy
                 ]
             ),
             name=policy_name,
@@ -237,7 +487,8 @@ class OkeNodePrincipal(_PrincipalMixin, BaseResource):
     The dynamic group is created in the tenancy root compartment (as required by
     OCI) while the policy is scoped to the workload compartment. The matching
     rule covers all instances in the compartment, which is the standard OKE node
-    principal pattern — no per-node-pool configuration is required.
+    principal pattern. Use a compartment dedicated to the cluster's worker nodes
+    until CloudSpells adds an internal worker-node tag boundary.
 
     Resources created:
 
@@ -473,5 +724,7 @@ class CompartmentAdminGroup(BaseResource):
 __all__ = [
     "CompartmentAdminGroup",
     "ComputeInstancePrincipal",
+    "IamGrant",
+    "InstancePrincipalMember",
     "OkeNodePrincipal",
 ]
