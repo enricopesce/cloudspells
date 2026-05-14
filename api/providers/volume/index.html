@@ -2187,12 +2187,12 @@ exposed as class-level constants.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Short slug used to derive the Pulumi resource name suffix
-(e.g. <code>"data"</code>, <code>"logs"</code>, <code>"db"</code>).  Must start with a lowercase
-letter, end with a lowercase letter or digit, and contain only
-lowercase letters, digits, or single hyphens — no trailing or
-consecutive hyphens.  Must be unique within the list passed to
-<code>ComputeInstance</code>.  Defaults to <code>"data"</code>.</p>
+                <p>Short slug used by <code>ComputeInstance</code> lookup helpers, outputs,
+and freeform tags (e.g. <code>"data"</code>, <code>"logs"</code>, <code>"db"</code>).  Must start
+with a lowercase letter, end with a lowercase letter or digit, and
+contain only lowercase letters, digits, or single hyphens — no
+trailing or consecutive hyphens.  Must be unique within the list
+passed to <code>ComputeInstance</code>.  Defaults to <code>"data"</code>.</p>
               </div>
             </td>
           </tr>
@@ -2460,12 +2460,12 @@ ref_vol = VolumeSpec(size_in_gbs=50, label=&quot;ref&quot;, is_read_only=True)
 <span class="sd">    Attributes:</span>
 <span class="sd">        size_in_gbs: Volume size in GiB.  Minimum 50, maximum 32,768</span>
 <span class="sd">            (OCI block volume limit).</span>
-<span class="sd">        label: Short slug used to derive the Pulumi resource name suffix</span>
-<span class="sd">            (e.g. `&quot;data&quot;`, `&quot;logs&quot;`, `&quot;db&quot;`).  Must start with a lowercase</span>
-<span class="sd">            letter, end with a lowercase letter or digit, and contain only</span>
-<span class="sd">            lowercase letters, digits, or single hyphens — no trailing or</span>
-<span class="sd">            consecutive hyphens.  Must be unique within the list passed to</span>
-<span class="sd">            `ComputeInstance`.  Defaults to `&quot;data&quot;`.</span>
+<span class="sd">        label: Short slug used by `ComputeInstance` lookup helpers, outputs,</span>
+<span class="sd">            and freeform tags (e.g. `&quot;data&quot;`, `&quot;logs&quot;`, `&quot;db&quot;`).  Must start</span>
+<span class="sd">            with a lowercase letter, end with a lowercase letter or digit, and</span>
+<span class="sd">            contain only lowercase letters, digits, or single hyphens — no</span>
+<span class="sd">            trailing or consecutive hyphens.  Must be unique within the list</span>
+<span class="sd">            passed to `ComputeInstance`.  Defaults to `&quot;data&quot;`.</span>
 <span class="sd">        vpus_per_gb: OCI volume performance-unit tier.  Use the class</span>
 <span class="sd">            constants `PERF_LOW` (0), `PERF_BALANCED` (10, default),</span>
 <span class="sd">            `PERF_HIGH` (20), or `PERF_ULTRA` (120).</span>

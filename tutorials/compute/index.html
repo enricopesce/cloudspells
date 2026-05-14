@@ -2296,6 +2296,7 @@ web_server = ComputeInstance(
 )
 </code></pre>
 <p>The instance inherits its VCN and subnet from the NSG role: because <code>web_nsg</code> uses <code>INTERNET_EDGE</code>, the instance is automatically placed in the public subnet. No <code>vcn=</code> or <code>subnet=</code> argument is needed.</p>
+<p><code>VolumeSpec.label</code> is used for lookup helpers, outputs, and tags. It does not shape Pulumi resource names; repeated child resources use CloudSpells-owned ordinal suffixes.</p>
 <p><code>VolumeSpec</code> accepts a <code>vpus_per_gb</code> performance tier constant:</p>
 <table>
 <thead>

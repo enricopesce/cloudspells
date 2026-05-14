@@ -2333,9 +2333,9 @@ AWS <code>EbsBlockDevice</code> (<code>volume_type</code> + IOPS), or GCP
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Logical slug used to derive the resource name suffix and to
-address the disk via <code>AbstractCompute.get_disk_id</code>.  Must
-be unique within the instance's disk list.</p>
+                <p>Logical slug used by provider implementations for lookup
+helpers, outputs, and tags. Must be unique within the instance's
+disk list.</p>
               </div>
             </td>
           </tr>
@@ -2442,9 +2442,9 @@ log_disk  = DiskSpec(size_in_gbs=50, label=&quot;logs&quot;)
 
 <span class="sd">    Attributes:</span>
 <span class="sd">        size_in_gbs: Disk capacity in GiB.</span>
-<span class="sd">        label: Logical slug used to derive the resource name suffix and to</span>
-<span class="sd">            address the disk via `AbstractCompute.get_disk_id`.  Must</span>
-<span class="sd">            be unique within the instance&#39;s disk list.</span>
+<span class="sd">        label: Logical slug used by provider implementations for lookup</span>
+<span class="sd">            helpers, outputs, and tags. Must be unique within the instance&#39;s</span>
+<span class="sd">            disk list.</span>
 <span class="sd">        performance_tier: Workload-tier hint.  Accepted values: `&quot;low&quot;`,</span>
 <span class="sd">            `&quot;balanced&quot;` (default), `&quot;high&quot;`, `&quot;ultra&quot;`.  Pyright enforces</span>
 <span class="sd">            valid values at call sites via the `Literal` type annotation.</span>

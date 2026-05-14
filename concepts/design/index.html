@@ -1125,6 +1125,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#resource-naming" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resource naming
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#two-layers-of-security-enforcement" class="md-nav__link">
     <span class="md-ellipsis">
       Two layers of security enforcement
@@ -2120,6 +2129,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#resource-naming" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resource naming
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#two-layers-of-security-enforcement" class="md-nav__link">
     <span class="md-ellipsis">
       Two layers of security enforcement
@@ -2255,6 +2273,10 @@ Every knob exposed           Only essential identifiers
 </ul>
 <p>Everything else — CIDRs, subnet placement, route tables, security rules, gateway wiring — is derived or defaulted securely.</p>
 <p><strong>Exposing unnecessary parameters is treated as a design defect.</strong> If a parameter exists only to pass through an underlying OCI provider option, it does not belong in a spell. Users who need that level of control should use raw Pulumi resources directly.</p>
+<hr />
+<h2 id="resource-naming">Resource naming</h2>
+<p>CloudSpells owns the suffixes passed to <code>create_resource_name()</code>. Fixed child resources use literal suffixes such as <code>vcn</code>, <code>sn-private</code>, or <code>api-nsg</code>. Repeated child resources, such as block volumes, node pools, and generated NSG rules, use deterministic ordinal suffixes such as <code>vol-1</code>, <code>pool-1</code>, or <code>nsg-rule-1</code>.</p>
+<p>Caller-facing labels remain useful metadata. <code>VolumeSpec.label</code>, <code>NodePoolConfig.name</code>, and NSG rule labels are used for lookup helpers, outputs, tags, and descriptions; they do not become Pulumi resource-name suffixes.</p>
 <hr />
 <h2 id="two-layers-of-security-enforcement">Two layers of security enforcement</h2>
 <p>OCI enforces network rules at two levels: <strong>Security Lists</strong> (subnet-level, stateful) and <strong>NSGs</strong> (VNIC-level, stateful). CloudSpells populates both automatically so they are always consistent.</p>
