@@ -30,12 +30,12 @@ class VolumeSpec:
     Attributes:
         size_in_gbs: Volume size in GiB.  Minimum 50, maximum 32,768
             (OCI block volume limit).
-        label: Short slug used to derive the Pulumi resource name suffix
-            (e.g. `"data"`, `"logs"`, `"db"`).  Must start with a lowercase
-            letter, end with a lowercase letter or digit, and contain only
-            lowercase letters, digits, or single hyphens — no trailing or
-            consecutive hyphens.  Must be unique within the list passed to
-            `ComputeInstance`.  Defaults to `"data"`.
+        label: Short slug used by `ComputeInstance` lookup helpers, outputs,
+            and freeform tags (e.g. `"data"`, `"logs"`, `"db"`).  Must start
+            with a lowercase letter, end with a lowercase letter or digit, and
+            contain only lowercase letters, digits, or single hyphens — no
+            trailing or consecutive hyphens.  Must be unique within the list
+            passed to `ComputeInstance`.  Defaults to `"data"`.
         vpus_per_gb: OCI volume performance-unit tier.  Use the class
             constants `PERF_LOW` (0), `PERF_BALANCED` (10, default),
             `PERF_HIGH` (20), or `PERF_ULTRA` (120).

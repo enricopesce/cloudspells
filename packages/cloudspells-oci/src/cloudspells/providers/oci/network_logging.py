@@ -191,8 +191,8 @@ class VcnFlowLogs(BaseResource):
 
         Args:
             tier: Short tier label (`"public"`, `"private"`, etc.)
-                used for tags.
-            suffix: Literal resource-name suffix.
+                used in tags.
+            suffix: Literal resource-name suffix for this flow log.
             subnet_id: The subnet OCID to attach the flow log to.
                 Pass `subnet.id` for both `oci.core.Subnet` and `_SubnetRef`.
 

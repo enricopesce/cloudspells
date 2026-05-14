@@ -91,6 +91,7 @@ import pulumi_oci as oci
 from cloudspells.core.abstractions.kubernetes import AbstractKubernetes
 from cloudspells.core.base import BaseResource
 
+from ._naming import ordinal_suffix
 from ._network_profiles import oke_profile_id
 from ._oci_utils import get_svc_cidr as _get_svc_cidr
 from .helper import get_ads
@@ -148,8 +149,8 @@ class NodePoolConfig:
 
     Attributes:
         name: Short identifier for this pool (e.g. `"system"`, `"app"`).
-            Used as the Pulumi resource name suffix and OCI display name
-            component.  Must be unique within the list.
+            Used as a semantic label in tags and examples.  CloudSpells owns
+            the Pulumi resource-name suffix for each pool.
         shape: Compute shape for worker node VMs
             (e.g. `"VM.Standard.E4.Flex"`).
         image: Boot image OCID for worker nodes.
@@ -375,8 +376,9 @@ class _OkeClusterMixin:
         get_ad_names = oci.identity.get_availability_domains_output(compartment_id=compartment_id)
         ads = get_ad_names.availability_domains
 
-        for cfg in node_pools:
-            pool_name = self.create_resource_name(f"pool-{cfg.name}")  # type: ignore[attr-defined]
+        for index, cfg in enumerate(node_pools):
+            legacy_pool_name = f"{self.stack_name}-{self.name}-pool-{cfg.name}"  # type: ignore[attr-defined]
+            pool_name = self.create_resource_name(ordinal_suffix("pool", index))  # type: ignore[attr-defined]
             pool = oci.containerengine.NodePool(
                 pool_name,
                 name=pool_name,
@@ -429,8 +431,16 @@ class _OkeClusterMixin:
                 if cfg.cycling_enabled
                 else None,
                 ssh_public_key=cfg.ssh_public_key or None,
-                freeform_tags=self.create_freeform_tags(pool_name, "oke-node-pool"),  # type: ignore[attr-defined]
-                opts=pulumi.ResourceOptions(parent=self, depends_on=nsg_rules),  # type: ignore[arg-type]
+                freeform_tags=self.create_freeform_tags(  # type: ignore[attr-defined]
+                    pool_name,
+                    "oke-node-pool",
+                    {"PoolLabel": cfg.name},
+                ),
+                opts=pulumi.ResourceOptions(
+                    parent=self,  # type: ignore[arg-type]
+                    depends_on=nsg_rules,
+                    aliases=[pulumi.Alias(name=legacy_pool_name)],
+                ),
             )
             self.node_pools.append(pool)
 
@@ -641,10 +651,11 @@ class _OkeClusterMixin:
         )
         # External clients (kubectl) → API server — one rule per allowed CIDR.
         # An empty list means no external kubectl access is provisioned.
-        for i, cidr in enumerate(self.kubectl_allowed_cidrs):
+        for index, cidr in enumerate(self.kubectl_allowed_cidrs):
+            legacy_rule_name = f"{self.stack_name}-{self.name}-api-nsg-ingress-kubectl-{index}"  # type: ignore[attr-defined]
             rules.append(
                 self._r(
-                    self.create_resource_name(f"api-nsg-ingress-kubectl-{i}"),  # type: ignore[attr-defined]
+                    self.create_resource_name(ordinal_suffix("api-nsg-ingress-kubectl", index)),  # type: ignore[attr-defined]
                     nsg,
                     direction="INGRESS",
                     protocol=TCP,
@@ -652,7 +663,10 @@ class _OkeClusterMixin:
                     source_type="CIDR_BLOCK",
                     tcp_options=_nsg_tcp_port(6443),
                     description=f"External kubectl and CI tooling reach the Kubernetes API from {cidr}",
-                    opts=opts,
+                    opts=pulumi.ResourceOptions(
+                        parent=self,  # type: ignore[arg-type]
+                        aliases=[pulumi.Alias(name=legacy_rule_name)],
+                    ),
                 )
             )
 

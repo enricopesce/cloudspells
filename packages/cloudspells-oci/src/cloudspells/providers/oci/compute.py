@@ -11,7 +11,7 @@ Key behaviours:
 - Auto-generates an RSA 4096-bit SSH key pair when no key is supplied;
   the keys are exported as Pulumi secrets.
 - Accepts a list of `VolumeSpec` objects to attach any number of block
-  volumes; defaults to a single 100 GiB balanced-performance data volume.
+  volumes; labels are used for lookups and tags, not Pulumi resource names.
 - Calls `Vcn.finalize_network` automatically.
 
 Exports:
@@ -28,6 +28,7 @@ import pulumi_oci as oci
 from cloudspells.core.abstractions.compute import AbstractCompute
 from cloudspells.core.base import BaseResource
 
+from ._naming import ordinal_suffix
 from .network import (
     SUBNET_MANAGEMENT,
     SUBNET_PUBLIC,
@@ -208,11 +209,19 @@ class ComputeInstance(BaseResource, AbstractCompute):
                 `50`).
             volumes: Ordered list of `VolumeSpec` objects describing the
                 block volumes to attach.  Each entry must have a unique
-                `label`; the label is used to derive the resource name
-                suffix.  Defaults to `None`, which creates a single 100 GiB
-                balanced-performance data volume (`VolumeSpec(size_in_gbs=100)`).
-                Pass an explicit list to override; an empty list raises
-                `ValueError`.
+                `label`; the label is used for lookup helpers, outputs, and
+                tags, while Pulumi resource names use CloudSpells-owned
+                ordinal slots.  Defaults to `None`, which creates a single
+                100 GiB balanced-performance data volume
+                (`VolumeSpec(size_in_gbs=100)`).  Pass an explicit list to
+                override; an empty list raises `ValueError`.
+            nsg: Network Security Group to attach to the instance VNIC.
+                When `None` (default), no NSG is attached and security is
+                enforced by the subnet security list alone.  When supplied,
+                the NSG's OCID is attached to the VNIC and, if the NSG
+                carries a `Role`, `subnet` is inferred from
+                `nsg.role.subnet_tier` (overriding any explicit `subnet=`
+                value).
             user_data: Cloud-init script as a plain `str` or `bytes`.
                 CloudSpells base64-encodes it before passing to OCI.  When
                 `None`, no user data is injected.
@@ -400,8 +409,9 @@ class ComputeInstance(BaseResource, AbstractCompute):
             availability_domain: AD name used for volume placement.
             instance_name: Resource name of the parent instance, used in volume tags.
         """
-        for spec in self.volumes_spec:
-            vol_name = self.create_resource_name(f"{spec.label}-vol")
+        for index, spec in enumerate(self.volumes_spec):
+            legacy_name_prefix = f"{self.stack_name}-{self.name}-{spec.label}"
+            vol_name = self.create_resource_name(ordinal_suffix("vol", index))
             vol = oci.core.Volume(
                 vol_name,
                 availability_domain=availability_domain,
@@ -419,9 +429,12 @@ class ComputeInstance(BaseResource, AbstractCompute):
                         "AttachedTo": instance_name,
                     },
                 ),
-                opts=pulumi.ResourceOptions(parent=self),
+                opts=pulumi.ResourceOptions(
+                    parent=self,
+                    aliases=[pulumi.Alias(name=f"{legacy_name_prefix}-vol")],
+                ),
             )
-            att_name = self.create_resource_name(f"{spec.label}-vol-attach")
+            att_name = self.create_resource_name(ordinal_suffix("vol-attach", index))
             att = oci.core.VolumeAttachment(
                 att_name,
                 instance_id=self.instance.id,
@@ -434,6 +447,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
                     parent=self,
                     delete_before_replace=True,
                     depends_on=[self.instance, vol],
+                    aliases=[pulumi.Alias(name=f"{legacy_name_prefix}-vol-attach")],
                 ),
             )
             self.block_volumes.append(vol)

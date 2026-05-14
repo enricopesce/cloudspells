@@ -164,6 +164,41 @@ class TestComputeInstance(unittest.TestCase):
         self.assertEqual(len(instance.volumes_spec), 3)
 
     @pulumi.runtime.test
+    def test_volume_resource_names_use_ordinal_slots_not_labels(self):
+        """Volume and attachment resource names use internal ordinal slots."""
+        instance = ComputeInstance(
+            name="slot-instance",
+            compartment_id="ocid1.compartment.test",
+            nsg=self._make_nsg(),
+            image_id="ocid1.image.oc1.phx.test",
+            availability_domain="AD-1",
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+            stack_name="unit",
+            volumes=[
+                VolumeSpec(size_in_gbs=100, label="data"),
+                VolumeSpec(size_in_gbs=200, label="logs"),
+            ],
+        )
+
+        def check(ids):
+            self.assertEqual(
+                list(ids),
+                [
+                    "unit-slot-instance-vol-1-id",
+                    "unit-slot-instance-vol-2-id",
+                    "unit-slot-instance-vol-attach-1-id",
+                    "unit-slot-instance-vol-attach-2-id",
+                ],
+            )
+
+        return pulumi.Output.all(
+            instance.block_volumes[0].id,
+            instance.block_volumes[1].id,
+            instance.volume_attachments[0].id,
+            instance.volume_attachments[1].id,
+        ).apply(check)
+
+    @pulumi.runtime.test
     def test_creates_volume_attachment(self):
         """ComputeInstance creates a volume attachment."""
         instance = ComputeInstance(

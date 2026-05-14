@@ -127,6 +127,81 @@ class TestOkeCluster(unittest.TestCase):
         ).apply(lambda ids: [check_pool(i) for i in ids])
 
     @pulumi.runtime.test
+    def test_oke_node_pool_resource_names_use_ordinal_slots_not_names(self):
+        """Node pool resource names use internal ordinal slots."""
+        pools = [
+            NodePoolConfig(
+                name="system",
+                shape="VM.Standard.A1.Flex",
+                image="ocid1.image.test",
+                node_count=2,
+                ocpus=2,
+                memory_in_gbs=16,
+            ),
+            NodePoolConfig(
+                name="app",
+                shape="VM.Standard.E4.Flex",
+                image="ocid1.image.test",
+                node_count=5,
+                ocpus=8,
+                memory_in_gbs=64,
+            ),
+        ]
+        vcn = Vcn(name="slot-vcn", compartment_id="ocid1.compartment.test", stack_name="unit")
+        oke = OkeCluster(
+            name="slot-cluster",
+            compartment_id="ocid1.compartment.test",
+            vcn=vcn,
+            kubernetes_version="v1.28.2",
+            node_pools=pools,
+            stack_name="unit",
+            kubectl_allowed_cidrs=[],
+        )
+
+        def check(ids):
+            self.assertEqual(
+                list(ids),
+                [
+                    "unit-slot-cluster-pool-1-id",
+                    "unit-slot-cluster-pool-2-id",
+                ],
+            )
+
+        return pulumi.Output.all(
+            oke.node_pools[0].id,
+            oke.node_pools[1].id,
+        ).apply(check)
+
+    @pulumi.runtime.test
+    def test_oke_node_pool_tags_preserve_pool_labels(self):
+        """Node pool tags preserve caller labels after names become ordinal."""
+        pools = [
+            NodePoolConfig(
+                name="system",
+                shape="VM.Standard.A1.Flex",
+                image="ocid1.image.test",
+                node_count=2,
+                ocpus=2,
+                memory_in_gbs=16,
+            ),
+        ]
+        vcn = Vcn(name="label-vcn", compartment_id="ocid1.compartment.test", stack_name="unit")
+        oke = OkeCluster(
+            name="label-cluster",
+            compartment_id="ocid1.compartment.test",
+            vcn=vcn,
+            kubernetes_version="v1.28.2",
+            node_pools=pools,
+            stack_name="unit",
+            kubectl_allowed_cidrs=[],
+        )
+
+        def check(tags):
+            self.assertEqual(tags["PoolLabel"], "system")
+
+        return oke.node_pools[0].freeform_tags.apply(check)
+
+    @pulumi.runtime.test
     def test_oke_finalizes_vcn(self):
         """Test that OkeCluster calls finalize_network() on VCN."""
         vcn = Vcn(
@@ -265,6 +340,33 @@ class TestOkeCluster(unittest.TestCase):
             kubectl_allowed_cidrs=[],
         )
         self.assertEqual(oke.kubectl_allowed_cidrs, [])
+
+    @pulumi.runtime.test
+    def test_kubectl_rule_resource_names_use_ordinal_slots(self):
+        """Kubectl NSG rule resource names use internal ordinal slots."""
+        oke = OkeCluster(
+            name="kubectl-slots",
+            compartment_id="ocid1.compartment.test",
+            vcn=Vcn(name="kubectl-vcn", compartment_id="ocid1.compartment.test", stack_name="unit"),
+            kubernetes_version="v1.28.2",
+            node_pools=[_DEFAULT_POOL],
+            stack_name="unit",
+            kubectl_allowed_cidrs=["203.0.113.0/24", "198.51.100.0/24"],
+        )
+
+        def check(ids):
+            self.assertEqual(
+                list(ids),
+                [
+                    "unit-kubectl-slots-api-nsg-ingress-kubectl-1-id",
+                    "unit-kubectl-slots-api-nsg-ingress-kubectl-2-id",
+                ],
+            )
+
+        return pulumi.Output.all(
+            oke._api_nsg_rules[4].id,
+            oke._api_nsg_rules[5].id,
+        ).apply(check)
 
     def test_kubectl_none_defaults_to_empty(self):
         """Test that omitting kubectl_allowed_cidrs defaults to no external access."""

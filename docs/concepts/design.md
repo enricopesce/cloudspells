@@ -65,6 +65,14 @@ Everything else — CIDRs, subnet placement, route tables, security rules, gatew
 
 ---
 
+## Resource naming
+
+CloudSpells owns the suffixes passed to `create_resource_name()`. Fixed child resources use literal suffixes such as `vcn`, `sn-private`, or `api-nsg`. Repeated child resources, such as block volumes, node pools, and generated NSG rules, use deterministic ordinal suffixes such as `vol-1`, `pool-1`, or `nsg-rule-1`.
+
+Caller-facing labels remain useful metadata. `VolumeSpec.label`, `NodePoolConfig.name`, and NSG rule labels are used for lookup helpers, outputs, tags, and descriptions; they do not become Pulumi resource-name suffixes.
+
+---
+
 ## Two layers of security enforcement
 
 OCI enforces network rules at two levels: **Security Lists** (subnet-level, stateful) and **NSGs** (VNIC-level, stateful). CloudSpells populates both automatically so they are always consistent.
