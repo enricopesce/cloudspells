@@ -2296,7 +2296,7 @@
    │
    ▼  (secure)      — no internet at all; Service Gateway only; databases and secret stores
    │
-   ▼  (management)  — OCI control-plane only; Service Gateway only; monitoring and bastion
+   ▼  (management)  — OCI control-plane only; Service Gateway only; monitoring and ops tooling
 </code></pre>
 <p>Each tier is a CIDR slice of the VCN, sized by the expected IP demand for that tier's workloads (50 / 25 / 12.5 / 12.5 split). Each tier has its own route table with exactly one routing policy — there is no mixing of routing policies within a tier.</p>
 <p>The key constraint: <strong>the secure tier has no default route</strong>. A resource in the secure tier cannot initiate a connection to anything outside the VCN, including the internet. This is enforced at the routing layer, not by a security rule — no application misconfiguration can create an outbound internet path for a database.</p>
@@ -2320,7 +2320,7 @@
 │   Load balancers · internet-facing hosts
 │
 └── management  10.0.224.0/19  12.5% ← Service GW only
-    Monitoring agents · Bastion service · VPN/FastConnect endpoints
+    Monitoring agents · VPN/FastConnect endpoints · control-plane tooling
 </code></pre>
 <p>The four tiers are created by binary subdivision of the VCN CIDR. You supply the VCN CIDR — everything inside it is derived.</p>
 <hr />
@@ -2358,7 +2358,7 @@
 <td>Management</td>
 <td>12.5%</td>
 <td>prefix + 3</td>
-<td>Monitoring agents, Bastion service, VPN endpoints; same Service-Gateway-only isolation as secure</td>
+<td>Monitoring agents, VPN endpoints, and control-plane tooling; same Service-Gateway-only isolation as secure</td>
 </tr>
 </tbody>
 </table>
@@ -2394,7 +2394,7 @@
 </tr>
 </tbody>
 </table>
-<p>The VCN CIDR must be RFC 1918 (<code>10.x</code>, <code>172.16–31.x</code>, <code>192.168.x</code>) with a prefix between <code>/16</code> and <code>/20</code>. Smaller prefixes produce the same tier structure at reduced scale.</p>
+<p>CloudSpells accepts any canonical IPv4 CIDR that can be subdivided into the four tier subnets. For production OCI deployments, use private RFC 1918 space and size the prefix from the guide below; <code>/16</code> through <code>/20</code> covers the common production and lab cases. Smaller prefixes produce the same tier structure at reduced scale.</p>
 <hr />
 <h2 id="routing-per-tier">Routing per tier</h2>
 <p>Each tier has its own route table. Routing is fixed — not configurable:</p>

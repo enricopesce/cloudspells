@@ -2304,13 +2304,21 @@ pulumi config set image_ocid        ocid1.image.oc1..example
 <p>The example passes a plain cloud-init script to install nginx and create a health check endpoint:</p>
 <pre><code class="language-python">user_data_script = &quot;&quot;&quot;#!/bin/bash
 set -e
-yum install -y --disablerepo='*' --enablerepo='ol8_appstream,ol8_baseos_latest' nginx
-systemctl enable nginx &amp;&amp; systemctl start nginx
-firewall-cmd --permanent --add-service=http &amp;&amp; firewall-cmd --reload
+
+# Install and enable nginx
+dnf install -y nginx
+systemctl enable nginx
+systemctl start nginx
+
+# Open port 80 through firewalld (required on Oracle Linux)
+firewall-cmd --permanent --add-service=http
+firewall-cmd --reload
+
+# Create health check endpoint for load balancer
 echo &quot;OK&quot; &gt; /usr/share/nginx/html/health
 &quot;&quot;&quot;
 </code></pre>
-<p>CloudSpells base64-encodes <code>user_data</code> internally before passing it to OCI — pass the plain string or bytes directly.</p>
+<p>CloudSpells base64-encodes <code>user_data_script</code> internally before passing it to OCI — pass the plain string or bytes directly.</p>
 <p>The load balancer health check polls <code>/health</code> on port 80. Instances that fail health checks are removed from the rotation.</p>
 <h3 id="2b-create-the-vcn-and-workload">2b. Create the VCN and workload</h3>
 <pre><code class="language-python">from cloudspells.providers.oci.network import Vcn
@@ -2327,7 +2335,7 @@ scalable_pool = ScalableWorkload(
     vcn=vcn,
     image_id=config.require(&quot;image_ocid&quot;),
     ssh_public_key=config.get(&quot;ssh_key&quot;),
-    user_data=user_data_script,
+    cloud_init_script=user_data_script,
     max_instances=3,
 )
 </code></pre>
@@ -2335,7 +2343,7 @@ scalable_pool = ScalableWorkload(
 <p><code>ScalableWorkload</code> encapsulates the entire tier:</p>
 <ul>
 <li>Load balancer in the <strong>public subnet</strong>, listening on port 80</li>
-<li>Instance pool in the <strong>private subnet</strong>, bootstrapped with your <code>user_data</code></li>
+<li>Instance pool in the <strong>private subnet</strong>, bootstrapped with your <code>cloud_init_script</code></li>
 <li>CPU autoscaling: scale out when CPU &gt; 80%, scale in when CPU &lt; 20%</li>
 <li>300-second cooldown between scaling events</li>
 <li>Defaults to <code>VM.Standard.E4.Flex</code> with 1 OCPU / 16 GB RAM</li>
@@ -2439,7 +2447,7 @@ scalable_pool = ScalableWorkload(
     compartment_id=compartment_id,
     vcn=vcn,
     image_id=config.require(&quot;image_ocid&quot;),
-    user_data=user_data_script,
+    cloud_init_script=user_data_script,
     load_balancer_config=OciLoadBalancerConfig(
         backend_port=8080,
         health_check_path=&quot;/api/health&quot;,

@@ -873,15 +873,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#zero-trust-packet-routing" class="md-nav__link">
-    <span class="md-ellipsis">
-      Zero Trust Packet Routing
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#using-subnet-ids-in-downstream-stacks" class="md-nav__link">
     <span class="md-ellipsis">
       Using subnet IDs in downstream stacks
@@ -2204,15 +2195,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#zero-trust-packet-routing" class="md-nav__link">
-    <span class="md-ellipsis">
-      Zero Trust Packet Routing
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#using-subnet-ids-in-downstream-stacks" class="md-nav__link">
     <span class="md-ellipsis">
       Using subnet IDs in downstream stacks
@@ -2258,7 +2240,7 @@
 
 
 <h1 id="tutorial-secure-monitored-network">Tutorial: Secure, Monitored Network</h1>
-<p>This tutorial deploys a production-ready OCI network with all four security tiers, VCN Flow Logs for audit, a dedicated management tier, Zero Trust Packet Routing (ZPR) labels, and IAM bindings for an existing app-tier instance. The stack does not create compute instances; <code>app_instance_ocid</code> identifies the VM that should receive the app instance-principal grants.</p>
+<p>This tutorial deploys a production-ready OCI network with all four security tiers, VCN Flow Logs for audit, a dedicated management tier, role-based NSGs, and IAM bindings for an existing app-tier instance. The stack does not create compute instances; <code>app_instance_ocid</code> identifies the VM that should receive the app instance-principal grants.</p>
 <p><strong>What you will build:</strong></p>
 <pre><code>┌─────────────────────────────────────────────────────────────────┐
 │  VCN  10.0.0.0/18  (default)                                    │
@@ -2372,7 +2354,7 @@ mgmt_nsg = Nsg(&quot;management&quot;,    role=MANAGEMENT,                      
 </tr>
 </tbody>
 </table>
-<p>Every NSG is also tagged with <code>ZprLabel=tier:&lt;name&gt;</code> for Zero Trust Packet Routing (see <a href="#zero-trust-packet-routing">below</a>).</p>
+<p>Every NSG receives CloudSpells baseline freeform tags such as <code>managed-by</code>, <code>spell-type</code>, <code>spell-name</code>, <code>environment</code>, <code>name</code>, and <code>resource-type</code>.</p>
 <h3 id="2c-wire-traffic-relationships">2c. Wire traffic relationships</h3>
 <pre><code class="language-python"># Restrict SSH ingress on the management tier to a specific CIDR.
 mgmt_nsg.allow_from_cidr(&quot;ssh-in&quot;, SSH, management_ingress_cidr, description=&quot;SSH from ops network&quot;)
@@ -2471,14 +2453,6 @@ pulumi up
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="zero-trust-packet-routing">Zero Trust Packet Routing</h2>
-<p>Every NSG created by CloudSpells is tagged with <code>ZprLabel=tier:&lt;name&gt;</code>. If you enable <strong>Zero Trust Packet Routing (ZPR)</strong> in your OCI tenancy, you can write ZPR policies that enforce traffic rules at the OCI control plane — independently of, and in addition to, NSG rules:</p>
-<pre><code>Define policy &quot;network-zpr-policy&quot; as
-  allow private-nsg to connect to secure-nsg on TCP port 1521
-  where target.security-attribute.ZprLabel = 'tier:secure'
-</code></pre>
-<p>ZPR policies guarantee that no misconfigured VNIC attachment can bypass the NSG rules, providing a second, identity-based enforcement layer.</p>
 <hr />
 <h2 id="using-subnet-ids-in-downstream-stacks">Using subnet IDs in downstream stacks</h2>
 <p>The subnet OCIDs are normal Pulumi stack outputs. A downstream service stack can consume them via <code>VcnRef</code>:</p>

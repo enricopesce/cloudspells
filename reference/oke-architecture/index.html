@@ -2891,7 +2891,7 @@
 <p>Complete technical reference for the <code>OkeCluster</code> spell. This page covers the cluster configuration, subnet placement, VCN-native CNI, the NSG security model, every security rule this spell writes, node pool configuration, and operational outputs.</p>
 <hr />
 <h2 id="overview">Overview</h2>
-<p><code>OkeCluster</code> is a Pulumi <code>ComponentResource</code> that deploys a complete Oracle Kubernetes Engine cluster. It creates the Kubernetes control plane, a node pool spread across all availability domains, and the entire two-layer security configuration (subnet-level security lists + VNIC-level NSGs).</p>
+<p><code>OkeCluster</code> is a Pulumi <code>ComponentResource</code> that deploys a complete Oracle Kubernetes Engine cluster. It creates the Kubernetes control plane, one or more node pools spread across all availability domains, and the entire two-layer security configuration (subnet-level security lists + VNIC-level NSGs).</p>
 <p><strong>Resources created per <code>OkeCluster</code>:</strong></p>
 <table>
 <thead>
@@ -2909,8 +2909,8 @@
 </tr>
 <tr>
 <td><code>oci.containerengine.NodePool</code></td>
-<td>1</td>
-<td>Spread across all ADs</td>
+<td><code>len(node_pools)</code></td>
+<td>Each configured pool is spread across all ADs</td>
 </tr>
 <tr>
 <td><code>oci.core.NetworkSecurityGroup</code></td>
@@ -2919,7 +2919,7 @@
 </tr>
 <tr>
 <td><code>oci.core.NetworkSecurityGroupSecurityRule</code></td>
-<td>34</td>
+<td><code>33 + len(kubectl_allowed_cidrs)</code></td>
 <td>See NSG rules section</td>
 </tr>
 </tbody>
@@ -2960,7 +2960,7 @@
 <tr>
 <td>API endpoint</td>
 <td>Public subnet</td>
-<td>Public IP enabled — reachable by <code>kubectl</code> over the internet on port 6443</td>
+<td>Public IP enabled; external <code>kubectl</code> access is allowed only from <code>kubectl_allowed_cidrs</code></td>
 </tr>
 <tr>
 <td>API NSG</td>
@@ -2974,7 +2974,7 @@
 <h2 id="subnet-placement">Subnet placement</h2>
 <pre><code>                            Internet
                                │
-                         port 6443 (kubectl)
+                         port 6443 (kubectl from allowed CIDRs)
                          port 443 / 80 (LB)
                                │
         ┌──────────────────────▼──────────────────────┐
@@ -3091,7 +3091,7 @@
 <p><code>OkeCluster</code> enforces security at two complementary OCI layers.</p>
 <h3 id="layer-1-security-lists-subnet-boundary">Layer 1 — Security lists (subnet boundary)</h3>
 <p>Security lists enforce coarse-grained, subnet-to-subnet routing policy. They are evaluated on every packet entering or leaving a subnet. <code>OkeCluster</code> installs the OKE network profile with a complete set of public and private subnet rules before calling <code>vcn.finalize_network()</code>.</p>
-<p>In addition to the OKE-specific rules documented below, <code>finalize_network</code> always injects a set of <strong>VCN baseline rules</strong> before materialising the security lists. These include NAT Gateway egress for the private tier, Service Gateway egress for the private/secure/management tiers, and a TCP ingress rule permitting the private subnet to initiate connections into the secure subnet. See <a href="../vcn-architecture/#baseline-security-rules">Baseline security rules</a> in the VCN Architecture reference for the full list.</p>
+<p>In addition to the OKE-specific rules documented below, <code>finalize_network</code> always injects a set of <strong>VCN baseline rules</strong> before materialising the security lists. These include NAT Gateway egress for the private tier and Service Gateway egress for the private/secure/management tiers. See <a href="../vcn-architecture/#baseline-security-rules">Baseline security rules</a> in the VCN Architecture reference for the full list.</p>
 <p>Because the security list is shared (one list per subnet, accumulated from all spells), the rules written here establish the minimum necessary subnet-level connectivity. Within-subnet traffic (pod-to-pod, node-to-node) that stays inside the same CIDR block is <strong>not</strong> governed by security lists — it is governed exclusively by NSGs.</p>
 <h3 id="layer-2-nsgs-vnic-boundary">Layer 2 — NSGs (VNIC boundary)</h3>
 <p>NSGs enforce fine-grained, component-to-component rules. Each NSG is attached to a specific set of VNICs. Rules reference other NSGs as source or destination (not CIDRs), so they remain correct even when IP addresses change.</p>
@@ -3166,7 +3166,7 @@ spec:
 </tr>
 <tr>
 <td>TCP</td>
-<td><code>0.0.0.0/0</code></td>
+<td>each <code>kubectl_allowed_cidrs</code> entry</td>
 <td>6443</td>
 <td>External <code>kubectl</code> and CI tooling reach the API</td>
 </tr>
@@ -3307,7 +3307,7 @@ spec:
 </tr>
 </tbody>
 </table>
-<p><strong>Total security list rules added:</strong> 5 public ingress + 5 public egress + 4 private ingress + 5 private egress = <strong>19 rules</strong>.</p>
+<p><strong>Total security list rules added:</strong> <code>4 + len(kubectl_allowed_cidrs)</code> public ingress + 5 public egress + 4 private ingress + 5 private egress = <code>18 + len(kubectl_allowed_cidrs)</code> rules.</p>
 <hr />
 <h2 id="nsg-rules">NSG rules</h2>
 <p>NSG rules use NSG OCIDs as source/destination (not CIDRs), providing VNIC-level precision even when workers and pods share a subnet.</p>
@@ -3349,7 +3349,7 @@ spec:
 </tr>
 <tr>
 <td>TCP</td>
-<td><code>0.0.0.0/0</code> (CIDR)</td>
+<td>each <code>kubectl_allowed_cidrs</code> entry (CIDR)</td>
 <td>6443</td>
 <td>External <code>kubectl</code> and CI tooling</td>
 </tr>
@@ -3623,14 +3623,14 @@ spec:
 </tr>
 </tbody>
 </table>
-<p><strong>Total NSG rules created:</strong> 5 api_nsg ingress + 3 api_nsg egress + 2 lb_nsg ingress + 2 lb_nsg egress + 5 worker_nsg ingress + 7 worker_nsg egress + 3 pod_nsg ingress + 7 pod_nsg egress = <strong>34 rules</strong> (the <code>_r</code> helper creates one <code>NetworkSecurityGroupSecurityRule</code> resource per rule).</p>
+<p><strong>Total NSG rules created:</strong> <code>4 + len(kubectl_allowed_cidrs)</code> api_nsg ingress + 3 api_nsg egress + 2 lb_nsg ingress + 2 lb_nsg egress + 5 worker_nsg ingress + 7 worker_nsg egress + 3 pod_nsg ingress + 7 pod_nsg egress = <code>33 + len(kubectl_allowed_cidrs)</code> rules (the <code>_r</code> helper creates one <code>NetworkSecurityGroupSecurityRule</code> resource per rule).</p>
 <hr />
 <h2 id="traffic-flows-annotated">Traffic flows — annotated</h2>
 <h3 id="kubectl-apply-from-a-developer-laptop"><code>kubectl apply</code> from a developer laptop</h3>
 <pre><code>laptop:ephemeral → API endpoint public IP:6443
   → Internet GW → public subnet
-  → api_nsg INGRESS: 0.0.0.0/0 TCP 6443  ✓ (NSG rule)
-  → public security list INGRESS: 0.0.0.0/0 TCP 6443  ✓ (security list rule)
+  → api_nsg INGRESS: configured CIDR TCP 6443  ✓ (NSG rule)
+  → public security list INGRESS: configured CIDR TCP 6443  ✓ (security list rule)
 </code></pre>
 <h3 id="api-server-calling-kubelet-for-kubectl-exec">API server calling kubelet for <code>kubectl exec</code></h3>
 <pre><code>API endpoint:ephemeral → worker node VNIC:10250
@@ -3789,7 +3789,7 @@ OkeCluster.__init__()
   │    └─ installs OKE security-list rules and exports the profile ID
   │
   ├─ vcn.finalize_network()
-  │    ├─ _inject_baseline_rules()   ← NAT/Service GW egress + private→secure TCP
+  │    ├─ _inject_baseline_rules()   ← NAT/Service GW egress
   │    ├─ _create_security_lists()   ← materialises all accumulated rules
   │    └─ _create_subnets()          ← creates 4 subnets
   │
@@ -3817,7 +3817,6 @@ cluster = OkeCluster(
     compartment_id=compartment_id,
     vcn=vcn,
     kubernetes_version=&quot;v1.32.1&quot;,
-    display_name=&quot;lab-k8s&quot;,
     node_pools=[
         NodePoolConfig(
             name=&quot;default&quot;,
@@ -3832,7 +3831,7 @@ cluster = OkeCluster(
 
 cluster.export()
 </code></pre>
-<p>This creates the complete stack: 1 VCN, 4 subnets, 3 gateways, 4 route tables, 4 security lists (with 19 rules), 4 NSGs (with 34 rules), 1 OKE cluster, 1 node pool.</p>
+<p>This creates the complete stack: 1 VCN, 4 subnets, 3 gateways, 4 route tables, 4 security lists (with <code>18 + len(kubectl_allowed_cidrs)</code> OKE rules), 4 NSGs (with <code>33 + len(kubectl_allowed_cidrs)</code> rules), 1 OKE cluster, and one node pool per <code>NodePoolConfig</code>.</p>
 <hr />
 <h2 id="what-okecluster-does-not-manage">What <code>OkeCluster</code> does not manage</h2>
 <table>

@@ -940,6 +940,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#why-bastion-attaches-to-the-private-subnet" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why Bastion attaches to the private subnet
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#2-export-the-stack-outputs" class="md-nav__link">
     <span class="md-ellipsis">
       2. Export the stack outputs
@@ -2151,6 +2160,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#why-bastion-attaches-to-the-private-subnet" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why Bastion attaches to the private subnet
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#2-export-the-stack-outputs" class="md-nav__link">
     <span class="md-ellipsis">
       2. Export the stack outputs
@@ -2321,6 +2339,9 @@ instance = ComputeInstance(
 )
 </code></pre>
 <p><code>Bastion</code> attaches to the <strong>private subnet</strong> automatically. No subnet argument is needed.</p>
+<h3 id="why-bastion-attaches-to-the-private-subnet">Why Bastion attaches to the private subnet</h3>
+<p>CloudSpells uses OCI managed Bastion as a private-subnet access endpoint, not as a self-managed jump host in the management tier. The service endpoint is attached to the private subnet so managed SSH sessions can reach private workload instances directly. Client access is constrained by <code>allowed_client_cidrs</code> on the Bastion resource, and session creation is governed by OCI IAM and audit logs.</p>
+<p>The management tier remains reserved for monitoring, VPN/FastConnect, and operations tooling that only need OCI service-plane access through the Service Gateway.</p>
 <h3 id="2-export-the-stack-outputs">2. Export the stack outputs</h3>
 <pre><code class="language-python">vcn.export()
 bastion.export()

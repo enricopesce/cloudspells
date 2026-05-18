@@ -2304,7 +2304,7 @@ pip install -r requirements.txt
     cidr_block=&quot;10.10.0.0/16&quot;,
 )
 </code></pre>
-<p>CloudSpells delegates CIDR validation to OCI — any valid RFC 1918 CIDR is accepted.</p>
+<p>CloudSpells validates that <code>cidr_block</code> is a canonical IPv4 CIDR before creating subnet tiers; OCI then applies provider-side constraints during deployment. Use private RFC 1918 ranges for normal OCI VCNs.</p>
 <hr />
 <h2 id="step-6-preview-the-changes">Step 6 — Preview the changes</h2>
 <pre><code class="language-bash">pulumi preview

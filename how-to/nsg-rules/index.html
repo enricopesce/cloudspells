@@ -2254,7 +2254,7 @@ web_nsg.serves(db_nsg, port=6379, with_ssh=False)
 <p>A two-tier relationship (LB → app server) requires four NSG rules and potentially four security list rules. Writing them individually is tedious and error-prone — one missing rule causes a silent connectivity failure. <code>serves()</code> generates all required rules from the relationship intent.</p>
 <hr />
 <h2 id="port-constants">Port constants</h2>
-<p>All 29 port constants exported from <code>cloudspells.providers.oci.nsg</code>:</p>
+<p>All 24 port constants exported from <code>cloudspells.providers.oci.nsg</code>:</p>
 <pre><code class="language-python"># Web / access
 from cloudspells.providers.oci.nsg import HTTP, HTTPS, HTTP_ALT, HTTPS_ALT, SSH, RDP
 # HTTP=80, HTTPS=443, HTTP_ALT=8080, HTTPS_ALT=8443, SSH=22, RDP=3389

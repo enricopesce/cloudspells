@@ -2289,9 +2289,12 @@ rules to the same live <code>Vcn</code> before the load balancer. After finaliza
 </ul>
 <h3 id="adding-backends">Adding backends</h3>
 <p>Backends are registered separately — either via <code>oci.loadbalancer.Backend</code> resources in your Pulumi program, or via the OCI Console/CLI after deployment:</p>
-<pre><code class="language-bash">oci lb backend create \
+<pre><code class="language-bash"># Backend set name follows the CloudSpells pattern: {stack}-{spell-name}-bs
+# e.g. for name=&quot;web-frontend&quot; on stack &quot;dev&quot;: dev-web-frontend-bs
+oci lb backend create \
     --load-balancer-id $(pulumi stack output web_frontend_lb_id) \
-    --ip-address 10.0.128.10 \
+    --backend-set-name &lt;stack&gt;-web-frontend-bs \
+    --ip-address 10.0.0.10 \
     --port 8080
 </code></pre>
 <hr />

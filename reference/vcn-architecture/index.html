@@ -2746,10 +2746,11 @@
 <tr>
 <td><strong>Management</strong></td>
 <td><code>True</code> — no public IPs</td>
-<td>OCI Bastion service; monitoring agents; VPN/FastConnect endpoints</td>
+<td>Monitoring agents; VPN/FastConnect endpoints; control-plane tooling</td>
 </tr>
 </tbody>
 </table>
+<p>The CloudSpells <code>Bastion</code> spell creates an OCI managed Bastion endpoint attached to the private subnet so it can broker sessions to private-subnet resources. The management tier remains available for monitoring and operations workloads that only need OCI service-plane access.</p>
 <hr />
 <h2 id="gateways">Gateways</h2>
 <p>Three gateways are created unconditionally for every VCN.</p>
@@ -2935,25 +2936,7 @@ vcn.add_security_rules(SecurityRules(
 </tr>
 </tbody>
 </table>
-<p><strong>Secure-tier segmentation (ingress):</strong></p>
-<table>
-<thead>
-<tr>
-<th>Protocol</th>
-<th>Source</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>TCP (all ports)</td>
-<td>Private subnet CIDR</td>
-<td>Only the private (application) tier may initiate connections into the secure (data) tier</td>
-</tr>
-</tbody>
-</table>
-<p>The secure-tier rule establishes the canonical private→secure communication path (app servers → databases) at the security-list layer. All other inbound sources — public subnet, management subnet, internet — are implicitly denied by the deny-by-default model. OCI stateful connection tracking handles return packets; no matching egress rule is required.</p>
-<p>Individual spells and NSGs add port-specific rules on top of this baseline.</p>
+<p>Cross-tier application paths are not baseline VCN rules. They are registered by spell-owned relationships such as <code>app_nsg.serves(db_nsg, port=5432)</code>, which add the matching NSG rules and any required cross-subnet security-list entries before <code>finalize_network()</code>.</p>
 <hr />
 <h2 id="flow-logs-opt-in">Flow logs (opt-in)</h2>
 <p>Pass <code>flow_logs=True</code> to <code>Vcn.__init__</code> to enable VCN Flow Logs for all four subnets. Flow logs capture accepted and rejected traffic at the subnet boundary — useful for network audit, threat detection, and debugging.</p>

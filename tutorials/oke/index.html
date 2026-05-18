@@ -2260,7 +2260,7 @@
 <h1 id="tutorial-deploy-an-oke-cluster">Tutorial: Deploy an OKE Cluster</h1>
 <p>This tutorial deploys an Oracle Kubernetes Engine (OKE) cluster with a managed node pool using the <code>OkeCluster</code> spell.</p>
 <p><strong>What you will build:</strong></p>
-<pre><code>kubectl (port 6443)
+<pre><code>kubectl (port 6443, from configured CIDRs)
    │
    ▼
 ┌────────────────────────────────────────────────────┐
@@ -2277,7 +2277,7 @@
 │  Nodes spread across all Availability Domains      │
 └────────────────────────────────────────────────────┘
 </code></pre>
-<p><strong>What gets created:</strong> 1 VCN (4 subnets + 3 gateways), 1 OKE BASIC_CLUSTER, 1 node pool spread across all ADs, 4 NSGs with 34 NSG rules, all required security list rules.</p>
+<p><strong>What gets created:</strong> 1 VCN (4 subnets + 3 gateways), 1 OKE BASIC_CLUSTER, 1 node pool spread across all ADs, 4 NSGs with <code>33 + len(kubectl_allowed_cidrs)</code> NSG rules, and <code>18 + len(kubectl_allowed_cidrs)</code> OKE security-list rules.</p>
 <hr />
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
@@ -2300,6 +2300,7 @@ pulumi config set node_shape        VM.Standard.A1.Flex   # ARM — cost-effecti
 pulumi config set node_count        3
 pulumi config set oke_ocpus         2
 pulumi config set oke_memory_in_gbs 12
+pulumi config set kubectl_allowed_cidrs 203.0.113.0/24    # optional: office/VPN CIDRs for public API access
 </code></pre>
 <hr />
 <h2 id="step-2-walk-through-the-code">Step 2 — Walk through the code</h2>
@@ -2320,7 +2321,7 @@ oke = OkeCluster(
     compartment_id=compartment_id,
     vcn=vcn,
     kubernetes_version=kubernetes_version,
-    display_name=&quot;infra&quot;,
+    kubectl_allowed_cidrs=[c for c in (config.get(&quot;kubectl_allowed_cidrs&quot;) or &quot;&quot;).split(&quot;,&quot;) if c],
     node_pools=[
         NodePoolConfig(
             name=&quot;default&quot;,
@@ -2342,14 +2343,14 @@ oke.create_kubeconfig(os.path.join(os.path.dirname(__file__), &quot;kubeconfig&q
 <p><code>OkeCluster</code> handles all the complexity:</p>
 <ul>
 <li>Accepts one or more <code>NodePoolConfig</code> descriptors — each produces an independent OCI node pool, enabling mixed shapes (e.g. system pool + GPU pool)</li>
-<li>Adds 19 security list rules covering the Kubernetes control plane (6443), kubelet (10250), NodePort range (30000-32767), and kube-proxy (10256)</li>
-<li>Creates 4 NSGs (<code>api_nsg</code>, <code>lb_nsg</code>, <code>worker_nsg</code>, <code>pod_nsg</code>) with 34 VNIC-level rules for fine-grained segmentation</li>
+<li>Adds <code>18 + len(kubectl_allowed_cidrs)</code> security list rules covering the Kubernetes control plane (6443), kubelet (10250), NodePort range (30000-32767), and kube-proxy (10256)</li>
+<li>Creates 4 NSGs (<code>api_nsg</code>, <code>lb_nsg</code>, <code>worker_nsg</code>, <code>pod_nsg</code>) with <code>33 + len(kubectl_allowed_cidrs)</code> VNIC-level rules for fine-grained segmentation</li>
 <li>Places the API endpoint in the public subnet and worker/pod VNICs in the private subnet</li>
 <li>Configures <code>OCI_VCN_IP_NATIVE</code> CNI so every pod gets a real VCN subnet IP</li>
 <li>Spreads nodes across all Availability Domains automatically</li>
 <li>Calls <code>vcn.finalize_network()</code> to materialise subnets and security lists</li>
 </ul>
-<p>When OKE uses a live <code>Vcn</code>, <code>OkeCluster</code> installs the OKE network profile before <code>finalize_network()</code>. When OKE uses <code>VcnRef</code>, it does not mutate the referenced VCN; it requires the source stack to have exported the exact OKE profile first. Enable that in the VCN stack with <code>vcn.enable_oke_profile(kubectl_allowed_cidrs=[...])</code>.</p>
+<p>When OKE uses a live <code>Vcn</code>, <code>OkeCluster</code> installs the OKE network profile before <code>finalize_network()</code>. When OKE uses <code>VcnRef</code>, it does not mutate the referenced VCN; it requires the source stack to have exported the exact OKE profile first. Enable that in the VCN stack with <code>vcn.enable_oke_profile(kubectl_allowed_cidrs=[...])</code>. If <code>kubectl_allowed_cidrs</code> is omitted or empty, CloudSpells creates no external kubectl ingress rule.</p>
 <p><code>NodePoolConfig.name</code> is a semantic pool label written to tags and examples. CloudSpells assigns deterministic ordinal names to the underlying node-pool resources.</p>
 <h3 id="the-nsg-security-model">The NSG security model</h3>
 <p>Workers and pods share the private subnet CIDR. Four NSGs segment them at the VNIC level:</p>
