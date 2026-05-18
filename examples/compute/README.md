@@ -43,7 +43,7 @@ pulumi config set compartment_ocid <your-compartment-ocid>
 pulumi config set image_ocid <your-image-ocid>
 
 # Optional: provide your SSH public key (skip to auto-generate)
-pulumi config set ssh_key "$(cat ~/.ssh/id_dsa.key.pub)"
+pulumi config set ssh_key "$(cat ~/.ssh/id_rsa.pub)"
 
 # Preview changes
 pulumi preview

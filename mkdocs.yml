@@ -3,6 +3,9 @@ site_description: High-level Pulumi spells for Oracle Cloud Infrastructure
 repo_url: https://github.com/enricopesce/cloudspells
 repo_name: enricopesce/cloudspells
 
+exclude_docs: |
+  superpowers/plans/
+
 theme:
   name: material
   features:

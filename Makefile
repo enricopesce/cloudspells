@@ -36,6 +36,10 @@ test:
 deadcode:
 	$(VENV)/bin/vulture packages/ --min-confidence 80
 
+.PHONY: docs-check
+docs-check:
+	$(PYTHON) scripts/check_docs_drift.py
+
 # ── Per-file quality gate (used by spell-fixer agent) ────────────────────────
 # Usage: make check-file FILE=packages/cloudspells-oci/src/cloudspells/providers/oci/compute.py
 
@@ -48,5 +52,5 @@ check-file:
 # ── Full quality gate (mirrors CI exactly) ───────────────────────────────────
 
 .PHONY: check
-check: lint format-check typecheck test deadcode
+check: lint format-check typecheck test deadcode docs-check
 	@echo "Quality gate passed."

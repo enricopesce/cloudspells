@@ -74,7 +74,9 @@ Return type is `pulumi.Input[str]` (not plain `str`) so the same accessor works 
 | **Public** | `False` — instances may receive public IPs | OCI Load Balancers; OKE API endpoint |
 | **Private** | `True` — no public IPs | App servers; OKE worker nodes and pods; instance pools |
 | **Secure** | `True` — no public IPs | Databases; secrets managers; audit stores |
-| **Management** | `True` — no public IPs | OCI Bastion service; monitoring agents; VPN/FastConnect endpoints |
+| **Management** | `True` — no public IPs | Monitoring agents; VPN/FastConnect endpoints; control-plane tooling |
+
+The CloudSpells `Bastion` spell creates an OCI managed Bastion endpoint attached to the private subnet so it can broker sessions to private-subnet resources. The management tier remains available for monitoring and operations workloads that only need OCI service-plane access.
 
 ---
 
@@ -215,15 +217,7 @@ Before creating the security lists, `finalize_network` injects a fixed set of ba
 |---|---|---|
 | ALL | `<services CIDR>` | Oracle service plane egress without internet transit |
 
-**Secure-tier segmentation (ingress):**
-
-| Protocol | Source | Description |
-|---|---|---|
-| TCP (all ports) | Private subnet CIDR | Only the private (application) tier may initiate connections into the secure (data) tier |
-
-The secure-tier rule establishes the canonical private→secure communication path (app servers → databases) at the security-list layer. All other inbound sources — public subnet, management subnet, internet — are implicitly denied by the deny-by-default model. OCI stateful connection tracking handles return packets; no matching egress rule is required.
-
-Individual spells and NSGs add port-specific rules on top of this baseline.
+Cross-tier application paths are not baseline VCN rules. They are registered by spell-owned relationships such as `app_nsg.serves(db_nsg, port=5432)`, which add the matching NSG rules and any required cross-subnet security-list entries before `finalize_network()`.
 
 ---
 

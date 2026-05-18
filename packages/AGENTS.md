@@ -29,7 +29,7 @@ For VCN-attached spells:
 ```python
 def __init__(self, name: str, compartment_id: pulumi.Input[str], vcn: Vcn | VcnRef, ...) -> None:
     super().__init__(...)
-    vcn.add_security_list_rules([...])
+    vcn.add_security_rules(SecurityRules(...))
     vcn.finalize_network()
     # Subnet IDs and CIDRs are safe to use here.
 ```

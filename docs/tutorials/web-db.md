@@ -220,6 +220,6 @@ pulumi destroy
 
 ## What's next
 
-- [Deploy a secure, monitored network →](secure-vcn.md) — add flow logs, a management tier, and Zero Trust Packet Routing labels
+- [Deploy a secure, monitored network →](secure-vcn.md) — add flow logs, role-based NSGs, and IAM bindings
 - [Configure NSG Rules →](../how-to/nsg-rules.md) — deep dive into role constants, `serves()`, and custom rules
 - [Use a Bastion for private access →](../how-to/bastion.md) — SSH into the web or DB tier without a public IP

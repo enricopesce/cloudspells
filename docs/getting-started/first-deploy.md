@@ -116,7 +116,7 @@ vcn = Vcn(
 )
 ```
 
-CloudSpells delegates CIDR validation to OCI — any valid RFC 1918 CIDR is accepted.
+CloudSpells validates that `cidr_block` is a canonical IPv4 CIDR before creating subnet tiers; OCI then applies provider-side constraints during deployment. Use private RFC 1918 ranges for normal OCI VCNs.
 
 ---
 

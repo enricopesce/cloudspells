@@ -1,6 +1,6 @@
 # VCN Example
 
-Deploys a standalone Virtual Cloud Network with a 3-tier subnet architecture,
+Deploys a standalone Virtual Cloud Network with a 4-tier subnet architecture,
 gateways, route tables, and security lists.  All outputs are exported so other
 stacks can import this VCN via `VcnRef.from_stack_reference()` without
 recreating any network resources.
@@ -71,7 +71,6 @@ VCN  10.0.0.0/18  (default — 16 384 IPs total)
 | Key | Required | Default | Description |
 |-----|----------|---------|-------------|
 | `compartment_ocid` | Yes | — | OCI compartment OCID |
-| `vcn_cidr_block` | No | `10.0.0.0/18` | VCN CIDR block — must be RFC 1918, prefix `/16`–`/20` |
 
 ## Deploy
 
@@ -80,9 +79,6 @@ cd examples/vcn
 
 pulumi stack init dev
 pulumi config set compartment_ocid <your-compartment-ocid>
-
-# Optional: use a larger VCN for big OKE clusters
-pulumi config set vcn_cidr_block 10.0.0.0/16
 
 pulumi preview
 pulumi up

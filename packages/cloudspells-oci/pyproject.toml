@@ -7,7 +7,7 @@ name = "cloudspells-oci"
 version = "0.2.0"
 description = "OCI provider spells for CloudSpells"
 license = { text = "Apache-2.0" }
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 3 - Alpha",
 ]

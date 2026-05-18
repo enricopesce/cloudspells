@@ -1,5 +1,7 @@
 # VcnRef Network Profiles Implementation Plan
 
+> **Historical plan:** This document records an implementation plan and may describe pre-implementation state. It is not a current product manual; use the source code and API reference for current behavior.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make `VcnRef` a strict reference to CloudSpells-standard OCI VCNs and allow OKE with `VcnRef` only when the source VCN stack exports the exact OKE network profile.

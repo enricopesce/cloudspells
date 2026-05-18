@@ -70,9 +70,12 @@ rules to the same live `Vcn` before the load balancer. After finalization,
 Backends are registered separately — either via `oci.loadbalancer.Backend` resources in your Pulumi program, or via the OCI Console/CLI after deployment:
 
 ```bash
+# Backend set name follows the CloudSpells pattern: {stack}-{spell-name}-bs
+# e.g. for name="web-frontend" on stack "dev": dev-web-frontend-bs
 oci lb backend create \
     --load-balancer-id $(pulumi stack output web_frontend_lb_id) \
-    --ip-address 10.0.128.10 \
+    --backend-set-name <stack>-web-frontend-bs \
+    --ip-address 10.0.0.10 \
     --port 8080
 ```
 

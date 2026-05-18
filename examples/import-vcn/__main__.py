@@ -40,6 +40,8 @@ cd examples/import-vcn
 pulumi stack init <stack-name>
 pulumi config set compartment_ocid  <COMPARTMENT_OCID>
 pulumi config set vcn_stack         <STACK_REFERENCE>
+pulumi config set availability_domain <AVAILABILITY_DOMAIN>
+pulumi config set image_ocid        <IMAGE_OCID>
 ```
 
 ## Stack reference format

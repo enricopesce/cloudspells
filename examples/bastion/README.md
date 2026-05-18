@@ -19,6 +19,8 @@ Internet -> OCI Bastion service (private subnet) -> managed SSH session -> Insta
 
 The Bastion service is an OCI-managed access point, not a VM jump host. The example constructs `Bastion` before `ComputeInstance` so the Bastion SSH rule is registered before `ComputeInstance` finalizes the VCN.
 
+CloudSpells intentionally attaches OCI Bastion to the private subnet. The management tier remains reserved for monitoring, VPN/FastConnect, and other operations tooling that only needs OCI service-plane access.
+
 ## Prerequisites
 
 - [Pulumi CLI](https://www.pulumi.com/docs/install/) installed
@@ -53,7 +55,7 @@ pulumi config set availability_domain "<availability-domain-name>"
 pulumi config set image_ocid <your-image-ocid>
 
 # Optional: provide your SSH public key (skip to auto-generate)
-pulumi config set ssh_key "$(cat ~/.ssh/id_dsa.key.pub)"
+pulumi config set ssh_key "$(cat ~/.ssh/id_rsa.pub)"
 
 # Preview changes
 pulumi preview
@@ -87,7 +89,7 @@ chmod 600 ~/.ssh/oci_bastion
    oci bastion session create-managed-ssh \
      --bastion-id $(pulumi stack output mgmt_bastion_id) \
      --target-resource-id $(pulumi stack output web_server_id) \
-     --target-os-username ubuntu \
+     --target-os-username opc \
      --ssh-public-key-file ~/.ssh/id_rsa.pub
    ```
 

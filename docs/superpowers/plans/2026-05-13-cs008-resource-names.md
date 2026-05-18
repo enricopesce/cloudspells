@@ -1,5 +1,7 @@
 # CS-008 Resource Names Implementation Plan
 
+> **Historical plan:** This document records an implementation plan and may describe pre-implementation state. It is not a current product manual; use the source code and API reference for current behavior.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Remove all f-string-derived suffixes passed to `create_resource_name(...)`, decouple repeated resource names from caller labels where practical, and add a regression test for CS-008.

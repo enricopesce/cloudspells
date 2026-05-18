@@ -51,6 +51,8 @@ same `web_nsg.id` to the new `ComputeInstance`.
 Required:
 
 - `compartment_ocid` — OCID of the target compartment.
+- `availability_domain` — OCI availability domain for all demo VMs.
+- `image_ocid` — Boot image OCID for the demo VMs.
 
 Optional:
 

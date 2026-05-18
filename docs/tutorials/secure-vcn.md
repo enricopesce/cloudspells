@@ -1,6 +1,6 @@
 # Tutorial: Secure, Monitored Network
 
-This tutorial deploys a production-ready OCI network with all four security tiers, VCN Flow Logs for audit, a dedicated management tier, Zero Trust Packet Routing (ZPR) labels, and IAM bindings for an existing app-tier instance. The stack does not create compute instances; `app_instance_ocid` identifies the VM that should receive the app instance-principal grants.
+This tutorial deploys a production-ready OCI network with all four security tiers, VCN Flow Logs for audit, a dedicated management tier, role-based NSGs, and IAM bindings for an existing app-tier instance. The stack does not create compute instances; `app_instance_ocid` identifies the VM that should receive the app instance-principal grants.
 
 **What you will build:**
 
@@ -109,7 +109,7 @@ All four CloudSpells role constants are represented here:
 | `DATABASE` | Secure | Oracle Services only | No internet egress |
 | `MANAGEMENT` | Management | Oracle Services only | No internet egress |
 
-Every NSG is also tagged with `ZprLabel=tier:<name>` for Zero Trust Packet Routing (see [below](#zero-trust-packet-routing)).
+Every NSG receives CloudSpells baseline freeform tags such as `managed-by`, `spell-type`, `spell-name`, `environment`, `name`, and `resource-type`.
 
 ### 2c. Wire traffic relationships
 
@@ -190,20 +190,6 @@ Key outputs:
 | `app_policy_id` | Policy OCID granting the app instance Object Storage and Vault Secret reads |
 | `ops_group_id` | IAM group OCID for compartment administrators |
 | `ops_policy_id` | Policy OCID granting compartment administration |
-
----
-
-## Zero Trust Packet Routing
-
-Every NSG created by CloudSpells is tagged with `ZprLabel=tier:<name>`. If you enable **Zero Trust Packet Routing (ZPR)** in your OCI tenancy, you can write ZPR policies that enforce traffic rules at the OCI control plane — independently of, and in addition to, NSG rules:
-
-```
-Define policy "network-zpr-policy" as
-  allow private-nsg to connect to secure-nsg on TCP port 1521
-  where target.security-attribute.ZprLabel = 'tier:secure'
-```
-
-ZPR policies guarantee that no misconfigured VNIC attachment can bypass the NSG rules, providing a second, identity-based enforcement layer.
 
 ---
 

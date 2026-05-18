@@ -33,7 +33,7 @@ Internet
    │
    ▼  (secure)      — no internet at all; Service Gateway only; databases and secret stores
    │
-   ▼  (management)  — OCI control-plane only; Service Gateway only; monitoring and bastion
+   ▼  (management)  — OCI control-plane only; Service Gateway only; monitoring and ops tooling
 ```
 
 Each tier is a CIDR slice of the VCN, sized by the expected IP demand for that tier's workloads (50 / 25 / 12.5 / 12.5 split). Each tier has its own route table with exactly one routing policy — there is no mixing of routing policies within a tier.
@@ -69,7 +69,7 @@ VCN  10.0.0.0/16  (example — prefix configurable, structure fixed)
 │   Load balancers · internet-facing hosts
 │
 └── management  10.0.224.0/19  12.5% ← Service GW only
-    Monitoring agents · Bastion service · VPN/FastConnect endpoints
+    Monitoring agents · VPN/FastConnect endpoints · control-plane tooling
 ```
 
 The four tiers are created by binary subdivision of the VCN CIDR. You supply the VCN CIDR — everything inside it is derived.
@@ -85,7 +85,7 @@ CloudSpells splits the VCN CIDR by dividing the prefix into increasingly specifi
 | Private | 50% | prefix + 1 | OCI VCN-native CNI allocates one subnet IP per running pod. A 100-node cluster with 30 pods/node needs ~3 000 IPs — only the private tier is large enough |
 | Secure | 25% | prefix + 2 | Databases need far fewer IPs; generous allocation leaves room for replicas and future growth |
 | Public | 12.5% | prefix + 3 | Each OCI Load Balancer uses 2 IPs (primary + failover). Even large deployments rarely exceed ~50 IPs here |
-| Management | 12.5% | prefix + 3 | Monitoring agents, Bastion service, VPN endpoints; same Service-Gateway-only isolation as secure |
+| Management | 12.5% | prefix + 3 | Monitoring agents, VPN endpoints, and control-plane tooling; same Service-Gateway-only isolation as secure |
 
 For a `/16` VCN:
 
@@ -96,7 +96,7 @@ For a `/16` VCN:
 | Public | `10.0.192.0/19` | 8 190 |
 | Management | `10.0.224.0/19` | 8 190 |
 
-The VCN CIDR must be RFC 1918 (`10.x`, `172.16–31.x`, `192.168.x`) with a prefix between `/16` and `/20`. Smaller prefixes produce the same tier structure at reduced scale.
+CloudSpells accepts any canonical IPv4 CIDR that can be subdivided into the four tier subnets. For production OCI deployments, use private RFC 1918 space and size the prefix from the guide below; `/16` through `/20` covers the common production and lab cases. Smaller prefixes produce the same tier structure at reduced scale.
 
 ---
 

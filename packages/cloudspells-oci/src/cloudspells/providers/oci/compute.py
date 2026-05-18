@@ -215,13 +215,6 @@ class ComputeInstance(BaseResource, AbstractCompute):
                 100 GiB balanced-performance data volume
                 (`VolumeSpec(size_in_gbs=100)`).  Pass an explicit list to
                 override; an empty list raises `ValueError`.
-            nsg: Network Security Group to attach to the instance VNIC.
-                When `None` (default), no NSG is attached and security is
-                enforced by the subnet security list alone.  When supplied,
-                the NSG's OCID is attached to the VNIC and, if the NSG
-                carries a `Role`, `subnet` is inferred from
-                `nsg.role.subnet_tier` (overriding any explicit `subnet=`
-                value).
             user_data: Cloud-init script as a plain `str` or `bytes`.
                 CloudSpells base64-encodes it before passing to OCI.  When
                 `None`, no user data is injected.

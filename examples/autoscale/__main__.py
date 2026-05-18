@@ -61,7 +61,7 @@ scalable_pool: ScalableWorkload = ScalableWorkload(
     vcn=vcn,
     image_id=config.require("image_ocid"),
     ssh_public_key=config.get("ssh_key"),
-    user_data=user_data_script,
+    cloud_init_script=user_data_script,
     max_instances=3,
 )
 

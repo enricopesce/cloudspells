@@ -22,8 +22,6 @@ _root = os.path.join(os.path.dirname(__file__), "../..")
 sys.path.insert(0, os.path.join(_root, "packages/cloudspells-core/src"))
 sys.path.insert(0, os.path.join(_root, "packages/cloudspells-oci/src"))
 
-import pulumi
-
 from cloudspells.core import Config
 from cloudspells.providers.oci.storage import BackupBucket, DataLakeBucket
 
@@ -48,5 +46,5 @@ lake: DataLakeBucket = DataLakeBucket(
     delete_days=365,
 )
 
-pulumi.export("backup_bucket_name", backup.bucket_name)
-pulumi.export("lake_bucket_name", lake.bucket_name)
+backup.export()
+lake.export()

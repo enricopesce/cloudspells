@@ -61,6 +61,12 @@ instance = ComputeInstance(
 
 `Bastion` attaches to the **private subnet** automatically. No subnet argument is needed.
 
+### Why Bastion attaches to the private subnet
+
+CloudSpells uses OCI managed Bastion as a private-subnet access endpoint, not as a self-managed jump host in the management tier. The service endpoint is attached to the private subnet so managed SSH sessions can reach private workload instances directly. Client access is constrained by `allowed_client_cidrs` on the Bastion resource, and session creation is governed by OCI IAM and audit logs.
+
+The management tier remains reserved for monitoring, VPN/FastConnect, and operations tooling that only need OCI service-plane access through the Service Gateway.
+
 ### 2. Export the stack outputs
 
 ```python

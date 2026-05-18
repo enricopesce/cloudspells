@@ -3,7 +3,7 @@
 **Stop configuring infrastructure. Start deploying architectures.**
 
 [![CI](https://github.com/enricopesce/cloudspells/actions/workflows/ci.yml/badge.svg)](https://github.com/enricopesce/cloudspells/actions/workflows/ci.yml)
-[![Python 3.8+ / CLI 3.12+](https://img.shields.io/badge/python-3.8%2B%20%7C%20CLI%203.12%2B-blue)](https://www.python.org/downloads/)
+[![Python 3.10+ / CLI 3.12+](https://img.shields.io/badge/python-3.10%2B%20%7C%20CLI%203.12%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/github/license/enricopesce/cloudspells)](LICENSE)
 [![Pulumi 3.x](https://img.shields.io/badge/pulumi-3.x-blueviolet)](https://www.pulumi.com/)
 [![OCI](https://img.shields.io/badge/cloud-OCI-red)](https://www.oracle.com/cloud/)
@@ -229,7 +229,7 @@ packages/
 │       └── core/
 │           ├── abstractions/    ← cloud-neutral interfaces (AbstractNetwork, AbstractScalableWorkload, …)
 │           ├── base.py          ← BaseResource: naming, tagging, SSH key management
-│           ├── config.py        ← Config: zero-Pulumi-dependency config wrapper
+│           ├── config.py        ← Config: small wrapper around Pulumi stack config
 │           ├── naming.py        ← ResourceNamer: {stack}-{resource}-{suffix} convention
 │           ├── ports.py         ← TCP/UDP port constants (HTTP, HTTPS, SSH, …)
 │           └── tagging.py       ← ResourceTagger: consistent tag sets across all resources
@@ -260,7 +260,7 @@ packages/
             └── project/         ← multi-spell project model and runner
 ```
 
-**The key design insight:** adding a new cloud provider means implementing the abstractions under `packages/cloudspells-<cloud>/src/cloudspells/providers/<cloud>/` — zero changes to the user-facing API. An application written against `AbstractNetwork` works identically across OCI, AWS, and GCP once the provider implementations exist.
+**The key design insight:** adding a new cloud provider means implementing the abstractions under `packages/cloudspells-<cloud>/src/cloudspells/providers/<cloud>/`. The goal is the same mental model and comparable calling conventions across providers, while each provider module still exposes the cloud-specific spell classes it implements.
 
 ### VCN Network Topology
 
@@ -271,7 +271,7 @@ VCN (e.g. 10.0.0.0/16)
 ├── Private subnet    /17  (50%) — NAT GW + Service GW routes   [app workloads]
 ├── Secure subnet     /18  (25%) — Service GW only, no internet  [databases]
 ├── Public subnet     /19 (12.5%) — Internet GW route            [edge/LBs]
-└── Management subnet /19 (12.5%) — Service GW only              [bastion/ops]
+└── Management subnet /19 (12.5%) — Service GW only              [monitoring/ops]
 ```
 
 Subnet tier, gateway routing, and security posture are not configurable — they are the architecture.
@@ -280,11 +280,11 @@ Subnet tier, gateway routing, and security posture are not configurable — they
 
 ## Design Principles
 
-- **Minimal user input** — spells accept only a name, compartment, and network reference. Every value that can be derived, computed, or defaulted securely is. Exposing unnecessary parameters is a design defect, not a feature.
+- **Minimal user input** — spells keep caller input small: a name, a compartment, the natural network anchor, and workload-specific values that cannot be safely inferred, such as image IDs or Kubernetes versions. Every value that can be derived, computed, or defaulted securely is. Exposing unnecessary parameters is a design defect, not a feature.
 
 - **Architecture as the product** — network topology, routing policy, gateway placement, and security posture are fixed by design. The spell encodes the correct architecture; the user just names things and picks a location.
 
-- **Multi-cloud by design** — cloud-neutral abstractions in `cloudspells.core.abstractions` define what a network or workload is. OCI, AWS, and GCP are implementations, not forks. The user-facing API is the same regardless of the target cloud.
+- **Multi-cloud by design** — cloud-neutral abstractions in `cloudspells.core.abstractions` define what a network or workload is. OCI is the current implementation; AWS and GCP provider packages are roadmap work intended to follow the same reference-architecture model.
 
 ---
 
@@ -292,7 +292,7 @@ Subnet tier, gateway routing, and security posture are not configurable — they
 
 ### Prerequisites
 
-- Python 3.8 or later for `cloudspells-core` and `cloudspells-oci`
+- Python 3.10 or later for `cloudspells-core` and `cloudspells-oci`
 - Python 3.12 or later for the optional source-installed `cloudspells-cli` package
 - [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/) installed and on your `PATH`
 - OCI credentials configured at `~/.oci/config` (see [OCI SDK and CLI Configuration](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/sdkconfig.htm))

@@ -1,5 +1,7 @@
 # VcnRef Stack Output Normalization Implementation Plan
 
+> **Historical plan:** This document records an implementation plan and may describe pre-implementation state. It is not a current product manual; use the source code and API reference for current behavior.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make `VcnRef.from_stack_reference()` fail clearly for missing or null required stack outputs, and remove the remaining optional `StackReference.get_output()` ambiguity for `drg_id`.

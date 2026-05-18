@@ -64,14 +64,22 @@ The example passes a plain cloud-init script to install nginx and create a healt
 ```python
 user_data_script = """#!/bin/bash
 set -e
-yum install -y --disablerepo='*' --enablerepo='ol8_appstream,ol8_baseos_latest' nginx
-systemctl enable nginx && systemctl start nginx
-firewall-cmd --permanent --add-service=http && firewall-cmd --reload
+
+# Install and enable nginx
+dnf install -y nginx
+systemctl enable nginx
+systemctl start nginx
+
+# Open port 80 through firewalld (required on Oracle Linux)
+firewall-cmd --permanent --add-service=http
+firewall-cmd --reload
+
+# Create health check endpoint for load balancer
 echo "OK" > /usr/share/nginx/html/health
 """
 ```
 
-CloudSpells base64-encodes `user_data` internally before passing it to OCI — pass the plain string or bytes directly.
+CloudSpells base64-encodes `user_data_script` internally before passing it to OCI — pass the plain string or bytes directly.
 
 The load balancer health check polls `/health` on port 80. Instances that fail health checks are removed from the rotation.
 
@@ -92,7 +100,7 @@ scalable_pool = ScalableWorkload(
     vcn=vcn,
     image_id=config.require("image_ocid"),
     ssh_public_key=config.get("ssh_key"),
-    user_data=user_data_script,
+    cloud_init_script=user_data_script,
     max_instances=3,
 )
 ```
@@ -102,7 +110,7 @@ scalable_pool = ScalableWorkload(
 `ScalableWorkload` encapsulates the entire tier:
 
 - Load balancer in the **public subnet**, listening on port 80
-- Instance pool in the **private subnet**, bootstrapped with your `user_data`
+- Instance pool in the **private subnet**, bootstrapped with your `cloud_init_script`
 - CPU autoscaling: scale out when CPU > 80%, scale in when CPU < 20%
 - 300-second cooldown between scaling events
 - Defaults to `VM.Standard.E4.Flex` with 1 OCPU / 16 GB RAM
@@ -183,7 +191,7 @@ scalable_pool = ScalableWorkload(
     compartment_id=compartment_id,
     vcn=vcn,
     image_id=config.require("image_ocid"),
-    user_data=user_data_script,
+    cloud_init_script=user_data_script,
     load_balancer_config=OciLoadBalancerConfig(
         backend_port=8080,
         health_check_path="/api/health",

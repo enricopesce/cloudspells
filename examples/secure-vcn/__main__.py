@@ -81,20 +81,6 @@ db_password = base64.b64decode(bundle.secret_bundle_content.content).decode()
 `manage all-resources` within the compartment.  Ops team members are added
 post-deploy — no credentials are deployed or rotated by Pulumi.
 
-### Zero Trust tagging
-
-Every NSG is tagged with `ZprLabel=tier:<name>`.  Enable **Zero Trust
-Packet Routing (ZPR)** in your tenancy and create a ZPR policy referencing
-these labels to enforce identity-based traffic filtering at the OCI control
-plane level — a guarantee that no misconfigured VNIC attachment can bypass
-the NSG rules:
-
-```
-Define policy "network-zpr-policy" as
-  allow private-nsg to connect to secure-nsg on TCP port 1521
-  where target.security-attribute.ZprLabel = 'tier:secure'
-```
-
 ## Configuration
 
 Required Pulumi config values (set with `pulumi config set`):

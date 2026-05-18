@@ -66,7 +66,7 @@ A two-tier relationship (LB → app server) requires four NSG rules and potentia
 
 ## Port constants
 
-All 29 port constants exported from `cloudspells.providers.oci.nsg`:
+All 24 port constants exported from `cloudspells.providers.oci.nsg`:
 
 ```python
 # Web / access

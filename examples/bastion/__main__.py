@@ -23,6 +23,8 @@ upstream NSG is needed.
 Required:
 
 - `compartment_ocid` — OCID of the target compartment.
+- `availability_domain` — OCI availability domain for the private VM.
+- `image_ocid` — Boot image OCID for the private VM.
 
 Optional:
 
@@ -106,5 +108,5 @@ instance.export()
 #   oci bastion session create-managed-ssh \
 #       --bastion-id $(pulumi stack output mgmt_bastion_id) \
 #       --target-resource-id $(pulumi stack output web_server_id) \
-#       --target-os-username ubuntu \
+#       --target-os-username opc \
 #       --ssh-public-key-file ~/.ssh/id_rsa.pub

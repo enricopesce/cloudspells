@@ -128,7 +128,7 @@ packages/cloudspells-aws/src/cloudspells/providers/aws/        — future
 packages/cloudspells-gcp/src/cloudspells/providers/gcp/        — future
 ```
 
-Adding a new provider means implementing the abstractions under a new `packages/cloudspells-<cloud>/` directory. No changes to the core layer or to user-facing code are needed. A user who writes `from cloudspells.providers.oci.network import Vcn` today will import `from cloudspells.providers.aws.network import Vpc` tomorrow — same calling convention, same mental model.
+Adding a new provider means implementing the abstractions under a new `packages/cloudspells-<cloud>/` directory. The intended contract is the same reference-architecture mental model and comparable calling conventions; provider modules still expose the concrete cloud-specific spell classes they implement.
 
 ---
 
@@ -138,7 +138,7 @@ Think of a CloudSpells spell as a **constructor for a complete reference archite
 
 When you call `Vcn("lab", compartment_id=cid)` you are not creating one resource — you are accepting a pre-built, pre-audited network blueprint and stamping it with a name and a location. The blueprint encodes every decision: four subnet tiers at fixed CIDR ratios, a NAT Gateway for the private tier, no default route for the secure tier, a Service Gateway for OCI-managed traffic. None of those decisions are yours to make — and that is the point.
 
-The same logic applies to every spell. `OkeCluster` is not a thin wrapper over `oci.containerengine.Cluster` — it is an opinionated OKE deployment pattern that includes four NSGs, 34 NSG rules, 19 security list rules, cross-AD node placement, and VCN-native CNI. You supply a name, a compartment, and a VCN handle. The spell supplies everything else.
+The same logic applies to every spell. `OkeCluster` is not a thin wrapper over `oci.containerengine.Cluster` — it is an opinionated OKE deployment pattern that includes four NSGs, dynamic kubectl CIDR rules, cross-AD node placement, and VCN-native CNI. You supply a name, a compartment, a VCN handle, a Kubernetes version, and node pool descriptors. The spell supplies the network wiring and OCI boilerplate.
 
 The mental model transfer: **a spell is a building block, not a resource**. The block has one acceptable form. Your job is to choose the right block for the job, not to configure the block's internals.
 
@@ -150,7 +150,7 @@ The fixed-architecture model changes how you write infrastructure code day-to-da
 
 **Do not pass provider options through.** If a parameter is not in a spell's `__init__` signature, it is not supported. Attempting to forward a raw OCI provider argument is a sign you are reaching outside the spell's intended use. Use raw `pulumi_oci` resources for that resource instead.
 
-**Declare spells before `finalize_network()` runs.** Any spell that registers security rules — `Nsg`, `Bastion`, `VcnFlowLogs` — must be constructed before the first call to `finalize_network()`. Spells that trigger finalisation (`ComputeInstance`, `ScalableWorkload`, `OkeCluster`) must come last. The order rule is: accumulate first, materialise once.
+**Declare rule-owning spells before `finalize_network()` runs.** Any spell that registers security rules — such as `Nsg` relationships or `Bastion` — must be constructed before the first call to `finalize_network()`. Spells that trigger finalisation (`ComputeInstance`, `ScalableWorkload`, `OkeCluster`) must come after the rules they need. `VcnFlowLogs` is different: it finalizes the VCN if needed and then attaches logs to the created subnets, so it can be declared after subnet-dependent resources.
 
 **`finalize_network()` is the boundary.** Before it runs: rules accumulate, no OCI network resources exist yet. After it runs: subnets and security lists are immutable for the remainder of the Pulumi run. Idempotency means you can call it from multiple spells — only the first call does work.
 
