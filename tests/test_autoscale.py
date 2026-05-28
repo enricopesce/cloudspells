@@ -10,6 +10,7 @@ from tests.mocks import set_mocks
 set_mocks()
 
 # Import AFTER mocks are set
+from cloudspells.providers.oci._network_profiles import NETWORK_PROFILE_BASELINE, scalable_workload_profile_id
 from cloudspells.providers.oci.autoscale import (
     MetricScalingPolicy,
     OciLoadBalancerConfig,
@@ -19,7 +20,21 @@ from cloudspells.providers.oci.autoscale import (
     ScheduleEntry,
     ScheduleScalingPolicy,
 )
-from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.network import Vcn, VcnRef
+
+
+def _make_vcn_ref(profiles: list[str] | None = None) -> VcnRef:
+    """Create a VcnRef populated with autoscale-compatible test values."""
+    return VcnRef(
+        vcn_id="ocid1.vcn.test",
+        public_subnet_id="ocid1.subnet.public.test",
+        private_subnet_id="ocid1.subnet.private.test",
+        public_subnet_cidr="10.0.192.0/19",
+        private_subnet_cidr="10.0.0.0/17",
+        cidr_block="10.0.0.0/16",
+        cloudspells_network_schema="cloudspells.oci.vcn/v1",
+        network_profiles=profiles or [NETWORK_PROFILE_BASELINE],
+    )
 
 
 class TestAutoscaleWorkload(unittest.TestCase):
@@ -120,6 +135,44 @@ class TestAutoscaleWorkload(unittest.TestCase):
         self.assertIsNotNone(vcn.public_subnet, "VCN should be finalized by ScalableWorkload")
         self.assertIsNotNone(vcn.private_subnet, "VCN should be finalized by ScalableWorkload")
 
+    def test_live_vcn_marks_scalable_workload_profile(self):
+        """ScalableWorkload marks the source VCN with its security-list profile."""
+        vcn = self._make_vcn()
+        ScalableWorkload(
+            name="profile-workload",
+            compartment_id="ocid1.compartment.test",
+            vcn=vcn,
+            image_id="ocid1.image.oc1.phx.test",
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+            load_balancer_config=OciLoadBalancerConfig(backend_port=8080),
+        )
+
+        self.assertTrue(vcn.has_network_profile(scalable_workload_profile_id(8080, True)))
+
+    def test_vcnref_requires_scalable_workload_profile(self):
+        """ScalableWorkload rejects VcnRef stacks missing its profile."""
+        with self.assertRaisesRegex(RuntimeError, "required network profile"):
+            ScalableWorkload(
+                name="missing-profile-workload",
+                compartment_id="ocid1.compartment.test",
+                vcn=_make_vcn_ref(),
+                image_id="ocid1.image.oc1.phx.test",
+                ssh_public_key="ssh-rsa AAAAB3... test-key",
+            )
+
+    def test_vcnref_accepts_scalable_workload_profile(self):
+        """ScalableWorkload accepts VcnRef stacks exporting the matching profile."""
+        workload = ScalableWorkload(
+            name="present-profile-workload",
+            compartment_id="ocid1.compartment.test",
+            vcn=_make_vcn_ref([NETWORK_PROFILE_BASELINE, scalable_workload_profile_id(80, True)]),
+            image_id="ocid1.image.oc1.phx.test",
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+        )
+
+        self.assertIsNotNone(workload.id)
+
+    @pulumi.runtime.test
     def test_auto_generates_ssh_key(self):
         """Test that ScalableWorkload auto-generates SSH keys when not provided."""
         workload = ScalableWorkload(
@@ -131,9 +184,14 @@ class TestAutoscaleWorkload(unittest.TestCase):
         )
 
         self.assertTrue(workload.auto_generated_keys, "Keys should be auto-generated")
-        self.assertIsNotNone(workload.ssh_public_key, "Public key should be generated")
-        self.assertIsNotNone(workload.ssh_private_key, "Private key should be generated")
-        self.assertTrue(workload.ssh_public_key.startswith("ssh-rsa"), "Public key should be RSA format")
+
+        def check(args):
+            public_key, private_key = args
+            self.assertIsNotNone(public_key, "Public key should be generated")
+            self.assertIsNotNone(private_key, "Private key should be generated")
+            self.assertTrue(public_key.startswith("ssh-rsa"), "Public key should be RSA format")
+
+        return pulumi.Output.all(workload.ssh_public_key, workload.ssh_private_key).apply(check)
 
     def test_uses_provided_ssh_key(self):
         """Test that ScalableWorkload uses provided SSH key."""
@@ -181,6 +239,51 @@ class TestAutoscaleWorkload(unittest.TestCase):
         self.assertEqual(workload.min_instances, 2)
         self.assertEqual(workload.max_instances, 10)
         self.assertEqual(workload.initial_instances, 3)
+
+    def test_rejects_min_instances_below_one(self):
+        """ScalableWorkload rejects impossible minimum capacity."""
+        with self.assertRaises(ValueError) as ctx:
+            ScalableWorkload(
+                name="bad-min-workload",
+                compartment_id="ocid1.compartment.test",
+                vcn=self._make_vcn(),
+                image_id="ocid1.image.oc1.phx.test",
+                ssh_public_key="ssh-rsa AAAAB3... test-key",
+                min_instances=0,
+            )
+
+        self.assertIn("min_instances", str(ctx.exception))
+
+    def test_rejects_max_instances_below_min_instances(self):
+        """ScalableWorkload rejects inverted capacity bounds."""
+        with self.assertRaises(ValueError) as ctx:
+            ScalableWorkload(
+                name="bad-max-workload",
+                compartment_id="ocid1.compartment.test",
+                vcn=self._make_vcn(),
+                image_id="ocid1.image.oc1.phx.test",
+                ssh_public_key="ssh-rsa AAAAB3... test-key",
+                min_instances=3,
+                max_instances=2,
+            )
+
+        self.assertIn("max_instances", str(ctx.exception))
+
+    def test_rejects_initial_instances_outside_bounds(self):
+        """ScalableWorkload rejects initial capacity outside min/max bounds."""
+        with self.assertRaises(ValueError) as ctx:
+            ScalableWorkload(
+                name="bad-initial-workload",
+                compartment_id="ocid1.compartment.test",
+                vcn=self._make_vcn(),
+                image_id="ocid1.image.oc1.phx.test",
+                ssh_public_key="ssh-rsa AAAAB3... test-key",
+                min_instances=2,
+                max_instances=4,
+                initial_instances=5,
+            )
+
+        self.assertIn("initial_instances", str(ctx.exception))
 
     def test_default_shape(self):
         """Test that ScalableWorkload uses default shape."""
@@ -398,6 +501,21 @@ class TestDataclasses(unittest.TestCase):
         config = OciLoadBalancerConfig(ssl_certificate_name="my-cert")
 
         self.assertEqual(config.ssl_certificate_name, "my-cert")
+
+    def test_load_balancer_config_rejects_invalid_backend_port(self):
+        """OciLoadBalancerConfig rejects impossible backend ports early."""
+        with self.assertRaises(ValueError):
+            OciLoadBalancerConfig(backend_port=0)
+
+    def test_load_balancer_config_rejects_invalid_bandwidth(self):
+        """OciLoadBalancerConfig rejects inverted bandwidth bounds early."""
+        with self.assertRaises(ValueError):
+            OciLoadBalancerConfig(min_bandwidth_mbps=100, max_bandwidth_mbps=10)
+
+    def test_load_balancer_config_rejects_relative_health_check_path(self):
+        """OciLoadBalancerConfig rejects non-absolute health-check paths."""
+        with self.assertRaises(ValueError):
+            OciLoadBalancerConfig(health_check_path="health")
 
     def test_schedule_entry(self):
         """Test ScheduleEntry creation."""

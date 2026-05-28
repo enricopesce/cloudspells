@@ -109,6 +109,11 @@ pulumi up
 All outputs are consumed automatically by `VcnRef.from_stack_reference()`
 when another stack imports this VCN.
 
+This minimal example exports the baseline network profile. Service stacks that
+use profile-specific consumers, such as role-bearing `Nsg`, `Bastion`, OKE,
+load balancers, or `ScalableWorkload`, need the source VCN stack to register the
+matching profile before `vcn.export()`.
+
 ## Teardown
 
 ```bash

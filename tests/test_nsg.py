@@ -10,7 +10,8 @@ from tests.mocks import set_mocks
 set_mocks()
 
 # Import AFTER mocks are set
-from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci._network_profiles import NETWORK_PROFILE_BASELINE, nsg_role_profile_id
+from cloudspells.providers.oci.network import Vcn, VcnRef
 from cloudspells.providers.oci.nsg import (
     ALL,
     HTTP,
@@ -24,6 +25,20 @@ from cloudspells.providers.oci.nsg import (
 from cloudspells.providers.oci.roles import APP_SERVER, INTERNET_EDGE
 
 COMP_ID = "ocid1.compartment.oc1..test"
+
+
+def _make_vcn_ref(profiles: list[str] | None = None) -> VcnRef:
+    """Create a VcnRef populated with NSG-compatible test values."""
+    return VcnRef(
+        vcn_id="ocid1.vcn.test",
+        public_subnet_id="ocid1.subnet.public.test",
+        private_subnet_id="ocid1.subnet.private.test",
+        public_subnet_cidr="10.0.192.0/19",
+        private_subnet_cidr="10.0.0.0/17",
+        cidr_block="10.0.0.0/16",
+        cloudspells_network_schema="cloudspells.oci.vcn/v1",
+        network_profiles=profiles or [NETWORK_PROFILE_BASELINE],
+    )
 
 
 class TestNsgCreation(unittest.TestCase):
@@ -72,6 +87,30 @@ class TestNsgCreation(unittest.TestCase):
         nsg = Nsg("app-vcn-ref", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
 
         self.assertIs(nsg.vcn, vcn)
+
+    def test_live_vcn_marks_role_profile(self):
+        """Role-bearing NSGs mark the source VCN with their ambient profile."""
+        vcn = self._make_vcn()
+        Nsg("app-profile", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
+
+        self.assertTrue(vcn.has_network_profile(nsg_role_profile_id(APP_SERVER.name)))
+
+    def test_vcnref_requires_role_profile(self):
+        """Role-bearing NSGs reject VcnRef stacks missing their ambient profile."""
+        with self.assertRaisesRegex(RuntimeError, "required network profile"):
+            Nsg("app-ref", role=APP_SERVER, vcn=_make_vcn_ref(), compartment_id=COMP_ID)
+
+    def test_vcnref_accepts_role_profile(self):
+        """Role-bearing NSGs accept VcnRef stacks exporting their ambient profile."""
+        nsg = Nsg(
+            "edge-ref",
+            role=INTERNET_EDGE,
+            ports=[HTTP, HTTPS],
+            vcn=_make_vcn_ref([NETWORK_PROFILE_BASELINE, nsg_role_profile_id(INTERNET_EDGE.name, [HTTP, HTTPS])]),
+            compartment_id=COMP_ID,
+        )
+
+        self.assertIsNotNone(nsg.id)
 
 
 class TestNsgRuleHelpers(unittest.TestCase):

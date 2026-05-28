@@ -82,6 +82,7 @@ Private subnet (Worker nodes + Pods):
 
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -166,9 +167,9 @@ class NodePoolConfig:
         initial_node_labels: Kubernetes labels applied to every node at
             join time (e.g. `{"role": "app"}`).  Used by node selectors
             and affinity rules.  Defaults to `None`.
-        node_metadata: OCI instance metadata key/value pairs propagated to
-            every worker node.  Pass `{"user_data": "<base64>"}` to inject
-            a cloud-init script.  Defaults to `None`.
+        user_data: Cloud-init script as a plain `str` or `bytes`.
+            CloudSpells base64-encodes it before passing to OCI node metadata.
+            When `None`, no user data is injected.
         eviction_grace_duration: ISO 8601 duration OCI waits for workloads
             to drain before terminating a node (e.g. `"PT1H"`).  When
             `None` OCI uses its built-in default.
@@ -217,7 +218,7 @@ class NodePoolConfig:
     ssh_public_key: pulumi.Input[str] | None = None
     boot_volume_size_in_gbs: int | None = None
     initial_node_labels: dict[str, str] | None = None
-    node_metadata: dict[str, str] | None = None
+    user_data: str | bytes | None = None
     eviction_grace_duration: str | None = None
     force_delete_after_grace: bool = False
     cycling_enabled: bool = False
@@ -416,7 +417,7 @@ class _OkeClusterMixin:
                 ]
                 if cfg.initial_node_labels
                 else None,
-                node_metadata=cfg.node_metadata,
+                node_metadata=self._node_metadata_for_pool(cfg),
                 node_eviction_node_pool_settings=oci.containerengine.NodePoolNodeEvictionNodePoolSettingsArgs(
                     eviction_grace_duration=cfg.eviction_grace_duration,
                     is_force_delete_after_grace_duration=cfg.force_delete_after_grace,
@@ -458,6 +459,21 @@ class _OkeClusterMixin:
             outputs["network_profile_check"] = network_profile_check
 
         self.register_outputs(outputs)  # type: ignore[attr-defined]
+
+    def _node_metadata_for_pool(self, cfg: NodePoolConfig) -> dict[str, str] | None:
+        """Return OCI node metadata for a node pool.
+
+        Args:
+            cfg: Node pool configuration supplied by the caller.
+
+        Returns:
+            Metadata dictionary containing base64-encoded `user_data`, or
+            `None` when no user data was supplied.
+        """
+        if cfg.user_data is None:
+            return None
+        raw = cfg.user_data.encode() if isinstance(cfg.user_data, str) else cfg.user_data
+        return {"user_data": base64.b64encode(raw).decode()}
 
     # ------------------------------------------------------------------
     # Private: NSG creation and rules (VNIC-level, Layer 2)

@@ -5,8 +5,8 @@ two cloud-neutral areas:
 
 - **Subnet CIDR calculation** — splitting a supernet CIDR into n equal
   sub-networks.
-- **SSH key generation** — creating RSA 4096-bit key pairs on the fly
-  using the system `ssh-keygen` binary.
+- **SSH key generation** — creating RSA 4096-bit key pairs for the stateful
+  Pulumi dynamic resource used by compute spells.
 
 OCI-specific helpers (image resolution and availability-domain mapping)
 live in `providers.oci.helper`.
@@ -25,8 +25,9 @@ class Helper:
 
     All methods are free of side-effects on *instance* state — they do not
     mutate `self`.  Note that `generate_ssh_key_pair` does invoke an external
-    process and write temporary files to disk, so it is not side-effect-free
-    in the broader sense.  Instantiate with `Helper()` wherever needed.
+    process and write temporary files to disk.  CloudSpells calls it from a
+    Pulumi dynamic resource create operation so generated keys are stored in
+    state rather than recreated on each program evaluation.
     """
 
     def generate_ssh_key_pair(self, stack_name: str, resource_name: str) -> tuple[str, str]:

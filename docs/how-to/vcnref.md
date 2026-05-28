@@ -6,7 +6,7 @@ By default, each CloudSpells stack owns its own VCN. For larger deployments you 
 
 `VcnRef` is not a generic OCI VCN import mechanism. It only references VCNs created by CloudSpells and exported with the CloudSpells OCI VCN schema. The source stack must publish the standard `Vcn.export()` outputs, including `cloudspells_network_schema` and `cloudspells_network_profiles`.
 
-`VcnRef` is a read-only handle to a VCN owned by another stack. Every spell that accepts `Vcn` also accepts `VcnRef`, so service stacks need no changes when you split them.
+`VcnRef` is a read-only handle to a VCN owned by another stack. Spells with a direct VCN input accept either `Vcn` or `VcnRef`; spells attached through role-bearing dependencies, such as `ComputeInstance`, inherit the referenced VCN from that dependency.
 
 ---
 
@@ -24,20 +24,32 @@ Do **not** use `VcnRef` for small single-stack deployments. The complexity of a 
 
 ## Step 1 — Create the VCN stack
 
-Deploy the VCN standalone so it exports all its subnet OCIDs and CIDRs:
+Deploy the platform VCN stack so it exports all subnet OCIDs, subnet CIDRs,
+security-list IDs, schema metadata, and any profiles the service stacks need:
 
 ```python
 # platform/vcn/__main__.py
 from cloudspells.core import Config
 from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.nsg import Nsg
+from cloudspells.providers.oci.roles import APP_SERVER
 
 config = Config()
+compartment_id = config.require("compartment_ocid")
 vcn = Vcn(
     name="lab",
-    compartment_id=config.require("compartment_ocid"),
+    compartment_id=compartment_id,
 )
-vcn.export()   # exports vcn_id, *_subnet_id, *_subnet_cidr, *_security_list_id
+
+# Register the network profile consumed by the service stack below.
+Nsg("app-server-profile", role=APP_SERVER, vcn=vcn, compartment_id=compartment_id)
+
+vcn.export()   # exports VCN outputs, schema metadata, and network profiles
 ```
+
+The source-side NSG installs and exports the `APP_SERVER` role profile. The
+service stack still creates its own application NSG; the source stack only owns
+the shared VCN security-list contract.
 
 ```bash
 cd platform/vcn
@@ -100,7 +112,7 @@ pulumi up
 | Creates network resources | Yes | No |
 | Accepts arbitrary OCI VCNs | No | No |
 | Validates CloudSpells schema | Owns schema | Requires exported schema |
-| Network profiles | Installs and exports profiles | Requires pre-exported profiles |
+| Network profiles | Installs and exports the baseline profile plus profiles registered by constructed spells | Requires pre-exported matching profiles |
 | `add_security_rules()` | Accumulates rules | Raises `RuntimeError` for non-empty rules |
 | `finalize_network()` | Materialises subnets | No-op (deliberate) |
 | Subnet CIDR accessors | Returns computed `Output[str]` | Returns cross-stack `Output[str]` |
@@ -110,11 +122,22 @@ pulumi up
 
 **This means security rules required by a spell must already exist in the source CloudSpells VCN stack before you deploy that spell against a `VcnRef`.** The workflow is:
 
-1. In the source VCN stack, include the spell you intend to deploy here (even if it is a placeholder), so its rules are written to the security lists.
+1. In the source VCN stack, register the matching network profile before `vcn.export()`, so its rules are written to the security lists.
 2. Run `pulumi up` on the source stack.
 3. Deploy the spell against the `VcnRef` in this stack.
 
 In practice this is straightforward: the platform team owns the VCN stack and provisions the baseline security rules; application teams deploy spells against the `VcnRef` knowing the rules are already in place.
+
+Common profile requirements:
+
+| Consumer in service stack | Source VCN stack requirement |
+|---------------------------|------------------------------|
+| Role-bearing `Nsg(role=APP_SERVER)` | Create a matching source-stack `Nsg(..., role=APP_SERVER, ports=[...])` before `vcn.export()`. The role and internet-facing ports must match the consumer. |
+| `Bastion` | Call `vcn.enable_bastion_profile()` before `vcn.export()`. |
+| `OkeCluster` | Call `vcn.enable_oke_profile(kubectl_allowed_cidrs=[...])` before `vcn.export()`. The CIDR list must match the consumer. |
+| `LoadBalancer` | The source stack must export the load-balancer profile for the same `backend_port`; the live `LoadBalancer` spell registers it when constructed against a `Vcn`. |
+| `InternalLoadBalancer` | The source stack must export the internal-load-balancer profile for the same `backend_port`; the live `InternalLoadBalancer` spell registers it when constructed against a `Vcn`. |
+| `ScalableWorkload` | The source stack must export the scalable-workload profile for the same backend port and public/internal placement; the live `ScalableWorkload` spell registers it when constructed against a `Vcn`. |
 
 ---
 

@@ -276,6 +276,13 @@ The source stack must export the following keys (all emitted automatically by `V
 | `cloudspells_network_schema` | `str` | CloudSpells OCI VCN schema marker |
 | `cloudspells_network_profiles` | `list[str]` | Network profiles installed in the source VCN stack |
 
+A minimal `Vcn` exports only the baseline network profile. Spells that require
+subnet security-list rules against a `VcnRef` require a matching pre-exported
+profile. For example, a service stack that creates `Nsg(role=APP_SERVER)` needs
+the source VCN stack to create a matching role-bearing `Nsg` before
+`vcn.export()`. OKE and Bastion use explicit source-stack helpers:
+`vcn.enable_oke_profile(...)` and `vcn.enable_bastion_profile()`.
+
 ### Constructing a `VcnRef` manually
 
 Prefer `VcnRef.from_stack_reference()` so the schema and network profile contract is read directly from the source stack. Manual construction is only for advanced cases where those same CloudSpells `Vcn.export()` values are already available through another typed configuration path. It is not a generic OCI VCN import path.
@@ -331,10 +338,6 @@ The following `Vcn.__init__` parameters are all optional. The required parameter
 | `flow_logs_retention` | `int` | `90` | Flow-log retention in days: 30 / 60 / 90 / 120 / 150 / 180 |
 | `drg` | `bool` | `False` | Attach a Dynamic Routing Gateway (FastConnect / IPSec VPN) |
 | `on_premise_cidrs` | `list[str]` | `None` | On-premises CIDRs routed via the DRG (requires `drg=True`) |
-| `nat_public_ip_id` | `str` | `None` | Reserved public IP OCID to assign to the NAT Gateway |
-| `nat_block_traffic` | `bool` | `False` | Block all NAT Gateway egress without deleting the gateway |
-| `dhcp_options_id` | `str` | `None` | Custom DHCP options OCID — overrides the VCN default |
-| `defined_tags` | `pulumi.Input[dict[str, pulumi.Input[str]]]` | `None` | OCI defined tags applied to the VCN and all child resources |
 
 ---
 

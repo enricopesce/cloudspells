@@ -63,7 +63,7 @@ rules to the same live `Vcn` before the load balancer. After finalization,
 - 1 BackendSet (ROUND_ROBIN, HTTP health check on `backend_port`)
 - 1 RuleSet (HTTP-to-HTTPS 301 redirect)
 - 2 Listeners (HTTPS:443 with SSL termination, HTTP:80 with redirect)
-- Security list rules: TCP 80 + 443 ingress on public subnet, backend port egress to private subnet
+- Security list rules: TCP 80 + 443 ingress on public subnet, backend port egress to private subnet, backend port ingress on private subnet from the public subnet
 
 ### Adding backends
 
@@ -108,7 +108,7 @@ rules, then finalizes the VCN. Declare rule-registering dependencies first.
 - 1 flexible-shape Load Balancer (private subnet, `is_private=True`)
 - 1 BackendSet (ROUND_ROBIN, HTTP health check)
 - 1 Listener (HTTP:80)
-- Security list rules: TCP 80 ingress from VCN CIDR, backend port egress within private subnet
+- Security list rules: TCP 80 ingress from VCN CIDR, backend port ingress from the private subnet, backend port egress within private subnet
 
 ---
 

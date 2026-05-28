@@ -1,13 +1,15 @@
 """Deploy services into a VCN managed by another Pulumi stack.
 
-Uses `VcnRef` to import a VCN from a separately-managed stack
-(e.g. `examples/vcn`) and then deploys a compute instance into it.
+Uses `VcnRef` to import a VCN from a separately-managed stack and then
+deploys a compute instance into it.
 
 No network resources are created or modified here.
 
 > **Note:** `VcnRef` is read-only. Role-bearing NSGs created here still add
 > their own NSG rules, but any matching subnet security list rules required by
-> the role must already exist in the source VCN stack.
+> the role must already exist in the source VCN stack. This example creates an
+> `APP_SERVER` NSG, so the source stack must export the matching `APP_SERVER`
+> network profile.
 
 ## Prerequisites
 
@@ -31,7 +33,16 @@ The referenced VCN stack must already have run `pulumi up` and export:
 - `cloudspells_network_schema`
 - `cloudspells_network_profiles`
 
-All values are exported by `examples/vcn` via `vcn.export()`.
+For this example, the source stack must also register the `APP_SERVER` profile
+before `vcn.export()`:
+
+```python
+from cloudspells.providers.oci.nsg import Nsg
+from cloudspells.providers.oci.roles import APP_SERVER
+
+Nsg("app-server-profile", role=APP_SERVER, vcn=vcn, compartment_id=compartment_id)
+vcn.export()
+```
 
 ## Quick start
 

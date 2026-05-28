@@ -90,6 +90,7 @@ oke_principal: OkeNodePrincipal = OkeNodePrincipal(
     name="k8s",
     compartment_id=compartment_id,
     tenancy_id=tenancy_id,
+    dedicated_node_compartment=True,
 )
 
 # ── 3. Compartment admin group ────────────────────────────────────────────────

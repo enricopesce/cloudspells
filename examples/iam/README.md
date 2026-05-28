@@ -3,7 +3,9 @@
 Creates common OCI IAM bindings for CloudSpells workloads:
 
 - `ComputeInstancePrincipal` for one exact app instance.
-- `OkeNodePrincipal` for OKE node instances in the compartment.
+- `OkeNodePrincipal` for OKE node compartments. This matches all compute
+  instances in the configured compartment, so the example uses the required
+  dedicated-node-compartment acknowledgement in code.
 - `CompartmentAdminGroup` for human operators scoped to one compartment.
 
 ## Configuration
@@ -33,5 +35,5 @@ pulumi up
 | Output | Description |
 |--------|-------------|
 | `app_dynamic_group_id` | Dynamic group for the configured app instance |
-| `k8s_dynamic_group_id` | Dynamic group for OKE node instances in the compartment |
+| `k8s_dynamic_group_id` | Dynamic group for all compute instances in the dedicated OKE node compartment |
 | `ops_group_id` | IAM group for compartment operators |

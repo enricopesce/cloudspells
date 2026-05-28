@@ -216,6 +216,15 @@ class TestComputeInstancePrincipal(unittest.TestCase):
         with self.assertRaises(ValueError):
             IamGrant.raw("Allow dynamic-group app to read secret-family in tenancy")
 
+    def test_grants_must_be_explicit(self) -> None:
+        """ComputeInstancePrincipal does not grant broad defaults."""
+        with self.assertRaises(ValueError):
+            ComputeInstancePrincipal(
+                name="bad-defaults",
+                tenancy_id=_TENANCY,
+                instances=[_instance(_INSTANCE_1)],
+            )
+
 
 class TestOkeNodePrincipal(unittest.TestCase):
     """Test cases for OkeNodePrincipal spell."""
@@ -227,6 +236,7 @@ class TestOkeNodePrincipal(unittest.TestCase):
             name="test-k8s",
             compartment_id=_COMP,
             tenancy_id=_TENANCY,
+            dedicated_node_compartment=True,
         )
 
         def check(value: str) -> None:
@@ -241,6 +251,7 @@ class TestOkeNodePrincipal(unittest.TestCase):
             name="test-k8s",
             compartment_id=_COMP,
             tenancy_id=_TENANCY,
+            dedicated_node_compartment=True,
         )
 
         def check(value: str) -> None:
@@ -255,6 +266,7 @@ class TestOkeNodePrincipal(unittest.TestCase):
             name="k8s",
             compartment_id=_COMP,
             tenancy_id=_TENANCY,
+            dedicated_node_compartment=True,
             stack_name="prod",
         )
 
@@ -271,6 +283,7 @@ class TestOkeNodePrincipal(unittest.TestCase):
             name="export-k8s",
             compartment_id=_COMP,
             tenancy_id=_TENANCY,
+            dedicated_node_compartment=True,
         )
         spell.export()
 
@@ -285,9 +298,19 @@ class TestOkeNodePrincipal(unittest.TestCase):
             name="attr-k8s",
             compartment_id=_COMP,
             tenancy_id=_TENANCY,
+            dedicated_node_compartment=True,
         )
         self.assertIsNotNone(spell.dynamic_group_id)
         self.assertIsNotNone(spell.policy_id)
+
+    def test_dedicated_node_compartment_must_be_acknowledged(self) -> None:
+        """OkeNodePrincipal requires explicit compartment-wide matching intent."""
+        with self.assertRaises(ValueError):
+            OkeNodePrincipal(
+                name="unsafe-k8s",
+                compartment_id=_COMP,
+                tenancy_id=_TENANCY,
+            )
 
 
 class TestCompartmentAdminGroup(unittest.TestCase):

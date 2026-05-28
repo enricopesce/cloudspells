@@ -13,6 +13,7 @@ set_mocks()
 
 # Import AFTER mocks are set
 from cloudspells.core.abstractions.network import EgressRule, IngressRule, SecurityRules
+from cloudspells.core.naming import ResourceNamer
 from cloudspells.providers.oci._network_profiles import (
     CLOUDSPELLS_OCI_VCN_SCHEMA,
     NETWORK_PROFILE_BASELINE,
@@ -220,6 +221,19 @@ class TestVcn(unittest.TestCase):
         self.assertEqual(secure_cidr, "10.0.128.0/18", "Secure subnet should be /18 (25% of VCN)")
         self.assertEqual(public_cidr, "10.0.192.0/19", "Public subnet should be /19 (12.5% of VCN)")
         self.assertEqual(management_cidr, "10.0.224.0/19", "Management subnet should be /19 (12.5% of VCN)")
+
+    def test_dns_label_sanitizes_hyphenated_stack_names(self):
+        """DNS labels remove characters OCI rejects."""
+        namer = ResourceNamer("prod-west", "lab")
+
+        self.assertEqual(namer.create_dns_label("vcn"), "vcnprodwest")
+
+    def test_dns_label_truncates_long_stack_names(self):
+        """DNS labels stay within OCI's 15-character limit."""
+        label = ResourceNamer("very-long-production-stack", "lab").create_dns_label("priv")
+
+        self.assertLessEqual(len(label), 15)
+        self.assertRegex(label, r"^[a-z][a-z0-9]+$")
 
     def test_export_publishes_cloudspells_schema_profiles_and_null_drg(self):
         """Vcn.export() publishes CloudSpells contract metadata and an explicit null DRG."""

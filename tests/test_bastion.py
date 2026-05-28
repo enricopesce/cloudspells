@@ -10,8 +10,13 @@ from tests.mocks import set_mocks
 set_mocks()
 
 # Import AFTER mocks are set
+from cloudspells.providers.oci._network_profiles import (
+    CLOUDSPELLS_OCI_VCN_SCHEMA,
+    NETWORK_PROFILE_BASELINE,
+    NETWORK_PROFILE_BASTION,
+)
 from cloudspells.providers.oci.bastion import Bastion
-from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.network import Vcn, VcnRef
 
 
 class TestBastion(unittest.TestCase):
@@ -22,6 +27,21 @@ class TestBastion(unittest.TestCase):
         return Vcn(
             name="bastion-test-vcn",
             compartment_id="ocid1.compartment.test",
+        )
+
+    def _make_vcn_ref(self, profiles: list[str] | None = None) -> VcnRef:
+        """Create a VcnRef populated with Bastion-compatible test values."""
+        return VcnRef(
+            vcn_id="ocid1.vcn.test",
+            public_subnet_id="ocid1.subnet.public.test",
+            private_subnet_id="ocid1.subnet.private.test",
+            public_subnet_cidr="10.0.48.0/21",
+            private_subnet_cidr="10.0.0.0/19",
+            cidr_block="10.0.0.0/18",
+            cloudspells_network_schema=CLOUDSPELLS_OCI_VCN_SCHEMA,
+            network_profiles=profiles or [NETWORK_PROFILE_BASELINE, NETWORK_PROFILE_BASTION],
+            public_security_list_id="ocid1.seclist.public.test",
+            private_security_list_id="ocid1.seclist.private.test",
         )
 
     @pulumi.runtime.test
@@ -58,6 +78,18 @@ class TestBastion(unittest.TestCase):
 
         self.assertIsNotNone(vcn.public_subnet, "VCN should be finalized by Bastion")
         self.assertIsNotNone(vcn.private_subnet, "VCN should be finalized by Bastion")
+
+    def test_bastion_registers_network_profile(self):
+        """Bastion marks live VCNs with the Bastion network profile."""
+        vcn = self._make_vcn()
+        Bastion(
+            name="profile-bastion",
+            compartment_id="ocid1.compartment.test",
+            vcn=vcn,
+            allowed_client_cidrs=["0.0.0.0/0"],
+        )
+
+        self.assertTrue(vcn.has_network_profile(NETWORK_PROFILE_BASTION))
 
     @pulumi.runtime.test
     def test_bastion_getter_methods(self):
@@ -154,6 +186,31 @@ class TestBastion(unittest.TestCase):
                 allowed_client_cidrs=None,
             )
         self.assertIn("allowed_client_cidrs", str(ctx.exception))
+
+    def test_bastion_with_vcnref_requires_bastion_profile(self):
+        """Bastion rejects VcnRef stacks without the Bastion network profile."""
+        vcn_ref = self._make_vcn_ref(profiles=[NETWORK_PROFILE_BASELINE])
+
+        with self.assertRaises(RuntimeError) as ctx:
+            Bastion(
+                name="missing-profile-bastion",
+                compartment_id="ocid1.compartment.test",
+                vcn=vcn_ref,
+                allowed_client_cidrs=["0.0.0.0/0"],
+            )
+
+        self.assertIn(NETWORK_PROFILE_BASTION, str(ctx.exception))
+
+    def test_bastion_accepts_vcnref_with_bastion_profile(self):
+        """Bastion accepts VcnRef stacks that export the Bastion profile."""
+        bastion = Bastion(
+            name="vcnref-bastion",
+            compartment_id="ocid1.compartment.test",
+            vcn=self._make_vcn_ref(),
+            allowed_client_cidrs=["0.0.0.0/0"],
+        )
+
+        self.assertIsNotNone(bastion.bastion)
 
     def test_second_bastion_on_same_vcn_is_accepted(self):
         """A second Bastion against the same VCN is a no-op (deduplication via fingerprint)."""

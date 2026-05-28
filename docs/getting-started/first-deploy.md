@@ -157,7 +157,11 @@ management_subnet_id       ocid1.subnet.oc1...
 ...
 ```
 
-These outputs are consumed automatically when another stack references this VCN via `VcnRef.from_stack_reference()`.
+These outputs are consumed automatically when another stack references this VCN
+via `VcnRef.from_stack_reference()`. This first VCN exports the baseline network
+profile; service stacks that use profile-specific consumers, such as
+role-bearing `Nsg`, `Bastion`, OKE, load balancers, or `ScalableWorkload`, need
+the source VCN stack to register the matching profile before `vcn.export()`.
 
 ---
 

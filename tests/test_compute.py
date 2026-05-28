@@ -343,6 +343,7 @@ class TestComputeInstance(unittest.TestCase):
 
     # ------ SSH keys --------------------------------------------------
 
+    @pulumi.runtime.test
     def test_auto_generates_ssh_key(self):
         """ComputeInstance auto-generates SSH keys when not provided."""
         instance = ComputeInstance(
@@ -353,9 +354,14 @@ class TestComputeInstance(unittest.TestCase):
             availability_domain="AD-1",
         )
         self.assertTrue(instance.auto_generated_keys)
-        self.assertIsNotNone(instance.ssh_public_key)
-        self.assertIsNotNone(instance.ssh_private_key)
-        self.assertTrue(instance.ssh_public_key.startswith("ssh-rsa"))
+
+        def check(args):
+            public_key, private_key = args
+            self.assertIsNotNone(public_key)
+            self.assertIsNotNone(private_key)
+            self.assertTrue(public_key.startswith("ssh-rsa"))
+
+        return pulumi.Output.all(instance.ssh_public_key, instance.ssh_private_key).apply(check)
 
     def test_uses_provided_ssh_key(self):
         """ComputeInstance uses a caller-supplied SSH key."""
@@ -371,6 +377,24 @@ class TestComputeInstance(unittest.TestCase):
         self.assertFalse(instance.auto_generated_keys)
         self.assertEqual(instance.ssh_public_key, provided_key)
         self.assertIsNone(instance.ssh_private_key)
+
+    @pulumi.runtime.test
+    def test_uses_output_ssh_key_without_stringifying(self):
+        """ComputeInstance preserves `pulumi.Output` SSH keys in metadata."""
+        provided_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAA... user@host"
+        instance = ComputeInstance(
+            name="output-key-instance",
+            compartment_id="ocid1.compartment.test",
+            nsg=self._make_nsg(),
+            image_id="ocid1.image.oc1.phx.test",
+            availability_domain="AD-1",
+            ssh_public_key=pulumi.Output.from_input(provided_key),
+        )
+
+        def check(metadata):
+            self.assertEqual(metadata["ssh_authorized_keys"], provided_key)
+
+        return instance.instance.metadata.apply(check)
 
     def test_empty_key_triggers_auto_generation(self):
         """Empty SSH key string triggers auto-generation."""
@@ -729,6 +753,7 @@ class TestComputeInstance(unittest.TestCase):
         )
         self.assertIsNone(instance.get_ssh_private_key())
 
+    @pulumi.runtime.test
     def test_get_ssh_private_key_returns_key_when_auto_generated(self):
         """get_ssh_private_key returns the PEM string when keys were auto-generated."""
         instance = ComputeInstance(
@@ -738,7 +763,10 @@ class TestComputeInstance(unittest.TestCase):
             image_id="ocid1.image.oc1.phx.test",
             availability_domain="AD-1",
         )
-        self.assertIsNotNone(instance.get_ssh_private_key())
+        private_key = instance.get_ssh_private_key()
+        self.assertIsNotNone(private_key)
+        assert private_key is not None
+        return private_key.apply(lambda key: self.assertIn("PRIVATE KEY", key))
 
 
 class TestComputeInstanceNsgShorthand(unittest.TestCase):

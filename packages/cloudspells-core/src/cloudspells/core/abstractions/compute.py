@@ -90,10 +90,10 @@ class AbstractCompute(ABC):
 
     Attributes:
         id: Provider resource ID of the instance.
-        ssh_public_key: OpenSSH public key installed in
+        ssh_public_key: OpenSSH public key input installed in
             `~/.ssh/authorized_keys`.
-        ssh_private_key: Corresponding PEM private key, or `None` when
-            the caller supplied their own public key.
+        ssh_private_key: Corresponding PEM private key output, or `None`
+            when the caller supplied their own public key.
         auto_generated_keys: `True` when the SSH key pair was auto-generated.
 
     Example:
@@ -108,8 +108,8 @@ class AbstractCompute(ABC):
     """
 
     id: pulumi.Output[str]
-    ssh_public_key: str
-    ssh_private_key: str | None
+    ssh_public_key: pulumi.Input[str]
+    ssh_private_key: pulumi.Output[str] | None
     auto_generated_keys: bool
 
     @abstractmethod
@@ -143,19 +143,19 @@ class AbstractCompute(ABC):
         """
 
     @abstractmethod
-    def get_ssh_public_key(self) -> str:
+    def get_ssh_public_key(self) -> pulumi.Input[str]:
         """Return the SSH public key installed on the instance.
 
         Returns:
-            OpenSSH public key string (auto-generated or caller-supplied).
+            OpenSSH public key input (auto-generated or caller-supplied).
         """
 
     @abstractmethod
-    def get_ssh_private_key(self) -> str | None:
+    def get_ssh_private_key(self) -> pulumi.Output[str] | None:
         """Return the auto-generated SSH private key, or `None`.
 
         Returns:
-            PEM-encoded private key when auto-generated, `None`
+            PEM-encoded private key output when auto-generated, `None`
             when the caller supplied their own public key.
         """
 

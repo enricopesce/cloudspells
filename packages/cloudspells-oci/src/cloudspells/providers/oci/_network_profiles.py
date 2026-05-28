@@ -21,6 +21,12 @@ CLOUDSPELLS_OCI_VCN_SCHEMA = "cloudspells.oci.vcn/v1"
 NETWORK_PROFILE_BASELINE = "cloudspells.oci.vcn.profile/base/v1"
 """Baseline profile present on every CloudSpells-managed OCI VCN."""
 
+NETWORK_PROFILE_BASTION = "cloudspells.oci.vcn.profile/bastion/v1"
+"""Profile indicating private-subnet SSH ingress for OCI Bastion sessions."""
+
+BASTION_SSH_RULE_FINGERPRINT = "bastion-private-ingress-tcp-22"
+"""Fingerprint for the OCI Bastion private-subnet SSH ingress rule."""
+
 
 def normalize_cidrs(cidrs: Sequence[str] | None) -> tuple[str, ...]:
     """Return a stable, duplicate-free CIDR tuple.
@@ -49,6 +55,79 @@ def oke_profile_id(kubectl_allowed_cidrs: Sequence[str] | None) -> str:
         return "cloudspells.oci.vcn.profile/oke/v1/kubectl:none"
     digest = hashlib.sha256("\n".join(cidrs).encode("utf-8")).hexdigest()[:16]
     return f"cloudspells.oci.vcn.profile/oke/v1/kubectl:{digest}"
+
+
+def load_balancer_profile_id(backend_port: int) -> str:
+    """Return the network profile ID for the public load balancer spell.
+
+    Args:
+        backend_port: Backend application port opened between the public and
+            private subnet tiers.
+
+    Returns:
+        Stable CloudSpells network profile ID.
+    """
+    return f"cloudspells.oci.vcn.profile/load-balancer/v1/backend:{backend_port}"
+
+
+def internal_load_balancer_profile_id(backend_port: int) -> str:
+    """Return the network profile ID for the internal load balancer spell.
+
+    Args:
+        backend_port: Backend application port opened inside the private tier.
+
+    Returns:
+        Stable CloudSpells network profile ID.
+    """
+    return f"cloudspells.oci.vcn.profile/internal-load-balancer/v1/backend:{backend_port}"
+
+
+def scalable_workload_profile_id(backend_port: int, is_public: bool) -> str:
+    """Return the network profile ID for `ScalableWorkload` security lists.
+
+    Args:
+        backend_port: Backend application port opened for the instance pool.
+        is_public: Whether the workload load balancer is internet-facing.
+
+    Returns:
+        Stable CloudSpells network profile ID.
+    """
+    visibility = "public" if is_public else "internal"
+    return f"cloudspells.oci.vcn.profile/scalable-workload/v1/{visibility}/backend:{backend_port}"
+
+
+def nsg_role_profile_id(role_name: str, ports: Sequence[int] | None = None) -> str:
+    """Return the network profile ID for a role-bearing NSG's ambient rules.
+
+    Args:
+        role_name: Stable `Role.name` value.
+        ports: Internet-facing TCP ports for `INTERNET_EDGE` roles.
+
+    Returns:
+        Stable CloudSpells network profile ID.
+    """
+    port_list = ",".join(str(port) for port in sorted(dict.fromkeys(ports or [])))
+    port_suffix = port_list if port_list else "none"
+    return f"cloudspells.oci.vcn.profile/nsg-role/v1/{role_name.lower()}/ports:{port_suffix}"
+
+
+def bastion_security_rules() -> SecurityRules:
+    """Build subnet-level security rules required by OCI Bastion.
+
+    Returns:
+        Cloud-neutral security rules for the Bastion network profile.
+    """
+    return SecurityRules(
+        private_ingress=[
+            IngressRule(
+                protocol="tcp",
+                source=INTERNET,
+                port_min=22,
+                port_max=22,
+                description="SSH access from OCI Bastion service to private subnet instances",
+            )
+        ]
+    )
 
 
 def require_cloudspells_schema(schema: Any) -> str:

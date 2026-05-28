@@ -22,6 +22,7 @@ Mocked resource types and their injected computed outputs:
 | `oci:Core/networkSecurityGroup:NetworkSecurityGroup` | `id` |
 | `oci:Core/networkSecurityGroupSecurityRule:NetworkSecurityGroupSecurityRule` | `id` |
 | `oci:Core/instance:Instance` | `privateIp`, `publicIp` |
+| `pulumi-python:dynamic/cloudspells:SshKeyPair` | `publicKey`, `privateKey` |
 | `oci:Core/instanceConfiguration:InstanceConfiguration` | `id` |
 | `oci:Core/instancePool:InstancePool` | `id` |
 | `oci:Core/volume:Volume` | `id` |
@@ -138,6 +139,11 @@ class OCIMocks(pulumi.runtime.Mocks):
         elif typ == "oci:Core/instance:Instance":
             outputs["privateIp"] = "10.0.128.10"
             outputs["publicIp"] = None
+        elif typ == "pulumi-python:dynamic/cloudspells:SshKeyPair":
+            outputs["publicKey"] = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCtest generated@cloudspells"
+            outputs["public_key"] = outputs["publicKey"]
+            outputs["privateKey"] = "-----BEGIN OPENSSH PRIVATE KEY-----\nmock\n-----END OPENSSH PRIVATE KEY-----\n"
+            outputs["private_key"] = outputs["privateKey"]
 
         # ── AutoScaling ───────────────────────────────────────────────────────
         elif typ == "oci:AutoScaling/autoScalingConfiguration:AutoScalingConfiguration":

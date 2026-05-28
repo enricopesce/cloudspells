@@ -55,6 +55,7 @@ vcn: Vcn = Vcn(
 # ScalableWorkload: minimal configuration with sensible defaults.
 # Defaults: VM.Standard.E4.Flex (1 OCPU / 16GB), 1-5 instances,
 # HTTP load balancer on port 80, CPU-based autoscaling (scale out >80%, scale in <20%).
+# This example overrides max_instances to 3 below.
 scalable_pool: ScalableWorkload = ScalableWorkload(
     name="web-pool",
     compartment_id=compartment_id,

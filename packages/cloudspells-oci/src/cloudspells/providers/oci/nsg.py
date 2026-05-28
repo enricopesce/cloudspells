@@ -91,6 +91,7 @@ from cloudspells.core.ports import (
 )
 
 from ._naming import ordinal_suffix
+from ._network_profiles import nsg_role_profile_id
 from ._oci_utils import get_svc_cidr as _get_svc_cidr
 from .network import Vcn, VcnRef
 from .roles import INTERNET_EDGE, Role
@@ -338,10 +339,14 @@ class Nsg(BaseResource):
         )
         self.id = self.nsg.id
 
+        network_profile_check: str | pulumi.Output[str] | None = None
         if role is not None:
-            self._apply_role_ambient_rules(role, ports or [])
+            network_profile_check = self._apply_role_ambient_rules(role, ports or [])
 
-        self.register_outputs({"id": self.id})
+        outputs: dict[str, pulumi.Output[str] | str] = {"id": self.id}
+        if network_profile_check is not None:
+            outputs["network_profile_check"] = network_profile_check
+        self.register_outputs(outputs)
 
     @property
     def vcn(self) -> Vcn | VcnRef:
@@ -430,7 +435,7 @@ class Nsg(BaseResource):
         else:
             raise ValueError(f"Unknown subnet tier: {tier!r}")
 
-    def _apply_role_ambient_rules(self, role: Role, ports: list[int]) -> None:
+    def _apply_role_ambient_rules(self, role: Role, ports: list[int]) -> str | pulumi.Output[str] | None:
         """Create ambient NSG rules and register security list rules for `role`.
 
         Called once from `__init__` when `role=` is supplied.  The caller
@@ -454,7 +459,12 @@ class Nsg(BaseResource):
         Args:
             role: The `Role` to apply.
             ports: TCP ports for `INTERNET_EDGE` internet ingress.
+
+        Returns:
+            `None` for live VCNs, or a `VcnRef` network profile check for
+            imported VCNs.
         """
+        profile_id = nsg_role_profile_id(role.name, ports)
         tier = role.subnet_tier
         is_internet_edge = tier == SUBNET_PUBLIC
 
@@ -470,7 +480,7 @@ class Nsg(BaseResource):
 
         # -- Security list rules (only for live Vcn, not VcnRef) --------------
         if not isinstance(self._vcn, Vcn):
-            return
+            return self._vcn.require_network_profile(profile_id)
 
         if is_internet_edge:
             for port in ports:
@@ -513,6 +523,8 @@ class Nsg(BaseResource):
                     )
                 ],
             )
+        self._vcn.register_network_profile(profile_id)
+        return None
 
     def serves(
         self,

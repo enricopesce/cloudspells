@@ -167,22 +167,24 @@ class _InstancePrincipalMemberRef:
 
 
 def _normalize_grants(grants: Sequence[object] | None) -> list[IamGrant]:
-    """Return a validated grant list with CloudSpells defaults.
+    """Return a validated grant list.
 
     Args:
         grants: Optional sequence of values that must be `IamGrant` objects.
 
     Returns:
-        Grant list, defaulting to object and secret reads.
+        Grant list supplied by the caller.
 
     Raises:
         TypeError: If any entry is not an `IamGrant`.
-        ValueError: If `grants` is explicitly empty.
+        ValueError: If `grants` is omitted or explicitly empty.
     """
-    if grants is not None and len(grants) == 0:
+    if grants is None:
+        raise ValueError("grants must be provided explicitly; no IAM grants are added by default")
+    if len(grants) == 0:
         raise ValueError("grants must contain at least one IamGrant")
 
-    grant_values = list(grants or [IamGrant.read_objects(), IamGrant.read_secrets()])
+    grant_values = list(grants)
     grant_list: list[IamGrant] = []
     for grant in grant_values:
         if not isinstance(grant, IamGrant):
@@ -415,9 +417,9 @@ class ComputeInstancePrincipal(_PrincipalMixin, BaseResource):
                 scopes the IAM policy.
             grants: `IamGrant` values, one per desired permission. Use
                 `IamGrant.raw(...)` for OCI IAM grant fragments not covered by
-                named helpers. Must contain at least one entry. Defaults to
-                `IamGrant.read_objects()` and `IamGrant.read_secrets()` when
-                `None`.
+                named helpers. Must contain at least one entry and must be
+                provided explicitly; CloudSpells does not add default IAM
+                permissions.
             stack_name: Pulumi stack name. Defaults to `pulumi.get_stack()`
                 when `None`.
             opts: Pulumi resource options forwarded to the component.
@@ -511,6 +513,7 @@ class OkeNodePrincipal(_PrincipalMixin, BaseResource):
             name="k8s",
             compartment_id=comp_id,
             tenancy_id=tenancy_id,
+            dedicated_node_compartment=True,
         )
         principal.export()
         ```
@@ -526,6 +529,7 @@ class OkeNodePrincipal(_PrincipalMixin, BaseResource):
         name: str,
         compartment_id: pulumi.Input[str],
         tenancy_id: pulumi.Input[str],
+        dedicated_node_compartment: bool = False,
         stack_name: str | None = None,
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
@@ -540,10 +544,24 @@ class OkeNodePrincipal(_PrincipalMixin, BaseResource):
             tenancy_id: OCID of the OCI tenancy root compartment. Required
                 because OCI creates dynamic groups at the tenancy level, not
                 within child compartments.
+            dedicated_node_compartment: Must be `True` to confirm that
+                `compartment_id` is dedicated to OKE node instances. OCI
+                dynamic groups cannot reliably match autoscaled OKE worker
+                nodes by exact instance OCID before they exist, so this spell
+                intentionally requires an explicit compartment boundary.
             stack_name: Pulumi stack name. Defaults to `pulumi.get_stack()`
                 when `None`.
             opts: Pulumi resource options forwarded to the component.
+
+        Raises:
+            ValueError: If `dedicated_node_compartment` is not `True`.
         """
+        if not dedicated_node_compartment:
+            raise ValueError(
+                "OkeNodePrincipal requires dedicated_node_compartment=True because it matches all "
+                "compute instances in compartment_id. Deploy OKE worker nodes in a dedicated compartment."
+            )
+
         super().__init__("custom:iam:OkeNodePrincipal", name, compartment_id, stack_name, opts)
 
         dg_name = self.create_resource_name("dg")

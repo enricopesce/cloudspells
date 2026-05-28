@@ -44,6 +44,7 @@ from cloudspells.core.abstractions.autoscale import (
 from cloudspells.core.abstractions.network import EgressRule, IngressRule, SecurityRules
 from cloudspells.core.base import BaseResource
 
+from ._network_profiles import scalable_workload_profile_id
 from .network import Vcn, VcnRef
 
 
@@ -99,6 +100,24 @@ class OciLoadBalancerConfig(_BaseLoadBalancerConfig):
     min_bandwidth_mbps: int = 10
     max_bandwidth_mbps: int = 100
 
+    def __post_init__(self) -> None:
+        """Validate OCI load balancer settings at spell construction time.
+
+        Raises:
+            ValueError: If a port, bandwidth bound, or health-check path is
+                outside the supported shape for this spell.
+        """
+        if not (1 <= self.backend_port <= 65535):
+            raise ValueError(f"backend_port ({self.backend_port}) must be in the range 1-65535")
+        if not self.health_check_path.startswith("/") or any(ch.isspace() for ch in self.health_check_path):
+            raise ValueError("health_check_path must be an absolute path without whitespace")
+        if not (10 <= self.min_bandwidth_mbps <= 8000):
+            raise ValueError("min_bandwidth_mbps must be in the range 10-8000")
+        if not (10 <= self.max_bandwidth_mbps <= 8000):
+            raise ValueError("max_bandwidth_mbps must be in the range 10-8000")
+        if self.min_bandwidth_mbps > self.max_bandwidth_mbps:
+            raise ValueError("min_bandwidth_mbps must be less than or equal to max_bandwidth_mbps")
+
 
 class ScalableWorkload(BaseResource, AbstractScalableWorkload):
     """OCI Scalable Workload with load balancer, instance pool, and autoscaling.
@@ -125,9 +144,9 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
             (e.g. `"VM.Standard.E4.Flex"`).
         ocpus: Number of OCPUs per instance.
         memory_in_gbs: RAM in GiB per instance.
-        ssh_public_key: OpenSSH public key installed on instances.
-        ssh_private_key: Corresponding private key, or `None` when the caller
-            supplied their own public key.
+        ssh_public_key: OpenSSH public key input installed on instances.
+        ssh_private_key: Corresponding private key output, or `None` when the
+            caller supplied their own public key.
         image_id: OCID of the boot image resolved for the pool instances.
         cloud_init_script: Base64-encoded cloud-init script stored internally,
             or `None`.  Pass a plain `str` or `bytes` to `__init__`; encoding
@@ -174,8 +193,8 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
     ocpus: pulumi.Input[float]
     memory_in_gbs: pulumi.Input[float]
     boot_volume_size_in_gbs: pulumi.Input[int]
-    ssh_public_key: str
-    ssh_private_key: str | None
+    ssh_public_key: pulumi.Input[str]
+    ssh_private_key: pulumi.Output[str] | None
     image_id: pulumi.Input[str]
     cloud_init_script: str | None
     min_instances: int
@@ -277,11 +296,16 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         Raises:
             RuntimeError: If the VCN public or private subnet is absent after
                 `finalize_network()` completes.
+            ValueError: If `min_instances`, `max_instances`, or
+                `initial_instances` form an invalid capacity range.
             ValueError: If `cloud_init_script` is a non-empty string that does
                 not start with a shebang line (e.g. `#!/bin/bash`).
 
         """
         super().__init__("custom:compute:ScalableWorkload", name, compartment_id, stack_name, opts)
+
+        resolved_initial_instances = initial_instances if initial_instances is not None else min_instances
+        self._validate_capacity(min_instances, max_instances, resolved_initial_instances)
 
         self.vcn = vcn
         self.shape = shape
@@ -291,7 +315,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         self.boot_volume_size_in_gbs = boot_volume_size_in_gbs
         self.min_instances = min_instances
         self.max_instances = max_instances
-        self.initial_instances = initial_instances if initial_instances is not None else min_instances
+        self.initial_instances = resolved_initial_instances
         self.load_balancer_config = load_balancer_config or OciLoadBalancerConfig()
         if scaling_policy is _UNSET:
             self.scaling_policy = MetricScalingPolicy()
@@ -312,11 +336,18 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         # Handle SSH key - either use provided or auto-generate
         self._setup_ssh_keys(ssh_public_key)
 
-        # Add security rules for load balancer and instance pool.
-        # Security list rules only apply to a live Vcn — the guard is inside
-        # _add_scalable_workload_security_rules (skipped for VcnRef, which is
-        # read-only and has no mutable security lists).
-        self._add_scalable_workload_security_rules()
+        # Add or require the source-stack security-list profile for the load
+        # balancer and instance pool before subnet-dependent resources exist.
+        network_profile_check: str | pulumi.Output[str] | None = None
+        profile_id = scalable_workload_profile_id(
+            self.load_balancer_config.backend_port,
+            self.load_balancer_config.is_public,
+        )
+        if isinstance(self.vcn, Vcn):
+            self._add_scalable_workload_security_rules()
+            self.vcn.register_network_profile(profile_id)
+        else:
+            network_profile_check = self.vcn.require_network_profile(profile_id)
 
         # Finalize the VCN network
         self.vcn.finalize_network()
@@ -341,8 +372,36 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         }
 
         outputs.update(self._get_ssh_outputs())
+        if network_profile_check is not None:
+            outputs["network_profile_check"] = network_profile_check
 
         self.register_outputs(outputs)
+
+    @staticmethod
+    def _validate_capacity(min_instances: int, max_instances: int, initial_instances: int) -> None:
+        """Validate instance pool and autoscaling capacity bounds.
+
+        Args:
+            min_instances: Minimum number of pool instances.
+            max_instances: Maximum number of pool instances.
+            initial_instances: Initial pool size at creation time.
+
+        Raises:
+            ValueError: If the capacity range is invalid.
+        """
+        if min_instances < 1:
+            raise ValueError(f"min_instances must be >= 1; got {min_instances}")
+        if max_instances < min_instances:
+            raise ValueError(
+                f"max_instances must be >= min_instances; got max_instances={max_instances}, "
+                f"min_instances={min_instances}"
+            )
+        if initial_instances < min_instances or initial_instances > max_instances:
+            raise ValueError(
+                "initial_instances must be between min_instances and max_instances; "
+                f"got initial_instances={initial_instances}, min_instances={min_instances}, "
+                f"max_instances={max_instances}"
+            )
 
     def _add_scalable_workload_security_rules(self) -> None:
         """Add security rules for load balancer and instance pool communication.
@@ -580,7 +639,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         ic_name = self.create_resource_name("ic")
 
         # Build metadata
-        metadata: dict[str, str] = {
+        metadata: dict[str, pulumi.Input[str]] = {
             "ssh_authorized_keys": self.ssh_public_key,
         }
         if self.cloud_init_script:

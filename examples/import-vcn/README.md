@@ -2,7 +2,7 @@
 
 Deploys a compute instance into a VCN owned by another Pulumi stack using `VcnRef.from_stack_reference()`.
 
-`VcnRef` is read-only: this stack does not create or modify VCN security lists. The source VCN stack must already export the CloudSpells VCN outputs and any required network profile.
+`VcnRef` is read-only: this stack does not create or modify VCN security lists. The source VCN stack must already export the CloudSpells VCN outputs and the `APP_SERVER` network profile consumed by this example.
 
 ## Configuration
 
@@ -32,3 +32,17 @@ pulumi up
 ## Source VCN Requirements
 
 The referenced stack must export the standard outputs produced by `Vcn.export()`, including subnet IDs, subnet CIDRs, security-list IDs, `cidr_block`, `cloudspells_network_schema`, and `cloudspells_network_profiles`.
+
+A bare VCN exports only the baseline network profile. Because this example
+creates an `APP_SERVER` role NSG against a `VcnRef`, add a matching source-stack
+NSG before `vcn.export()`:
+
+```python
+from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.nsg import Nsg
+from cloudspells.providers.oci.roles import APP_SERVER
+
+vcn = Vcn(name="shared", compartment_id=compartment_id)
+Nsg("app-server-profile", role=APP_SERVER, vcn=vcn, compartment_id=compartment_id)
+vcn.export()
+```

@@ -70,8 +70,11 @@ from cloudspells.core.abstractions.network import (
 from cloudspells.core.base import BaseResource
 
 from ._network_profiles import (
+    BASTION_SSH_RULE_FINGERPRINT,
     CLOUDSPELLS_OCI_VCN_SCHEMA,
     NETWORK_PROFILE_BASELINE,
+    NETWORK_PROFILE_BASTION,
+    bastion_security_rules,
     oke_profile_id,
     oke_security_rules,
     require_cloudspells_schema,
@@ -371,10 +374,6 @@ class Vcn(BaseResource, AbstractNetwork):
         flow_logs_retention: int = 90,
         drg: bool = False,
         on_premise_cidrs: list[str] | None = None,
-        nat_public_ip_id: pulumi.Input[str] | None = None,
-        nat_block_traffic: bool = False,
-        dhcp_options_id: pulumi.Input[str] | None = None,
-        defined_tags: pulumi.Input[dict[str, pulumi.Input[str]]] | None = None,
     ) -> None:
         """Create a VCN with gateways and route tables.
 
@@ -434,33 +433,6 @@ class Vcn(BaseResource, AbstractNetwork):
                 but no static routes are injected — use this when routing
                 will be handled dynamically by BGP (FastConnect) or static
                 routes configured on the VPN gateway side.
-            nat_public_ip_id: OCID of a reserved public IP to assign to
-                the NAT Gateway.  When `None` (the default) OCI allocates
-                an ephemeral public IP automatically.  Supply a reserved IP
-                when a predictable, static egress address is required — for
-                example, to whitelist the VCN's outbound traffic at a
-                customer firewall or third-party API allow-list.
-            nat_block_traffic: When `True`, the NAT Gateway blocks all
-                outbound traffic without being deleted.  Defaults to
-                `False`.  Use this to temporarily cut egress during a
-                security incident or maintenance window — the gateway and
-                its reserved IP are preserved so traffic can be restored
-                instantly by re-deploying with `nat_block_traffic=False`.
-            dhcp_options_id: OCID of a custom DHCP options set to attach
-                to all four subnet tiers.  When `None` (the default) OCI
-                uses the VCN's built-in defaults, which resolve DNS via the
-                internet and the VCN resolver.  Supply a custom DHCP
-                options set to redirect DNS queries to a private resolver —
-                required for split-horizon DNS in hybrid (on-premise +
-                cloud) environments.
-            defined_tags: OCI defined tags applied to every resource in
-                this VCN (VCN, gateways, route tables, security lists, and
-                subnets), in `{"namespace": {"key": "value"}}` format.
-                Defined tags are namespace-qualified key/value pairs managed
-                by OCI Tag Namespaces and are required for enterprise cost
-                tracking, policy enforcement, and governance.  When `None`
-                (the default) no defined tags are applied.  Example:
-                `{"Operations": {"CostCenter": "42"}, "Project": {"Env": "prod"}}`.
 
         Raises:
             ValueError: If `cidr_block` has host bits set (e.g.
@@ -476,10 +448,10 @@ class Vcn(BaseResource, AbstractNetwork):
         self._flow_logs_retention = flow_logs_retention
         self._drg_enabled = drg
         self._on_premise_cidrs: list[str] = on_premise_cidrs or []
-        self._nat_public_ip_id = nat_public_ip_id
-        self._nat_block_traffic = nat_block_traffic
-        self._dhcp_options_id = dhcp_options_id
-        self._defined_tags = defined_tags
+        self._nat_public_ip_id = None
+        self._nat_block_traffic = False
+        self._dhcp_options_id = None
+        self._defined_tags = None
 
         # Initialize the subnet and optional gateway properties
         self.public_subnet = None
@@ -1163,6 +1135,18 @@ class Vcn(BaseResource, AbstractNetwork):
         """
         return profile_id in self._network_profiles
 
+    def register_network_profile(self, profile_id: str) -> None:
+        """Record that this VCN includes a spell-specific security profile.
+
+        Spell implementations call this after they have registered the subnet
+        security-list rules represented by `profile_id`.
+
+        Args:
+            profile_id: CloudSpells network profile ID whose required subnet
+                security rules have already been registered.
+        """
+        self._network_profiles.add(profile_id)
+
     def enable_oke_profile(self, kubectl_allowed_cidrs: Sequence[str] | None = None) -> str:
         """Register OKE subnet security rules and mark the OKE network profile.
 
@@ -1190,6 +1174,25 @@ class Vcn(BaseResource, AbstractNetwork):
         )
         self._network_profiles.add(profile_id)
         return profile_id
+
+    def enable_bastion_profile(self) -> str:
+        """Register OCI Bastion subnet security rules and mark the network profile.
+
+        Returns:
+            The registered Bastion network profile ID.
+
+        Raises:
+            RuntimeError: If called after `finalize_network()` and the Bastion
+                SSH ingress rule was not already registered.
+        """
+        if NETWORK_PROFILE_BASTION in self._network_profiles:
+            return NETWORK_PROFILE_BASTION
+        self.add_unique_security_rules(
+            BASTION_SSH_RULE_FINGERPRINT,
+            bastion_security_rules(),
+        )
+        self._network_profiles.add(NETWORK_PROFILE_BASTION)
+        return NETWORK_PROFILE_BASTION
 
     def export(self) -> None:
         """Export the canonical VCN stack outputs for cross-stack consumption.

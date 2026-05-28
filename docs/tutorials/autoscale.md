@@ -114,7 +114,7 @@ scalable_pool = ScalableWorkload(
 - CPU autoscaling: scale out when CPU > 80%, scale in when CPU < 20%
 - 300-second cooldown between scaling events
 - Defaults to `VM.Standard.E4.Flex` with 1 OCPU / 16 GB RAM
-- Minimum 1 instance; set `max_instances` to control the ceiling (defaults to 5 if not specified)
+- Minimum 1 instance; set `max_instances` to control the ceiling (defaults to 5 if not specified). `max_instances` must be at least `min_instances`, and `initial_instances` must be inside that range.
 
 ---
 
@@ -206,11 +206,11 @@ scalable_pool = ScalableWorkload(
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `backend_port` | `80` | Port on backend instances for traffic forwarding and health-check probes |
-| `health_check_path` | `"/health"` | HTTP path polled for backend health checks |
+| `backend_port` | `80` | Port on backend instances for traffic forwarding and health-check probes; must be 1-65535 |
+| `health_check_path` | `"/health"` | HTTP path polled for backend health checks; must start with `/` and contain no whitespace |
 | `is_public` | `True` | `True` places the LB in the public subnet (internet-facing); `False` places it in the private subnet (VCN-internal only) |
-| `min_bandwidth_mbps` | `10` | Minimum bandwidth allocated to the OCI flexible LB shape (Mbps) |
-| `max_bandwidth_mbps` | `100` | Maximum bandwidth the OCI flexible LB shape may burst to (Mbps) |
+| `min_bandwidth_mbps` | `10` | Minimum bandwidth allocated to the OCI flexible LB shape; must be 10-8000 Mbps and no greater than `max_bandwidth_mbps` |
+| `max_bandwidth_mbps` | `100` | Maximum bandwidth the OCI flexible LB shape may burst to; must be 10-8000 Mbps and no less than `min_bandwidth_mbps` |
 | `ssl_certificate_name` | `None` | Name of a certificate already uploaded to the LB; when set, an HTTPS listener on port 443 is created alongside the HTTP listener |
 
 When `load_balancer_config` is omitted, `ScalableWorkload` uses `OciLoadBalancerConfig()` with all defaults — port 80, `/health` health check, public LB, HTTP only.

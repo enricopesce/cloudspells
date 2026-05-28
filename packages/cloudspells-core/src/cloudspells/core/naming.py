@@ -15,6 +15,9 @@ both `prefix` and `stack_name` short.
 
 __all__ = ["ResourceNamer"]
 
+import hashlib
+import re
+
 
 class ResourceNamer:
     """Generate standardised resource names and DNS labels.
@@ -64,21 +67,30 @@ class ResourceNamer:
         """Build a DNS-safe label for OCI networking resources.
 
         OCI requires DNS labels to be alphanumeric, start with a letter, and
-        be at most 15 characters.  Exceeding this limit causes OCI to reject
-        the subnet or VCN resource at apply time.  Keep both `prefix` and
-        `stack_name` short to stay within the limit.
+        be at most 15 characters.  This method removes invalid characters,
+        lowercases the result, guarantees a leading letter, and truncates with
+        a short hash suffix when needed so common stack names cannot fail only
+        at apply time.
 
         Args:
             prefix: Short alphanumeric prefix (e.g. `"pub"`, `"priv"`,
-                `"vcn"`).  Combined with `stack_name`, the total must be
-                15 characters or fewer.
+                `"vcn"`).
 
         Returns:
-            DNS label string formed by `"{prefix}{stack_name}"`.
+            DNS-safe label derived from `"{prefix}{stack_name}"`.
 
         Example:
-            >>> namer = ResourceNamer("mystack", "lab")
+            >>> namer = ResourceNamer("my-stack", "lab")
             >>> namer.create_dns_label("vcn")
             'vcnmystack'
         """
-        return f"{prefix}{self.stack_name}"
+        raw_label = f"{prefix}{self.stack_name}"
+        label = re.sub(r"[^A-Za-z0-9]", "", raw_label).lower()
+        if not label:
+            label = "c"
+        if not label[0].isalpha():
+            label = f"c{label}"
+        if len(label) > 15:
+            digest = hashlib.sha1(label.encode("utf-8")).hexdigest()[:4]
+            label = f"{label[:11]}{digest}"
+        return label

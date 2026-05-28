@@ -1,5 +1,6 @@
 """Unit tests for OKE Cluster block."""
 
+import base64
 import unittest
 import warnings
 from unittest.mock import patch
@@ -260,6 +261,42 @@ class TestOkeCluster(unittest.TestCase):
         )
 
         self.assertEqual(cfg.ssh_public_key, provided_key)
+
+    def test_oke_node_pool_config_accepts_plain_user_data(self):
+        """NodePoolConfig accepts plain user data instead of raw metadata."""
+        cfg = NodePoolConfig(
+            name="default",
+            shape="VM.Standard.A1.Flex",
+            image="ocid1.image.test",
+            node_count=2,
+            ocpus=2,
+            memory_in_gbs=16,
+            user_data="#!/bin/bash\necho hello\n",
+        )
+
+        self.assertEqual(cfg.user_data, "#!/bin/bash\necho hello\n")
+
+    @pulumi.runtime.test
+    def test_oke_node_pool_user_data_is_base64_encoded(self):
+        """OkeCluster base64-encodes node pool user_data into node metadata."""
+        user_data = "#!/bin/bash\necho hello\n"
+        pool = NodePoolConfig(
+            name="default",
+            shape="VM.Standard.A1.Flex",
+            image="ocid1.image.test",
+            node_count=2,
+            ocpus=2,
+            memory_in_gbs=16,
+            user_data=user_data,
+        )
+        oke = _make_cluster(self._make_vcn(), node_pools=[pool])
+
+        expected = base64.b64encode(user_data.encode()).decode()
+
+        def check(metadata):
+            self.assertEqual(metadata, {"user_data": expected})
+
+        return oke.node_pools[0].node_metadata.apply(check)
 
     def test_oke_security_list_aliases(self):
         """Test that OkeCluster creates security list aliases."""

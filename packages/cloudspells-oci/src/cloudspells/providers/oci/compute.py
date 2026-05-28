@@ -55,9 +55,9 @@ class ComputeInstance(BaseResource, AbstractCompute):
         shape: Compute shape (e.g. `"VM.Standard.E4.Flex"`).
         ocpus: Number of OCPUs allocated to the instance.
         memory_in_gbs: RAM in GiB allocated to the instance.
-        ssh_public_key: OpenSSH public key installed in `authorized_keys`.
-        ssh_private_key: Corresponding private key string, or `None` when
-            the caller supplied their own public key.
+        ssh_public_key: OpenSSH public key input installed in `authorized_keys`.
+        ssh_private_key: Corresponding private key output, or `None` when the
+            caller supplied their own public key.
         image_id: OCID of the boot image used by the instance.
         availability_domain: Resolved OCI Availability Domain name
             (`pulumi.Output[str]`) for the instance and all attached block
@@ -136,8 +136,8 @@ class ComputeInstance(BaseResource, AbstractCompute):
     shape: pulumi.Input[str]
     ocpus: pulumi.Input[float]
     memory_in_gbs: pulumi.Input[float]
-    ssh_public_key: str
-    ssh_private_key: str | None
+    ssh_public_key: pulumi.Input[str]
+    ssh_private_key: pulumi.Output[str] | None
     image_id: pulumi.Input[str]
     availability_domain: pulumi.Output[str]
     boot_volume_size_in_gbs: pulumi.Input[int]
@@ -312,7 +312,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         # ---- Compute instance ------------------------------------------
         instance_name = self.create_resource_name("instance")
 
-        instance_metadata: dict[str, str] = {"ssh_authorized_keys": self.ssh_public_key}
+        instance_metadata: dict[str, pulumi.Input[str]] = {"ssh_authorized_keys": self.ssh_public_key}
         if encoded_user_data is not None:
             instance_metadata["user_data"] = encoded_user_data
 

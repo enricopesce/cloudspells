@@ -101,7 +101,7 @@ from cloudspells.providers.oci.volume import VolumeSpec
 
 cfg = Config()
 compartment_id = cfg.require("compartment_ocid")
-ssh_public_key = cfg.require("ssh_public_key")
+ssh_public_key = cfg.get("ssh_public_key")
 
 vcn = Vcn(name="lab", compartment_id=compartment_id)
 
@@ -131,6 +131,9 @@ vcn.export()
 web_server.export()
 ```
 
+`ssh_public_key` is optional. If it is omitted or empty, CloudSpells generates
+and persists an RSA key pair for the instance.
+
 `VolumeSpec.label` is application metadata for lookup helpers, outputs, and tags. CloudSpells assigns deterministic ordinal names to the underlying block-volume resources.
 
 ### 3. A Production Web + DB Stack
@@ -147,7 +150,7 @@ from cloudspells.providers.oci.volume import VolumeSpec
 
 cfg = Config()
 compartment_id = cfg.require("compartment_ocid")
-ssh_public_key = cfg.require("ssh_public_key")
+ssh_public_key = cfg.get("ssh_public_key")
 image = cfg.require("instance_image_ocid")
 
 vcn = Vcn(name="lab", compartment_id=compartment_id, cidr_block="10.0.0.0/16")
@@ -204,7 +207,7 @@ Adding a third web backend? Attach `web_nsg` to a new `ComputeInstance`. Zero NS
 | `InternalLoadBalancer` | OCI | Private load balancer in the private subnet for internal service-to-service traffic | Alpha |
 | `Nsg` | OCI | Network Security Group with role-based rule generation and port constants | Alpha |
 | `VcnFlowLogs` | OCI | VCN flow log capture for network audit and compliance | Alpha |
-| `ObjectStorageBucket` | OCI | Standard object storage bucket with lifecycle and versioning defaults | Alpha |
+| `ObjectStorageBucket` | OCI | Private Standard object storage bucket with CloudSpells naming, tagging, and outputs | Alpha |
 | `BackupBucket` | OCI | Versioned bucket with permanent-delete retention for backups | Alpha |
 | `DataLakeBucket` | OCI | Standard-tier bucket with hot-to-archive-to-delete lifecycle rules for analytics workloads | Alpha |
 | `ArchiveBucket` | OCI | Archive-tier bucket with a retention rule for long-term compliance storage | Alpha |
@@ -344,18 +347,18 @@ Each example is a self-contained Pulumi stack in `examples/`:
 
 | Example | Description |
 |---------|-------------|
-| [`vcn`](examples/vcn/) | Minimal VCN deployment — 4-tier network, all gateways. Outputs consumed by `import-vcn`. |
+| [`vcn`](examples/vcn/) | Minimal VCN deployment — 4-tier network, all gateways, and baseline `VcnRef` outputs. |
 | [`compute`](examples/compute/) | VCN + internet-facing VM with role-based NSG, block volumes. |
 | [`oke`](examples/oke/) | VCN + Oracle Kubernetes Engine cluster with configurable node pool. |
 | [`bastion`](examples/bastion/) | VCN + OCI Bastion service for secure private-subnet access. |
 | [`autoscale`](examples/autoscale/) | VCN + load balancer + auto-scaling instance pool with CPU policies. |
 | [`loadbalancer`](examples/loadbalancer/) | VCN + HTTPS load balancer with HTTP→HTTPS redirect and health checks. |
-| [`storage`](examples/storage/) | Backup bucket + data lake bucket with lifecycle and versioning defaults. |
+| [`storage`](examples/storage/) | Backup and data lake bucket patterns with retention, versioning, and lifecycle rules. |
 | [`genai_agent_rag`](examples/genai_agent_rag/) | OCI Generative AI Agent RAG pipeline with document bucket, knowledge base, agent, RAG tool, and endpoint. |
 | [`web-db`](examples/web-db/) | Three-tier web+DB stack: LB (public) → app servers (private) → DB nodes (secure). |
 | [`iam`](examples/iam/) | `ComputeInstancePrincipal` + `OkeNodePrincipal` + `CompartmentAdminGroup` — instance principals and compartment admin group; requires `compartment_ocid`, `tenancy_ocid`, and `app_instance_ocid`. |
 | [`secure-vcn`](examples/secure-vcn/) | VCN with flow logs, four-tier NSGs, management-tier SSH controls, and zero-credential app tier via exact-instance `ComputeInstancePrincipal`; requires `tenancy_ocid` and `app_instance_ocid` for IAM. |
-| [`import-vcn`](examples/import-vcn/) | Consume a VCN owned by a separate stack via `VcnRef.from_stack_reference()`. |
+| [`import-vcn`](examples/import-vcn/) | Consume a VCN owned by a separate stack via `VcnRef.from_stack_reference()` after the source stack exports the required `APP_SERVER` profile. |
 
 ---
 

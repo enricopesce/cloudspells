@@ -28,6 +28,7 @@ import pulumi_oci as oci
 from cloudspells.core.abstractions.network import EgressRule, IngressRule, SecurityRules
 from cloudspells.core.base import BaseResource
 
+from ._network_profiles import internal_load_balancer_profile_id, load_balancer_profile_id
 from .network import Vcn, VcnRef
 
 # ── Private mixin ─────────────────────────────────────────────────────────────
@@ -179,8 +180,8 @@ class LoadBalancer(BaseResource, _LbMixin):
             backend_port: Port on which backend instances accept forwarded
                 traffic and health-check probes.  Defaults to `80`.
             health_check_path: HTTP path used for backend health checks.
-                Defaults to `"/health"`.  Must be a valid absolute URL path
-                (e.g. `"/healthz"`, `"/status"`).
+                Defaults to `"/health"`.  Use an absolute URL path such as
+                `"/healthz"` or `"/status"`.
             stack_name: Pulumi stack name.  Defaults to
                 `pulumi.get_stack()` when `None`.
             opts: Pulumi resource options forwarded to the component.
@@ -199,8 +200,13 @@ class LoadBalancer(BaseResource, _LbMixin):
         self.listeners = []
 
         # 1. Register security rules before finalising the network.
+        network_profile_check: str | pulumi.Output[str] | None = None
+        profile_id = load_balancer_profile_id(backend_port)
         if isinstance(self.vcn, Vcn):
             self._add_security_rules(backend_port)
+            self.vcn.register_network_profile(profile_id)
+        else:
+            network_profile_check = self.vcn.require_network_profile(profile_id)
         # finalize_network() is idempotent for Vcn and a no-op for VcnRef.
         self.vcn.finalize_network()
 
@@ -291,10 +297,13 @@ class LoadBalancer(BaseResource, _LbMixin):
         # 7. Expose outputs.
         self.lb_id = self.load_balancer.id
         self.lb_ip = self.get_lb_ip()
-        self.register_outputs({
+        outputs: dict[str, pulumi.Output[str] | str] = {
             "lb_id": self.load_balancer.id,
             "lb_ip": self.lb_ip,
-        })
+        }
+        if network_profile_check is not None:
+            outputs["network_profile_check"] = network_profile_check
+        self.register_outputs(outputs)
 
     def _add_security_rules(self, backend_port: int) -> None:
         """Register load balancer security rules on the VCN public and private subnets.
@@ -302,10 +311,11 @@ class LoadBalancer(BaseResource, _LbMixin):
         Adds the following rules:
 
         - Public subnet ingress TCP 80 from `0.0.0.0/0` (fingerprinted as
-          `"lb-public-ingress-tcp-80"` — deduplicated if another spell such
-          as `ScalableWorkload` registers the same rule on this VCN).
+          `"public-ingress-tcp-80"` — deduplicated if another spell such as
+          `ScalableWorkload` or an `INTERNET_EDGE` NSG registers the same rule
+          on this VCN).
         - Public subnet ingress TCP 443 from `0.0.0.0/0` (fingerprinted as
-          `"lb-public-ingress-tcp-443"`).
+          `"public-ingress-tcp-443"`).
         - Public subnet egress TCP `backend_port` to private subnet CIDR
           (workload-specific, not fingerprinted).
         - Private subnet ingress TCP `backend_port` from public subnet CIDR
@@ -327,7 +337,7 @@ class LoadBalancer(BaseResource, _LbMixin):
         private_subnet_cidr: pulumi.Input[str] = self.vcn.get_private_subnet_cidr()
 
         self.vcn.add_unique_security_rules(
-            "lb-public-ingress-tcp-80",
+            "public-ingress-tcp-80",
             SecurityRules(
                 public_ingress=[
                     IngressRule(
@@ -341,7 +351,7 @@ class LoadBalancer(BaseResource, _LbMixin):
             ),
         )
         self.vcn.add_unique_security_rules(
-            "lb-public-ingress-tcp-443",
+            "public-ingress-tcp-443",
             SecurityRules(
                 public_ingress=[
                     IngressRule(
@@ -398,6 +408,7 @@ class InternalLoadBalancer(BaseResource, _LbMixin):
 
     - Private subnet ingress: TCP 80 from VCN CIDR (restricts to
       VCN-internal and on-premises traffic only).
+    - Private subnet ingress: TCP `backend_port` from private subnet CIDR.
     - Private subnet egress: TCP `backend_port` to private subnet CIDR.
 
     Attributes:
@@ -450,8 +461,8 @@ class InternalLoadBalancer(BaseResource, _LbMixin):
             backend_port: Port on which backend instances accept forwarded
                 traffic and health-check probes.  Defaults to `80`.
             health_check_path: HTTP path used for backend health checks.
-                Defaults to `"/health"`.  Must be a valid absolute URL path
-                (e.g. `"/healthz"`, `"/status"`).
+                Defaults to `"/health"`.  Use an absolute URL path such as
+                `"/healthz"` or `"/status"`.
             stack_name: Pulumi stack name.  Defaults to
                 `pulumi.get_stack()` when `None`.
             opts: Pulumi resource options forwarded to the component.
@@ -469,8 +480,13 @@ class InternalLoadBalancer(BaseResource, _LbMixin):
         self.vcn = vcn
 
         # 1. Register security rules before finalising the network.
+        network_profile_check: str | pulumi.Output[str] | None = None
+        profile_id = internal_load_balancer_profile_id(backend_port)
         if isinstance(self.vcn, Vcn):
             self._add_security_rules(backend_port)
+            self.vcn.register_network_profile(profile_id)
+        else:
+            network_profile_check = self.vcn.require_network_profile(profile_id)
         # finalize_network() is idempotent for Vcn and a no-op for VcnRef.
         self.vcn.finalize_network()
 
@@ -524,10 +540,13 @@ class InternalLoadBalancer(BaseResource, _LbMixin):
         # 5. Expose outputs.
         self.lb_id = self.load_balancer.id
         self.lb_ip = self.get_lb_ip()
-        self.register_outputs({
+        outputs: dict[str, pulumi.Output[str] | str] = {
             "lb_id": self.load_balancer.id,
             "lb_ip": self.lb_ip,
-        })
+        }
+        if network_profile_check is not None:
+            outputs["network_profile_check"] = network_profile_check
+        self.register_outputs(outputs)
 
     def _add_security_rules(self, backend_port: int) -> None:
         """Register internal load balancer security rules on the VCN private subnet.
@@ -537,8 +556,9 @@ class InternalLoadBalancer(BaseResource, _LbMixin):
         - Private subnet ingress TCP 80 from `vcn.cidr_block` (fingerprinted as
           `"lb-private-ingress-tcp-80"` — restricts ingress to VCN-internal and
           on-premises traffic only).
-        - Private subnet egress TCP `backend_port` to private subnet CIDR
+        - Private subnet ingress TCP `backend_port` from private subnet CIDR
           (forwarded traffic from the load balancer to backend instances).
+        - Private subnet egress TCP `backend_port` to private subnet CIDR.
 
         Must be called before `Vcn.finalize_network`.
 
@@ -570,6 +590,17 @@ class InternalLoadBalancer(BaseResource, _LbMixin):
         )
         self.vcn.add_security_rules(
             SecurityRules(
+                private_ingress=[
+                    IngressRule(
+                        protocol="tcp",
+                        source=private_subnet_cidr,
+                        port_min=backend_port,
+                        port_max=backend_port,
+                        description=(
+                            f"Traffic from internal load balancer to backend instances on port {backend_port}"
+                        ),
+                    ),
+                ],
                 private_egress=[
                     EgressRule(
                         protocol="tcp",

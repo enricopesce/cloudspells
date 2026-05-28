@@ -37,7 +37,9 @@ Each entry in `grants` is an `IamGrant`. Use named helpers for common CloudSpell
 Allow dynamic-group id <dynamic_group_ocid> to read secret-family in compartment id <cid>
 ```
 
-If you omit `grants`, the defaults are `IamGrant.read_objects()` and `IamGrant.read_secrets()`.
+`grants` is required and must contain at least one `IamGrant`. CloudSpells does
+not grant Object Storage or Vault access implicitly; make each permission
+visible at the call site.
 
 When the principal is declared in the same stack as CloudSpells compute instances, pass the objects directly instead of raw OCIDs:
 
@@ -67,6 +69,7 @@ oke_principal = OkeNodePrincipal(
     name="k8s",
     compartment_id=compartment_id,
     tenancy_id=tenancy_id,
+    dedicated_node_compartment=True,
 )
 oke_principal.export()
 ```
@@ -162,5 +165,5 @@ The instance picks up the principal automatically at runtime via OCI's instance 
 |-------|-----------|---------|-------------|
 | `ComputeInstancePrincipal` | `instances` | _(none)_ | CloudSpells compute instances that should be dynamic-group members |
 | `ComputeInstancePrincipal` | `instance_ids` | _(none)_ | Existing compute instance OCIDs; requires `compartment_id` |
-| `ComputeInstancePrincipal` | `grants` | `IamGrant.read_objects()`, `IamGrant.read_secrets()` | Explicit `IamGrant` values; use `IamGrant.raw(...)` for custom OCI grant fragments |
+| `ComputeInstancePrincipal` | `grants` | _(required)_ | Non-empty list of explicit `IamGrant` values; use `IamGrant.raw(...)` for custom OCI grant fragments |
 | `CompartmentAdminGroup` | _(none)_ | — | Group is created empty; add users post-deploy |

@@ -75,6 +75,19 @@ class GenAiAgentRag(BaseResource):
         stack_name: str | None = None,
         opts: pulumi.ResourceOptions | None = None,
     ) -> None:
+        """Create an OCI Generative AI Agent RAG stack.
+
+        Args:
+            name: Logical name for the RAG agent resources.
+            compartment_id: OCID of the OCI compartment to deploy into.
+            namespace: Object Storage namespace for the tenancy.
+            bucket_name: Existing private bucket name for source documents, or
+                `None` to create one.
+            welcome_message: Optional end-user welcome text for the agent.
+            stack_name: Pulumi stack name. Defaults to `pulumi.get_stack()`
+                when `None`.
+            opts: Pulumi resource options forwarded to the component.
+        """
         super().__init__("custom:genai:GenAiAgentRag", name, compartment_id, stack_name, opts)
 
         child_opts = pulumi.ResourceOptions(parent=self)
@@ -186,23 +199,42 @@ class GenAiAgentRag(BaseResource):
         })
 
     def get_endpoint_id(self) -> pulumi.Output[str]:
-        """Returns the OCID of the agent endpoint."""
+        """Return the OCID of the agent endpoint.
+
+        Returns:
+            `pulumi.Output[str]` resolving to the agent endpoint OCID.
+        """
         return self.endpoint_id
 
     def get_agent_id(self) -> pulumi.Output[str]:
-        """Returns the OCID of the agent."""
+        """Return the OCID of the agent.
+
+        Returns:
+            `pulumi.Output[str]` resolving to the agent OCID.
+        """
         return self.agent_id
 
     def get_knowledge_base_id(self) -> pulumi.Output[str]:
-        """Returns the OCID of the knowledge base."""
+        """Return the OCID of the knowledge base.
+
+        Returns:
+            `pulumi.Output[str]` resolving to the knowledge base OCID.
+        """
         return self.knowledge_base_id
 
     def get_document_bucket_name(self) -> pulumi.Output[str]:
-        """Returns the name of the Object Storage bucket used for RAG documents."""
+        """Return the Object Storage bucket used for RAG documents.
+
+        Returns:
+            `pulumi.Output[str]` resolving to the bucket name.
+        """
         return self.document_bucket_name
 
     def export(self) -> None:
-        """Exports agent endpoint and supporting resource OCIDs as Pulumi stack outputs."""
+        """Export agent endpoint and supporting resource OCIDs.
+
+        Publishes stack outputs named from the spell's logical name.
+        """
         key = self.name.replace("-", "_")
         pulumi.export(f"{key}_endpoint_id", self.endpoint_id)
         pulumi.export(f"{key}_agent_id", self.agent_id)
