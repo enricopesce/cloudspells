@@ -2196,7 +2196,9 @@ principal.export()
 <p>Each entry in <code>grants</code> is an <code>IamGrant</code>. Use named helpers for common CloudSpells access patterns, or <code>IamGrant.raw("&lt;verb&gt; &lt;resource-type&gt;")</code> when OCI IAM exposes a permission CloudSpells does not model. The spell assembles the full statement:</p>
 <pre><code class="language-text">Allow dynamic-group id &lt;dynamic_group_ocid&gt; to read secret-family in compartment id &lt;cid&gt;
 </code></pre>
-<p>If you omit <code>grants</code>, the defaults are <code>IamGrant.read_objects()</code> and <code>IamGrant.read_secrets()</code>.</p>
+<p><code>grants</code> is required and must contain at least one <code>IamGrant</code>. CloudSpells does
+not grant Object Storage or Vault access implicitly; make each permission
+visible at the call site.</p>
 <p>When the principal is declared in the same stack as CloudSpells compute instances, pass the objects directly instead of raw OCIDs:</p>
 <pre><code class="language-python">principal = ComputeInstancePrincipal(
     name=&quot;app&quot;,
@@ -2216,6 +2218,7 @@ oke_principal = OkeNodePrincipal(
     name=&quot;k8s&quot;,
     compartment_id=compartment_id,
     tenancy_id=tenancy_id,
+    dedicated_node_compartment=True,
 )
 oke_principal.export()
 </code></pre>
@@ -2327,8 +2330,8 @@ instance.export()
 <tr>
 <td><code>ComputeInstancePrincipal</code></td>
 <td><code>grants</code></td>
-<td><code>IamGrant.read_objects()</code>, <code>IamGrant.read_secrets()</code></td>
-<td>Explicit <code>IamGrant</code> values; use <code>IamGrant.raw(...)</code> for custom OCI grant fragments</td>
+<td><em>(required)</em></td>
+<td>Non-empty list of explicit <code>IamGrant</code> values; use <code>IamGrant.raw(...)</code> for custom OCI grant fragments</td>
 </tr>
 <tr>
 <td><code>CompartmentAdminGroup</code></td>

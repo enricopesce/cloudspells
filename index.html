@@ -2164,7 +2164,7 @@ vcn.export()
 <p><strong>1. Architecture is the product.</strong>
 Network topology, subnet tiers, routing policy, gateway placement, and security posture are fixed by design — derived from OCI best practices — and are not configurable at call time.</p>
 <p><strong>2. Minimal required input.</strong>
-A spell requires only essential identifiers — at minimum, a name and compartment OCID. Spells that attach to an existing network also accept a <code>Vcn</code> or <code>VcnRef</code> object. Every value that can be derived, computed, or defaulted securely must be. Exposing unnecessary parameters is a design defect.</p>
+A spell requires only essential identifiers — at minimum, a name and compartment OCID. Spells that own direct network attachment accept a <code>Vcn</code> or <code>VcnRef</code>; spells attached through a role-bearing dependency, such as <code>ComputeInstance</code>, derive placement from that dependency instead. Every value that can be derived, computed, or defaulted securely must be. Exposing unnecessary parameters is a design defect.</p>
 <p><strong>3. Not a Terraform replacement.</strong>
 CloudSpells encodes opinionated reference architectures. For non-standard topologies or full control over individual resources, use raw Pulumi. You can mix both in the same stack freely.</p>
 

@@ -2141,7 +2141,7 @@
 <p>Share a single VCN across multiple Pulumi stacks using <code>VcnRef</code>.</p>
 <p>By default, each CloudSpells stack owns its own VCN. For larger deployments you often want a single shared network managed by one stack — a <strong>platform stack</strong> — and multiple service stacks that deploy into it without recreating it.</p>
 <p><code>VcnRef</code> is not a generic OCI VCN import mechanism. It only references VCNs created by CloudSpells and exported with the CloudSpells OCI VCN schema. The source stack must publish the standard <code>Vcn.export()</code> outputs, including <code>cloudspells_network_schema</code> and <code>cloudspells_network_profiles</code>.</p>
-<p><code>VcnRef</code> is a read-only handle to a VCN owned by another stack. Every spell that accepts <code>Vcn</code> also accepts <code>VcnRef</code>, so service stacks need no changes when you split them.</p>
+<p><code>VcnRef</code> is a read-only handle to a VCN owned by another stack. Spells with a direct VCN input accept either <code>Vcn</code> or <code>VcnRef</code>; spells attached through role-bearing dependencies, such as <code>ComputeInstance</code>, inherit the referenced VCN from that dependency.</p>
 <hr />
 <h2 id="when-to-use-vcnref">When to use VcnRef</h2>
 <p>Use <code>VcnRef</code> when:</p>
@@ -2153,18 +2153,29 @@
 <p>Do <strong>not</strong> use <code>VcnRef</code> for small single-stack deployments. The complexity of a split is only worthwhile when stacks genuinely have different owners or lifecycles.</p>
 <hr />
 <h2 id="step-1-create-the-vcn-stack">Step 1 — Create the VCN stack</h2>
-<p>Deploy the VCN standalone so it exports all its subnet OCIDs and CIDRs:</p>
+<p>Deploy the platform VCN stack so it exports all subnet OCIDs, subnet CIDRs,
+security-list IDs, schema metadata, and any profiles the service stacks need:</p>
 <pre><code class="language-python"># platform/vcn/__main__.py
 from cloudspells.core import Config
 from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.nsg import Nsg
+from cloudspells.providers.oci.roles import APP_SERVER
 
 config = Config()
+compartment_id = config.require(&quot;compartment_ocid&quot;)
 vcn = Vcn(
     name=&quot;lab&quot;,
-    compartment_id=config.require(&quot;compartment_ocid&quot;),
+    compartment_id=compartment_id,
 )
-vcn.export()   # exports vcn_id, *_subnet_id, *_subnet_cidr, *_security_list_id
+
+# Register the network profile consumed by the service stack below.
+Nsg(&quot;app-server-profile&quot;, role=APP_SERVER, vcn=vcn, compartment_id=compartment_id)
+
+vcn.export()   # exports VCN outputs, schema metadata, and network profiles
 </code></pre>
+<p>The source-side NSG installs and exports the <code>APP_SERVER</code> role profile. The
+service stack still creates its own application NSG; the source stack only owns
+the shared VCN security-list contract.</p>
 <pre><code class="language-bash">cd platform/vcn
 pulumi stack init platform/dev
 pulumi config set compartment_ocid ocid1.compartment.oc1..aaaa...
@@ -2249,8 +2260,8 @@ pulumi up
 </tr>
 <tr>
 <td>Network profiles</td>
-<td>Installs and exports profiles</td>
-<td>Requires pre-exported profiles</td>
+<td>Installs and exports the baseline profile plus profiles registered by constructed spells</td>
+<td>Requires pre-exported matching profiles</td>
 </tr>
 <tr>
 <td><code>add_security_rules()</code></td>
@@ -2277,11 +2288,46 @@ pulumi up
 <p><code>VcnRef.add_security_rules()</code> raises a <code>RuntimeError</code> only when non-empty rule lists are passed — it cannot modify the security lists of a network it does not own. Empty <code>SecurityRules()</code> is accepted as a no-op. The error message lists the non-empty rule sets that were requested so you know exactly what to add.</p>
 <p><strong>This means security rules required by a spell must already exist in the source CloudSpells VCN stack before you deploy that spell against a <code>VcnRef</code>.</strong> The workflow is:</p>
 <ol>
-<li>In the source VCN stack, include the spell you intend to deploy here (even if it is a placeholder), so its rules are written to the security lists.</li>
+<li>In the source VCN stack, register the matching network profile before <code>vcn.export()</code>, so its rules are written to the security lists.</li>
 <li>Run <code>pulumi up</code> on the source stack.</li>
 <li>Deploy the spell against the <code>VcnRef</code> in this stack.</li>
 </ol>
 <p>In practice this is straightforward: the platform team owns the VCN stack and provisions the baseline security rules; application teams deploy spells against the <code>VcnRef</code> knowing the rules are already in place.</p>
+<p>Common profile requirements:</p>
+<table>
+<thead>
+<tr>
+<th>Consumer in service stack</th>
+<th>Source VCN stack requirement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Role-bearing <code>Nsg(role=APP_SERVER)</code></td>
+<td>Create a matching source-stack <code>Nsg(..., role=APP_SERVER, ports=[...])</code> before <code>vcn.export()</code>. The role and internet-facing ports must match the consumer.</td>
+</tr>
+<tr>
+<td><code>Bastion</code></td>
+<td>Call <code>vcn.enable_bastion_profile()</code> before <code>vcn.export()</code>.</td>
+</tr>
+<tr>
+<td><code>OkeCluster</code></td>
+<td>Call <code>vcn.enable_oke_profile(kubectl_allowed_cidrs=[...])</code> before <code>vcn.export()</code>. The CIDR list must match the consumer.</td>
+</tr>
+<tr>
+<td><code>LoadBalancer</code></td>
+<td>The source stack must export the load-balancer profile for the same <code>backend_port</code>; the live <code>LoadBalancer</code> spell registers it when constructed against a <code>Vcn</code>.</td>
+</tr>
+<tr>
+<td><code>InternalLoadBalancer</code></td>
+<td>The source stack must export the internal-load-balancer profile for the same <code>backend_port</code>; the live <code>InternalLoadBalancer</code> spell registers it when constructed against a <code>Vcn</code>.</td>
+</tr>
+<tr>
+<td><code>ScalableWorkload</code></td>
+<td>The source stack must export the scalable-workload profile for the same backend port and public/internal placement; the live <code>ScalableWorkload</code> spell registers it when constructed against a <code>Vcn</code>.</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h2 id="oke-with-vcnref">OKE with VcnRef</h2>
 <p>OKE requires subnet-level security-list rules. Because <code>VcnRef</code> is read-only, those rules must be installed in the source VCN stack before the OKE stack references it:</p>

@@ -2285,7 +2285,7 @@ rules to the same live <code>Vcn</code> before the load balancer. After finaliza
 <li>1 BackendSet (ROUND_ROBIN, HTTP health check on <code>backend_port</code>)</li>
 <li>1 RuleSet (HTTP-to-HTTPS 301 redirect)</li>
 <li>2 Listeners (HTTPS:443 with SSL termination, HTTP:80 with redirect)</li>
-<li>Security list rules: TCP 80 + 443 ingress on public subnet, backend port egress to private subnet</li>
+<li>Security list rules: TCP 80 + 443 ingress on public subnet, backend port egress to private subnet, backend port ingress on private subnet from the public subnet</li>
 </ul>
 <h3 id="adding-backends">Adding backends</h3>
 <p>Backends are registered separately — either via <code>oci.loadbalancer.Backend</code> resources in your Pulumi program, or via the OCI Console/CLI after deployment:</p>
@@ -2320,7 +2320,7 @@ rules, then finalizes the VCN. Declare rule-registering dependencies first.</p>
 <li>1 flexible-shape Load Balancer (private subnet, <code>is_private=True</code>)</li>
 <li>1 BackendSet (ROUND_ROBIN, HTTP health check)</li>
 <li>1 Listener (HTTP:80)</li>
-<li>Security list rules: TCP 80 ingress from VCN CIDR, backend port egress within private subnet</li>
+<li>Security list rules: TCP 80 ingress from VCN CIDR, backend port ingress from the private subnet, backend port egress within private subnet</li>
 </ul>
 <hr />
 <h2 id="composition-order">Composition order</h2>

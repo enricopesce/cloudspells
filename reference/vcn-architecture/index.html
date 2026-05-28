@@ -3054,6 +3054,12 @@ vcn.add_security_rules(SecurityRules(
 </tr>
 </tbody>
 </table>
+<p>A minimal <code>Vcn</code> exports only the baseline network profile. Spells that require
+subnet security-list rules against a <code>VcnRef</code> require a matching pre-exported
+profile. For example, a service stack that creates <code>Nsg(role=APP_SERVER)</code> needs
+the source VCN stack to create a matching role-bearing <code>Nsg</code> before
+<code>vcn.export()</code>. OKE and Bastion use explicit source-stack helpers:
+<code>vcn.enable_oke_profile(...)</code> and <code>vcn.enable_bastion_profile()</code>.</p>
 <h3 id="constructing-a-vcnref-manually">Constructing a <code>VcnRef</code> manually</h3>
 <p>Prefer <code>VcnRef.from_stack_reference()</code> so the schema and network profile contract is read directly from the source stack. Manual construction is only for advanced cases where those same CloudSpells <code>Vcn.export()</code> values are already available through another typed configuration path. It is not a generic OCI VCN import path.</p>
 <pre><code class="language-python">vcn = VcnRef(
@@ -3136,30 +3142,6 @@ vcn.export()
 <td><code>list[str]</code></td>
 <td><code>None</code></td>
 <td>On-premises CIDRs routed via the DRG (requires <code>drg=True</code>)</td>
-</tr>
-<tr>
-<td><code>nat_public_ip_id</code></td>
-<td><code>str</code></td>
-<td><code>None</code></td>
-<td>Reserved public IP OCID to assign to the NAT Gateway</td>
-</tr>
-<tr>
-<td><code>nat_block_traffic</code></td>
-<td><code>bool</code></td>
-<td><code>False</code></td>
-<td>Block all NAT Gateway egress without deleting the gateway</td>
-</tr>
-<tr>
-<td><code>dhcp_options_id</code></td>
-<td><code>str</code></td>
-<td><code>None</code></td>
-<td>Custom DHCP options OCID — overrides the VCN default</td>
-</tr>
-<tr>
-<td><code>defined_tags</code></td>
-<td><code>pulumi.Input[dict[str, pulumi.Input[str]]]</code></td>
-<td><code>None</code></td>
-<td>OCI defined tags applied to the VCN and all child resources</td>
 </tr>
 </tbody>
 </table>

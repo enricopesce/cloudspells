@@ -2423,23 +2423,23 @@ instance.</p>
           <tr class="doc-section-item">
             <td><code><span title="cloudspells.providers.oci.compute.ComputeInstance.ssh_public_key">ssh_public_key</span></code></td>
             <td>
-                  <code><span title="str">str</span></code>
+                  <code><span title="pulumi.Input">Input</span>[<span title="str">str</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>OpenSSH public key installed in <code>authorized_keys</code>.</p>
+                <p>OpenSSH public key input installed in <code>authorized_keys</code>.</p>
               </div>
             </td>
           </tr>
           <tr class="doc-section-item">
             <td><code><span title="cloudspells.providers.oci.compute.ComputeInstance.ssh_private_key">ssh_private_key</span></code></td>
             <td>
-                  <code><span title="str">str</span> | None</code>
+                  <code><span title="pulumi.Output">Output</span>[<span title="str">str</span>] | None</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Corresponding private key string, or <code>None</code> when
-the caller supplied their own public key.</p>
+                <p>Corresponding private key output, or <code>None</code> when the
+caller supplied their own public key.</p>
               </div>
             </td>
           </tr>
@@ -3301,9 +3301,9 @@ when OCI auto-assigns (default spread behaviour).</p>
 <span class="sd">        shape: Compute shape (e.g. `&quot;VM.Standard.E4.Flex&quot;`).</span>
 <span class="sd">        ocpus: Number of OCPUs allocated to the instance.</span>
 <span class="sd">        memory_in_gbs: RAM in GiB allocated to the instance.</span>
-<span class="sd">        ssh_public_key: OpenSSH public key installed in `authorized_keys`.</span>
-<span class="sd">        ssh_private_key: Corresponding private key string, or `None` when</span>
-<span class="sd">            the caller supplied their own public key.</span>
+<span class="sd">        ssh_public_key: OpenSSH public key input installed in `authorized_keys`.</span>
+<span class="sd">        ssh_private_key: Corresponding private key output, or `None` when the</span>
+<span class="sd">            caller supplied their own public key.</span>
 <span class="sd">        image_id: OCID of the boot image used by the instance.</span>
 <span class="sd">        availability_domain: Resolved OCI Availability Domain name</span>
 <span class="sd">            (`pulumi.Output[str]`) for the instance and all attached block</span>
@@ -3382,8 +3382,8 @@ when OCI auto-assigns (default spread behaviour).</p>
     <span class="n">shape</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">ocpus</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
     <span class="n">memory_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
-    <span class="n">ssh_public_key</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">ssh_private_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">ssh_public_key</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">ssh_private_key</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span>
     <span class="n">image_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">availability_domain</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">boot_volume_size_in_gbs</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
@@ -3558,7 +3558,7 @@ when OCI auto-assigns (default spread behaviour).</p>
         <span class="c1"># ---- Compute instance ------------------------------------------</span>
         <span class="n">instance_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_resource_name</span><span class="p">(</span><span class="s2">&quot;instance&quot;</span><span class="p">)</span>
 
-        <span class="n">instance_metadata</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ssh_authorized_keys&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ssh_public_key</span><span class="p">}</span>
+        <span class="n">instance_metadata</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ssh_authorized_keys&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ssh_public_key</span><span class="p">}</span>
         <span class="k">if</span> <span class="n">encoded_user_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">instance_metadata</span><span class="p">[</span><span class="s2">&quot;user_data&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">encoded_user_data</span>
 
@@ -4762,7 +4762,7 @@ db  = ComputeInstance(&quot;db-1&quot;,  compartment_id=comp_id,
     <span class="c1"># ---- Compute instance ------------------------------------------</span>
     <span class="n">instance_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_resource_name</span><span class="p">(</span><span class="s2">&quot;instance&quot;</span><span class="p">)</span>
 
-    <span class="n">instance_metadata</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ssh_authorized_keys&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ssh_public_key</span><span class="p">}</span>
+    <span class="n">instance_metadata</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ssh_authorized_keys&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ssh_public_key</span><span class="p">}</span>
     <span class="k">if</span> <span class="n">encoded_user_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">instance_metadata</span><span class="p">[</span><span class="s2">&quot;user_data&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">encoded_user_data</span>
 

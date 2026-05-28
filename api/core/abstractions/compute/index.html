@@ -2533,11 +2533,11 @@ helpers and typed function signatures.</p>
           <tr class="doc-section-item">
             <td><code><span title="cloudspells.core.abstractions.compute.AbstractCompute.ssh_public_key">ssh_public_key</span></code></td>
             <td>
-                  <code><span title="str">str</span></code>
+                  <code><span title="pulumi.Input">Input</span>[<span title="str">str</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>OpenSSH public key installed in
+                <p>OpenSSH public key input installed in
 <code>~/.ssh/authorized_keys</code>.</p>
               </div>
             </td>
@@ -2545,12 +2545,12 @@ helpers and typed function signatures.</p>
           <tr class="doc-section-item">
             <td><code><span title="cloudspells.core.abstractions.compute.AbstractCompute.ssh_private_key">ssh_private_key</span></code></td>
             <td>
-                  <code><span title="str">str</span> | None</code>
+                  <code><span title="pulumi.Output">Output</span>[<span title="str">str</span>] | None</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Corresponding PEM private key, or <code>None</code> when
-the caller supplied their own public key.</p>
+                <p>Corresponding PEM private key output, or <code>None</code>
+when the caller supplied their own public key.</p>
               </div>
             </td>
           </tr>
@@ -2684,10 +2684,10 @@ show_ips(aws_vm,  &quot;aws_app&quot;)
 
 <span class="sd">    Attributes:</span>
 <span class="sd">        id: Provider resource ID of the instance.</span>
-<span class="sd">        ssh_public_key: OpenSSH public key installed in</span>
+<span class="sd">        ssh_public_key: OpenSSH public key input installed in</span>
 <span class="sd">            `~/.ssh/authorized_keys`.</span>
-<span class="sd">        ssh_private_key: Corresponding PEM private key, or `None` when</span>
-<span class="sd">            the caller supplied their own public key.</span>
+<span class="sd">        ssh_private_key: Corresponding PEM private key output, or `None`</span>
+<span class="sd">            when the caller supplied their own public key.</span>
 <span class="sd">        auto_generated_keys: `True` when the SSH key pair was auto-generated.</span>
 
 <span class="sd">    Example:</span>
@@ -2702,8 +2702,8 @@ show_ips(aws_vm,  &quot;aws_app&quot;)
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="nb">id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
-    <span class="n">ssh_public_key</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">ssh_private_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">ssh_public_key</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">ssh_private_key</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span>
     <span class="n">auto_generated_keys</span><span class="p">:</span> <span class="nb">bool</span>
 
     <span class="nd">@abstractmethod</span>
@@ -2737,19 +2737,19 @@ show_ips(aws_vm,  &quot;aws_app&quot;)
 <span class="sd">        &quot;&quot;&quot;</span>
 
     <span class="nd">@abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_public_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_public_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the SSH public key installed on the instance.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            OpenSSH public key string (auto-generated or caller-supplied).</span>
+<span class="sd">            OpenSSH public key input (auto-generated or caller-supplied).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
     <span class="nd">@abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_private_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_private_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the auto-generated SSH private key, or `None`.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            PEM-encoded private key when auto-generated, `None`</span>
+<span class="sd">            PEM-encoded private key output when auto-generated, `None`</span>
 <span class="sd">            when the caller supplied their own public key.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
@@ -3033,7 +3033,7 @@ show_ips(aws_vm,  &quot;aws_app&quot;)
 
 
 <h4 id="cloudspells.core.abstractions.compute.AbstractCompute.get_ssh_public_key" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">get_ssh_public_key</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span></code>
+            <code class="highlight language-python"><span class="n">get_ssh_public_key</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
@@ -3058,11 +3058,11 @@ show_ips(aws_vm,  &quot;aws_app&quot;)
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="str">str</span></code>
+                  <code><span title="pulumi.Input">Input</span>[<span title="str">str</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>OpenSSH public key string (auto-generated or caller-supplied).</p>
+                <p>OpenSSH public key input (auto-generated or caller-supplied).</p>
               </div>
             </td>
           </tr>
@@ -3078,11 +3078,11 @@ show_ips(aws_vm,  &quot;aws_app&quot;)
 <span class="normal">149</span>
 <span class="normal">150</span>
 <span class="normal">151</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@abstractmethod</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_public_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_public_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the SSH public key installed on the instance.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        OpenSSH public key string (auto-generated or caller-supplied).</span>
+<span class="sd">        OpenSSH public key input (auto-generated or caller-supplied).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -3094,7 +3094,7 @@ show_ips(aws_vm,  &quot;aws_app&quot;)
 
 
 <h4 id="cloudspells.core.abstractions.compute.AbstractCompute.get_ssh_private_key" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">get_ssh_private_key</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span></code>
+            <code class="highlight language-python"><span class="n">get_ssh_private_key</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
@@ -3119,17 +3119,17 @@ show_ips(aws_vm,  &quot;aws_app&quot;)
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="str">str</span> | None</code>
+                  <code><span title="pulumi.Output">Output</span>[<span title="str">str</span>] | None</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>PEM-encoded private key when auto-generated, <code>None</code></p>
+                <p>PEM-encoded private key output when auto-generated, <code>None</code></p>
               </div>
             </td>
           </tr>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="str">str</span> | None</code>
+                  <code><span title="pulumi.Output">Output</span>[<span title="str">str</span>] | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3150,11 +3150,11 @@ show_ips(aws_vm,  &quot;aws_app&quot;)
 <span class="normal">158</span>
 <span class="normal">159</span>
 <span class="normal">160</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@abstractmethod</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_private_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_ssh_private_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the auto-generated SSH private key, or `None`.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        PEM-encoded private key when auto-generated, `None`</span>
+<span class="sd">        PEM-encoded private key output when auto-generated, `None`</span>
 <span class="sd">        when the caller supplied their own public key.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 </code></pre></div></td></tr></table></div>

@@ -2327,7 +2327,11 @@ secure_subnet_id           ocid1.subnet.oc1...
 management_subnet_id       ocid1.subnet.oc1...
 ...
 </code></pre>
-<p>These outputs are consumed automatically when another stack references this VCN via <code>VcnRef.from_stack_reference()</code>.</p>
+<p>These outputs are consumed automatically when another stack references this VCN
+via <code>VcnRef.from_stack_reference()</code>. This first VCN exports the baseline network
+profile; service stacks that use profile-specific consumers, such as
+role-bearing <code>Nsg</code>, <code>Bastion</code>, OKE, load balancers, or <code>ScalableWorkload</code>, need
+the source VCN stack to register the matching profile before <code>vcn.export()</code>.</p>
 <hr />
 <h2 id="teardown">Teardown</h2>
 <p>To destroy the resources when you are done:</p>

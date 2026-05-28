@@ -2347,7 +2347,7 @@ scalable_pool = ScalableWorkload(
 <li>CPU autoscaling: scale out when CPU &gt; 80%, scale in when CPU &lt; 20%</li>
 <li>300-second cooldown between scaling events</li>
 <li>Defaults to <code>VM.Standard.E4.Flex</code> with 1 OCPU / 16 GB RAM</li>
-<li>Minimum 1 instance; set <code>max_instances</code> to control the ceiling (defaults to 5 if not specified)</li>
+<li>Minimum 1 instance; set <code>max_instances</code> to control the ceiling (defaults to 5 if not specified). <code>max_instances</code> must be at least <code>min_instances</code>, and <code>initial_instances</code> must be inside that range.</li>
 </ul>
 <hr />
 <h2 id="step-3-deploy">Step 3 — Deploy</h2>
@@ -2470,12 +2470,12 @@ scalable_pool = ScalableWorkload(
 <tr>
 <td><code>backend_port</code></td>
 <td><code>80</code></td>
-<td>Port on backend instances for traffic forwarding and health-check probes</td>
+<td>Port on backend instances for traffic forwarding and health-check probes; must be 1-65535</td>
 </tr>
 <tr>
 <td><code>health_check_path</code></td>
 <td><code>"/health"</code></td>
-<td>HTTP path polled for backend health checks</td>
+<td>HTTP path polled for backend health checks; must start with <code>/</code> and contain no whitespace</td>
 </tr>
 <tr>
 <td><code>is_public</code></td>
@@ -2485,12 +2485,12 @@ scalable_pool = ScalableWorkload(
 <tr>
 <td><code>min_bandwidth_mbps</code></td>
 <td><code>10</code></td>
-<td>Minimum bandwidth allocated to the OCI flexible LB shape (Mbps)</td>
+<td>Minimum bandwidth allocated to the OCI flexible LB shape; must be 10-8000 Mbps and no greater than <code>max_bandwidth_mbps</code></td>
 </tr>
 <tr>
 <td><code>max_bandwidth_mbps</code></td>
 <td><code>100</code></td>
-<td>Maximum bandwidth the OCI flexible LB shape may burst to (Mbps)</td>
+<td>Maximum bandwidth the OCI flexible LB shape may burst to; must be 10-8000 Mbps and no less than <code>min_bandwidth_mbps</code></td>
 </tr>
 <tr>
 <td><code>ssl_certificate_name</code></td>

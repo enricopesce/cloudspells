@@ -2232,10 +2232,7 @@ to it via <code>BaseResource.create_resource_name</code> and
 
               <details class="quote">
                 <summary>Source code in <code>packages/cloudspells-core/src/cloudspells/core/naming.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">19</span>
-<span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">22</span>
 <span class="normal">23</span>
 <span class="normal">24</span>
 <span class="normal">25</span>
@@ -2297,7 +2294,19 @@ to it via <code>BaseResource.create_resource_name</code> and
 <span class="normal">81</span>
 <span class="normal">82</span>
 <span class="normal">83</span>
-<span class="normal">84</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ResourceNamer</span><span class="p">:</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span>
+<span class="normal">89</span>
+<span class="normal">90</span>
+<span class="normal">91</span>
+<span class="normal">92</span>
+<span class="normal">93</span>
+<span class="normal">94</span>
+<span class="normal">95</span>
+<span class="normal">96</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ResourceNamer</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate standardised resource names and DNS labels.</span>
 
 <span class="sd">    Every `BaseResource` owns a `ResourceNamer` instance and delegates naming</span>
@@ -2345,24 +2354,33 @@ to it via <code>BaseResource.create_resource_name</code> and
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Build a DNS-safe label for OCI networking resources.</span>
 
 <span class="sd">        OCI requires DNS labels to be alphanumeric, start with a letter, and</span>
-<span class="sd">        be at most 15 characters.  Exceeding this limit causes OCI to reject</span>
-<span class="sd">        the subnet or VCN resource at apply time.  Keep both `prefix` and</span>
-<span class="sd">        `stack_name` short to stay within the limit.</span>
+<span class="sd">        be at most 15 characters.  This method removes invalid characters,</span>
+<span class="sd">        lowercases the result, guarantees a leading letter, and truncates with</span>
+<span class="sd">        a short hash suffix when needed so common stack names cannot fail only</span>
+<span class="sd">        at apply time.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            prefix: Short alphanumeric prefix (e.g. `&quot;pub&quot;`, `&quot;priv&quot;`,</span>
-<span class="sd">                `&quot;vcn&quot;`).  Combined with `stack_name`, the total must be</span>
-<span class="sd">                15 characters or fewer.</span>
+<span class="sd">                `&quot;vcn&quot;`).</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            DNS label string formed by `&quot;{prefix}{stack_name}&quot;`.</span>
+<span class="sd">            DNS-safe label derived from `&quot;{prefix}{stack_name}&quot;`.</span>
 
 <span class="sd">        Example:</span>
-<span class="sd">            &gt;&gt;&gt; namer = ResourceNamer(&quot;mystack&quot;, &quot;lab&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; namer = ResourceNamer(&quot;my-stack&quot;, &quot;lab&quot;)</span>
 <span class="sd">            &gt;&gt;&gt; namer.create_dns_label(&quot;vcn&quot;)</span>
 <span class="sd">            &#39;vcnmystack&#39;</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}{</span><span class="bp">self</span><span class="o">.</span><span class="n">stack_name</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">raw_label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}{</span><span class="bp">self</span><span class="o">.</span><span class="n">stack_name</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[^A-Za-z0-9]&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">raw_label</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">label</span><span class="p">:</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;c&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">label</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">isalpha</span><span class="p">():</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;c</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">label</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">15</span><span class="p">:</span>
+            <span class="n">digest</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha1</span><span class="p">(</span><span class="n">label</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">4</span><span class="p">]</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="p">[:</span><span class="mi">11</span><span class="p">]</span><span class="si">}{</span><span class="n">digest</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="n">label</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -2440,15 +2458,15 @@ to it via <code>BaseResource.create_resource_name</code> and
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-core/src/cloudspells/core/naming.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">37</span>
 <span class="normal">38</span>
 <span class="normal">39</span>
 <span class="normal">40</span>
 <span class="normal">41</span>
-<span class="normal">42</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stack_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">resource_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stack_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">resource_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialise a namer for a specific resource.</span>
 
 <span class="sd">    Args:</span>
@@ -2547,10 +2565,7 @@ namer.create_resource_name("vcn")
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-core/src/cloudspells/core/naming.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">47</span>
 <span class="normal">48</span>
 <span class="normal">49</span>
 <span class="normal">50</span>
@@ -2564,7 +2579,10 @@ namer.create_resource_name("vcn")
 <span class="normal">58</span>
 <span class="normal">59</span>
 <span class="normal">60</span>
-<span class="normal">61</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_resource_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suffix</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_resource_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suffix</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a standardised OCI resource name.</span>
 
 <span class="sd">    Combines the stack name, resource name, and a type suffix into the</span>
@@ -2601,9 +2619,10 @@ namer.create_resource_name("vcn")
 
         <p>Build a DNS-safe label for OCI networking resources.</p>
 <p>OCI requires DNS labels to be alphanumeric, start with a letter, and
-be at most 15 characters.  Exceeding this limit causes OCI to reject
-the subnet or VCN resource at apply time.  Keep both <code>prefix</code> and
-<code>stack_name</code> short to stay within the limit.</p>
+be at most 15 characters.  This method removes invalid characters,
+lowercases the result, guarantees a leading letter, and truncates with
+a short hash suffix when needed so common stack names cannot fail only
+at apply time.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -2627,8 +2646,7 @@ the subnet or VCN resource at apply time.  Keep both <code>prefix</code> and
             <td>
               <div class="doc-md-description">
                 <p>Short alphanumeric prefix (e.g. <code>"pub"</code>, <code>"priv"</code>,
-<code>"vcn"</code>).  Combined with <code>stack_name</code>, the total must be
-15 characters or fewer.</p>
+<code>"vcn"</code>).</p>
               </div>
             </td>
             <td>
@@ -2654,7 +2672,7 @@ the subnet or VCN resource at apply time.  Keep both <code>prefix</code> and
             </td>
             <td>
               <div class="doc-md-description">
-                <p>DNS label string formed by <code>"{prefix}{stack_name}"</code>.</p>
+                <p>DNS-safe label derived from <code>"{prefix}{stack_name}"</code>.</p>
               </div>
             </td>
           </tr>
@@ -2667,7 +2685,7 @@ the subnet or VCN resource at apply time.  Keep both <code>prefix</code> and
   <blockquote>
 <blockquote>
 <blockquote>
-<p>namer = ResourceNamer("mystack", "lab")
+<p>namer = ResourceNamer("my-stack", "lab")
 namer.create_dns_label("vcn")
 'vcnmystack'</p>
 </blockquote>
@@ -2676,10 +2694,7 @@ namer.create_dns_label("vcn")
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-core/src/cloudspells/core/naming.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">66</span>
 <span class="normal">67</span>
 <span class="normal">68</span>
 <span class="normal">69</span>
@@ -2697,28 +2712,49 @@ namer.create_dns_label("vcn")
 <span class="normal">81</span>
 <span class="normal">82</span>
 <span class="normal">83</span>
-<span class="normal">84</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_dns_label</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span>
+<span class="normal">89</span>
+<span class="normal">90</span>
+<span class="normal">91</span>
+<span class="normal">92</span>
+<span class="normal">93</span>
+<span class="normal">94</span>
+<span class="normal">95</span>
+<span class="normal">96</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_dns_label</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a DNS-safe label for OCI networking resources.</span>
 
 <span class="sd">    OCI requires DNS labels to be alphanumeric, start with a letter, and</span>
-<span class="sd">    be at most 15 characters.  Exceeding this limit causes OCI to reject</span>
-<span class="sd">    the subnet or VCN resource at apply time.  Keep both `prefix` and</span>
-<span class="sd">    `stack_name` short to stay within the limit.</span>
+<span class="sd">    be at most 15 characters.  This method removes invalid characters,</span>
+<span class="sd">    lowercases the result, guarantees a leading letter, and truncates with</span>
+<span class="sd">    a short hash suffix when needed so common stack names cannot fail only</span>
+<span class="sd">    at apply time.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        prefix: Short alphanumeric prefix (e.g. `&quot;pub&quot;`, `&quot;priv&quot;`,</span>
-<span class="sd">            `&quot;vcn&quot;`).  Combined with `stack_name`, the total must be</span>
-<span class="sd">            15 characters or fewer.</span>
+<span class="sd">            `&quot;vcn&quot;`).</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        DNS label string formed by `&quot;{prefix}{stack_name}&quot;`.</span>
+<span class="sd">        DNS-safe label derived from `&quot;{prefix}{stack_name}&quot;`.</span>
 
 <span class="sd">    Example:</span>
-<span class="sd">        &gt;&gt;&gt; namer = ResourceNamer(&quot;mystack&quot;, &quot;lab&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; namer = ResourceNamer(&quot;my-stack&quot;, &quot;lab&quot;)</span>
 <span class="sd">        &gt;&gt;&gt; namer.create_dns_label(&quot;vcn&quot;)</span>
 <span class="sd">        &#39;vcnmystack&#39;</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}{</span><span class="bp">self</span><span class="o">.</span><span class="n">stack_name</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">raw_label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}{</span><span class="bp">self</span><span class="o">.</span><span class="n">stack_name</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[^A-Za-z0-9]&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">raw_label</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">label</span><span class="p">:</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;c&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">label</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">isalpha</span><span class="p">():</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;c</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">label</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">15</span><span class="p">:</span>
+        <span class="n">digest</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha1</span><span class="p">(</span><span class="n">label</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">4</span><span class="p">]</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="p">[:</span><span class="mi">11</span><span class="p">]</span><span class="si">}{</span><span class="n">digest</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">return</span> <span class="n">label</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

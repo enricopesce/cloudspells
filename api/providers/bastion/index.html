@@ -2342,7 +2342,13 @@ pulumi.export(&quot;bastion_endpoint&quot;, bastion.get_bastion_endpoint())
 
               <details class="quote">
                 <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/bastion.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 56</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 50</span>
+<span class="normal"> 51</span>
+<span class="normal"> 52</span>
+<span class="normal"> 53</span>
+<span class="normal"> 54</span>
+<span class="normal"> 55</span>
+<span class="normal"> 56</span>
 <span class="normal"> 57</span>
 <span class="normal"> 58</span>
 <span class="normal"> 59</span>
@@ -2522,55 +2528,7 @@ pulumi.export(&quot;bastion_endpoint&quot;, bastion.get_bastion_endpoint())
 <span class="normal">233</span>
 <span class="normal">234</span>
 <span class="normal">235</span>
-<span class="normal">236</span>
-<span class="normal">237</span>
-<span class="normal">238</span>
-<span class="normal">239</span>
-<span class="normal">240</span>
-<span class="normal">241</span>
-<span class="normal">242</span>
-<span class="normal">243</span>
-<span class="normal">244</span>
-<span class="normal">245</span>
-<span class="normal">246</span>
-<span class="normal">247</span>
-<span class="normal">248</span>
-<span class="normal">249</span>
-<span class="normal">250</span>
-<span class="normal">251</span>
-<span class="normal">252</span>
-<span class="normal">253</span>
-<span class="normal">254</span>
-<span class="normal">255</span>
-<span class="normal">256</span>
-<span class="normal">257</span>
-<span class="normal">258</span>
-<span class="normal">259</span>
-<span class="normal">260</span>
-<span class="normal">261</span>
-<span class="normal">262</span>
-<span class="normal">263</span>
-<span class="normal">264</span>
-<span class="normal">265</span>
-<span class="normal">266</span>
-<span class="normal">267</span>
-<span class="normal">268</span>
-<span class="normal">269</span>
-<span class="normal">270</span>
-<span class="normal">271</span>
-<span class="normal">272</span>
-<span class="normal">273</span>
-<span class="normal">274</span>
-<span class="normal">275</span>
-<span class="normal">276</span>
-<span class="normal">277</span>
-<span class="normal">278</span>
-<span class="normal">279</span>
-<span class="normal">280</span>
-<span class="normal">281</span>
-<span class="normal">282</span>
-<span class="normal">283</span>
-<span class="normal">284</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Bastion</span><span class="p">(</span><span class="n">BaseResource</span><span class="p">,</span> <span class="n">AbstractBastion</span><span class="p">):</span>
+<span class="normal">236</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Bastion</span><span class="p">(</span><span class="n">BaseResource</span><span class="p">,</span> <span class="n">AbstractBastion</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;OCI Bastion Service for secure SSH access to private-subnet resources.</span>
 
 <span class="sd">    Creates an OCI managed Bastion attached to the VCN&#39;s private subnet,</span>
@@ -2670,26 +2628,15 @@ pulumi.export(&quot;bastion_endpoint&quot;, bastion.get_bastion_endpoint())
                 <span class="s2">&quot;allowed_client_cidrs=[&#39;0.0.0.0/0&#39;].&quot;</span>
             <span class="p">)</span>
 
-        <span class="c1"># Register the Bastion SSH rule before finalising.  OCI Bastion sessions</span>
-        <span class="c1"># originate from randomly-assigned managed IPs, so the rule must allow</span>
-        <span class="c1"># 0.0.0.0/0 on port 22 — categorically different from the SSH rule that</span>
-        <span class="c1"># ComputeInstance adds (which uses the public-subnet CIDR).  Silently</span>
-        <span class="c1"># skipping would leave the private security list without the required rule</span>
-        <span class="c1"># and break all Bastion sessions.  Raise early with a clear message if the</span>
-        <span class="c1"># network was already finalised before this Bastion was constructed.</span>
+        <span class="c1"># Register or require the Bastion network profile before finalising.</span>
+        <span class="c1"># OCI Bastion sessions originate from randomly-assigned managed IPs, so</span>
+        <span class="c1"># the source VCN must allow 0.0.0.0/0 on private-subnet TCP/22 while</span>
+        <span class="c1"># actual session creation remains restricted by allowed_client_cidrs.</span>
+        <span class="n">network_profile_check</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="p">,</span> <span class="n">Vcn</span><span class="p">):</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">is_finalized</span><span class="p">:</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">has_ambient_rule</span><span class="p">(</span><span class="n">_BASTION_SSH_RULE_FINGERPRINT</span><span class="p">):</span>
-                    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                        <span class="s2">&quot;Bastion must be constructed before any spell that finalizes &quot;</span>
-                        <span class="s2">&quot;the VCN network (ComputeInstance, ScalableWorkload, OkeCluster). &quot;</span>
-                        <span class="s2">&quot;Bastion requires SSH from 0.0.0.0/0 on the private security list &quot;</span>
-                        <span class="s2">&quot;for OCI Bastion sessions, and that rule can only be registered &quot;</span>
-                        <span class="s2">&quot;before Vcn.finalize_network() is called.&quot;</span>
-                    <span class="p">)</span>
-                <span class="c1"># Rule already applied by an earlier Bastion — no-op.</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_add_bastion_security_rules</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">enable_bastion_profile</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">network_profile_check</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">require_network_profile</span><span class="p">(</span><span class="n">NETWORK_PROFILE_BASTION</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">finalize_network</span><span class="p">()</span>
 
         <span class="n">bastion_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_resource_name</span><span class="p">(</span><span class="s2">&quot;bastion&quot;</span><span class="p">)</span>
@@ -2708,44 +2655,13 @@ pulumi.export(&quot;bastion_endpoint&quot;, bastion.get_bastion_endpoint())
         <span class="bp">self</span><span class="o">.</span><span class="n">bastion_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bastion</span><span class="o">.</span><span class="n">id</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">bastion_endpoint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bastion</span><span class="o">.</span><span class="n">private_endpoint_ip_address</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">register_outputs</span><span class="p">({</span>
+        <span class="n">outputs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;bastion_id&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">bastion_id</span><span class="p">,</span>
             <span class="s2">&quot;bastion_endpoint&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">bastion_endpoint</span><span class="p">,</span>
-        <span class="p">})</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_add_bastion_security_rules</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add SSH ingress rule to the VCN private security list.</span>
-
-<span class="sd">        OCI Bastion sessions originate from managed, randomly-assigned source</span>
-<span class="sd">        IPs whose addresses are not known at deploy time, so the security list</span>
-<span class="sd">        rule must allow `0.0.0.0/0` on port 22.  This is the key design</span>
-<span class="sd">        decision: unlike a jump-host rule that can be scoped to a known CIDR,</span>
-<span class="sd">        OCI Bastion requires an open-source rule on the security list while</span>
-<span class="sd">        restricting actual session creation to specific CIDRs at the Bastion</span>
-<span class="sd">        level via `allowed_client_cidrs`.</span>
-
-<span class="sd">        Uses fingerprint `_BASTION_SSH_RULE_FINGERPRINT` so that a second</span>
-<span class="sd">        `Bastion` constructed against the same VCN is deduplicated rather than</span>
-<span class="sd">        producing a duplicate rule.</span>
-
-<span class="sd">        Must be called before `Vcn.finalize_network`.  Constructing `Bastion`</span>
-<span class="sd">        before any spell that triggers finalisation (e.g. `ComputeInstance`)</span>
-<span class="sd">        ensures the correct ordering.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">add_unique_security_rules</span><span class="p">(</span>  <span class="c1"># type: ignore[union-attr]  # narrowed to Vcn by isinstance guard above</span>
-            <span class="n">_BASTION_SSH_RULE_FINGERPRINT</span><span class="p">,</span>
-            <span class="n">SecurityRules</span><span class="p">(</span>
-                <span class="n">private_ingress</span><span class="o">=</span><span class="p">[</span>
-                    <span class="n">IngressRule</span><span class="p">(</span>
-                        <span class="n">protocol</span><span class="o">=</span><span class="s2">&quot;tcp&quot;</span><span class="p">,</span>
-                        <span class="n">source</span><span class="o">=</span><span class="s2">&quot;0.0.0.0/0&quot;</span><span class="p">,</span>
-                        <span class="n">port_min</span><span class="o">=</span><span class="mi">22</span><span class="p">,</span>
-                        <span class="n">port_max</span><span class="o">=</span><span class="mi">22</span><span class="p">,</span>
-                        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;SSH access from OCI Bastion service to private subnet instances&quot;</span><span class="p">,</span>
-                    <span class="p">),</span>
-                <span class="p">],</span>
-            <span class="p">),</span>
-        <span class="p">)</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">network_profile_check</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">outputs</span><span class="p">[</span><span class="s2">&quot;network_profile_check&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">network_profile_check</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_outputs</span><span class="p">(</span><span class="n">outputs</span><span class="p">)</span>
 
     <span class="c1"># ------------------------------------------------------------------</span>
     <span class="c1"># Public accessors</span>
@@ -2986,7 +2902,13 @@ before any spell that triggers <code>finalize_network()</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/bastion.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">109</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
 <span class="normal">110</span>
 <span class="normal">111</span>
 <span class="normal">112</span>
@@ -3060,21 +2982,7 @@ before any spell that triggers <code>finalize_network()</code>.</p>
 <span class="normal">180</span>
 <span class="normal">181</span>
 <span class="normal">182</span>
-<span class="normal">183</span>
-<span class="normal">184</span>
-<span class="normal">185</span>
-<span class="normal">186</span>
-<span class="normal">187</span>
-<span class="normal">188</span>
-<span class="normal">189</span>
-<span class="normal">190</span>
-<span class="normal">191</span>
-<span class="normal">192</span>
-<span class="normal">193</span>
-<span class="normal">194</span>
-<span class="normal">195</span>
-<span class="normal">196</span>
-<span class="normal">197</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<span class="normal">183</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">compartment_id</span><span class="p">:</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
@@ -3121,26 +3029,15 @@ before any spell that triggers <code>finalize_network()</code>.</p>
             <span class="s2">&quot;allowed_client_cidrs=[&#39;0.0.0.0/0&#39;].&quot;</span>
         <span class="p">)</span>
 
-    <span class="c1"># Register the Bastion SSH rule before finalising.  OCI Bastion sessions</span>
-    <span class="c1"># originate from randomly-assigned managed IPs, so the rule must allow</span>
-    <span class="c1"># 0.0.0.0/0 on port 22 — categorically different from the SSH rule that</span>
-    <span class="c1"># ComputeInstance adds (which uses the public-subnet CIDR).  Silently</span>
-    <span class="c1"># skipping would leave the private security list without the required rule</span>
-    <span class="c1"># and break all Bastion sessions.  Raise early with a clear message if the</span>
-    <span class="c1"># network was already finalised before this Bastion was constructed.</span>
+    <span class="c1"># Register or require the Bastion network profile before finalising.</span>
+    <span class="c1"># OCI Bastion sessions originate from randomly-assigned managed IPs, so</span>
+    <span class="c1"># the source VCN must allow 0.0.0.0/0 on private-subnet TCP/22 while</span>
+    <span class="c1"># actual session creation remains restricted by allowed_client_cidrs.</span>
+    <span class="n">network_profile_check</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="p">,</span> <span class="n">Vcn</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">is_finalized</span><span class="p">:</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">has_ambient_rule</span><span class="p">(</span><span class="n">_BASTION_SSH_RULE_FINGERPRINT</span><span class="p">):</span>
-                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                    <span class="s2">&quot;Bastion must be constructed before any spell that finalizes &quot;</span>
-                    <span class="s2">&quot;the VCN network (ComputeInstance, ScalableWorkload, OkeCluster). &quot;</span>
-                    <span class="s2">&quot;Bastion requires SSH from 0.0.0.0/0 on the private security list &quot;</span>
-                    <span class="s2">&quot;for OCI Bastion sessions, and that rule can only be registered &quot;</span>
-                    <span class="s2">&quot;before Vcn.finalize_network() is called.&quot;</span>
-                <span class="p">)</span>
-            <span class="c1"># Rule already applied by an earlier Bastion — no-op.</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_add_bastion_security_rules</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">enable_bastion_profile</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">network_profile_check</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">require_network_profile</span><span class="p">(</span><span class="n">NETWORK_PROFILE_BASTION</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">vcn</span><span class="o">.</span><span class="n">finalize_network</span><span class="p">()</span>
 
     <span class="n">bastion_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_resource_name</span><span class="p">(</span><span class="s2">&quot;bastion&quot;</span><span class="p">)</span>
@@ -3159,10 +3056,13 @@ before any spell that triggers <code>finalize_network()</code>.</p>
     <span class="bp">self</span><span class="o">.</span><span class="n">bastion_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bastion</span><span class="o">.</span><span class="n">id</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">bastion_endpoint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bastion</span><span class="o">.</span><span class="n">private_endpoint_ip_address</span>
 
-    <span class="bp">self</span><span class="o">.</span><span class="n">register_outputs</span><span class="p">({</span>
+    <span class="n">outputs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;bastion_id&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">bastion_id</span><span class="p">,</span>
         <span class="s2">&quot;bastion_endpoint&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">bastion_endpoint</span><span class="p">,</span>
-    <span class="p">})</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="n">network_profile_check</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">outputs</span><span class="p">[</span><span class="s2">&quot;network_profile_check&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">network_profile_check</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">register_outputs</span><span class="p">(</span><span class="n">outputs</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -3194,22 +3094,22 @@ bastion.export()
 </details>
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/bastion.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">237</span>
-<span class="normal">238</span>
-<span class="normal">239</span>
-<span class="normal">240</span>
-<span class="normal">241</span>
-<span class="normal">242</span>
-<span class="normal">243</span>
-<span class="normal">244</span>
-<span class="normal">245</span>
-<span class="normal">246</span>
-<span class="normal">247</span>
-<span class="normal">248</span>
-<span class="normal">249</span>
-<span class="normal">250</span>
-<span class="normal">251</span>
-<span class="normal">252</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Export standard Bastion stack outputs.</span>
 
 <span class="sd">    Publishes the Bastion OCID and private endpoint IP under keys</span>
@@ -3269,13 +3169,13 @@ bastion.export()
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/bastion.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">254</span>
-<span class="normal">255</span>
-<span class="normal">256</span>
-<span class="normal">257</span>
-<span class="normal">258</span>
-<span class="normal">259</span>
-<span class="normal">260</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_bastion_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_bastion_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the OCID of the Bastion resource.</span>
 
 <span class="sd">    Returns:</span>
@@ -3338,17 +3238,17 @@ configuration to tunnel SSH connections to private-subnet instances.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/bastion.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">262</span>
-<span class="normal">263</span>
-<span class="normal">264</span>
-<span class="normal">265</span>
-<span class="normal">266</span>
-<span class="normal">267</span>
-<span class="normal">268</span>
-<span class="normal">269</span>
-<span class="normal">270</span>
-<span class="normal">271</span>
-<span class="normal">272</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_bastion_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_bastion_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the private endpoint IP of the Bastion.</span>
 
 <span class="sd">    Use this address as a `ProxyJump` target in your SSH client</span>
@@ -3415,17 +3315,17 @@ Delegates to <code>get_bastion_endpoint</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>packages/cloudspells-oci/src/cloudspells/providers/oci/bastion.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">274</span>
-<span class="normal">275</span>
-<span class="normal">276</span>
-<span class="normal">277</span>
-<span class="normal">278</span>
-<span class="normal">279</span>
-<span class="normal">280</span>
-<span class="normal">281</span>
-<span class="normal">282</span>
-<span class="normal">283</span>
-<span class="normal">284</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_access_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_access_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pulumi</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the access endpoint for SSH proxy sessions.</span>
 
 <span class="sd">    Satisfies `AbstractBastion.get_access_endpoint`.</span>
