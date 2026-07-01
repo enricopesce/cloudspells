@@ -16,8 +16,8 @@ dependencies = [
     "rich>=13",
     "pulumi>=3.204.0,<4",
     "pyyaml>=6",
-    "cloudspells-core>=0.2.0",
-    "cloudspells-oci>=0.2.0",
+    "cloudspells-core>=0.2.0,<0.3.0",
+    "cloudspells-oci>=0.2.0,<0.3.0",
 ]
 
 [project.scripts]

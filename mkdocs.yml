@@ -36,8 +36,6 @@ nav:
   - Getting Started:
     - Installation: getting-started/installation.md
     - First Deploy: getting-started/first-deploy.md
-  - CLI:
-    - Commands: getting-started/installation.md
   - Tutorials:
     - Compute Instance: tutorials/compute.md
     - OKE Cluster: tutorials/oke.md
@@ -56,6 +54,7 @@ nav:
   - Concepts:
     - Design Philosophy: concepts/design.md
     - Network Topology: concepts/network-topology.md
+    - Release Model: concepts/release-model.md
   - Reference:
     - VCN Architecture: reference/vcn-architecture.md
     - OKE Architecture: reference/oke-architecture.md

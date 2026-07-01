@@ -39,13 +39,13 @@ CloudSpells makes **the architecture the product**. Network topology, subnet tie
 CloudSpells publishes the runtime packages independently:
 
 ```bash
-pip install cloudspells-core      # cloud-neutral abstractions and utilities
-pip install cloudspells-oci       # OCI spells (installs cloudspells-core automatically)
+pip install cloudspells-oci       # OCI spells; installs cloudspells-core automatically
+pip install cloudspells-cli       # optional cs command; requires Python 3.12+
 ```
 
-The optional `cs` CLI lives in this repository but is not part of the current
-PyPI publish workflow. Install it from source when you need stack scaffolding
-and management commands.
+Install `cloudspells-core` directly only when you are building provider packages
+or shared CloudSpells abstractions. Application stacks normally install the
+provider package they use.
 
 For local development from source:
 
@@ -223,7 +223,7 @@ Adding a third web backend? Attach `web_nsg` to a new `ComputeInstance`. Zero NS
 
 ## Architecture
 
-CloudSpells uses a strict three-layer design that separates cloud-neutral contracts from cloud-specific implementations. The runtime packages are published independently; the repository also includes an optional source-installed CLI for scaffolding and stack operations:
+CloudSpells uses a strict three-layer design that separates cloud-neutral contracts from cloud-specific implementations. The runtime packages are published independently from one monorepo:
 
 ```
 packages/
@@ -254,7 +254,7 @@ packages/
 │               ├── network_logging.py   ← VcnFlowLogs
 │               ├── iam.py               ← ComputeInstancePrincipal, OkeNodePrincipal, CompartmentAdminGroup
 │               └── genai_agent_rag.py   ← GenAiAgentRag
-└── cloudspells-cli/             ← source install only in the current workflow
+└── cloudspells-cli/             ← pip install cloudspells-cli
     └── src/cloudspells/
         └── cli/                 ← cs command: wizard, new, up, destroy, output, refresh, status,
             ├── commands/        ← config, stack, backend, and project subcommands
@@ -264,6 +264,29 @@ packages/
 ```
 
 **The key design insight:** adding a new cloud provider means implementing the abstractions under `packages/cloudspells-<cloud>/src/cloudspells/providers/<cloud>/`. The goal is the same mental model and comparable calling conventions across providers, while each provider module still exposes the cloud-specific spell classes it implements.
+
+### Release Model
+
+CloudSpells uses package-specific releases from this monorepo. A change to one
+distribution does not require a new version of every distribution.
+
+| Change | Release |
+| --- | --- |
+| Shared abstractions, naming, tagging, or base resource behavior | `cloudspells-core`, then any provider that needs the new core API |
+| OCI spell behavior only | `cloudspells-oci` |
+| CLI scaffolding or stack-management behavior only | `cloudspells-cli` |
+| Documentation only | No package release |
+
+Release tags name the distribution they publish:
+
+```bash
+git tag cloudspells-core-v0.2.1
+git tag cloudspells-oci-v0.2.1
+git tag cloudspells-cli-v0.1.1
+```
+
+The publish workflow builds only the tagged package and checks that the tag
+version matches that package's `pyproject.toml`.
 
 ### VCN Network Topology
 
@@ -296,7 +319,7 @@ Subnet tier, gateway routing, and security posture are not configurable — they
 ### Prerequisites
 
 - Python 3.10 or later for `cloudspells-core` and `cloudspells-oci`
-- Python 3.12 or later for the optional source-installed `cloudspells-cli` package
+- Python 3.12 or later for the optional `cloudspells-cli` package
 - [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/) installed and on your `PATH`
 - OCI credentials configured at `~/.oci/config` (see [OCI SDK and CLI Configuration](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/sdkconfig.htm))
 
@@ -306,8 +329,11 @@ Subnet tier, gateway routing, and security posture are not configurable — they
 pip install cloudspells-oci
 ```
 
-The `cloudspells-cli` package is not currently published by the release
-workflow. Use the source install below for the `cs` command.
+Install the optional CLI separately when you want the `cs` command:
+
+```bash
+pip install cloudspells-cli
+```
 
 For local development from source:
 
@@ -381,8 +407,8 @@ CloudSpells is actively looking for contributors. See [CONTRIBUTING.md](.github/
 - [x] `GenAiAgentRag` for OCI Generative AI Agents RAG architectures
 - [x] `OkeClusterEnhanced` for enhanced OKE clusters
 - [x] Split into `cloudspells-core` and `cloudspells-oci` packages for independent versioning
-- [x] `cloudspells-cli` (`cs`) in source for stack scaffolding, config, deploy/destroy, outputs, refresh/status, backend URLs, and multi-spell projects
-- [x] PyPI publishing via GitHub Actions for `cloudspells-core` and `cloudspells-oci`
+- [x] `cloudspells-cli` (`cs`) for stack scaffolding, config, deploy/destroy, outputs, refresh/status, backend URLs, and multi-spell projects
+- [x] Package-specific PyPI publishing via GitHub Actions from one monorepo
 - [ ] AWS provider — implement `AbstractNetwork`, `AbstractScalableWorkload`, etc. for AWS
 - [ ] GCP provider — same abstraction layer for GCP
 - [ ] Azure provider

@@ -11,7 +11,9 @@ This page walks you through installing CloudSpells and its prerequisites from sc
 | [OCI CLI](https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/cliinstall.htm) (optional) | latest | Verify OCI credentials |
 
 !!! note "`cloudspells-cli` requires Python 3.12+"
-    The `cloudspells-cli` package uses features available only in Python 3.12 and later. It lives in this repository, but the current publish workflow does not publish a CLI wheel to PyPI.
+    The `cloudspells-cli` package uses features available only in Python 3.12
+    and later. Install it separately from `cloudspells-oci` when you need the
+    optional `cs` command.
 
 ### Install the Pulumi CLI
 
@@ -78,6 +80,12 @@ Install the OCI provider package. `cloudspells-core` is pulled in automatically 
 pip install cloudspells-oci
 ```
 
+Install the optional CLI separately when you want the `cs` command:
+
+```bash
+pip install cloudspells-cli
+```
+
 !!! note "Installing from source"
     If you need unreleased changes or want to contribute, clone the repository and install in editable mode instead:
 
@@ -87,15 +95,17 @@ pip install cloudspells-oci
     pip install -e packages/cloudspells-core -e packages/cloudspells-oci
     ```
 
-    To use the source CLI, install it in the same Python 3.12+ environment:
+    To work on the CLI from source, install it in the same Python 3.12+ environment:
 
     ```bash
     pip install -e packages/cloudspells-cli
     ```
 
+    `requirements.txt` in the repository root contains **developer tooling** (linting with ruff, type-checking with pyright, tests with pytest, dead-code scanning with vulture, and MkDocs for documentation). It is only needed when contributing to the project itself, not for end-user source installs.
+
 ## CloudSpells CLI
 
-The source-installed `cs` command wraps common Pulumi Automation API workflows:
+The `cs` command wraps common Pulumi Automation API workflows:
 
 | Command | Purpose |
 |---------|---------|
