@@ -118,6 +118,7 @@ class OCIMocks(pulumi.runtime.Mocks):
         if typ == "oci:Core/vcn:Vcn":
             outputs["defaultRouteTableId"] = f"{args.name}-default-rt-id"
             outputs["defaultSecurityListId"] = f"{args.name}-default-sl-id"
+            outputs["ipv6cidr_blocks"] = ["2001:db8::/56"]
         elif typ in (
             "oci:Core/subnet:Subnet",
             "oci:Core/internetGateway:InternetGateway",

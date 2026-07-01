@@ -466,6 +466,53 @@ class TestVcn(unittest.TestCase):
         )
         self.assertIsNone(vcn.drg, "drg must be None when drg=False even with on_premise_cidrs set")
 
+    @pulumi.runtime.test
+    def test_ipv6_enabled_creates_all_subnets(self):
+        """Vcn with ipv6_enabled=True creates all four subnets and marks _ipv6_enabled — F9."""
+        vcn = Vcn(
+            name="ipv6-test-vcn",
+            compartment_id="ocid1.compartment.test",
+            ipv6_enabled=True,
+        )
+        vcn.finalize_network()
+
+        self.assertTrue(vcn._ipv6_enabled, "vcn._ipv6_enabled must be True")
+        self.assertIsNotNone(vcn.public_subnet, "Public subnet must be created with IPv6 enabled")
+        self.assertIsNotNone(vcn.private_subnet, "Private subnet must be created with IPv6 enabled")
+        self.assertIsNotNone(vcn.secure_subnet, "Secure subnet must be created with IPv6 enabled")
+        self.assertIsNotNone(vcn.management_subnet, "Management subnet must be created with IPv6 enabled")
+
+        assert vcn.public_subnet is not None
+        assert vcn.private_subnet is not None
+        assert vcn.secure_subnet is not None
+        assert vcn.management_subnet is not None
+
+        def check(args):
+            pub, priv, sec, mgmt = args
+            self.assertIsNotNone(pub)
+            self.assertIsNotNone(priv)
+            self.assertIsNotNone(sec)
+            self.assertIsNotNone(mgmt)
+
+        return pulumi.Output.all(
+            vcn.public_subnet.id,
+            vcn.private_subnet.id,
+            vcn.secure_subnet.id,
+            vcn.management_subnet.id,
+        ).apply(check)
+
+    def test_drg_present_after_finalize_network(self):
+        """Vcn(drg=True) retains drg and drg_attachment after finalize_network() — F11."""
+        vcn = Vcn(
+            name="drg-finalize-vcn",
+            compartment_id="ocid1.compartment.test",
+            drg=True,
+        )
+        vcn.finalize_network()
+
+        self.assertIsNotNone(vcn.drg, "drg must not be None after finalize_network()")
+        self.assertIsNotNone(vcn.drg_attachment, "drg_attachment must not be None after finalize_network()")
+
     # ------------------------------------------------------------------
     # add_security_rules
     # ------------------------------------------------------------------

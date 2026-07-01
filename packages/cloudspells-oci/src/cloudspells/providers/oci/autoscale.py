@@ -322,6 +322,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         else:
             # cast: _UnsetType is exhausted by the isinstance guard above
             self.scaling_policy = cast("MetricScalingPolicy | ScheduleScalingPolicy | None", scaling_policy)
+        self._validate_scaling_policy(self.scaling_policy)
         self.listeners = []
         self.autoscaling_configuration = None
 
@@ -402,6 +403,35 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 f"got initial_instances={initial_instances}, min_instances={min_instances}, "
                 f"max_instances={max_instances}"
             )
+
+    @staticmethod
+    def _validate_scaling_policy(
+        scaling_policy: MetricScalingPolicy | ScheduleScalingPolicy | None,
+    ) -> None:
+        """Validate a resolved scaling policy before any resources are built.
+
+        Only `ScheduleScalingPolicy` needs checking: an absolute
+        `CHANGE_COUNT_TO` target below 1 cannot be honoured by an OCI
+        autoscaling capacity (whose minimum is 1) and is rejected here so the
+        error surfaces at construction time rather than at deploy time.
+
+        Args:
+            scaling_policy: The resolved policy (`MetricScalingPolicy`,
+                `ScheduleScalingPolicy`, or `None`).
+
+        Raises:
+            ValueError: If a `CHANGE_COUNT_TO` schedule entry has a target
+                below 1.
+        """
+        if not isinstance(scaling_policy, ScheduleScalingPolicy):
+            return
+        for entry in scaling_policy.schedules:
+            if entry.action.value == "CHANGE_COUNT_TO" and entry.value < 1:
+                raise ValueError(
+                    "ScheduleEntry with CHANGE_COUNT_TO requires an absolute target >= 1; "
+                    f"got value={entry.value} for schedule '{entry.display_name}'. "
+                    "OCI instance pools cannot scale below one instance."
+                )
 
     def _add_scalable_workload_security_rules(self) -> None:
         """Add security rules for load balancer and instance pool communication.
@@ -776,11 +806,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 `_create_autoscaling_configuration` performs an `isinstance`
                 check before dispatching here.
         """
-        if not isinstance(self.scaling_policy, MetricScalingPolicy):
-            raise RuntimeError(
-                f"_create_metric_autoscaling called with wrong policy type: {type(self.scaling_policy)!r}"
-            )
-        policy = self.scaling_policy
+        policy = cast(MetricScalingPolicy, self.scaling_policy)
 
         self.autoscaling_configuration = oci.autoscaling.AutoScalingConfiguration(
             asc_name,
@@ -865,11 +891,7 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
                 `_create_autoscaling_configuration` performs an `isinstance`
                 check before dispatching here.
         """
-        if not isinstance(self.scaling_policy, ScheduleScalingPolicy):
-            raise RuntimeError(
-                f"_create_schedule_autoscaling called with wrong policy type: {type(self.scaling_policy)!r}"
-            )
-        policy = self.scaling_policy
+        policy = cast(ScheduleScalingPolicy, self.scaling_policy)
 
         # Build one scheduled policy per ScheduleEntry.
         # Each entry drives a capacity change via execution_schedule + capacity;
@@ -878,9 +900,12 @@ class ScalableWorkload(BaseResource, AbstractScalableWorkload):
         policies = []
         for entry in policy.schedules:
             if entry.action.value == "CHANGE_COUNT_TO":
-                target = entry.value
-                new_min = min(entry.value, self.min_instances)
+                new_min = max(1, min(entry.value, self.min_instances))
                 new_max = max(entry.value, self.max_instances)
+                # OCI rejects a capacity whose initial is below min. Clamp the
+                # target into [new_min, new_max] so a requested count below 1
+                # (which OCI cannot honour) still yields a valid configuration.
+                target = max(new_min, min(new_max, entry.value))
             else:
                 # CHANGE_COUNT_BY: clamp delta within [min_instances, max_instances]
                 target = max(self.min_instances, min(self.max_instances, self.initial_instances + entry.value))

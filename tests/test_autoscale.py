@@ -458,6 +458,80 @@ class TestAutoscaleWorkload(unittest.TestCase):
         self.assertIsNotNone(workload.get_load_balancer_id())
         self.assertIsNotNone(workload.get_ssh_public_key())
 
+    def test_change_count_by_positive_and_negative_delta(self):
+        """ScheduleScalingPolicy with CHANGE_COUNT_BY creates autoscaling config — F7."""
+        policy = ScheduleScalingPolicy(
+            schedules=[
+                ScheduleEntry(
+                    cron_expression="0 0 8 ? * MON-FRI *",
+                    action=ScalingAction.CHANGE_COUNT_BY,
+                    value=2,
+                    display_name="Scale up by 2 instances",
+                ),
+                ScheduleEntry(
+                    cron_expression="0 0 20 ? * MON-FRI *",
+                    action=ScalingAction.CHANGE_COUNT_BY,
+                    value=-1,
+                    display_name="Scale down by 1 instance",
+                ),
+            ],
+        )
+
+        workload = ScalableWorkload(
+            name="change-count-by-workload",
+            compartment_id="ocid1.compartment.test",
+            vcn=self._make_vcn(),
+            image_id="ocid1.image.oc1.phx.test",
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+            min_instances=1,
+            max_instances=5,
+            scaling_policy=policy,
+        )
+
+        self.assertIsNotNone(
+            workload.autoscaling_configuration,
+            "Autoscaling config must be created for CHANGE_COUNT_BY",
+        )
+        self.assertIsInstance(workload.scaling_policy, ScheduleScalingPolicy)
+
+    def test_change_count_to_below_one_is_rejected(self):
+        """CHANGE_COUNT_TO with a target below 1 raises ValueError at construction."""
+        policy = ScheduleScalingPolicy(
+            schedules=[
+                ScheduleEntry(
+                    cron_expression="0 0 20 ? * MON-FRI *",
+                    action=ScalingAction.CHANGE_COUNT_TO,
+                    value=0,
+                    display_name="Scale to zero overnight",
+                ),
+            ],
+        )
+
+        with self.assertRaises(ValueError):
+            ScalableWorkload(
+                name="scale-to-zero-workload",
+                compartment_id="ocid1.compartment.test",
+                vcn=self._make_vcn(),
+                image_id="ocid1.image.oc1.phx.test",
+                ssh_public_key="ssh-rsa AAAAB3... test-key",
+                min_instances=1,
+                max_instances=5,
+                scaling_policy=policy,
+            )
+
+    def test_internal_load_balancer_creates_lb_resource(self):
+        """ScalableWorkload with is_public=False creates a load balancer resource — F12."""
+        workload = ScalableWorkload(
+            name="internal-lb-workload",
+            compartment_id="ocid1.compartment.test",
+            vcn=self._make_vcn(),
+            image_id="ocid1.image.oc1.phx.test",
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+            load_balancer_config=OciLoadBalancerConfig(is_public=False),
+        )
+
+        self.assertIsNotNone(workload.load_balancer, "Load balancer resource must be created for internal LB")
+
 
 class TestDataclasses(unittest.TestCase):
     """Test configuration dataclasses."""

@@ -84,8 +84,10 @@ fully-implemented provider.
 **Subnet tier constants**:
 
 - `SUBNET_PUBLIC`, `SUBNET_PRIVATE`, `SUBNET_SECURE`, `SUBNET_MANAGEMENT`:
-  `SubnetTier` enum members. Pass to spell constructors that accept a
-  `subnet_tier` parameter to control which subnet tier a resource lands in.
+  `SubnetTier` enum members. Subnet placement is the spell's decision
+  (CS-004), so these are not accepted as constructor parameters; they are
+  the values returned by tier accessors such as `ComputeInstance.subnet`
+  and carried by `Role.subnet_tier`.
 """
 
 from cloudspells.core.config import Config

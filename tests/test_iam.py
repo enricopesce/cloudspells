@@ -225,6 +225,41 @@ class TestComputeInstancePrincipal(unittest.TestCase):
                 instances=[_instance(_INSTANCE_1)],
             )
 
+    def test_plain_string_in_grants_raises_type_error(self) -> None:
+        """A plain string in grants raises TypeError — F8 path 1."""
+        with self.assertRaises(TypeError):
+            ComputeInstancePrincipal(
+                name="bad-grants-type",
+                tenancy_id=_TENANCY,
+                instances=[_instance(_INSTANCE_1)],
+                grants=["read secret-family"],  # type: ignore[list-item]
+            )
+
+    def test_both_instances_and_instance_ids_raises_value_error(self) -> None:
+        """Passing both instances and instance_ids simultaneously raises ValueError — F8 path 2."""
+        with self.assertRaises(ValueError):
+            ComputeInstancePrincipal(
+                name="both-members",
+                tenancy_id=_TENANCY,
+                instances=[_instance(_INSTANCE_1)],
+                instance_ids=[_INSTANCE_2],
+                compartment_id=_COMP,
+                grants=[IamGrant.read_secrets()],
+            )
+
+    def test_differing_member_compartments_raises_value_error(self) -> None:
+        """Two members with different plain-string compartment_ids raises ValueError — F8 path 3."""
+        with self.assertRaises(ValueError):
+            ComputeInstancePrincipal(
+                name="mismatched-compartments",
+                tenancy_id=_TENANCY,
+                instances=[
+                    _instance(_INSTANCE_1, compartment_id=_COMP),
+                    _instance(_INSTANCE_2, compartment_id=_TENANCY),
+                ],
+                grants=[IamGrant.read_secrets()],
+            )
+
 
 class TestOkeNodePrincipal(unittest.TestCase):
     """Test cases for OkeNodePrincipal spell."""

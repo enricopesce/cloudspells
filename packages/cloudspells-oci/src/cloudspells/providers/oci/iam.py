@@ -581,13 +581,13 @@ class OkeNodePrincipal(_PrincipalMixin, BaseResource):
             policy_name,
             compartment_id=compartment_id,
             description=f"OKE node operational permissions for {dg_name}",
-            statements=pulumi.Output.from_input(compartment_id).apply(
-                lambda cid: [
-                    f"Allow dynamic-group {dg_name} to manage instance-family in compartment id {cid}",
-                    f"Allow dynamic-group {dg_name} to use virtual-network-family in compartment id {cid}",
-                    f"Allow dynamic-group {dg_name} to manage load-balancers in compartment id {cid}",
-                    f"Allow dynamic-group {dg_name} to use volume-family in compartment id {cid}",
-                    f"Allow dynamic-group {dg_name} to read repos in compartment id {cid}",
+            statements=pulumi.Output.all(compartment_id, self.dynamic_group.id).apply(
+                lambda args: [
+                    f"Allow dynamic-group id {args[1]} to manage instance-family in compartment id {args[0]}",
+                    f"Allow dynamic-group id {args[1]} to use virtual-network-family in compartment id {args[0]}",
+                    f"Allow dynamic-group id {args[1]} to manage load-balancers in compartment id {args[0]}",
+                    f"Allow dynamic-group id {args[1]} to use volume-family in compartment id {args[0]}",
+                    f"Allow dynamic-group id {args[1]} to read repos in compartment id {args[0]}",
                 ]
             ),
             name=policy_name,
