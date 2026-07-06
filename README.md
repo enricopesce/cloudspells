@@ -197,6 +197,7 @@ Adding a third web backend? Attach `web_nsg` to a new `ComputeInstance`. Zero NS
 
 | Spell | Cloud | What it encapsulates | Status |
 |-------|-------|----------------------|--------|
+| `LandingZone` | OCI | Reusable foundation: 4-tier VCN with flow logs always on, OCI Bastion, compartment-admin IAM baseline — deploy first, then create services inside it | Alpha |
 | `Vcn` | OCI | 4-tier VCN (public/private/secure/management), all gateways, route tables, security lists | Alpha |
 | `OkeCluster` | OCI | Oracle Kubernetes Engine BASIC cluster, node pool, OCI_VCN_IP_NATIVE CNI, multi-AD node placement | Alpha |
 | `OkeClusterEnhanced` | OCI | ENHANCED OKE cluster with workload identity, add-on lifecycle management, and OCI DevOps integration | Alpha |
@@ -373,13 +374,15 @@ Each example is a self-contained Pulumi stack in `examples/`:
 
 | Example | Description |
 |---------|-------------|
+| [`landing-zone`](examples/landing-zone/) | Reusable foundation layer — 4-tier VCN with flow logs, Bastion, and IAM baseline in one spell; workload stacks consume it via `VcnRef`. |
+| [`landing-zone-app`](examples/landing-zone-app/) | The layered model in one stack — a `LandingZone` foundation with a private application VM inside, SSH via Bastion only. |
 | [`vcn`](examples/vcn/) | Minimal VCN deployment — 4-tier network, all gateways, and baseline `VcnRef` outputs. |
 | [`compute`](examples/compute/) | VCN + internet-facing VM with role-based NSG, block volumes. |
 | [`oke`](examples/oke/) | VCN + Oracle Kubernetes Engine cluster with configurable node pool. |
 | [`bastion`](examples/bastion/) | VCN + OCI Bastion service for secure private-subnet access. |
 | [`autoscale`](examples/autoscale/) | VCN + load balancer + auto-scaling instance pool with CPU policies. |
 | [`loadbalancer`](examples/loadbalancer/) | VCN + HTTPS load balancer with HTTP→HTTPS redirect and health checks. |
-| [`storage`](examples/storage/) | Backup and data lake bucket patterns with retention, versioning, and lifecycle rules. |
+| [`storage`](examples/storage/) | One bucket of every storage spell — general-purpose, backup, data lake, compliance archive, and public static-website — covering retention, versioning, lifecycle, and access patterns. |
 | [`genai_agent_rag`](examples/genai_agent_rag/) | OCI Generative AI Agent RAG pipeline with document bucket, knowledge base, agent, RAG tool, and endpoint. |
 | [`web-db`](examples/web-db/) | Three-tier web+DB stack: LB (public) → app servers (private) → DB nodes (secure). |
 | [`iam`](examples/iam/) | `ComputeInstancePrincipal` + `OkeNodePrincipal` + `CompartmentAdminGroup` — instance principals and compartment admin group; requires `compartment_ocid`, `tenancy_ocid`, and `app_instance_ocid`. |

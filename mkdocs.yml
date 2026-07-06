@@ -37,6 +37,7 @@ nav:
     - Installation: getting-started/installation.md
     - First Deploy: getting-started/first-deploy.md
   - Tutorials:
+    - Landing Zone: tutorials/landing-zone.md
     - Compute Instance: tutorials/compute.md
     - OKE Cluster: tutorials/oke.md
     - Scalable Workload: tutorials/autoscale.md
@@ -72,6 +73,7 @@ nav:
       - api/core/abstractions/autoscale.md
       - api/core/abstractions/roles.md
     - OCI Provider:
+      - api/providers/landing_zone.md
       - api/providers/network.md
       - api/providers/compute.md
       - api/providers/kubernetes.md

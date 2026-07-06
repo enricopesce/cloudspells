@@ -6,6 +6,11 @@ fully-implemented provider.
 
 **Infrastructure spells** (create live cloud resources):
 
+- `LandingZone`: Reusable OCI foundation — four-tier `Vcn` with flow logs
+  always on, OCI `Bastion` for session-based SSH, and a
+  `CompartmentAdminGroup` IAM baseline. Deploy it first, then create
+  workload spells inside it (same stack via `lz.vcn`, or cross-stack via
+  `VcnRef`).
 - `Vcn`: OCI Virtual Cloud Network with a four-tier subnet layout, all
   gateways, route tables, and security lists baked in.
 - `VcnRef`: Read-only handle to a `Vcn` owned by another Pulumi stack.
@@ -106,6 +111,7 @@ from .compute import ComputeInstance
 from .genai_agent_rag import GenAiAgentRag
 from .iam import CompartmentAdminGroup, ComputeInstancePrincipal, IamGrant, OkeNodePrincipal
 from .kubernetes import NodePoolConfig, OkeCluster, OkeClusterEnhanced
+from .landing_zone import LandingZone
 from .loadbalancer import InternalLoadBalancer, LoadBalancer
 from .network import (
     SUBNET_MANAGEMENT,
@@ -133,6 +139,8 @@ from .volume import VolumeSpec
 __all__ = [
     # Config
     "Config",
+    # Foundation
+    "LandingZone",
     # Network
     "Vcn",
     "VcnRef",

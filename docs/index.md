@@ -29,6 +29,7 @@ vcn.export()
 |-----------|-------|
 | Install CloudSpells and set up credentials | [Getting Started → Installation](getting-started/installation.md) |
 | Deploy my first VCN | [Getting Started → First Deploy](getting-started/first-deploy.md) |
+| Deploy a reusable foundation (landing zone) | [Tutorials → Landing Zone](tutorials/landing-zone.md) |
 | Deploy a compute instance | [Tutorials → Compute Instance](tutorials/compute.md) |
 | Deploy an OKE Kubernetes cluster | [Tutorials → OKE Cluster](tutorials/oke.md) |
 | Deploy an autoscaling web tier | [Tutorials → Scalable Workload](tutorials/autoscale.md) |

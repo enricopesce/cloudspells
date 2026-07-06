@@ -1,0 +1,17 @@
+name: blocks-landing-zone
+runtime:
+  name: python
+  options:
+    virtualenv: ../../.venv
+    pythonpath: ../../src
+description: CloudSpells landing zone — reusable OCI foundation
+config:
+  compartment_ocid:
+    type: string
+    description: OCID of the compartment that will contain the foundation
+  tenancy_ocid:
+    type: string
+    description: OCID of the tenancy root compartment (required by the IAM baseline)
+  bastion_client_cidr:
+    type: string
+    description: IPv4 CIDR allowed to create Bastion sessions (e.g. your office network)
