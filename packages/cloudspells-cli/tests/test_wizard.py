@@ -52,11 +52,11 @@ def test_banner_markup_contains_cloudspells() -> None:
     assert "C L O U D S P E L L S" in BANNER_MARKUP
 
 
-def test_print_banner_does_not_raise(runner) -> None:
+def test_print_banner_does_not_raise(tmp_path, monkeypatch) -> None:
     from cloudspells.cli.banner import print_banner
 
-    with runner.isolated_filesystem():
-        print_banner()
+    monkeypatch.chdir(tmp_path)
+    print_banner()
 
 
 # ---------------------------------------------------------------------------
@@ -67,43 +67,47 @@ def test_print_banner_does_not_raise(runner) -> None:
 @patch("cloudspells.cli.commands.wizard.print_banner")
 @patch("cloudspells.cli.commands.wizard.Confirm.ask", return_value=False)
 @patch("cloudspells.cli.commands.wizard.Prompt.ask", side_effect=["1", "1", "my-vcn"])
-def test_wizard_new_spell_creates_files(mock_prompt, mock_confirm, mock_banner, runner, tmp_path) -> None:
+def test_wizard_new_spell_creates_files(mock_prompt, mock_confirm, mock_banner, runner, tmp_path, monkeypatch) -> None:
     """Action 1 → spell 1 (vcn) → name 'my-vcn' → decline deploy."""
-    with runner.isolated_filesystem(temp_dir=tmp_path):
-        result = runner.invoke(app, ["wizard", "--no-banner"])
-        assert result.exit_code == 0, result.output
-        assert Path("my-vcn/Pulumi.yaml").exists()
-        assert Path("my-vcn/__main__.py").exists()
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["wizard", "--no-banner"])
+    assert result.exit_code == 0, result.output
+    assert Path("my-vcn/Pulumi.yaml").exists()
+    assert Path("my-vcn/__main__.py").exists()
 
 
 @patch("cloudspells.cli.commands.wizard.print_banner")
 @patch("cloudspells.cli.commands.wizard.Prompt.ask", side_effect=["6"])
-def test_wizard_project_reference_prints_commands(mock_prompt, mock_banner, runner, tmp_path) -> None:
+def test_wizard_project_reference_prints_commands(mock_prompt, mock_banner, runner, tmp_path, monkeypatch) -> None:
     """Action 6 → prints project command reference."""
-    with runner.isolated_filesystem(temp_dir=tmp_path):
-        result = runner.invoke(app, ["wizard", "--no-banner"])
-        assert result.exit_code == 0, result.output
-        assert "cs project" in result.output
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["wizard", "--no-banner"])
+    assert result.exit_code == 0, result.output
+    assert "cs project" in result.output
 
 
 @patch("cloudspells.cli.commands.wizard.print_banner")
 @patch("cloudspells.cli.commands.wizard.Confirm.ask", return_value=False)
 @patch("cloudspells.cli.commands.wizard.Prompt.ask", side_effect=["5", ".", "dev"])
-def test_wizard_destroy_cancel_prints_message(mock_prompt, mock_confirm, mock_banner, runner, tmp_path) -> None:
+def test_wizard_destroy_cancel_prints_message(
+    mock_prompt, mock_confirm, mock_banner, runner, tmp_path, monkeypatch
+) -> None:
     """Action 5 → path='.' (CWD has Pulumi.yaml) → confirm=False → 'Wise restraint'."""
-    with runner.isolated_filesystem(temp_dir=tmp_path):
-        Path("Pulumi.yaml").write_text("name: test\nruntime:\n  name: python\n")
-        result = runner.invoke(app, ["wizard", "--no-banner"])
-        assert result.exit_code == 0, result.output
-        assert "cancelled" in result.output.lower()
+    monkeypatch.chdir(tmp_path)
+    Path("Pulumi.yaml").write_text("name: test\nruntime:\n  name: python\n")
+    result = runner.invoke(app, ["wizard", "--no-banner"])
+    assert result.exit_code == 0, result.output
+    assert "cancelled" in result.output.lower()
 
 
 @patch("cloudspells.cli.commands.wizard.print_banner")
 @patch("cloudspells.cli.commands.wizard.Prompt.ask", side_effect=["2", ".", "dev", "no"])
 @patch("cloudspells.cli.commands.wizard.Confirm.ask", return_value=False)
-def test_wizard_deploy_cancel_on_no_pulumi_yaml(mock_confirm, mock_prompt, mock_banner, runner, tmp_path) -> None:
+def test_wizard_deploy_cancel_on_no_pulumi_yaml(
+    mock_confirm, mock_prompt, mock_banner, runner, tmp_path, monkeypatch
+) -> None:
     """Action 2 → missing Pulumi.yaml → graceful error, no crash."""
-    with runner.isolated_filesystem(temp_dir=tmp_path):
-        result = runner.invoke(app, ["wizard", "--no-banner"])
-        assert result.exit_code == 0, result.output
-        assert "Pulumi.yaml" in result.output
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["wizard", "--no-banner"])
+    assert result.exit_code == 0, result.output
+    assert "Pulumi.yaml" in result.output

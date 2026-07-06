@@ -38,47 +38,47 @@ def test_project_config_load_missing_file(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_project_new_creates_project_yaml(runner, tmp_path) -> None:
-    with runner.isolated_filesystem(temp_dir=tmp_path):
-        result = runner.invoke(app, ["project", "new", "my-prod", "vcn", "oke"])
-        assert result.exit_code == 0, result.output
-        assert Path("my-prod/project.yaml").exists()
+def test_project_new_creates_project_yaml(runner, tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["project", "new", "my-prod", "vcn", "oke"])
+    assert result.exit_code == 0, result.output
+    assert Path("my-prod/project.yaml").exists()
 
 
-def test_project_new_creates_spell_dirs(runner, tmp_path) -> None:
-    with runner.isolated_filesystem(temp_dir=tmp_path):
-        result = runner.invoke(app, ["project", "new", "env", "vcn", "storage"])
-        assert result.exit_code == 0, result.output
-        assert Path("env/env-vcn/Pulumi.yaml").exists()
-        assert Path("env/env-storage/Pulumi.yaml").exists()
+def test_project_new_creates_spell_dirs(runner, tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["project", "new", "env", "vcn", "storage"])
+    assert result.exit_code == 0, result.output
+    assert Path("env/env-vcn/Pulumi.yaml").exists()
+    assert Path("env/env-storage/Pulumi.yaml").exists()
 
 
-def test_project_new_unknown_spell_exits_nonzero(runner, tmp_path) -> None:
-    with runner.isolated_filesystem(temp_dir=tmp_path):
-        result = runner.invoke(app, ["project", "new", "env", "nonexistent"])
-        assert result.exit_code != 0
-        assert "Unknown" in result.output
+def test_project_new_unknown_spell_exits_nonzero(runner, tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["project", "new", "env", "nonexistent"])
+    assert result.exit_code != 0
+    assert "Unknown" in result.output
 
 
-def test_project_new_no_spells_exits_nonzero(runner, tmp_path) -> None:
-    with runner.isolated_filesystem(temp_dir=tmp_path):
-        result = runner.invoke(app, ["project", "new", "env"])
-        assert result.exit_code != 0
+def test_project_new_no_spells_exits_nonzero(runner, tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["project", "new", "env"])
+    assert result.exit_code != 0
 
 
-def test_project_new_existing_dir_blocked_without_force(runner, tmp_path) -> None:
-    with runner.isolated_filesystem(temp_dir=tmp_path):
-        Path("env").mkdir()
-        result = runner.invoke(app, ["project", "new", "env", "vcn"])
-        assert result.exit_code != 0
-        assert "already exists" in result.output
+def test_project_new_existing_dir_blocked_without_force(runner, tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    Path("env").mkdir()
+    result = runner.invoke(app, ["project", "new", "env", "vcn"])
+    assert result.exit_code != 0
+    assert "already exists" in result.output
 
 
-def test_project_new_existing_dir_overwritten_with_force(runner, tmp_path) -> None:
-    with runner.isolated_filesystem(temp_dir=tmp_path):
-        Path("env").mkdir()
-        result = runner.invoke(app, ["project", "new", "env", "vcn", "--force"])
-        assert result.exit_code == 0, result.output
+def test_project_new_existing_dir_overwritten_with_force(runner, tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    Path("env").mkdir()
+    result = runner.invoke(app, ["project", "new", "env", "vcn", "--force"])
+    assert result.exit_code == 0, result.output
 
 
 # ---------------------------------------------------------------------------
