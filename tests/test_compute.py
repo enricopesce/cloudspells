@@ -1,6 +1,7 @@
 """Unit tests for ComputeInstance block and VolumeSpec dataclass."""
 
 import unittest
+from unittest.mock import patch
 
 import pulumi
 
@@ -8,8 +9,13 @@ from tests.mocks import set_mocks
 
 set_mocks()
 
+from cloudspells.providers.oci._network_profiles import (
+    CLOUDSPELLS_OCI_VCN_SCHEMA,
+    NETWORK_PROFILE_BASELINE,
+    nsg_role_profile_id,
+)
 from cloudspells.providers.oci.compute import ComputeInstance
-from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.network import Vcn, VcnRef
 from cloudspells.providers.oci.nsg import Nsg
 from cloudspells.providers.oci.roles import APP_SERVER, DATABASE, INTERNET_EDGE, MANAGEMENT
 from cloudspells.providers.oci.volume import VolumeSpec
@@ -864,6 +870,81 @@ class TestComputeInstanceNsgShorthand(unittest.TestCase):
             nsg=web_nsg,
         )
         self.assertIs(instance.vcn, vcn)
+
+
+class TestComputeInstanceExport(unittest.TestCase):
+    """Tests for ComputeInstance.export() — F5."""
+
+    def _make_vcn(self) -> Vcn:
+        return Vcn(name="export-test-vcn", compartment_id="ocid1.compartment.test")
+
+    def test_export_private_subnet_excludes_public_ip(self):
+        """Private-subnet instance export must NOT include a _public_ip key."""
+        vcn = self._make_vcn()
+        nsg = Nsg("exp-priv", role=APP_SERVER, vcn=vcn, compartment_id="ocid1.compartment.test")
+        instance = ComputeInstance(
+            name="priv-export",
+            compartment_id="ocid1.compartment.test",
+            nsg=nsg,
+            image_id="ocid1.image.oc1.phx.test",
+            availability_domain="AD-1",
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+        )
+        with patch("pulumi.export") as mock_export:
+            instance.export()
+        exported_keys = [call.args[0] for call in mock_export.call_args_list]
+        self.assertNotIn("priv_export_public_ip", exported_keys)
+
+    def test_export_internet_edge_instance_includes_public_ip(self):
+        """Internet-edge instance export MUST include a _public_ip key."""
+        vcn = self._make_vcn()
+        nsg = Nsg("exp-pub", role=INTERNET_EDGE, ports=[80], vcn=vcn, compartment_id="ocid1.compartment.test")
+        instance = ComputeInstance(
+            name="pub-export",
+            compartment_id="ocid1.compartment.test",
+            nsg=nsg,
+            image_id="ocid1.image.oc1.phx.test",
+            availability_domain="AD-1",
+            ssh_public_key="ssh-rsa AAAAB3... test-key",
+        )
+        with patch("pulumi.export") as mock_export:
+            instance.export()
+        exported_keys = [call.args[0] for call in mock_export.call_args_list]
+        self.assertIn("pub_export_public_ip", exported_keys)
+
+
+class TestComputeInstanceSubnetsReady(unittest.TestCase):
+    """Tests for ComputeInstance._assert_subnets_ready() raise path — F6."""
+
+    def test_vcnref_without_management_subnet_raises_runtime_error(self):
+        """ComputeInstance raises RuntimeError when the VCN has no management subnet."""
+        # Build a VcnRef that provides public and private subnets but omits
+        # management (and secure) so that _assert_subnets_ready fires.
+        # The APP_SERVER role profile must be declared in the VcnRef so the
+        # NSG constructor's require_network_profile check passes before
+        # ComputeInstance reaches _assert_subnets_ready.
+        app_server_profile = nsg_role_profile_id("APP_SERVER", [])
+        vcn_ref = VcnRef(
+            vcn_id="ocid1.vcn.test",
+            public_subnet_id="ocid1.subnet.public.test",
+            private_subnet_id="ocid1.subnet.private.test",
+            public_subnet_cidr="10.0.192.0/19",
+            private_subnet_cidr="10.0.0.0/17",
+            cidr_block="10.0.0.0/16",
+            # management_subnet_id intentionally omitted (None)
+            cloudspells_network_schema=CLOUDSPELLS_OCI_VCN_SCHEMA,
+            network_profiles=[NETWORK_PROFILE_BASELINE, app_server_profile],
+        )
+        nsg = Nsg("vcnref-app", role=APP_SERVER, vcn=vcn_ref, compartment_id="ocid1.compartment.test")
+        with self.assertRaises(RuntimeError):
+            ComputeInstance(
+                name="vcnref-compute",
+                compartment_id="ocid1.compartment.test",
+                nsg=nsg,
+                image_id="ocid1.image.oc1.phx.test",
+                availability_domain="AD-1",
+                ssh_public_key="ssh-rsa AAAAB3... test-key",
+            )
 
 
 if __name__ == "__main__":

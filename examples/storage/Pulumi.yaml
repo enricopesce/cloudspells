@@ -4,7 +4,7 @@ runtime:
   options:
     virtualenv: ../../.venv
     pythonpath: ../../src
-description: Object Storage — backup bucket and data lake bucket
+description: Object Storage — one bucket of every storage spell (general-purpose, backup, data lake, archive, static website)
 config:
   namespace:
     type: string

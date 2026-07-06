@@ -1,0 +1,27 @@
+name: blocks-landing-zone-app
+runtime:
+  name: python
+  options:
+    virtualenv: ../../.venv
+    pythonpath: ../../src
+description: CloudSpells landing zone with an application VM inside — same stack
+config:
+  compartment_ocid:
+    type: string
+    description: OCID of the compartment that will contain foundation and workload
+  tenancy_ocid:
+    type: string
+    description: OCID of the tenancy root compartment (required by the IAM baseline)
+  bastion_client_cidr:
+    type: string
+    description: IPv4 CIDR allowed to create Bastion sessions (e.g. your office network)
+  availability_domain:
+    type: string
+    description: OCI availability domain for the application VM
+  image_ocid:
+    type: string
+    description: Boot image OCID for the application VM
+  ssh_key:
+    type: string
+    description: Optional SSH public key installed on the VM (auto-generated when omitted)
+    default: ""

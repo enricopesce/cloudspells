@@ -117,6 +117,11 @@ def _translate_ingress_rule(
             min=rule.port_min if rule.port_min is not None else 1,
             max=rule.port_max if rule.port_max is not None else 65535,
         )
+    elif rule.protocol == "udp" and (rule.port_min is not None or rule.port_max is not None):
+        kwargs["udp_options"] = oci.core.SecurityListIngressSecurityRuleUdpOptionsArgs(
+            min=rule.port_min if rule.port_min is not None else 1,
+            max=rule.port_max if rule.port_max is not None else 65535,
+        )
     return oci.core.SecurityListIngressSecurityRuleArgs(**kwargs)
 
 
@@ -149,6 +154,11 @@ def _translate_egress_rule(
     }
     if rule.protocol == "tcp" and (rule.port_min is not None or rule.port_max is not None):
         kwargs["tcp_options"] = oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
+            min=rule.port_min if rule.port_min is not None else 1,
+            max=rule.port_max if rule.port_max is not None else 65535,
+        )
+    elif rule.protocol == "udp" and (rule.port_min is not None or rule.port_max is not None):
+        kwargs["udp_options"] = oci.core.SecurityListEgressSecurityRuleUdpOptionsArgs(
             min=rule.port_min if rule.port_min is not None else 1,
             max=rule.port_max if rule.port_max is not None else 65535,
         )

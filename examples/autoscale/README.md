@@ -76,6 +76,8 @@ chmod 600 ~/.ssh/oci_pool
 
 ## Scaling Policy
 
+This example uses the **default** metric policy (no `scaling_policy=` argument):
+
 | Metric | Threshold | Action |
 |--------|-----------|--------|
 | CPU utilization | > 80% | Add 1 instance |
@@ -83,6 +85,68 @@ chmod 600 ~/.ssh/oci_pool
 | Cooldown | — | 300 seconds between scaling events |
 
 Min instances: **1** — Max instances: **3**
+
+### Customising the policy
+
+`ScalableWorkload` accepts a `scaling_policy=` argument. Pass a
+`MetricScalingPolicy` for threshold-based scaling, a `ScheduleScalingPolicy`
+for cron-based scaling, or `None` to disable autoscaling entirely (fixed-size
+pool). The two policy types are mutually exclusive.
+
+**Metric-based** — tune thresholds, magnitudes, cooldown, or the metric:
+
+```python
+from cloudspells.providers.oci.autoscale import MetricScalingPolicy, ScalingMetric
+
+ScalableWorkload(
+    ...,
+    scaling_policy=MetricScalingPolicy(
+        scale_out_threshold=70,      # add instances above 70% CPU
+        scale_in_threshold=25,       # remove instances below 25% CPU
+        scale_out_value=2,           # add 2 at a time
+        scale_in_value=-1,           # remove 1 at a time
+        cooldown_in_seconds=600,     # 300–3600 s
+        metric=ScalingMetric.CPU_UTILIZATION,  # or MEMORY_UTILIZATION
+    ),
+)
+```
+
+**Schedule-based** — scale on a UTC cron schedule (e.g. business hours):
+
+```python
+from cloudspells.providers.oci.autoscale import (
+    ScalingAction,
+    ScheduleEntry,
+    ScheduleScalingPolicy,
+)
+
+ScalableWorkload(
+    ...,
+    scaling_policy=ScheduleScalingPolicy(
+        schedules=[
+            ScheduleEntry(
+                cron_expression="0 0 8 ? * MON-FRI *",   # 08:00 UTC weekdays
+                action=ScalingAction.CHANGE_COUNT_TO,
+                value=3,
+                display_name="Business-hours scale-up",
+            ),
+            ScheduleEntry(
+                cron_expression="0 0 18 ? * MON-FRI *",  # 18:00 UTC weekdays
+                action=ScalingAction.CHANGE_COUNT_TO,
+                value=1,
+                display_name="After-hours scale-down",
+            ),
+        ],
+    ),
+)
+```
+
+### Customising the load balancer
+
+Pass an `OciLoadBalancerConfig` via `load_balancer_config=` to change the
+listener/backend ports, health-check path, bandwidth, or public/private
+placement. The default is a public HTTP load balancer on port 80 with a
+`/health` check.
 
 ## Test the Load Balancer
 

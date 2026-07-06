@@ -36,9 +36,8 @@ nav:
   - Getting Started:
     - Installation: getting-started/installation.md
     - First Deploy: getting-started/first-deploy.md
-  - CLI:
-    - Commands: getting-started/installation.md
   - Tutorials:
+    - Landing Zone: tutorials/landing-zone.md
     - Compute Instance: tutorials/compute.md
     - OKE Cluster: tutorials/oke.md
     - Scalable Workload: tutorials/autoscale.md
@@ -56,6 +55,7 @@ nav:
   - Concepts:
     - Design Philosophy: concepts/design.md
     - Network Topology: concepts/network-topology.md
+    - Release Model: concepts/release-model.md
   - Reference:
     - VCN Architecture: reference/vcn-architecture.md
     - OKE Architecture: reference/oke-architecture.md
@@ -73,6 +73,7 @@ nav:
       - api/core/abstractions/autoscale.md
       - api/core/abstractions/roles.md
     - OCI Provider:
+      - api/providers/landing_zone.md
       - api/providers/network.md
       - api/providers/compute.md
       - api/providers/kubernetes.md

@@ -504,6 +504,24 @@ class ComputeInstance(BaseResource, AbstractCompute):
     # Public accessors
     # ------------------------------------------------------------------
 
+    def _find_volume_index(self, label: str) -> int:
+        """Return the index of the volume spec matching *label*.
+
+        Args:
+            label: The `label` value of the target `VolumeSpec`.
+
+        Returns:
+            Zero-based index into `volumes_spec` (and the parallel
+            `block_volumes` / `volume_attachments` lists).
+
+        Raises:
+            KeyError: If no volume with the given label exists.
+        """
+        for index, spec in enumerate(self.volumes_spec):
+            if spec.label == label:
+                return index
+        raise KeyError(f"No volume with label {label!r}. Available labels: {[s.label for s in self.volumes_spec]}")
+
     def export(self) -> None:
         """Export standard compute instance stack outputs.
 
@@ -595,10 +613,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
             db_vol_id = instance.get_volume_id("db")
             ```
         """
-        for spec, vol in zip(self.volumes_spec, self.block_volumes, strict=False):
-            if spec.label == label:
-                return vol.id
-        raise KeyError(f"No volume with label {label!r}. Available labels: {[s.label for s in self.volumes_spec]}")
+        return self.block_volumes[self._find_volume_index(label)].id
 
     def get_disk_id(self, label: str) -> pulumi.Output[str]:
         """Return the OCID of the block volume with the given label.
@@ -629,10 +644,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         Raises:
             KeyError: If no volume with the given label exists.
         """
-        for spec, vol in zip(self.volumes_spec, self.block_volumes, strict=False):
-            if spec.label == label:
-                return vol
-        raise KeyError(f"No volume with label {label!r}. Available labels: {[s.label for s in self.volumes_spec]}")
+        return self.block_volumes[self._find_volume_index(label)]
 
     def get_volume_attachment(self, label: str) -> oci.core.VolumeAttachment:
         """Return the `oci.core.VolumeAttachment` resource with the given label.
@@ -646,12 +658,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         Raises:
             KeyError: If no volume with the given label exists.
         """
-        for spec, att in zip(self.volumes_spec, self.volume_attachments, strict=False):
-            if spec.label == label:
-                return att
-        raise KeyError(
-            f"No volume attachment with label {label!r}. Available labels: {[s.label for s in self.volumes_spec]}"
-        )
+        return self.volume_attachments[self._find_volume_index(label)]
 
     def get_all_volume_ids(self) -> list[pulumi.Output[str]]:
         """Return a list of OCIDs for all attached block volumes.

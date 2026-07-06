@@ -1,4 +1,44 @@
-"""OCI Generative AI Agent RAG spell."""
+"""OCI Generative AI Agent RAG spell.
+
+Exports `GenAiAgentRag`, a single-call spell that provisions a complete
+Retrieval-Augmented Generation (RAG) pipeline on OCI Generative AI Service:
+
+- **Object Storage bucket** — document store for source materials (created or
+  supplied by the caller).
+- **Knowledge Base** — OCI-managed OpenSearch vector index; no cluster
+  provisioning required.
+- **Data Source** — wires the bucket to the Knowledge Base so ingestion jobs
+  can run.
+- **Agent** — the LLM-backed conversational agent.
+- **RAG Tool** — attaches the Knowledge Base to the Agent using the modern
+  `AgentTool` API.
+- **Agent Endpoint** — the invocation endpoint returned to callers; citations
+  are enabled by default.
+
+Usage:
+
+```python
+from cloudspells.providers.oci import GenAiAgentRag
+
+rag = GenAiAgentRag(
+    name="support-rag",
+    compartment_id=compartment_id,
+    namespace=namespace,          # Object Storage tenancy namespace
+)
+rag.export()                      # publishes endpoint_id, agent_id, etc.
+```
+
+To supply an existing bucket instead of creating one:
+
+```python
+rag = GenAiAgentRag(
+    name="support-rag",
+    compartment_id=compartment_id,
+    namespace=namespace,
+    bucket_name="my-existing-docs-bucket",
+)
+```
+"""
 
 from __future__ import annotations
 

@@ -6,6 +6,11 @@ fully-implemented provider.
 
 **Infrastructure spells** (create live cloud resources):
 
+- `LandingZone`: Reusable OCI foundation — four-tier `Vcn` with flow logs
+  always on, OCI `Bastion` for session-based SSH, and a
+  `CompartmentAdminGroup` IAM baseline. Deploy it first, then create
+  workload spells inside it (same stack via `lz.vcn`, or cross-stack via
+  `VcnRef`).
 - `Vcn`: OCI Virtual Cloud Network with a four-tier subnet layout, all
   gateways, route tables, and security lists baked in.
 - `VcnRef`: Read-only handle to a `Vcn` owned by another Pulumi stack.
@@ -84,8 +89,10 @@ fully-implemented provider.
 **Subnet tier constants**:
 
 - `SUBNET_PUBLIC`, `SUBNET_PRIVATE`, `SUBNET_SECURE`, `SUBNET_MANAGEMENT`:
-  `SubnetTier` enum members. Pass to spell constructors that accept a
-  `subnet_tier` parameter to control which subnet tier a resource lands in.
+  `SubnetTier` enum members. Subnet placement is the spell's decision
+  (CS-004), so these are not accepted as constructor parameters; they are
+  the values returned by tier accessors such as `ComputeInstance.subnet`
+  and carried by `Role.subnet_tier`.
 """
 
 from cloudspells.core.config import Config
@@ -104,6 +111,7 @@ from .compute import ComputeInstance
 from .genai_agent_rag import GenAiAgentRag
 from .iam import CompartmentAdminGroup, ComputeInstancePrincipal, IamGrant, OkeNodePrincipal
 from .kubernetes import NodePoolConfig, OkeCluster, OkeClusterEnhanced
+from .landing_zone import LandingZone
 from .loadbalancer import InternalLoadBalancer, LoadBalancer
 from .network import (
     SUBNET_MANAGEMENT,
@@ -131,6 +139,8 @@ from .volume import VolumeSpec
 __all__ = [
     # Config
     "Config",
+    # Foundation
+    "LandingZone",
     # Network
     "Vcn",
     "VcnRef",

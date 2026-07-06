@@ -137,6 +137,38 @@ successful deployment.
 | `okeinfra_lb_nsg_id` | NSG OCID for OCI-managed Kubernetes load balancers |
 | `okeinfra_kubeconfig` | _(secret)_ Kubeconfig, exported after `pulumi up` |
 
+## Enhanced cluster variant
+
+This example uses `OkeCluster`, which provisions a `BASIC_CLUSTER`. For
+production workloads that need OCI Workload Identity, managed cluster add-on
+lifecycle, and OCI DevOps integration, swap in `OkeClusterEnhanced` — it takes
+the **same constructor arguments**, so only the import and class name change:
+
+```python
+from cloudspells.providers.oci.kubernetes import NodePoolConfig, OkeClusterEnhanced
+
+oke = OkeClusterEnhanced(
+    name="okeinfra",
+    compartment_id=compartment_id,
+    vcn=vcn,
+    kubernetes_version=kubernetes_version,
+    kubectl_allowed_cidrs=[c for c in (config.get("kubectl_allowed_cidrs") or "").split(",") if c],
+    node_pools=[
+        NodePoolConfig(
+            name="default",
+            shape=config.require("node_shape"),
+            image=config.require("node_image_id"),
+            node_count=config.require_int("node_count"),
+            ocpus=config.require_float("oke_ocpus"),
+            memory_in_gbs=config.require_float("oke_memory_in_gbs"),
+        ),
+    ],
+)
+```
+
+An ENHANCED cluster cannot be downgraded to BASIC in place, so choose the tier
+before the first `pulumi up`.
+
 ## Teardown
 
 ```bash
