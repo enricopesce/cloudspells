@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../landing-zone/">
+        <link rel="prev" href="../../getting-started/first-deploy/">
       
       
-        <link rel="next" href="../oke/">
+        <link rel="next" href="../compute/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Compute Instance - CloudSpells</title>
+        <title>Landing Zone - CloudSpells</title>
       
     
     
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#tutorial-deploy-a-compute-instance" class="md-skip">
+        <a href="#tutorial-deploy-a-landing-zone" class="md-skip">
           Skip to content
         </a>
       
@@ -110,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Compute Instance
+              Landing Zone
             
           </span>
         </div>
@@ -244,7 +244,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../landing-zone/" class="md-tabs__link">
+        <a href="./" class="md-tabs__link">
           
   
     
@@ -565,27 +565,6 @@
                 
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../landing-zone/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Landing Zone
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
     
   
   
@@ -602,7 +581,7 @@
           
   
   <span class="md-ellipsis">
-    Compute Instance
+    Landing Zone
   </span>
   
 
@@ -613,7 +592,7 @@
         
   
   <span class="md-ellipsis">
-    Compute Instance
+    Landing Zone
   </span>
   
 
@@ -633,6 +612,15 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-layered-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      The layered model
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#prerequisites" class="md-nav__link">
@@ -663,27 +651,27 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#2a-create-the-vcn" class="md-nav__link">
+  <a href="#2a-declare-the-foundation" class="md-nav__link">
     <span class="md-ellipsis">
-      2a. Create the VCN
+      2a. Declare the foundation
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#2b-attach-a-role-with-an-nsg" class="md-nav__link">
+  <a href="#2b-declare-services-inside-it" class="md-nav__link">
     <span class="md-ellipsis">
-      2b. Attach a role with an NSG
+      2b. Declare services inside it
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#2c-create-the-compute-instance" class="md-nav__link">
+  <a href="#2c-materialise-and-export" class="md-nav__link">
     <span class="md-ellipsis">
-      2c. Create the compute instance
+      2c. Materialise and export
     </span>
   </a>
   
@@ -704,36 +692,36 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-4-connect-via-ssh" class="md-nav__link">
+  <a href="#step-4-ssh-into-the-private-instance" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 4 — Connect via SSH
+      Step 4 — SSH into the private instance
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-5-inspect-outputs" class="md-nav__link">
+  <a href="#going-multi-stack" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 5 — Inspect outputs
+      Going multi-stack
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#teardown" class="md-nav__link">
+  <a href="#clean-up" class="md-nav__link">
     <span class="md-ellipsis">
-      Teardown
+      Clean up
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#whats-next" class="md-nav__link">
+  <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
-      What's next
+      Next steps
     </span>
   </a>
   
@@ -743,6 +731,27 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../compute/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Compute Instance
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -2078,6 +2087,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#the-layered-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      The layered model
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
       Prerequisites
@@ -2106,27 +2124,27 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#2a-create-the-vcn" class="md-nav__link">
+  <a href="#2a-declare-the-foundation" class="md-nav__link">
     <span class="md-ellipsis">
-      2a. Create the VCN
+      2a. Declare the foundation
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#2b-attach-a-role-with-an-nsg" class="md-nav__link">
+  <a href="#2b-declare-services-inside-it" class="md-nav__link">
     <span class="md-ellipsis">
-      2b. Attach a role with an NSG
+      2b. Declare services inside it
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#2c-create-the-compute-instance" class="md-nav__link">
+  <a href="#2c-materialise-and-export" class="md-nav__link">
     <span class="md-ellipsis">
-      2c. Create the compute instance
+      2c. Materialise and export
     </span>
   </a>
   
@@ -2147,36 +2165,36 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-4-connect-via-ssh" class="md-nav__link">
+  <a href="#step-4-ssh-into-the-private-instance" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 4 — Connect via SSH
+      Step 4 — SSH into the private instance
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-5-inspect-outputs" class="md-nav__link">
+  <a href="#going-multi-stack" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 5 — Inspect outputs
+      Going multi-stack
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#teardown" class="md-nav__link">
+  <a href="#clean-up" class="md-nav__link">
     <span class="md-ellipsis">
-      Teardown
+      Clean up
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#whats-next" class="md-nav__link">
+  <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
-      What's next
+      Next steps
     </span>
   </a>
   
@@ -2200,184 +2218,217 @@
   
 
 
-<h1 id="tutorial-deploy-a-compute-instance">Tutorial: Deploy a Compute Instance</h1>
-<p>This tutorial deploys a public-facing web server on OCI — a VM in the public subnet, reachable on HTTP, HTTPS, and SSH from the internet — using the <code>ComputeInstance</code> and <code>Nsg</code> spells.</p>
+<h1 id="tutorial-deploy-a-landing-zone">Tutorial: Deploy a Landing Zone</h1>
+<p>This tutorial deploys the CloudSpells <strong>foundation layer</strong> — the reusable
+architecture an environment needs <em>before</em> the first real workload — and then
+puts a real service inside it. It uses the <code>LandingZone</code> spell, which composes
+the four foundation concerns into one call:</p>
+<ul>
+<li><strong>Network</strong> — 4-tier VCN (public / private / secure / management), all gateways and route tables</li>
+<li><strong>Audit</strong> — VCN flow logs on every subnet tier, always on</li>
+<li><strong>Access</strong> — OCI Bastion for session-based SSH, no public jump hosts</li>
+<li><strong>IAM baseline</strong> — compartment admin group + <code>manage all-resources</code> policy</li>
+</ul>
 <p><strong>What you will build:</strong></p>
 <pre><code>Internet
-   │  HTTP 80 / HTTPS 443 / SSH 22
+   │  (OCI Bastion service — no public IP on any instance)
    ▼
-┌──────────────────────────────────────────┐
-│ Public subnet  ← Internet Gateway        │
-│  web-server  [INTERNET_EDGE role]        │
-│  100 GB data volume + 200 GB logs volume │
-└──────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│ LandingZone &quot;foundation&quot;                              │
+│  Private subnet — NAT GW + Service GW routes          │
+│   app-server  [app-nsg · APP_SERVER]                  │
+│   foundation bastion  ← OCI Bastion service           │
+│  Flow logs on every tier · compartment admin group    │
+└───────────────────────────────────────────────────────┘
 </code></pre>
-<p><strong>What gets created:</strong> 1 VCN (4 subnets + 3 gateways), 1 NSG, 1 compute instance, 2 block volumes, 1 SSH key pair.</p>
+<p><strong>What gets created:</strong> 1 VCN (4 subnets + 3 gateways), 1 log group + 4 flow
+logs, 1 Bastion, 1 IAM group + policy, 1 NSG, 1 private compute instance.</p>
+<p>None of the foundation components is optional — they are the architecture.
+You name the landing zone, pick a compartment, and state who may open Bastion
+sessions.</p>
+<hr />
+<h2 id="the-layered-model">The layered model</h2>
+<p>CloudSpells separates infrastructure into two layers:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Who owns it</th>
+<th>Spells</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Foundation</strong></td>
+<td>Platform team</td>
+<td><code>LandingZone</code> (or a standalone <code>Vcn</code>)</td>
+</tr>
+<tr>
+<td><strong>Services</strong></td>
+<td>Application teams</td>
+<td><code>ComputeInstance</code>, <code>OkeCluster</code>, <code>ScalableWorkload</code>, <code>LoadBalancer</code>, …</td>
+</tr>
+</tbody>
+</table>
+<p>The foundation is deployed once per environment and reused by every service.
+Services can live in the <strong>same stack</strong> (this tutorial) or in <strong>separate
+workload stacks</strong> that consume the foundation read-only via
+<code>VcnRef.from_stack_reference()</code> — see
+<a href="../../how-to/vcnref/">Share a VCN Across Stacks</a>.</p>
 <hr />
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li>Completed <a href="../../getting-started/installation/">Installation</a></li>
-<li>OCI compartment OCID at hand</li>
-<li>Boot image OCID for the instance (OCI Console → Compute → Images, or use the OCI CLI)</li>
+<li>OCI compartment OCID and tenancy OCID at hand</li>
+<li>Boot image OCID for the instance</li>
+<li>The CIDR of the network you administer from (office / VPN)</li>
 </ul>
 <hr />
 <h2 id="step-1-initialise-the-stack">Step 1 — Initialise the stack</h2>
-<pre><code class="language-bash">cd examples/compute
+<pre><code class="language-bash">cd examples/landing-zone-app
 
 pulumi stack init dev
-pulumi config set compartment_ocid ocid1.compartment.oc1..example
-pulumi config set image_ocid        ocid1.image.oc1..example
+pulumi config set compartment_ocid     ocid1.compartment.oc1..example
+pulumi config set tenancy_ocid         ocid1.tenancy.oc1..example
+pulumi config set bastion_client_cidr  203.0.113.0/24
+pulumi config set availability_domain  &quot;IqDk:EU-FRANKFURT-1-AD-1&quot;
+pulumi config set image_ocid           ocid1.image.oc1..example
 </code></pre>
-<p>Optionally, provide your own SSH public key (skip this to auto-generate one):</p>
-<pre><code class="language-bash">pulumi config set ssh_key &quot;$(cat ~/.ssh/id_rsa.pub)&quot;
-</code></pre>
+<p><code>bastion_client_cidr</code> is a deliberate required input: it states who may
+create Bastion sessions, and that is a security decision the spell cannot
+make for you. Pass <code>0.0.0.0/0</code> only when unrestricted access is intentional.</p>
 <hr />
 <h2 id="step-2-walk-through-the-code">Step 2 — Walk through the code</h2>
-<p>Open <code>examples/compute/__main__.py</code>. It has three logical steps.</p>
-<h3 id="2a-create-the-vcn">2a. Create the VCN</h3>
-<pre><code class="language-python">from cloudspells.providers.oci.network import Vcn
+<p>Open <code>examples/landing-zone-app/__main__.py</code>. It has three logical steps.</p>
+<h3 id="2a-declare-the-foundation">2a. Declare the foundation</h3>
+<pre><code class="language-python">from cloudspells.providers.oci.landing_zone import LandingZone
 
-vcn = Vcn(
-    name=&quot;lab&quot;,
+lz = LandingZone(
+    name=&quot;foundation&quot;,
     compartment_id=compartment_id,
+    tenancy_id=tenancy_id,
+    allowed_client_cidrs=[bastion_client_cidr],
 )
 </code></pre>
-<p>A fully-wired 4-tier VCN. No further network configuration is needed.</p>
-<h3 id="2b-attach-a-role-with-an-nsg">2b. Attach a role with an NSG</h3>
-<pre><code class="language-python">from cloudspells.providers.oci.nsg import HTTP, HTTPS, SSH, Nsg
-from cloudspells.providers.oci.roles import INTERNET_EDGE
-
-web_nsg = Nsg(
-    &quot;web-server&quot;,
-    role=INTERNET_EDGE,
-    ports=[HTTP, HTTPS, SSH],
-    vcn=vcn,
-    compartment_id=compartment_id,
-)
-</code></pre>
-<p><code>INTERNET_EDGE</code> is a semantic role constant. It tells CloudSpells that this resource lives in the <strong>public subnet</strong> and communicates directly with the internet. You only declare the application ports.</p>
-<h3 id="2c-create-the-compute-instance">2c. Create the compute instance</h3>
+<p>One call declares the entire foundation. <code>tenancy_id</code> is required because
+the IAM baseline creates its group at tenancy level.</p>
+<p>At this point <strong>no subnet exists yet</strong> — the landing zone follows the
+CloudSpells accumulate-then-materialise contract, so services declared next
+can still register security rules.</p>
+<h3 id="2b-declare-services-inside-it">2b. Declare services inside it</h3>
 <pre><code class="language-python">from cloudspells.providers.oci.compute import ComputeInstance
-from cloudspells.providers.oci.volume import VolumeSpec
+from cloudspells.providers.oci.nsg import Nsg
+from cloudspells.providers.oci.roles import APP_SERVER
 
-ssh_key = config.get(&quot;ssh_key&quot;)
-
-web_server = ComputeInstance(
-    name=&quot;web-server&quot;,
+app_nsg = Nsg(
+    &quot;app-server&quot;,
+    role=APP_SERVER,
+    vcn=lz.vcn,
     compartment_id=compartment_id,
-    image_id=config.require(&quot;image_ocid&quot;),
-    nsg=web_nsg,
-    ssh_public_key=ssh_key,
-    volumes=[
-        VolumeSpec(size_in_gbs=100, label=&quot;data&quot;),
-        VolumeSpec(size_in_gbs=200, label=&quot;logs&quot;, vpus_per_gb=VolumeSpec.PERF_LOW),
-    ],
+)
+
+app = ComputeInstance(
+    name=&quot;app-server&quot;,
+    compartment_id=compartment_id,
+    image_id=image_id,
+    availability_domain=availability_domain,
+    nsg=app_nsg,
 )
 </code></pre>
-<p>The instance inherits its VCN and subnet from the NSG role: because <code>web_nsg</code> uses <code>INTERNET_EDGE</code>, the instance is automatically placed in the public subnet. No <code>vcn=</code> or <code>subnet=</code> argument is needed.</p>
-<p><code>VolumeSpec.label</code> is used for lookup helpers, outputs, and tags. It does not shape Pulumi resource names; repeated child resources use CloudSpells-owned ordinal suffixes.</p>
-<p><code>VolumeSpec</code> accepts a <code>vpus_per_gb</code> performance tier constant:</p>
-<table>
-<thead>
-<tr>
-<th>Constant</th>
-<th>VPUs/GB</th>
-<th>Use case</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>VolumeSpec.PERF_LOW</code></td>
-<td>0</td>
-<td>Low-cost archival / log storage</td>
-</tr>
-<tr>
-<td><code>VolumeSpec.PERF_BALANCED</code></td>
-<td>10</td>
-<td>General-purpose workloads (default)</td>
-</tr>
-<tr>
-<td><code>VolumeSpec.PERF_HIGH</code></td>
-<td>20</td>
-<td>Database and high-IOPS workloads</td>
-</tr>
-<tr>
-<td><code>VolumeSpec.PERF_ULTRA</code></td>
-<td>120</td>
-<td>Latency-sensitive, highest-throughput workloads</td>
-</tr>
-</tbody>
-</table>
-<p><code>image_id</code> is a required parameter — pass the OCID of a boot image for the instance. Obtain it from the OCI Console or CLI and store it in Pulumi config.</p>
-<p><code>ComputeInstance</code> finalizes the VCN carried by its NSG automatically — security lists and subnets are materialised at this point.</p>
-<hr />
-<h2 id="step-3-deploy">Step 3 — Deploy</h2>
-<pre><code class="language-bash">pulumi preview   # verify the plan
-pulumi up
+<p><code>lz.vcn</code> is the foundation's network handle — pass it wherever a spell
+accepts <code>vcn=</code>. The <code>APP_SERVER</code> role places the instance in the private
+subnet with NAT + service egress; there is no public IP and no SSH ingress
+rule from the internet, because management access is the Bastion's job.</p>
+<h3 id="2c-materialise-and-export">2c. Materialise and export</h3>
+<pre><code class="language-python">lz.export()
+app.export()
 </code></pre>
-<p>Deployment takes roughly 3–5 minutes.</p>
-<hr />
-<h2 id="step-4-connect-via-ssh">Step 4 — Connect via SSH</h2>
-<p>If you provided your own key:</p>
-<pre><code class="language-bash">ssh opc@$(pulumi stack output web_server_public_ip)
-</code></pre>
-<p>If the key was auto-generated, retrieve the private key first:</p>
-<pre><code class="language-bash">pulumi stack output web_server_ssh_private_key --show-secrets &gt; ~/.ssh/oci_web
-chmod 600 ~/.ssh/oci_web
-ssh -i ~/.ssh/oci_web opc@$(pulumi stack output web_server_public_ip)
-</code></pre>
-<hr />
-<h2 id="step-5-inspect-outputs">Step 5 — Inspect outputs</h2>
-<pre><code class="language-bash">pulumi stack output
-</code></pre>
-<p>Key outputs:</p>
+<p><code>lz.export()</code> finalises the network (including every rule the services
+registered), creates the Bastion, and publishes the full cross-stack
+contract — the same keys a standalone <code>Vcn</code> exports, plus:</p>
 <table>
 <thead>
 <tr>
 <th>Output</th>
-<th>Description</th>
+<th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>web_server_public_ip</code></td>
-<td>Public IP of the instance</td>
+<td><code>compartment_id</code></td>
+<td>Compartment the foundation lives in</td>
 </tr>
 <tr>
-<td><code>web_server_private_ip</code></td>
-<td>Private IP of the instance</td>
+<td><code>bastion_id</code>, <code>bastion_endpoint</code></td>
+<td>Session-based SSH access</td>
 </tr>
 <tr>
-<td><code>web_server_id</code></td>
-<td>Instance OCID</td>
+<td><code>admin_group_id</code>, <code>admin_policy_id</code></td>
+<td>IAM baseline</td>
 </tr>
 <tr>
-<td><code>web_server_data_volume_id</code></td>
-<td>OCID of the 100 GB data volume</td>
-</tr>
-<tr>
-<td><code>web_server_logs_volume_id</code></td>
-<td>OCID of the 200 GB logs volume</td>
-</tr>
-<tr>
-<td><code>web_server_ssh_public_key</code></td>
-<td>SSH public key installed on the instance</td>
-</tr>
-<tr>
-<td><code>web_server_ssh_private_key</code></td>
-<td><em>(secret)</em> Only present when auto-generated</td>
+<td><code>network_audit_log_group_id</code></td>
+<td>Flow-log group for compliance tooling</td>
 </tr>
 </tbody>
 </table>
+<p>!!! warning "Ordering"
+    Declare services <strong>between</strong> <code>LandingZone(...)</code> and <code>lz.export()</code>.
+    The Bastion SSH rule itself is pre-registered at construction time, so
+    a service that finalises the network early (like <code>ComputeInstance</code>)
+    can never lock the Bastion out — but new rule-owning spells cannot be
+    added after the network is materialised.</p>
 <hr />
-<h2 id="teardown">Teardown</h2>
+<h2 id="step-3-deploy">Step 3 — Deploy</h2>
+<pre><code class="language-bash">pulumi up
+</code></pre>
+<hr />
+<h2 id="step-4-ssh-into-the-private-instance">Step 4 — SSH into the private instance</h2>
+<p>The VM has no public IP. If you did not supply <code>ssh_key</code>, first retrieve the
+auto-generated instance key:</p>
+<pre><code class="language-bash">pulumi stack output app_server_ssh_private_key --show-secrets &gt; ~/.ssh/lz_app
+chmod 600 ~/.ssh/lz_app
+</code></pre>
+<p>Then create a time-limited session through the Bastion (the session key is
+your own — it secures the tunnel, not the instance login):</p>
+<pre><code class="language-bash">oci bastion session create-managed-ssh \
+    --bastion-id $(pulumi stack output bastion_id) \
+    --target-resource-id $(pulumi stack output app_server_id) \
+    --target-os-username opc \
+    --ssh-public-key-file ~/.ssh/id_rsa.pub
+</code></pre>
+<p>Follow the SSH proxy command from the session details, using
+<code>-i ~/.ssh/lz_app</code> as the instance identity. Sessions expire after 3 hours
+and can only be created from <code>bastion_client_cidr</code>.</p>
+<hr />
+<h2 id="going-multi-stack">Going multi-stack</h2>
+<p>For real environments, deploy the foundation <strong>alone</strong> (see
+<a href="https://github.com/enricopesce/cloudspells/tree/main/examples/landing-zone"><code>examples/landing-zone</code></a>)
+and let each workload team consume it from their own stack:</p>
+<pre><code class="language-python"># foundation stack — register the profiles your teams need before export()
+lz = LandingZone(name=&quot;foundation&quot;, ...)
+lz.vcn.enable_oke_profile(kubectl_allowed_cidrs=[&quot;203.0.113.0/24&quot;])
+Nsg(&quot;app-profile&quot;, role=APP_SERVER, vcn=lz.vcn, compartment_id=cid)
+lz.export()
+</code></pre>
+<pre><code class="language-python"># workload stack — read-only, validated at deploy time
+vcn = VcnRef.from_stack_reference(&quot;acme/blocks-landing-zone/prod&quot;)
+cluster = OkeCluster(name=&quot;app&quot;, vcn=vcn, compartment_id=cid, ...)
+</code></pre>
+<p>Workload spells fail fast when the foundation has not enabled the network
+profile they need — the contract is checked, not assumed. Details in
+<a href="../../how-to/vcnref/">Share a VCN Across Stacks</a>.</p>
+<hr />
+<h2 id="clean-up">Clean up</h2>
 <pre><code class="language-bash">pulumi destroy
 </code></pre>
 <hr />
-<h2 id="whats-next">What's next</h2>
+<h2 id="next-steps">Next steps</h2>
 <ul>
-<li><a href="../oke/">Deploy an OKE cluster →</a></li>
-<li><a href="../../how-to/bastion/">Use a Bastion for private access →</a> — place the instance in the private subnet instead and access it via the OCI Bastion service</li>
+<li><a href="../../how-to/vcnref/">Share a VCN Across Stacks</a> — the cross-stack consumer side</li>
+<li><a href="../../how-to/bastion/">Use a Bastion</a> — session workflows in depth</li>
+<li><a href="../../how-to/network-logging/">Enable VCN Flow Logs</a> — what the audit layer captures</li>
+<li><a href="../../how-to/iam/">Set Up IAM Principals</a> — zero-credential access for the services you deploy inside</li>
 </ul>
 
 

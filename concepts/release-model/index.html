@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../landing-zone/">
+        <link rel="prev" href="../network-topology/">
       
       
-        <link rel="next" href="../oke/">
+        <link rel="next" href="../../reference/vcn-architecture/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Compute Instance - CloudSpells</title>
+        <title>Release Model - CloudSpells</title>
       
     
     
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#tutorial-deploy-a-compute-instance" class="md-skip">
+        <a href="#release-model" class="md-skip">
           Skip to content
         </a>
       
@@ -110,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Compute Instance
+              Release Model
             
           </span>
         </div>
@@ -238,13 +238,11 @@
         
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../landing-zone/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../tutorials/landing-zone/" class="md-tabs__link">
           
   
     
@@ -280,11 +278,13 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../concepts/design/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../design/" class="md-tabs__link">
           
   
     
@@ -508,10 +508,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -530,20 +528,17 @@
     
     
       
-        
-        
-      
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -554,7 +549,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Tutorials
@@ -568,7 +563,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../landing-zone/" class="md-nav__link">
+      <a href="../../tutorials/landing-zone/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -586,30 +581,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Compute Instance
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../tutorials/compute/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -618,131 +593,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
-    <span class="md-ellipsis">
-      Prerequisites
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-1-initialise-the-stack" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 1 — Initialise the stack
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-2-walk-through-the-code" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 2 — Walk through the code
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Step 2 — Walk through the code">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#2a-create-the-vcn" class="md-nav__link">
-    <span class="md-ellipsis">
-      2a. Create the VCN
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2b-attach-a-role-with-an-nsg" class="md-nav__link">
-    <span class="md-ellipsis">
-      2b. Attach a role with an NSG
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2c-create-the-compute-instance" class="md-nav__link">
-    <span class="md-ellipsis">
-      2c. Create the compute instance
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-3-deploy" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 3 — Deploy
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-4-connect-via-ssh" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 4 — Connect via SSH
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-5-inspect-outputs" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 5 — Inspect outputs
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#teardown" class="md-nav__link">
-    <span class="md-ellipsis">
-      Teardown
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#whats-next" class="md-nav__link">
-    <span class="md-ellipsis">
-      What's next
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -755,7 +605,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../oke/" class="md-nav__link">
+      <a href="../../tutorials/oke/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -776,7 +626,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../autoscale/" class="md-nav__link">
+      <a href="../../tutorials/autoscale/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -797,7 +647,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../web-db/" class="md-nav__link">
+      <a href="../../tutorials/web-db/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -818,7 +668,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../secure-vcn/" class="md-nav__link">
+      <a href="../../tutorials/secure-vcn/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1074,8 +924,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -1088,17 +940,20 @@
     
     
       
+        
+        
+      
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   <span class="md-ellipsis">
@@ -1109,7 +964,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             Concepts
@@ -1123,7 +978,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/design/" class="md-nav__link">
+      <a href="../design/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1144,7 +999,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/network-topology/" class="md-nav__link">
+      <a href="../network-topology/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1162,10 +1017,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../concepts/release-model/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Release Model
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1174,6 +1049,77 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#packages" class="md-nav__link">
+    <span class="md-ellipsis">
+      Packages
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#release-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      Release Rules
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quality-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quality Gate
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#release-tags" class="md-nav__link">
+    <span class="md-ellipsis">
+      Release Tags
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Release Tags">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cloudspells-cli-dual-version-requirement" class="md-nav__link">
+    <span class="md-ellipsis">
+      cloudspells-cli dual version requirement
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2078,55 +2024,46 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
+  <a href="#packages" class="md-nav__link">
     <span class="md-ellipsis">
-      Prerequisites
+      Packages
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-1-initialise-the-stack" class="md-nav__link">
+  <a href="#release-rules" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 1 — Initialise the stack
+      Release Rules
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-2-walk-through-the-code" class="md-nav__link">
+  <a href="#quality-gate" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 2 — Walk through the code
+      Quality Gate
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Step 2 — Walk through the code">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#release-tags" class="md-nav__link">
+    <span class="md-ellipsis">
+      Release Tags
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Release Tags">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#2a-create-the-vcn" class="md-nav__link">
+  <a href="#cloudspells-cli-dual-version-requirement" class="md-nav__link">
     <span class="md-ellipsis">
-      2a. Create the VCN
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2b-attach-a-role-with-an-nsg" class="md-nav__link">
-    <span class="md-ellipsis">
-      2b. Attach a role with an NSG
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2c-create-the-compute-instance" class="md-nav__link">
-    <span class="md-ellipsis">
-      2c. Create the compute instance
+      cloudspells-cli dual version requirement
     </span>
   </a>
   
@@ -2134,51 +2071,6 @@
         
       </ul>
     </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-3-deploy" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 3 — Deploy
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-4-connect-via-ssh" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 4 — Connect via SSH
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-5-inspect-outputs" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 5 — Inspect outputs
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#teardown" class="md-nav__link">
-    <span class="md-ellipsis">
-      Teardown
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#whats-next" class="md-nav__link">
-    <span class="md-ellipsis">
-      What's next
-    </span>
-  </a>
   
 </li>
       
@@ -2200,185 +2092,135 @@
   
 
 
-<h1 id="tutorial-deploy-a-compute-instance">Tutorial: Deploy a Compute Instance</h1>
-<p>This tutorial deploys a public-facing web server on OCI — a VM in the public subnet, reachable on HTTP, HTTPS, and SSH from the internet — using the <code>ComputeInstance</code> and <code>Nsg</code> spells.</p>
-<p><strong>What you will build:</strong></p>
-<pre><code>Internet
-   │  HTTP 80 / HTTPS 443 / SSH 22
-   ▼
-┌──────────────────────────────────────────┐
-│ Public subnet  ← Internet Gateway        │
-│  web-server  [INTERNET_EDGE role]        │
-│  100 GB data volume + 200 GB logs volume │
-└──────────────────────────────────────────┘
-</code></pre>
-<p><strong>What gets created:</strong> 1 VCN (4 subnets + 3 gateways), 1 NSG, 1 compute instance, 2 block volumes, 1 SSH key pair.</p>
-<hr />
-<h2 id="prerequisites">Prerequisites</h2>
-<ul>
-<li>Completed <a href="../../getting-started/installation/">Installation</a></li>
-<li>OCI compartment OCID at hand</li>
-<li>Boot image OCID for the instance (OCI Console → Compute → Images, or use the OCI CLI)</li>
-</ul>
-<hr />
-<h2 id="step-1-initialise-the-stack">Step 1 — Initialise the stack</h2>
-<pre><code class="language-bash">cd examples/compute
-
-pulumi stack init dev
-pulumi config set compartment_ocid ocid1.compartment.oc1..example
-pulumi config set image_ocid        ocid1.image.oc1..example
-</code></pre>
-<p>Optionally, provide your own SSH public key (skip this to auto-generate one):</p>
-<pre><code class="language-bash">pulumi config set ssh_key &quot;$(cat ~/.ssh/id_rsa.pub)&quot;
-</code></pre>
-<hr />
-<h2 id="step-2-walk-through-the-code">Step 2 — Walk through the code</h2>
-<p>Open <code>examples/compute/__main__.py</code>. It has three logical steps.</p>
-<h3 id="2a-create-the-vcn">2a. Create the VCN</h3>
-<pre><code class="language-python">from cloudspells.providers.oci.network import Vcn
-
-vcn = Vcn(
-    name=&quot;lab&quot;,
-    compartment_id=compartment_id,
-)
-</code></pre>
-<p>A fully-wired 4-tier VCN. No further network configuration is needed.</p>
-<h3 id="2b-attach-a-role-with-an-nsg">2b. Attach a role with an NSG</h3>
-<pre><code class="language-python">from cloudspells.providers.oci.nsg import HTTP, HTTPS, SSH, Nsg
-from cloudspells.providers.oci.roles import INTERNET_EDGE
-
-web_nsg = Nsg(
-    &quot;web-server&quot;,
-    role=INTERNET_EDGE,
-    ports=[HTTP, HTTPS, SSH],
-    vcn=vcn,
-    compartment_id=compartment_id,
-)
-</code></pre>
-<p><code>INTERNET_EDGE</code> is a semantic role constant. It tells CloudSpells that this resource lives in the <strong>public subnet</strong> and communicates directly with the internet. You only declare the application ports.</p>
-<h3 id="2c-create-the-compute-instance">2c. Create the compute instance</h3>
-<pre><code class="language-python">from cloudspells.providers.oci.compute import ComputeInstance
-from cloudspells.providers.oci.volume import VolumeSpec
-
-ssh_key = config.get(&quot;ssh_key&quot;)
-
-web_server = ComputeInstance(
-    name=&quot;web-server&quot;,
-    compartment_id=compartment_id,
-    image_id=config.require(&quot;image_ocid&quot;),
-    nsg=web_nsg,
-    ssh_public_key=ssh_key,
-    volumes=[
-        VolumeSpec(size_in_gbs=100, label=&quot;data&quot;),
-        VolumeSpec(size_in_gbs=200, label=&quot;logs&quot;, vpus_per_gb=VolumeSpec.PERF_LOW),
-    ],
-)
-</code></pre>
-<p>The instance inherits its VCN and subnet from the NSG role: because <code>web_nsg</code> uses <code>INTERNET_EDGE</code>, the instance is automatically placed in the public subnet. No <code>vcn=</code> or <code>subnet=</code> argument is needed.</p>
-<p><code>VolumeSpec.label</code> is used for lookup helpers, outputs, and tags. It does not shape Pulumi resource names; repeated child resources use CloudSpells-owned ordinal suffixes.</p>
-<p><code>VolumeSpec</code> accepts a <code>vpus_per_gb</code> performance tier constant:</p>
+<h1 id="release-model">Release Model</h1>
+<p>CloudSpells is a monorepo with independently released Python distributions.
+The repository, CI gate, tests, and documentation stay together, but a release
+tag publishes exactly one package.</p>
+<h2 id="packages">Packages</h2>
 <table>
 <thead>
 <tr>
-<th>Constant</th>
-<th>VPUs/GB</th>
-<th>Use case</th>
+<th>Package</th>
+<th>Purpose</th>
+<th>Depends on</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>VolumeSpec.PERF_LOW</code></td>
-<td>0</td>
-<td>Low-cost archival / log storage</td>
+<td><code>cloudspells-core</code></td>
+<td>Cloud-neutral base classes, abstractions, naming, tagging, and shared constants</td>
+<td><code>pulumi</code></td>
 </tr>
 <tr>
-<td><code>VolumeSpec.PERF_BALANCED</code></td>
-<td>10</td>
-<td>General-purpose workloads (default)</td>
+<td><code>cloudspells-oci</code></td>
+<td>OCI provider spells</td>
+<td><code>cloudspells-core</code>, <code>pulumi</code>, <code>pulumi-oci</code></td>
 </tr>
 <tr>
-<td><code>VolumeSpec.PERF_HIGH</code></td>
-<td>20</td>
-<td>Database and high-IOPS workloads</td>
-</tr>
-<tr>
-<td><code>VolumeSpec.PERF_ULTRA</code></td>
-<td>120</td>
-<td>Latency-sensitive, highest-throughput workloads</td>
+<td><code>cloudspells-cli</code></td>
+<td>Optional <code>cs</code> command for scaffolding and stack operations</td>
+<td><code>cloudspells-core</code>, <code>cloudspells-oci</code></td>
 </tr>
 </tbody>
 </table>
-<p><code>image_id</code> is a required parameter — pass the OCID of a boot image for the instance. Obtain it from the OCI Console or CLI and store it in Pulumi config.</p>
-<p><code>ComputeInstance</code> finalizes the VCN carried by its NSG automatically — security lists and subnets are materialised at this point.</p>
-<hr />
-<h2 id="step-3-deploy">Step 3 — Deploy</h2>
-<pre><code class="language-bash">pulumi preview   # verify the plan
-pulumi up
+<p>Application stacks normally install the provider they use:</p>
+<pre><code class="language-bash">pip install cloudspells-oci
 </code></pre>
-<p>Deployment takes roughly 3–5 minutes.</p>
-<hr />
-<h2 id="step-4-connect-via-ssh">Step 4 — Connect via SSH</h2>
-<p>If you provided your own key:</p>
-<pre><code class="language-bash">ssh opc@$(pulumi stack output web_server_public_ip)
-</code></pre>
-<p>If the key was auto-generated, retrieve the private key first:</p>
-<pre><code class="language-bash">pulumi stack output web_server_ssh_private_key --show-secrets &gt; ~/.ssh/oci_web
-chmod 600 ~/.ssh/oci_web
-ssh -i ~/.ssh/oci_web opc@$(pulumi stack output web_server_public_ip)
-</code></pre>
-<hr />
-<h2 id="step-5-inspect-outputs">Step 5 — Inspect outputs</h2>
-<pre><code class="language-bash">pulumi stack output
-</code></pre>
-<p>Key outputs:</p>
+<p>The provider installs <code>cloudspells-core</code> automatically. Install
+<code>cloudspells-core</code> directly only when building provider packages or shared
+CloudSpells abstractions.</p>
+<h2 id="release-rules">Release Rules</h2>
 <table>
 <thead>
 <tr>
-<th>Output</th>
-<th>Description</th>
+<th>Change</th>
+<th>Release</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>web_server_public_ip</code></td>
-<td>Public IP of the instance</td>
+<td>Shared abstractions, naming, tagging, or base resource behavior</td>
+<td><code>cloudspells-core</code>, then any provider that needs the new core API</td>
 </tr>
 <tr>
-<td><code>web_server_private_ip</code></td>
-<td>Private IP of the instance</td>
+<td>OCI spell behavior only</td>
+<td><code>cloudspells-oci</code></td>
 </tr>
 <tr>
-<td><code>web_server_id</code></td>
-<td>Instance OCID</td>
+<td>CLI scaffolding or stack-management behavior only</td>
+<td><code>cloudspells-cli</code></td>
 </tr>
 <tr>
-<td><code>web_server_data_volume_id</code></td>
-<td>OCID of the 100 GB data volume</td>
-</tr>
-<tr>
-<td><code>web_server_logs_volume_id</code></td>
-<td>OCID of the 200 GB logs volume</td>
-</tr>
-<tr>
-<td><code>web_server_ssh_public_key</code></td>
-<td>SSH public key installed on the instance</td>
-</tr>
-<tr>
-<td><code>web_server_ssh_private_key</code></td>
-<td><em>(secret)</em> Only present when auto-generated</td>
+<td>Documentation only</td>
+<td>No package release</td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="teardown">Teardown</h2>
-<pre><code class="language-bash">pulumi destroy
+<p>Provider packages depend on a compatible <code>cloudspells-core</code> minor line. For
+example, <code>cloudspells-oci</code> <code>0.2.x</code> depends on <code>cloudspells-core&gt;=0.2.0,&lt;0.3.0</code>.
+That keeps patch releases independent while preventing an older provider from
+silently accepting a future incompatible core release.</p>
+<h2 id="quality-gate">Quality Gate</h2>
+<p>Every publish tag triggers a mandatory quality job that runs in parallel with
+package resolution. The build step cannot start until the quality job passes.
+The following checks run against the full repository on every publish:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Tool</th>
+<th>Command</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lint</td>
+<td>ruff</td>
+<td><code>ruff check packages/ tests/</code></td>
+</tr>
+<tr>
+<td>Format</td>
+<td>ruff</td>
+<td><code>ruff format --check packages/ tests/</code></td>
+</tr>
+<tr>
+<td>Type check</td>
+<td>pyright</td>
+<td><code>pyright</code></td>
+</tr>
+<tr>
+<td>Tests</td>
+<td>pytest</td>
+<td><code>pytest</code></td>
+</tr>
+<tr>
+<td>Dead code</td>
+<td>vulture</td>
+<td><code>vulture packages/ --min-confidence 80</code></td>
+</tr>
+</tbody>
+</table>
+<p>A failure in any of these checks blocks the build and publish jobs entirely.
+Fix the failure, delete the tag, and re-push a corrected tag to retry.</p>
+<h2 id="release-tags">Release Tags</h2>
+<p>Release tags include the distribution name:</p>
+<pre><code class="language-bash">git tag cloudspells-core-v0.2.1
+git tag cloudspells-oci-v0.2.1
+git tag cloudspells-cli-v0.1.1
+git push origin cloudspells-oci-v0.2.1
 </code></pre>
-<hr />
-<h2 id="whats-next">What's next</h2>
-<ul>
-<li><a href="../oke/">Deploy an OKE cluster →</a></li>
-<li><a href="../../how-to/bastion/">Use a Bastion for private access →</a> — place the instance in the private subnet instead and access it via the OCI Bastion service</li>
-</ul>
+<p>The publish workflow resolves the package from the tag, verifies that the tag
+version matches <code>packages/&lt;package&gt;/pyproject.toml</code>, builds only that package,
+and publishes only that package's artifacts.</p>
+<h3 id="cloudspells-cli-dual-version-requirement"><code>cloudspells-cli</code> dual version requirement</h3>
+<p>For <code>cloudspells-cli</code> releases, the tag version must match <strong>two</strong> files:</p>
+<ol>
+<li><code>packages/cloudspells-cli/pyproject.toml</code> — the <code>[project] version</code> field.</li>
+<li><code>packages/cloudspells-cli/src/cloudspells/cli/__init__.py</code> — the <code>__version__</code>
+   module-level string.</li>
+</ol>
+<p>If either file is out of sync with the tag, the build job fails with an error
+naming the mismatched value. Update both files before pushing a CLI release tag.</p>
 
 
 
