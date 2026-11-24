@@ -1,15 +1,17 @@
 """Unit tests for Load Balancer spells."""
 
 import unittest
+from unittest.mock import patch
 
 import pulumi
 
-from tests.mocks import set_mocks
+from tests.mocks import OCIMocks, set_mocks
 
 set_mocks()
 
 from cloudspells.providers.oci.loadbalancer import InternalLoadBalancer, LoadBalancer
 from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.nsg import Nsg
 
 _COMPARTMENT = "ocid1.compartment.test"
 
@@ -176,6 +178,28 @@ class TestInternalLoadBalancer(unittest.TestCase):
             self.assertIsNotNone(value)
 
         return ilb.load_balancer.id.apply(check)
+
+    @patch.object(OCIMocks, "new_resource", autospec=True, side_effect=OCIMocks.new_resource)
+    @pulumi.runtime.test
+    def test_custom_backend_nsg_after_another_load_balancer(self, mock_resource):
+        """A second load balancer can grant its custom backend port on the selected group."""
+        LoadBalancer("edge", _COMPARTMENT, self.vcn, certificate_name="my-cert")
+        target = Nsg("internal-target", vcn=self.vcn, compartment_id=_COMPARTMENT)
+        lb = InternalLoadBalancer("internal", _COMPARTMENT, self.vcn, backend_port=8080, backend_nsg=target)
+
+        def check(values):
+            frontend, backend, _lb_id = values
+            rules = [
+                call.args[1].inputs
+                for call in mock_resource.call_args_list
+                if call.args[1].typ.endswith(":NetworkSecurityGroupSecurityRule")
+            ]
+            matching = [r for r in rules if r["networkSecurityGroupId"] == backend]
+            self.assertEqual(len(matching), 1)
+            self.assertEqual(matching[0]["source"], frontend)
+            self.assertEqual(matching[0]["tcpOptions"]["destinationPortRange"], {"min": 8080, "max": 8080})
+
+        return pulumi.Output.all(lb.load_balancer_nsg.id, target.id, lb.get_lb_id()).apply(check)
 
     @pulumi.runtime.test
     def test_backend_set_created(self):

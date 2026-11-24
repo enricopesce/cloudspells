@@ -77,7 +77,7 @@ vcn = Vcn(
 )
 ```
 
-One call creates the VCN, all three gateways, and four route tables. Security lists and subnets are deferred until the first spell calls `finalize_network()`.
+One call creates the VCN, all three gateways, and four route tables. The first subnet consumer materializes the subnets and their baseline security lists.
 
 ### 2b. Declare roles with NSGs
 

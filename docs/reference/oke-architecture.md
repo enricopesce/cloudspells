@@ -15,9 +15,9 @@ Complete technical reference for the `OkeCluster` spell. This page covers the cl
 | `oci.containerengine.Cluster` | 1 | `BASIC_CLUSTER` type |
 | `oci.containerengine.NodePool` | 1 | Spread across all ADs |
 | `oci.core.NetworkSecurityGroup` | 4 | api, lb, worker, pod |
-| `oci.core.NetworkSecurityGroupSecurityRule` | 34 | See NSG rules section |
+| `oci.core.NetworkSecurityGroupSecurityRule` | Varies with allowed client CIDRs | See NSG rules section |
 
-Security lists are not created by `OkeCluster` — rules are accumulated into the parent `Vcn` via `add_security_list_rules`, which creates them when `finalize_network` is called.
+`OkeCluster` uses the VCN subnet policy and creates four NSGs for cluster-specific traffic.
 
 ---
 
@@ -132,21 +132,9 @@ The total node count (`size`) is divided as evenly as possible across ADs by the
 
 ---
 
-## Two-layer security model
+## Network security groups
 
-`OkeCluster` enforces security at two complementary OCI layers.
-
-### Layer 1 — Security lists (subnet boundary)
-
-Security lists enforce coarse-grained, subnet-to-subnet routing policy. They are evaluated on every packet entering or leaving a subnet. `OkeCluster` calls `vcn.add_security_list_rules()` with a complete set of public and private subnet rules before calling `vcn.finalize_network()`.
-
-In addition to the OKE-specific rules documented below, `finalize_network` always injects a set of **VCN baseline rules** before materialising the security lists. These include NAT Gateway egress for the private tier, Service Gateway egress for the private/secure/management tiers, and a TCP ingress rule permitting the private subnet to initiate connections into the secure subnet. See [Baseline security rules](vcn-architecture.md#baseline-security-rules) in the VCN Architecture reference for the full list.
-
-Because the security list is shared (one list per subnet, accumulated from all spells), the rules written here establish the minimum necessary subnet-level connectivity. Within-subnet traffic (pod-to-pod, node-to-node) that stays inside the same CIDR block is **not** governed by security lists — it is governed exclusively by NSGs.
-
-### Layer 2 — NSGs (VNIC boundary)
-
-NSGs enforce fine-grained, component-to-component rules. Each NSG is attached to a specific set of VNICs. Rules reference other NSGs as source or destination (not CIDRs), so they remain correct even when IP addresses change.
+OKE grants cluster access through NSGs attached to the corresponding VNICs. OCI also applies any rules in the associated subnet lists, including when endpoints share a subnet.
 
 The four OKE NSGs:
 
@@ -166,59 +154,13 @@ apiVersion: v1
 kind: Service
 metadata:
   annotations:
-    oci.oraclecloud.com/security-group-ids: "<lb_nsg_id>"
+    oci.oraclecloud.com/oci-network-security-groups: "<lb_nsg_id>"
+    oci.oraclecloud.com/security-rule-management-mode: "None"
 spec:
   type: LoadBalancer
 ```
 
 The OCID is available via `cluster.lb_nsg.id` (in Pulumi) or `pulumi stack output <name>_lb_nsg_id` (from CLI after `oke.export()`).
-
----
-
-## Security list rules
-
-The following rules are added to the shared VCN security lists by `OkeCluster._add_oke_security_lists_rules()`.
-
-### Public subnet — Ingress
-
-| Protocol | Source | Port / Type | Description |
-|---|---|---|---|
-| TCP | Private subnet CIDR | 6443 | Workers and pods reach the Kubernetes API server |
-| TCP | Private subnet CIDR | 12250 | Workers and pods reach the control-plane internal port |
-| TCP | `0.0.0.0/0` | 6443 | External `kubectl` and CI tooling reach the API |
-| TCP | `0.0.0.0/0` | 443 | Load balancer receives HTTPS from the internet |
-| TCP | `0.0.0.0/0` | 80 | Load balancer receives HTTP from the internet |
-
-### Public subnet — Egress
-
-| Protocol | Destination | Port / Type | Description |
-|---|---|---|---|
-| TCP | `<services CIDR>` (SERVICE_CIDR_BLOCK) | all | Control plane telemetry and management to OCI services |
-| TCP | Private subnet CIDR | 10250 | Control plane calls kubelet for pod lifecycle operations |
-| TCP | Private subnet CIDR | 30000–32767 | Load balancer forwards to worker nodes via NodePort |
-| TCP | Private subnet CIDR | 10256 | Load balancer health-checks via kube-proxy |
-| ALL | Private subnet CIDR | all | Control plane reaches pods on arbitrary ports (webhooks, admission controllers, metrics) |
-
-### Private subnet — Ingress
-
-| Protocol | Source | Port / Type | Description |
-|---|---|---|---|
-| TCP | Public subnet CIDR | 10250 | Control plane manages pods via kubelet |
-| TCP | Public subnet CIDR | 30000–32767 | Load balancer forwards traffic via NodePort |
-| TCP | Public subnet CIDR | 10256 | Load balancer health-checks via kube-proxy |
-| ALL | Public subnet CIDR | all | Control plane reaches pods for webhooks and admission controllers |
-
-### Private subnet — Egress
-
-| Protocol | Destination | Port / Type | Description |
-|---|---|---|---|
-| TCP | `<services CIDR>` (SERVICE_CIDR_BLOCK) | all | Workers pull images from OCIR; pods reach monitoring and logging |
-| TCP | Public subnet CIDR | 6443 | Workers and pods reach the Kubernetes API server |
-| TCP | Public subnet CIDR | 12250 | Workers and pods reach the control-plane internal port |
-| TCP | `0.0.0.0/0` | 443 | Workers pull container images; pods call external APIs via HTTPS |
-| TCP | `0.0.0.0/0` | 80 | Workers pull images from HTTP registries; OCI pre-authenticated URLs |
-
-**Total security list rules added:** 5 public ingress + 5 public egress + 4 private ingress + 5 private egress = **19 rules**.
 
 ---
 
@@ -236,7 +178,7 @@ NSG rules use NSG OCIDs as source/destination (not CIDRs), providing VNIC-level 
 | TCP | `worker_nsg` | 12250 | Worker nodes reach the control-plane internal port |
 | TCP | `pod_nsg` | 6443 | Pods reach the Kubernetes API server |
 | TCP | `pod_nsg` | 12250 | Pods reach the control-plane internal port |
-| TCP | `0.0.0.0/0` (CIDR) | 6443 | External `kubectl` and CI tooling |
+| TCP | Each `kubectl_allowed_cidrs` entry | 6443 | External `kubectl` and CI tooling |
 
 #### Egress
 
@@ -308,7 +250,7 @@ NSG rules use NSG OCIDs as source/destination (not CIDRs), providing VNIC-level 
 | TCP | `0.0.0.0/0` (CIDR) | 443 | Pods call external APIs and download dependencies via HTTPS |
 | TCP | `0.0.0.0/0` (CIDR) | 80 | Pods access HTTP endpoints and OCI pre-authenticated URLs |
 
-**Total NSG rules created:** 5 api_nsg ingress + 3 api_nsg egress + 2 lb_nsg ingress + 2 lb_nsg egress + 5 worker_nsg ingress + 7 worker_nsg egress + 3 pod_nsg ingress + 7 pod_nsg egress = **34 rules** (the `_r` helper creates one `NetworkSecurityGroupSecurityRule` resource per rule).
+API and worker NSGs permit ICMP from the control plane to workers. API, worker and pod NSGs accept IPv4 fragmentation-needed messages. Worker and pod NSGs also include egress rules for path MTU discovery.
 
 ---
 
@@ -320,7 +262,6 @@ NSG rules use NSG OCIDs as source/destination (not CIDRs), providing VNIC-level 
 laptop:ephemeral → API endpoint public IP:6443
   → Internet GW → public subnet
   → api_nsg INGRESS: 0.0.0.0/0 TCP 6443  ✓ (NSG rule)
-  → public security list INGRESS: 0.0.0.0/0 TCP 6443  ✓ (security list rule)
 ```
 
 ### API server calling kubelet for `kubectl exec`
@@ -329,7 +270,6 @@ laptop:ephemeral → API endpoint public IP:6443
 API endpoint:ephemeral → worker node VNIC:10250
   → api_nsg EGRESS: worker_nsg TCP 10250  ✓
   → worker_nsg INGRESS: api_nsg TCP 10250  ✓
-  (same private subnet — security list not evaluated for intra-subnet traffic)
 ```
 
 ### OCI Load Balancer health-check
@@ -355,8 +295,6 @@ pod VNIC:ephemeral → API endpoint:6443
   → pod_nsg EGRESS: api_nsg TCP 6443  ✓
   → api_nsg INGRESS: pod_nsg TCP 6443  ✓
   (cross-subnet: private → public)
-  → private security list EGRESS: public subnet CIDR TCP 6443  ✓
-  → public security list INGRESS: private subnet CIDR TCP 6443  ✓
 ```
 
 ### Pod calling an external HTTPS API
@@ -364,7 +302,6 @@ pod VNIC:ephemeral → API endpoint:6443
 ```
 pod VNIC:ephemeral → 0.0.0.0/0:443
   → pod_nsg EGRESS: 0.0.0.0/0 TCP 443  ✓
-  → private security list EGRESS: 0.0.0.0/0 TCP 443  ✓
   → NAT Gateway → internet
 ```
 
@@ -375,8 +312,6 @@ API endpoint:ephemeral → pod VNIC:webhook_port (arbitrary)
   → api_nsg EGRESS: pod_nsg ALL  ✓
   → pod_nsg INGRESS: api_nsg ALL  ✓
   (cross-subnet: public → private)
-  → public security list EGRESS: private subnet CIDR ALL  ✓
-  → private security list INGRESS: public subnet CIDR ALL  ✓
 ```
 
 ---
@@ -407,7 +342,7 @@ Publishes three Pulumi stack outputs using the spell's logical `name` as a prefi
 | `{name}_kubernetes_version` | Kubernetes version string | `okeinfra_kubernetes_version` |
 | `{name}_lb_nsg_id` | `lb_nsg` OCID | `okeinfra_lb_nsg_id` |
 
-`lb_nsg_id` is the value to put in the `oci.oraclecloud.com/security-group-ids` service annotation.
+`lb_nsg_id` is the value to put in the `oci.oraclecloud.com/oci-network-security-groups` service annotation.
 
 ### `OkeCluster.create_kubeconfig(filename)`
 
@@ -433,31 +368,7 @@ oci ce cluster create-kubeconfig \
 
 ## Initialisation order
 
-Understanding the sequence is important when composing multiple spells:
-
-```
-Vcn.__init__()
-  └─ creates VCN, gateways, route tables (NOT security lists or subnets)
-
-OkeCluster.__init__()
-  ├─ _add_oke_security_lists_rules()
-  │    └─ vcn.add_security_list_rules(public_ingress, public_egress,
-  │                                   private_ingress, private_egress)
-  │
-  ├─ vcn.finalize_network()
-  │    ├─ _inject_baseline_rules()   ← NAT/Service GW egress + private→secure TCP
-  │    ├─ _create_security_lists()   ← materialises all accumulated rules
-  │    └─ _create_subnets()          ← creates 4 subnets
-  │
-  ├─ _create_oke_nsgs()
-  │    ├─ creates api_nsg, lb_nsg, worker_nsg, pod_nsg
-  │    └─ wires all NSG-to-NSG rules
-  │
-  ├─ oci.containerengine.Cluster(...)
-  └─ oci.containerengine.NodePool(...)
-```
-
-`finalize_network` is idempotent — only the first call creates resources. If `OkeCluster` is combined with `ComputeInstance` or `ScalableWorkload`, each spell adds its rules before the first call to `finalize_network` completes, and subsequent calls from other spells are no-ops.
+OKE finalizes a locally owned VCN or reads the existing subnet IDs from a `VcnRef`. It then creates the four NSGs and their rules. The cluster and nodes depend on those rules. For existing Kubernetes Services, attach the correct load balancer NSG and switch the controller's security rule management mode before removing the legacy subnet permissions.
 
 ---
 
@@ -494,7 +405,7 @@ cluster = OkeCluster(
 cluster.export()
 ```
 
-This creates the complete stack: 1 VCN, 4 subnets, 3 gateways, 4 route tables, 4 security lists (with 19 rules), 4 NSGs (with 34 rules), 1 OKE cluster, 1 node pool.
+This creates the complete stack: 1 VCN, 4 subnets, 3 gateways, 4 route tables, 4 VCN security lists and 4 OKE NSGs, 1 OKE cluster, 1 node pool.
 
 ---
 

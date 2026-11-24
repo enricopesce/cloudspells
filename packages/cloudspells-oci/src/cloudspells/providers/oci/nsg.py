@@ -73,12 +73,7 @@ from __future__ import annotations
 
 import pulumi
 import pulumi_oci as oci
-from cloudspells.core.abstractions.tiers import (
-    SUBNET_MANAGEMENT,
-    SUBNET_PRIVATE,
-    SUBNET_PUBLIC,
-    SUBNET_SECURE,
-)
+from cloudspells.core.abstractions.tiers import SUBNET_PUBLIC
 from cloudspells.core.base import BaseResource
 from cloudspells.core.ports import (
     CASSANDRA,
@@ -108,7 +103,7 @@ from cloudspells.core.ports import (
 )
 
 from ._naming import ordinal_suffix
-from ._oci_utils import get_svc_cidr as _get_svc_cidr
+from ._oci_utils import get_all_services
 from .network import Vcn, VcnRef
 from .roles import INTERNET_EDGE, Role
 
@@ -132,7 +127,7 @@ SVC_CIDR: str = "oci-services-cidr"
 **This is NOT a valid CIDR string.** Do not pass it directly to OCI resource
 arguments — it will produce an invalid rule that passes Pulumi planning but
 fails at apply time.  Use `Nsg.allow_to_services()` instead, which resolves
-the real `pulumi.Output[str]` CIDR at construction time via `_get_svc_cidr()`.
+the real `pulumi.Output[str]` CIDR at construction time via the regional All Services lookup.
 
 This constant is retained in `__all__` only for import-compatibility
 with existing code that references it in docstrings or type guards.
@@ -283,86 +278,6 @@ def icmp_opts(
 # but live here to keep the NSG module self-contained.
 
 
-def _sl_ingress_tcp(
-    port: int,
-    source: pulumi.Input[str],
-    description: str = "",
-) -> oci.core.SecurityListIngressSecurityRuleArgs:
-    """Build a TCP ingress `SecurityListIngressSecurityRuleArgs` for `port` from `source`.
-
-    Args:
-        port: Destination TCP port number (1–65535).
-        source: Source CIDR block or service CIDR string.
-        description: Optional human-readable description for the rule.
-
-    Returns:
-        `SecurityListIngressSecurityRuleArgs` configured for TCP ingress on `port`
-        from `source`.
-    """
-    return oci.core.SecurityListIngressSecurityRuleArgs(
-        protocol="6",
-        source=source,
-        source_type="CIDR_BLOCK",
-        tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(min=port, max=port),
-        description=description or f"TCP {port} ingress",
-    )
-
-
-def _sl_egress_tcp(
-    port: int,
-    destination: pulumi.Input[str],
-    description: str = "",
-) -> oci.core.SecurityListEgressSecurityRuleArgs:
-    """Build a TCP egress `SecurityListEgressSecurityRuleArgs` for `port` to `destination`.
-
-    Args:
-        port: Destination TCP port number (1–65535).
-        destination: Destination CIDR block or service CIDR string.
-        description: Optional human-readable description for the rule.
-
-    Returns:
-        `SecurityListEgressSecurityRuleArgs` configured for TCP egress on `port`
-        to `destination`.
-    """
-    return oci.core.SecurityListEgressSecurityRuleArgs(
-        protocol="6",
-        destination=destination,
-        destination_type="CIDR_BLOCK",
-        tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(min=port, max=port),
-        description=description or f"TCP {port} egress",
-    )
-
-
-def _sl_egress_all_services() -> oci.core.SecurityListEgressSecurityRuleArgs:
-    """Build an all-protocol egress rule to the OCI Service Gateway CIDR.
-
-    Returns:
-        `SecurityListEgressSecurityRuleArgs` allowing all-protocol egress to
-        the OCI All-Services CIDR (`SERVICE_CIDR_BLOCK` destination type).
-    """
-    return oci.core.SecurityListEgressSecurityRuleArgs(
-        protocol="all",
-        destination=_get_svc_cidr(),
-        destination_type="SERVICE_CIDR_BLOCK",
-        description="All traffic to Oracle Services",
-    )
-
-
-def _sl_egress_all_internet() -> oci.core.SecurityListEgressSecurityRuleArgs:
-    """Build an all-protocol egress rule to the internet (`0.0.0.0/0`).
-
-    Returns:
-        `SecurityListEgressSecurityRuleArgs` allowing all-protocol egress to
-        `0.0.0.0/0` via the NAT Gateway (`CIDR_BLOCK` destination type).
-    """
-    return oci.core.SecurityListEgressSecurityRuleArgs(
-        protocol="all",
-        destination="0.0.0.0/0",
-        destination_type="CIDR_BLOCK",
-        description="All outbound traffic via NAT Gateway",
-    )
-
-
 # ── Nsg ───────────────────────────────────────────────────────────────────────
 
 
@@ -374,8 +289,8 @@ class Nsg(BaseResource):
     role share the same `Nsg`; a VM with multiple roles receives multiple
     `Nsg` IDs via `nsg_ids`.
 
-    OCI enforces implicit deny-all for NSGs with no rules — every allowed
-    traffic flow must be stated explicitly with `add_rule`.
+    OCI allows traffic if a rule in an applicable NSG or subnet security
+    list permits it. An empty NSG grants no additional permission.
 
     Attributes:
         nsg: The underlying `oci.core.NetworkSecurityGroup` resource.
@@ -385,8 +300,7 @@ class Nsg(BaseResource):
         role: The `Role` that governs this NSG's ambient rules and subnet
             tier placement, or `None` when the NSG was created without a
             role and all rules are managed manually.  Read by `serves` to
-            determine the SSH management channel and cross-subnet security
-            list rules.
+            determine whether to add the SSH management channel.
 
     Example:
         ```python
@@ -435,7 +349,6 @@ class Nsg(BaseResource):
         ```
     """
 
-    _vcn: Vcn | VcnRef
     id: pulumi.Output[str]
     nsg: oci.core.NetworkSecurityGroup
     role: Role | None
@@ -452,11 +365,8 @@ class Nsg(BaseResource):
     ) -> None:
         """Create a single NSG for a service role.
 
-        When `role` is supplied the NSG self-configures: ambient rules are
-        added automatically based on the posture declared in the role, and the
-        corresponding VCN security list rules are registered so that
-        `Vcn.finalize_network` can materialise them without any manual
-        `Vcn.add_security_rules` call.
+        When `role` is supplied, its default rules apply to this group's
+        members.
 
         When `role` is `None` the NSG is created empty and all rules must be
         added explicitly via `add_rule` and the convenience helpers.
@@ -471,8 +381,7 @@ class Nsg(BaseResource):
                 `pulumi.get_stack()` when `None`.
             opts: Pulumi resource options forwarded to the component.
             role: Optional `Role` that encodes the security posture of this
-                NSG.  When set, ambient rules are generated automatically and
-                subnet security list rules are registered with the VCN.
+                NSG. Its default rules are generated automatically.
             ports: TCP port numbers that `INTERNET_EDGE` resources accept from
                 the internet (e.g. `[HTTP, HTTPS, SSH]`).  Required when
                 `role=INTERNET_EDGE`; ignored for other roles.
@@ -504,9 +413,9 @@ class Nsg(BaseResource):
             opts,
         )
 
-        self._vcn = vcn
         self.role = role
         self._rule_labels: set[str] = set()
+        self._served_ports: dict[Nsg, set[int]] = {}
         self._next_rule_index = 0
 
         if role is INTERNET_EDGE and not ports:
@@ -536,69 +445,8 @@ class Nsg(BaseResource):
     # Role and relationship methods
     # ------------------------------------------------------------------
 
-    def _sl_for_tier(
-        self,
-        fingerprint: str,
-        tier: str,
-        ingress: list[oci.core.SecurityListIngressSecurityRuleArgs] | None = None,
-        egress: list[oci.core.SecurityListEgressSecurityRuleArgs] | None = None,
-    ) -> None:
-        """Dispatch a uniquely-fingerprinted security list rule to the correct tier.
-
-        Wraps `Vcn.add_unique_security_list_rules` with an explicit
-        `if`/`elif` tier dispatch so Pyright can verify that ingress args go
-        to ingress parameters and egress args to egress parameters (dynamic
-        `**kwargs` unpacking defeats the type checker).
-
-        This is an internal helper; external callers should use `serves` or
-        `_apply_role_ambient_rules`.
-
-        Args:
-            fingerprint: Unique key; subsequent calls with the same fingerprint
-                are silently ignored by the VCN accumulator.
-            tier: Subnet tier constant (`"public"`, `"private"`, `"secure"`,
-                or `"management"`).
-            ingress: Optional ingress rule list for the tier's security list.
-            egress: Optional egress rule list for the tier's security list.
-        """
-        if not isinstance(self._vcn, Vcn):
-            return
-        vcn = self._vcn
-        if tier == SUBNET_PUBLIC:
-            vcn.add_unique_security_list_rules(fingerprint, public_ingress=ingress, public_egress=egress)
-        elif tier == SUBNET_PRIVATE:
-            vcn.add_unique_security_list_rules(fingerprint, private_ingress=ingress, private_egress=egress)
-        elif tier == SUBNET_SECURE:
-            vcn.add_unique_security_list_rules(fingerprint, secure_ingress=ingress, secure_egress=egress)
-        elif tier == SUBNET_MANAGEMENT:
-            vcn.add_unique_security_list_rules(fingerprint, management_ingress=ingress, management_egress=egress)
-
-    def _cidr_for_tier(self, tier: str) -> pulumi.Input[str]:
-        """Return the subnet CIDR for `tier` from the backing VCN.
-
-        Args:
-            tier: Subnet tier constant (`"public"`, `"private"`, `"secure"`,
-                or `"management"`).
-
-        Returns:
-            `pulumi.Input[str]` CIDR for the requested tier.
-
-        Raises:
-            ValueError: If `tier` is not one of the four known constants.
-        """
-        if tier == SUBNET_PUBLIC:
-            return self._vcn.get_public_subnet_cidr()
-        elif tier == SUBNET_PRIVATE:
-            return self._vcn.get_private_subnet_cidr()
-        elif tier == SUBNET_SECURE:
-            return self._vcn.get_secure_subnet_cidr()
-        elif tier == SUBNET_MANAGEMENT:
-            return self._vcn.get_management_subnet_cidr()
-        else:
-            raise ValueError(f"Unknown subnet tier: {tier!r}")
-
     def _apply_role_ambient_rules(self, role: Role, ports: list[int]) -> None:
-        """Create ambient NSG rules and register security list rules for `role`.
+        """Create the default NSG rules for `role`.
 
         Called once from `__init__` when `role=` is supplied.  The caller
         must not invoke this method directly.
@@ -612,12 +460,6 @@ class Nsg(BaseResource):
         - **DATABASE / MANAGEMENT** (`egress_services=True` only): all-protocol
           egress to Oracle Services only (no internet).
 
-        When the backing network is a live `Vcn` (not a `VcnRef`), the
-        equivalent subnet security list rules are also registered via
-        `Vcn.add_unique_security_list_rules` so that `Vcn.finalize_network`
-        can emit them without any manual `Vcn.add_security_rules` call by the
-        user.
-
         Args:
             role: The `Role` to apply.
             ports: TCP ports for `INTERNET_EDGE` internet ingress.
@@ -625,31 +467,14 @@ class Nsg(BaseResource):
         tier = role.subnet_tier
         is_internet_edge = tier == SUBNET_PUBLIC
 
-        # -- NSG rules --------------------------------------------------------
         if is_internet_edge:
-            for port in ports:
+            for port in dict.fromkeys(ports):
                 self.allow_from_cidr(f"internet-in-{port}", port, INTERNET)
 
         if role.egress_services:
             self.allow_to_services("svc-out")
         if role.egress_internet:
             self.allow_to_cidr("inet-out", INTERNET)
-
-        # -- Security list rules (only for live Vcn, not VcnRef) --------------
-        if not isinstance(self._vcn, Vcn):
-            return
-
-        if is_internet_edge:
-            for port in ports:
-                self._vcn.add_unique_security_list_rules(
-                    f"public-ingress-tcp-{port}",
-                    public_ingress=[_sl_ingress_tcp(port, "0.0.0.0/0", f"TCP {port} from internet")],
-                )
-
-        if role.egress_services:
-            self._sl_for_tier(f"{tier}-egress-all-services", tier, egress=[_sl_egress_all_services()])
-        if role.egress_internet:
-            self._sl_for_tier(f"{tier}-egress-all-internet", tier, egress=[_sl_egress_all_internet()])
 
     def serves(
         self,
@@ -661,19 +486,14 @@ class Nsg(BaseResource):
         """Declare a directed traffic relationship from this NSG to `target`.
 
         A single call generates the full set of bilateral rules needed for the
-        relationship:
+        relationship. Repeated calls reuse the ports already configured for
+        the target:
 
         - Egress from this NSG to `target` on `port`.
         - Ingress on `target` from this NSG on `port`.
         - (When `with_ssh=True` and `target` has `role.accept_management_ssh`)
           Egress from this NSG to `target` on port 22.
         - (Same condition) Ingress on `target` from this NSG on port 22.
-
-        When both NSGs carry `Role` instances and the backing network is a
-        live `Vcn`, the corresponding subnet security list cross-subnet rules
-        are also registered automatically.  Cross-subnet rules are only emitted
-        when the two roles occupy different tiers (same-tier rules are handled
-        entirely by the NSGs themselves).
 
         Args:
             target: The downstream `Nsg` that receives the traffic.
@@ -685,11 +505,6 @@ class Nsg(BaseResource):
                 paths or when SSH access is provided by a separate Bastion
                 service).
 
-        Raises:
-            ValueError: If either NSG's role contains an unrecognised subnet
-                tier string (should never occur with the predefined role
-                constants).
-
         Example:
             ```python
             lb_nsg.serves(web_nsg, port=8080)          # app + SSH management
@@ -700,52 +515,17 @@ class Nsg(BaseResource):
         src = self.name
         tgt = target.name
 
-        # Application port — both directions
-        self.allow_to_nsg(f"out-{tgt}-{port}", target, port)
-        target.allow_from_nsg(f"in-{src}-{port}", self, port)
+        served_ports = self._served_ports.setdefault(target, set())
+        if port not in served_ports:
+            self.allow_to_nsg(f"out-{tgt}-{port}", target, port)
+            target.allow_from_nsg(f"in-{src}-{port}", self, port)
+            served_ports.add(port)
 
-        # SSH management channel
         needs_ssh = with_ssh and (target.role is None or target.role.accept_management_ssh)
-        if needs_ssh:
+        if needs_ssh and SSH not in served_ports:
             self.allow_to_nsg(f"out-{tgt}-ssh", target, SSH)
             target.allow_from_nsg(f"in-{src}-ssh", self, SSH)
-
-        # Security list cross-subnet rules (only when both roles are known
-        # and the network is a live Vcn — VcnRef manages its own rules)
-        if self.role is None or target.role is None:
-            return
-        if not isinstance(self._vcn, Vcn):
-            return
-        src_tier = self.role.subnet_tier
-        tgt_tier = target.role.subnet_tier
-        if src_tier == tgt_tier:
-            return  # same subnet — NSG rules are sufficient
-
-        src_cidr = self._cidr_for_tier(src_tier)
-        tgt_cidr = self._cidr_for_tier(tgt_tier)
-
-        self._sl_for_tier(
-            f"{src_tier}-egress-tcp-{port}-to-{tgt_tier}",
-            src_tier,
-            egress=[_sl_egress_tcp(port, tgt_cidr, f"TCP {port} to {tgt_tier} tier")],
-        )
-        self._sl_for_tier(
-            f"{tgt_tier}-ingress-tcp-{port}-from-{src_tier}",
-            tgt_tier,
-            ingress=[_sl_ingress_tcp(port, src_cidr, f"TCP {port} from {src_tier} tier")],
-        )
-
-        if needs_ssh:
-            self._sl_for_tier(
-                f"{src_tier}-egress-tcp-22-to-{tgt_tier}",
-                src_tier,
-                egress=[_sl_egress_tcp(SSH, tgt_cidr, f"SSH to {tgt_tier} tier")],
-            )
-            self._sl_for_tier(
-                f"{tgt_tier}-ingress-tcp-22-from-{src_tier}",
-                tgt_tier,
-                ingress=[_sl_ingress_tcp(SSH, src_cidr, f"SSH from {src_tier} tier")],
-            )
+            served_ports.add(SSH)
 
     # ------------------------------------------------------------------
     # Public API
@@ -854,7 +634,7 @@ class Nsg(BaseResource):
         self,
         label: str,
         port: int,
-        cidr: str,
+        cidr: pulumi.Input[str],
         description: str = "",
     ) -> oci.core.NetworkSecurityGroupSecurityRule:
         """Add an INGRESS TCP rule allowing traffic from a CIDR block.
@@ -880,6 +660,7 @@ class Nsg(BaseResource):
             db_nsg.allow_from_cidr("db-peered",   POSTGRES, "172.16.0.0/12")
             ```
         """
+        source_label = cidr if isinstance(cidr, str) else "CIDR"
         return self.add_rule(
             label,
             direction="INGRESS",
@@ -887,7 +668,7 @@ class Nsg(BaseResource):
             source=cidr,
             source_type="CIDR_BLOCK",
             tcp_options=tcp_port(port),
-            description=description or f"TCP {port} from {cidr}",
+            description=description or f"TCP {port} from {source_label}",
         )
 
     def allow_from_nsg(
@@ -997,7 +778,7 @@ class Nsg(BaseResource):
             label,
             direction="EGRESS",
             protocol=ALL,
-            destination=_get_svc_cidr(),
+            destination=get_all_services(self).cidr_block,
             destination_type="SERVICE_CIDR_BLOCK",
             description=description or "All traffic to Oracle Services",
         )

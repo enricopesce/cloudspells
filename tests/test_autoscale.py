@@ -1,11 +1,12 @@
 """Unit tests for AutoScale workload block."""
 
 import unittest
+from unittest.mock import patch
 
 import pulumi
 
 # Set up mocks BEFORE importing infrastructure
-from tests.mocks import set_mocks
+from tests.mocks import OCIMocks, set_mocks
 
 set_mocks()
 
@@ -19,7 +20,7 @@ from cloudspells.providers.oci.autoscale import (
     ScheduleEntry,
     ScheduleScalingPolicy,
 )
-from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.network import Vcn, VcnRef
 
 
 class TestAutoscaleWorkload(unittest.TestCase):
@@ -119,6 +120,104 @@ class TestAutoscaleWorkload(unittest.TestCase):
         # After ScalableWorkload, subnets should exist
         self.assertIsNotNone(vcn.public_subnet, "VCN should be finalized by ScalableWorkload")
         self.assertIsNotNone(vcn.private_subnet, "VCN should be finalized by ScalableWorkload")
+
+    @patch.object(OCIMocks, "new_resource", autospec=True, side_effect=OCIMocks.new_resource)
+    @pulumi.runtime.test
+    def test_shared_vcn_scopes_pool_ingress_to_its_own_load_balancer(self, mock_resource):
+        """Two workloads have disjoint policies even when the VCN is already finalized."""
+        vcn = self._make_vcn()
+        vcn.finalize_network()
+        workloads = [
+            ScalableWorkload(
+                name=name,
+                compartment_id="ocid1.compartment.test",
+                vcn=vcn,
+                image_id="ocid1.image.oc1.phx.test",
+                ssh_public_key="ssh-rsa test",
+                load_balancer_config=config,
+            )
+            for name, config in (
+                ("outer", OciLoadBalancerConfig(backend_port=8080)),
+                ("inner", OciLoadBalancerConfig(backend_port=9090, is_public=False, ssl_certificate_name="test-cert")),
+            )
+        ]
+
+        def check(values):
+            resources = [call.args[1] for call in mock_resource.call_args_list]
+            rules = [r.inputs for r in resources if r.typ.endswith(":NetworkSecurityGroupSecurityRule")]
+            for workload, (frontend, backend, groups, details, listener_ports, _pool) in zip(
+                workloads, values, strict=True
+            ):
+                self.assertEqual(list(groups), [frontend])
+                self.assertEqual(list(details["launch_details"]["create_vnic_details"]["nsg_ids"]), [backend])
+                port = workload.load_balancer_config.backend_port
+                for group, direction, field, peer in (
+                    (backend, "INGRESS", "source", frontend),
+                    (frontend, "EGRESS", "destination", backend),
+                ):
+                    matching = [
+                        r for r in rules if r["networkSecurityGroupId"] == group and r["direction"] == direction
+                    ]
+                    self.assertEqual(len(matching), 1)
+                    self.assertEqual(matching[0][field], peer)
+                    self.assertEqual(matching[0][f"{field}Type"], "NETWORK_SECURITY_GROUP")
+                    self.assertEqual(matching[0]["tcpOptions"]["destinationPortRange"], {"min": port, "max": port})
+                clients = [r for r in rules if r["networkSecurityGroupId"] == frontend and r["direction"] == "INGRESS"]
+                source = "0.0.0.0/0" if workload.load_balancer_config.is_public else vcn.cidr_block
+                expected_ports = [80, 443] if workload.load_balancer_config.ssl_certificate_name else [80]
+                self.assertEqual(sorted(listener_ports), expected_ports)
+                self.assertEqual(
+                    sorted(
+                        (
+                            r["source"],
+                            r["tcpOptions"]["destinationPortRange"]["min"],
+                            r["tcpOptions"]["destinationPortRange"]["max"],
+                        )
+                        for r in clients
+                    ),
+                    [(source, port, port) for port in expected_ports],
+                )
+            self.assertNotEqual(values[0][1], values[1][1])
+            for resource in resources:
+                if resource.typ.endswith(":SecurityList"):
+                    self.assertFalse(any(r["protocol"] == "6" for r in resource.inputs["ingressSecurityRules"]))
+
+        return pulumi.Output.all(
+            *(
+                pulumi.Output.all(
+                    workload.load_balancer_nsg.id,
+                    workload.backend_nsg.id,
+                    workload.load_balancer.network_security_group_ids,
+                    workload.instance_configuration.instance_details,
+                    pulumi.Output.all(*(listener.port for listener in workload.listeners)),
+                    workload.instance_pool.id,
+                )
+                for workload in workloads
+            )
+        ).apply(check)
+
+    @pulumi.runtime.test
+    def test_imported_network_uses_workload_security_groups(self):
+        """An imported VCN can host its own workload NSGs."""
+        vcn = VcnRef("test-vcn", "test-public", "test-private", "10.0.48.0/21", "10.0.0.0/19", "10.0.0.0/18")
+        workload = ScalableWorkload(
+            name="imported",
+            compartment_id="ocid1.compartment.test",
+            vcn=vcn,
+            image_id="ocid1.image.oc1.phx.test",
+            ssh_public_key="ssh-rsa test",
+            load_balancer_config=OciLoadBalancerConfig(is_public=False),
+        )
+
+        def check(values):
+            self.assertEqual(list(values[0]), ["test-private"])
+            self.assertEqual(list(values[1]), [values[2]])
+
+        return pulumi.Output.all(
+            workload.load_balancer.subnet_ids,
+            workload.load_balancer.network_security_group_ids,
+            workload.load_balancer_nsg.id,
+        ).apply(check)
 
     def test_auto_generates_ssh_key(self):
         """Test that ScalableWorkload auto-generates SSH keys when not provided."""
@@ -338,6 +437,32 @@ class TestAutoscaleWorkload(unittest.TestCase):
         )
 
         self.assertIsNotNone(workload.cloud_init_script, "Encoded cloud-init script should be stored")
+
+    @pulumi.runtime.test
+    async def test_export_publishes_backend_nsg_and_secret_key(self):
+        """The backend NSG is available for migrations and generated SSH keys stay secret."""
+        workload = ScalableWorkload(
+            name="web-pool",
+            compartment_id="ocid1.compartment.test",
+            vcn=self._make_vcn(),
+            image_id="ocid1.image.test",
+        )
+        published = {}
+        with patch("pulumi.export", side_effect=published.__setitem__):
+            workload.export()
+
+        self.assertEqual(
+            set(published),
+            {
+                "web_pool_lb_ip",
+                "web_pool_lb_id",
+                "web_pool_pool_id",
+                "web_pool_backend_nsg_id",
+                "web_pool_ssh_private_key",
+            },
+        )
+        self.assertEqual(await published["web_pool_backend_nsg_id"].future(), await workload.backend_nsg.id.future())
+        self.assertTrue(await published["web_pool_ssh_private_key"].is_secret())
 
     def test_getter_methods(self):
         """Test ScalableWorkload getter methods."""

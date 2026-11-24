@@ -95,17 +95,11 @@ pulumi up
 | `add_security_list_rules()` | Accumulates rules | Raises `RuntimeError` (deliberate) |
 | `finalize_network()` | Materialises subnets | No-op (deliberate) |
 | Subnet CIDR accessors | Returns computed `Output[str]` | Returns cross-stack `Output[str]` |
-| Usable with spells | Yes | Yes — with conditions (see below) |
+| Usable with spells | Yes | Yes, subject to routes and IAM permissions |
 
-`VcnRef.add_security_list_rules()` raises a `RuntimeError` only when non-empty rule lists are passed — it cannot modify the security lists of a network it does not own. When all arguments are `None` or empty the call is a silent no-op (spells call this unconditionally; the no-op keeps spell code branch-free). The error message lists the non-empty rule sets that were requested so you know exactly what to add.
+The source stack owns the routes and subnet security lists. A non-empty request to `VcnRef.add_security_list_rules()` raises `RuntimeError`. The service stack can create and attach workload NSGs in the referenced VCN. With the appropriate routes and IAM permissions, OKE and ScalableWorkload can provision their NSGs directly.
 
-**This means security rules required by a spell must already exist in the source CloudSpells VCN stack before you deploy that spell against a `VcnRef`.** The workflow is:
-
-1. In the source VCN stack, include the spell you intend to deploy here (even if it is a placeholder), so its rules are written to the security lists.
-2. Run `pulumi up` on the source stack.
-3. Deploy the spell against the `VcnRef` in this stack.
-
-In practice this is straightforward: the platform team owns the VCN stack and provisions the baseline security rules; application teams deploy spells against the `VcnRef` knowing the rules are already in place.
+The source stack's rules still apply to every VNIC in the selected subnet. Review their ingress rules before relying on workload isolation. For a VCN with only public and private tiers, use the direct constructor with the IDs and CIDRs of those tiers.
 
 ---
 

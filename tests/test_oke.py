@@ -386,24 +386,22 @@ class TestOkeCluster(unittest.TestCase):
         message = mock_warn.call_args.args[0]
         self.assertIn("kubectl_allowed_cidrs is not set", message)
 
-    def test_oke_rejects_vcn_ref_without_preexisting_rules(self):
-        """OkeCluster+VcnRef raises RuntimeError by design (rules must live in source stack)."""
-        # VcnRef models a VCN owned by another stack.  Its security lists are
-        # immutable from this stack's perspective, so any spell (including
-        # OkeCluster) that tries to add rules through VcnRef.add_security_list_rules
-        # triggers the documented RuntimeError guard.  The caller must deploy
-        # OkeCluster in the source stack first so the rules are written there.
-        vcn_ref = _make_vcn_ref()
-        with self.assertRaises(RuntimeError) as ctx:
-            OkeCluster(
-                name="test-vcnref",
-                compartment_id="ocid1.compartment.test",
-                vcn=vcn_ref,
-                kubernetes_version="v1.28.2",
-                node_pools=[_DEFAULT_POOL],
-                kubectl_allowed_cidrs=["10.0.0.0/8"],
-            )
-        self.assertIn("VcnRef", str(ctx.exception))
+    @pulumi.runtime.test
+    def test_oke_uses_vcn_ref_without_writing_shared_lists(self):
+        """OKE attaches its own NSG when given a VCN owned by another stack."""
+        oke = OkeCluster(
+            name="test-vcnref",
+            compartment_id="ocid1.compartment.test",
+            vcn=_make_vcn_ref(),
+            kubernetes_version="v1.28.2",
+            node_pools=[_DEFAULT_POOL],
+            kubectl_allowed_cidrs=["10.0.0.0/8"],
+        )
+
+        def check(values):
+            self.assertEqual(list(values[0]["nsg_ids"]), [values[1]])
+
+        return pulumi.Output.all(oke.cluster.endpoint_config, oke.api_nsg.id).apply(check)
 
     def test_export_publishes_expected_keys(self):
         """Test that export() publishes the cluster-id and NSG-id outputs."""

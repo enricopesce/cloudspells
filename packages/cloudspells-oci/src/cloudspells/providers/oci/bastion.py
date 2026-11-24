@@ -7,14 +7,8 @@ private-subnet resources without requiring a public-facing jump host.
 Key behaviours:
 
 - Creates one `oci.bastion.Bastion` of type `STANDARD`.
-- Adds a TCP port-22 ingress rule to the VCN private security list when the
-  network has not yet been finalised.
-- If the network is already finalised (e.g. because a `ComputeInstance` or
-  `ScalableWorkload` was constructed first), the existing SSH rule is reused
-  and no duplicate rule is added.
-- Session access is controlled at the Bastion level via
-  `allowed_client_cidrs`; the security-list rule allows all sources
-  because OCI Bastion uses dynamically-assigned managed IPs.
+- Restricts session clients to `allowed_client_cidrs`.
+- Grants SSH to an explicitly selected target NSG with `allow_ssh_to`.
 
 Sessions are ephemeral (max 3 h TTL) and are not managed by this spell.
 Create them on demand via the OCI CLI:
@@ -38,12 +32,7 @@ from cloudspells.core.abstractions.bastion import AbstractBastion
 from cloudspells.core.base import BaseResource
 
 from .network import Vcn, VcnRef
-
-# Fingerprint used to deduplicate the Bastion SSH ingress rule across multiple
-# Bastion instances that share the same Vcn.  Declared as a module constant so
-# both the guard check and _add_unique_security_list_rules always reference the
-# same string — changing one without the other would silently break deduplication.
-_BASTION_SSH_RULE_FINGERPRINT = "bastion-private-ingress-tcp-22"
+from .nsg import SSH, Nsg
 
 # OCI Bastion sessions always expire at 3 hours — the maximum the service
 # allows.  Exposing a shorter TTL as a parameter would only create operational
@@ -63,12 +52,7 @@ class Bastion(BaseResource, AbstractBastion):
 
     - One `oci.bastion.Bastion` of type `STANDARD`.
 
-    Security rules added to the VCN (only when the network is not yet
-    finalised):
-
-    - Private subnet ingress: TCP port 22 from `0.0.0.0/0`.  OCI Bastion
-      uses managed, randomly-assigned source IPs; restrict client access via
-      `allowed_client_cidrs` instead.
+    Use `allow_ssh_to` to authorize the Bastion private endpoint on a target NSG.
 
     Attributes:
         vcn: The `Vcn` or `VcnRef` this Bastion is attached to.
@@ -81,10 +65,9 @@ class Bastion(BaseResource, AbstractBastion):
         ```python
         vcn = Vcn(name="lab", compartment_id=comp_id, stack_name="prod")
 
+        target_nsg = Nsg("web-target", vcn=vcn, compartment_id=comp_id)
         instance = ComputeInstance(
-            name="web",
-            compartment_id=comp_id,
-            vcn=vcn,
+            name="web", compartment_id=comp_id, vcn=vcn, image_id=image_id, nsg=target_nsg,
         )
 
         bastion = Bastion(
@@ -94,6 +77,7 @@ class Bastion(BaseResource, AbstractBastion):
             allowed_client_cidrs=["203.0.113.0/24"],  # always required
         )
 
+        bastion.allow_ssh_to(target_nsg)
         pulumi.export("bastion_endpoint", bastion.get_bastion_endpoint())
         ```
     """
@@ -133,11 +117,6 @@ class Bastion(BaseResource, AbstractBastion):
             ValueError: If `allowed_client_cidrs` is `None`.  Always provide
                 the list explicitly; pass `["0.0.0.0/0"]` to permit all
                 source IPs when unrestricted access is intentional.
-            RuntimeError: If the VCN network has already been finalised by
-                another spell (e.g. `ComputeInstance`, `ScalableWorkload`,
-                `OkeCluster`) and the Bastion SSH ingress rule was not
-                registered before that finalisation. Construct `Bastion`
-                before any spell that triggers `finalize_network()`.
         """
         super().__init__("custom:bastion:Bastion", name, compartment_id, stack_name, opts)
 
@@ -150,26 +129,6 @@ class Bastion(BaseResource, AbstractBastion):
                 "allowed_client_cidrs=['0.0.0.0/0']."
             )
 
-        # Register the Bastion SSH rule before finalising.  OCI Bastion sessions
-        # originate from randomly-assigned managed IPs, so the rule must allow
-        # 0.0.0.0/0 on port 22 — categorically different from the SSH rule that
-        # ComputeInstance adds (which uses the public-subnet CIDR).  Silently
-        # skipping would leave the private security list without the required rule
-        # and break all Bastion sessions.  Raise early with a clear message if the
-        # network was already finalised before this Bastion was constructed.
-        if isinstance(self.vcn, Vcn):
-            if self.vcn.is_finalized:
-                if not self.vcn.has_ambient_rule(_BASTION_SSH_RULE_FINGERPRINT):
-                    raise RuntimeError(
-                        "Bastion must be constructed before any spell that finalizes "
-                        "the VCN network (ComputeInstance, ScalableWorkload, OkeCluster). "
-                        "Bastion requires SSH from 0.0.0.0/0 on the private security list "
-                        "for OCI Bastion sessions, and that rule can only be registered "
-                        "before Vcn.finalize_network() is called."
-                    )
-                # Rule already applied by an earlier Bastion — no-op.
-            else:
-                self._add_bastion_security_rules()
         self.vcn.finalize_network()
 
         bastion_name = self.create_resource_name("bastion")
@@ -193,39 +152,20 @@ class Bastion(BaseResource, AbstractBastion):
             "bastion_endpoint": self.bastion_endpoint,
         })
 
-    def _add_bastion_security_rules(self) -> None:
-        """Add SSH ingress rule to the VCN private security list.
+    def allow_ssh_to(self, target: Nsg) -> oci.core.NetworkSecurityGroupSecurityRule:
+        """Allow SSH from this Bastion private endpoint to members of `target`.
 
-        OCI Bastion sessions originate from managed, randomly-assigned source
-        IPs whose addresses are not known at deploy time, so the security list
-        rule must allow `0.0.0.0/0` on port 22.  This is the key design
-        decision: unlike a jump-host rule that can be scoped to a known CIDR,
-        OCI Bastion requires an open-source rule on the security list while
-        restricting actual session creation to specific CIDRs at the Bastion
-        level via `allowed_client_cidrs`.
+        Args:
+            target: NSG attached to the target VNICs in this VCN.
 
-        Uses fingerprint `_BASTION_SSH_RULE_FINGERPRINT` so that a second
-        `Bastion` constructed against the same VCN is deduplicated rather than
-        producing a duplicate rule.
-
-        Must be called before `Vcn.finalize_network`.  Constructing `Bastion`
-        before any spell that triggers finalisation (e.g. `ComputeInstance`)
-        ensures the correct ordering.
+        Returns:
+            The NSG ingress rule permitting TCP port 22 from the endpoint IP.
         """
-        self.vcn.add_unique_security_list_rules(  # type: ignore[union-attr]  # narrowed to Vcn by isinstance guard above
-            _BASTION_SSH_RULE_FINGERPRINT,
-            private_ingress=[
-                oci.core.SecurityListIngressSecurityRuleArgs(
-                    description="SSH access from OCI Bastion service to private subnet instances",
-                    protocol="6",  # TCP
-                    source="0.0.0.0/0",
-                    source_type="CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                        min=22,
-                        max=22,
-                    ),
-                ),
-            ],
+        return target.allow_from_cidr(
+            f"bastion-{self.name}-ssh",
+            SSH,
+            pulumi.Output.concat(self.bastion_endpoint, "/32"),
+            "SSH from OCI Bastion private endpoint",
         )
 
     # ------------------------------------------------------------------

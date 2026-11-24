@@ -8,7 +8,7 @@ Deploys a private compute instance accessible only through an OCI managed Bastio
 - Compute instance in the private subnet (no public IP)
 - OCI Bastion service attached to the private subnet
 - SSH key pair (auto-generated if not provided)
-- Security list rules allowing SSH from the public subnet to the private subnet
+- An NSG rule allowing SSH to the instance from the Bastion private endpoint
 
 ## Architecture
 

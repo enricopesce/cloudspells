@@ -23,9 +23,9 @@ Internet
 
 ## Steps
 
-### 1. Declare the Bastion before the compute instance
+### 1. Authorize SSH on the target NSG
 
-`Bastion` must be constructed **before** any spell that calls `finalize_network()` (such as `ComputeInstance`, `ScalableWorkload`, or `OkeCluster`). The Bastion needs to register its SSH ingress rule — TCP port 22 from `0.0.0.0/0` on the private security list — before the security list is materialised. If `ComputeInstance` is constructed first, `finalize_network()` will have already run and `Bastion` will raise a `RuntimeError`.
+Attach an NSG to the instance, then call `bastion.allow_ssh_to(app_nsg)`. The rule admits TCP/22 from the Bastion's private endpoint IP. The allowed client CIDRs control who can connect to the Bastion.
 
 ```python
 from cloudspells.core import Config
@@ -42,7 +42,6 @@ vcn = Vcn("lab", compartment_id=compartment_id)
 
 app_nsg = Nsg("app-server", role=APP_SERVER, vcn=vcn, compartment_id=compartment_id)
 
-# Bastion comes BEFORE ComputeInstance — it must register its SSH rule first.
 bastion = Bastion(
     name="mgmt",
     compartment_id=compartment_id,
@@ -50,7 +49,6 @@ bastion = Bastion(
     allowed_client_cidrs=["0.0.0.0/0"],  # restrict to your IP in production
 )
 
-# ComputeInstance calls finalize_network() — Bastion rule is already registered.
 instance = ComputeInstance(
     name="web-server",
     compartment_id=compartment_id,
@@ -58,6 +56,7 @@ instance = ComputeInstance(
     image_id=config.require("image_ocid"),
     nsg=app_nsg,
 )
+bastion.allow_ssh_to(app_nsg)
 ```
 
 `Bastion` attaches to the **private subnet** automatically. No subnet argument is needed.
@@ -118,7 +117,17 @@ Copy and run that command — it is a ready-to-use `ssh` invocation with all pro
 
 ### Port-forwarding session (for non-SSH services)
 
-To reach a database or other TCP service on the private subnet, use a port-forwarding session:
+To reach another TCP service, authorize that port on its target NSG from the Bastion private endpoint:
+
+```python
+import pulumi
+
+db_nsg.allow_from_cidr(
+    "bastion-postgres", 5432, pulumi.Output.concat(bastion.get_bastion_endpoint(), "/32")
+)
+```
+
+Then create the port-forwarding session:
 
 ```bash
 oci bastion session create-port-forwarding \
@@ -164,7 +173,6 @@ vcn = Vcn("lab", compartment_id=compartment_id)
 
 app_nsg = Nsg("app-server", role=APP_SERVER, vcn=vcn, compartment_id=compartment_id)
 
-# Bastion must come before any spell that triggers finalize_network().
 bastion = Bastion(
     name="mgmt",
     compartment_id=compartment_id,
@@ -179,6 +187,7 @@ instance = ComputeInstance(
     image_id=config.require("image_ocid"),
     nsg=app_nsg,
 )
+bastion.allow_ssh_to(app_nsg)
 
 vcn.export()
 bastion.export()

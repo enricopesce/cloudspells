@@ -6,9 +6,9 @@ topology using a lazy initialisation (builder) pattern:
 
 1. Construct the `Vcn` object — the VCN, gateways, and route tables are
    created immediately.
-2. Other spells (OKE, Compute, ScalableWorkload) call
-   `Vcn.add_security_list_rules` to accumulate their required rules.
-3. The first spell to finish calls `Vcn.finalize_network`, which creates
+2. The VCN owner can register policies shared by a subnet through
+   `Vcn.add_security_list_rules`.
+3. The first subnet consumer calls `Vcn.finalize_network`, which creates
    the security lists with all accumulated rules and then creates the
    subnets.  Subsequent calls to `finalize_network` are no-ops.
 
@@ -37,18 +37,19 @@ Examples for common prefix lengths:
 | /20  | /21  (2 046 h)  | /22  (1 022 h)  | /23    (510 h)  | /23    (510 h)    |
 | /24  | /25    (126 h)  | /26     (62 h)  | /27     (30 h)  | /27     (30 h)    |
 
-(h = usable host IPs after subtracting the OCI-reserved 5 addresses per subnet)
+(h = IPv4 addresses excluding network and broadcast)
 
 All four subnet tiers together exactly cover the VCN CIDR — no gaps, no overlaps.
-CIDR validation (canonical form, prefix length sanity) is delegated to OCI;
-the Pulumi provider will reject malformed values at plan time.
+The primary IPv4 CIDR must be canonical and use a prefix from `/16` to
+`/27`, so every tier has a subnet of at least `/30`.
 """
 
 from __future__ import annotations
 
 import ipaddress
+import json
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, TypeVar
 
 import pulumi
 import pulumi_oci as oci
@@ -68,7 +69,7 @@ from cloudspells.core.abstractions.network import (
 )
 from cloudspells.core.base import BaseResource
 
-from ._oci_utils import get_svc_cidr as _get_svc_cidr
+from ._oci_utils import get_all_services
 
 # Maps cloud-neutral protocol names to OCI protocol numbers.
 _PROTOCOL_MAP: dict[str, str] = {
@@ -77,6 +78,40 @@ _PROTOCOL_MAP: dict[str, str] = {
     "icmp": "1",
     "all": "all",
 }
+
+
+_SecurityListRule = TypeVar(
+    "_SecurityListRule",
+    oci.core.SecurityListIngressSecurityRuleArgs,
+    oci.core.SecurityListEgressSecurityRuleArgs,
+)
+
+
+def _deduplicate_rules(rules: list[_SecurityListRule]) -> pulumi.Input[list[_SecurityListRule]]:
+    """Keep one rule per match and connection-tracking mode in a subnet list.
+
+    Args:
+        rules: Rules for a single tier and traffic direction.
+
+    Returns:
+        Rule list preserving the first description for each equivalent rule.
+    """
+    if len(rules) < 2:
+        return rules
+
+    def deduplicate(resolved: list[_SecurityListRule]) -> list[_SecurityListRule]:
+        unique: dict[str, _SecurityListRule] = {}
+        for rule in resolved:
+            fields = dict(vars(rule))
+            fields.pop("description", None)
+            fields.setdefault("stateless", False)
+            endpoint_type = "source_type" if "source" in fields else "destination_type"
+            fields.setdefault(endpoint_type, "CIDR_BLOCK")
+            key = json.dumps(fields, sort_keys=True, default=vars)
+            unique.setdefault(key, rule)
+        return list(unique.values())
+
+    return pulumi.Output.from_input(rules).apply(deduplicate)
 
 
 def _translate_ingress_rule(
@@ -250,12 +285,12 @@ class Vcn(BaseResource, AbstractNetwork):
     - Four security lists populated via the builder pattern.
     - Four contiguous, CIDR-aligned subnets auto-calculated by binary
       subdivision of the VCN CIDR (private 50 %, secure 25 %, public 12.5 %,
-      management 12.5 %).  Any valid prefix length works — `/16`, `/20`,
-      `/24`, etc.  See the module docstring for a worked example table.
+      management 12.5 %). The primary IPv4 prefix can range from `/16` to `/27`.
 
     Security lists and subnets are **not** created in `__init__`.  They
-    are created only when `finalize_network` is called.  Other spells add
-    their rules via `add_security_list_rules` **before** that call.
+    are created when `finalize_network` is first called. Register any
+    subnet-wide rules via `add_security_list_rules` before that call.
+    Workload policies live in their own network security groups.
 
     Attributes:
         cidr_block: Plain `str` IPv4 CIDR block for the VCN.  A `str` (not
@@ -482,7 +517,7 @@ class Vcn(BaseResource, AbstractNetwork):
         self.drg_attachment = None
 
         # Storage for security list rules (builder pattern).
-        # Populated by add_security_list_rules() calls from other spells.
+        # Populated by baseline rules and explicit subnet policies.
         self._public_ingress_rules: list[oci.core.SecurityListIngressSecurityRuleArgs] = []
         self._public_egress_rules: list[oci.core.SecurityListEgressSecurityRuleArgs] = []
         self._private_ingress_rules: list[oci.core.SecurityListIngressSecurityRuleArgs] = []
@@ -495,10 +530,7 @@ class Vcn(BaseResource, AbstractNetwork):
         # Flag to track whether finalize_network() has been called.
         self._security_lists_finalized: bool = False
 
-        # Fingerprints of ambient security-list rules already added via
-        # _add_unique_security_list_rules().  Prevents duplicate rules when
-        # multiple NSGs of the same role are created (e.g. five APP_SERVER
-        # NSGs should not add the services-egress rule five times).
+        # Fingerprints of policies accepted by add_unique_security_list_rules().
         self._applied_ambient_rule_fingerprints: set[str] = set()
 
         self._subnet_cidrs: _SubnetCidrs = self._split_tiers(self.cidr_block)
@@ -527,15 +559,9 @@ class Vcn(BaseResource, AbstractNetwork):
             ),
         ])
 
-        # Resolve the OCI "All Services" bundle lazily via _get_svc_cidr()
-        # so no blocking API call is made during __init__.  Both values are
-        # pulumi.Output[str] and are accepted wherever pulumi.Input[str] is
-        # expected (ServiceGateway, route rules, security-rule translation).
-        all_services = oci.core.get_services_output()
-        self._svc_service_id: pulumi.Output[str] = all_services.services.apply(
-            lambda svcs: next(s.id for s in svcs if s.cidr_block.startswith("all-"))
-        )
-        self._svc_cidr_block: pulumi.Output[str] = _get_svc_cidr()
+        all_services = get_all_services(self)
+        self._svc_service_id = all_services.id
+        self._svc_cidr_block = all_services.cidr_block
 
         # Create base infrastructure (NOT security lists or subnets yet).
         self._create_vcn()
@@ -578,6 +604,10 @@ class Vcn(BaseResource, AbstractNetwork):
             `_SubnetCidrs` with named fields `public`, `private`, `secure`,
             and `management`, each a CIDR string for the corresponding tier.
 
+        Raises:
+            ValueError: If the CIDR is not a canonical IPv4 network from
+                `/16` to `/27`.
+
         Example:
             ```python
             Vcn._split_tiers("10.0.0.0/16")
@@ -589,7 +619,9 @@ class Vcn(BaseResource, AbstractNetwork):
             #              secure="172.16.8.0/22",  management="172.16.14.0/23")
             ```
         """
-        net = ipaddress.ip_network(cidr, strict=True)
+        net = ipaddress.IPv4Network(cidr, strict=True)
+        if not 16 <= net.prefixlen <= 27:
+            raise ValueError("VCN cidr_block must be an IPv4 network with a prefix from /16 to /27 for four tiers.")
         halves = list(net.subnets(prefixlen_diff=1))
         private = halves[0]  # 50 %
 
@@ -770,9 +802,9 @@ class Vcn(BaseResource, AbstractNetwork):
     def _create_security_lists(self) -> None:
         """Create all four per-tier security lists with accumulated rules.
 
-        Called exactly once by `finalize_network`.  Rules were accumulated
-        in the four `_*_ingress_rules` / `_*_egress_rules` lists via
-        `add_security_list_rules` calls from other spells.
+        Called once by `finalize_network`. Each direction combines the
+        baseline and explicit subnet policies, deduplicated after resolving
+        Pulumi inputs.
 
         After this method returns all four `*_security_list` attributes are set.
         """
@@ -788,8 +820,8 @@ class Vcn(BaseResource, AbstractNetwork):
                 compartment_id=self.compartment_id,
                 vcn_id=self.vcn.id,
                 display_name=name,
-                ingress_security_rules=ingress,
-                egress_security_rules=egress,
+                ingress_security_rules=_deduplicate_rules(ingress),
+                egress_security_rules=_deduplicate_rules(egress),
                 freeform_tags=self.create_network_resource_tags(name, "security-list", tier, tier),
                 defined_tags=self._defined_tags,
                 opts=pulumi.ResourceOptions(parent=self),
@@ -1068,9 +1100,6 @@ class Vcn(BaseResource, AbstractNetwork):
     def is_finalized(self) -> bool:
         """Return `True` after `finalize_network` has been called.
 
-        Spells use this to decide whether to register security list rules
-        before triggering finalization.
-
         Returns:
             `True` if `finalize_network` has already run, `False` otherwise.
         """
@@ -1078,11 +1107,6 @@ class Vcn(BaseResource, AbstractNetwork):
 
     def has_ambient_rule(self, fingerprint: str) -> bool:
         """Return `True` if a rule with `fingerprint` has already been registered.
-
-        Spells use this to detect ordering errors — if the network has been
-        finalized without a required rule (e.g. the Bastion SSH ingress), they
-        can raise a clear `RuntimeError` rather than silently deploying
-        incomplete security lists.
 
         Args:
             fingerprint: The rule fingerprint to look up (e.g.
@@ -1105,17 +1129,14 @@ class Vcn(BaseResource, AbstractNetwork):
         management_ingress: list[oci.core.SecurityListIngressSecurityRuleArgs] | None = None,
         management_egress: list[oci.core.SecurityListEgressSecurityRuleArgs] | None = None,
     ) -> None:
-        """Add security list rules only if `fingerprint` has not been seen before.
+        """Register subnet rules associated with a caller-provided fingerprint.
 
-        Prevents duplicate rules when multiple NSGs of the same role are created
-        (e.g. five `APP_SERVER` NSGs should not write the services-egress rule
-        five times to the private security list).  Each unique ambient rule is
-        identified by a short string fingerprint chosen by the caller.
+        Rule content determines deduplication when the subnet lists are
+        created, including rules registered under different fingerprints.
+        Reusing a fingerprint can add other rules to that registration.
 
         Args:
-            fingerprint: Unique string identifying this rule (e.g.
-                `"private-egress-all-services"`).  Subsequent calls with the
-                same fingerprint are silently ignored.
+            fingerprint: Caller-provided key tracked by `has_ambient_rule`.
             public_ingress: Ingress rules to add to the public security list.
             public_egress: Egress rules to add to the public security list.
             private_ingress: Ingress rules to add to the private security list.
@@ -1128,9 +1149,6 @@ class Vcn(BaseResource, AbstractNetwork):
         Raises:
             RuntimeError: If called after `finalize_network`.
         """
-        if fingerprint in self._applied_ambient_rule_fingerprints:
-            return
-        self._applied_ambient_rule_fingerprints.add(fingerprint)
         self.add_security_list_rules(
             public_ingress=public_ingress,
             public_egress=public_egress,
@@ -1141,6 +1159,7 @@ class Vcn(BaseResource, AbstractNetwork):
             management_ingress=management_ingress,
             management_egress=management_egress,
         )
+        self._applied_ambient_rule_fingerprints.add(fingerprint)
 
     def export(self) -> None:
         """Export the canonical VCN stack outputs for cross-stack consumption.
@@ -1205,10 +1224,9 @@ class Vcn(BaseResource, AbstractNetwork):
     ) -> None:
         """Accumulate security list rules before the network is finalised.
 
-        Uses the builder pattern: rules contributed by different spells are
-        collected here and applied together when `finalize_network` is
-        called.  This ensures only a single security list per subnet is
-        created, leaving the remaining OCI slots free for future services.
+        Explicit subnet policies and baseline rules are merged at
+        `finalize_network`. Each tier and direction deduplicates equivalent
+        rules by their resolved contents.
 
         This method **must** be called **before** `finalize_network`.
 
@@ -1494,9 +1512,9 @@ class VcnRef(AbstractNetworkRef):
     VCN that was created by a separate Pulumi stack, without recreating or
     modifying any network resources.
 
-    `add_security_list_rules` and `finalize_network` are **no-ops** for
-    `VcnRef`.  Any security rules required by the services you deploy here
-    must already exist in the source VCN stack.
+    The source stack owns the subnets, routes and security lists.
+    Workloads can create and attach their NSGs in the referenced VCN.
+    Calling `finalize_network` on this reference has no effect.
 
     The source stack must export the following keys (all exported by the
     `examples/vcn` stack out of the box):
@@ -1668,14 +1686,14 @@ class VcnRef(AbstractNetworkRef):
         """
         ref = pulumi.StackReference(stack_name)
         return cls(
-            vcn_id=ref.get_output("vcn_id"),
-            public_subnet_id=ref.get_output("public_subnet_id"),
-            private_subnet_id=ref.get_output("private_subnet_id"),
+            vcn_id=ref.require_output("vcn_id"),
+            public_subnet_id=ref.require_output("public_subnet_id"),
+            private_subnet_id=ref.require_output("private_subnet_id"),
             secure_subnet_id=ref.get_output("secure_subnet_id"),
-            public_subnet_cidr=ref.get_output("public_subnet_cidr"),
-            private_subnet_cidr=ref.get_output("private_subnet_cidr"),
+            public_subnet_cidr=ref.require_output("public_subnet_cidr"),
+            private_subnet_cidr=ref.require_output("private_subnet_cidr"),
             secure_subnet_cidr=ref.get_output("secure_subnet_cidr"),
-            cidr_block=ref.get_output("cidr_block"),
+            cidr_block=ref.require_output("cidr_block"),
             public_security_list_id=ref.get_output("public_security_list_id"),
             private_security_list_id=ref.get_output("private_security_list_id"),
             secure_security_list_id=ref.get_output("secure_security_list_id"),
@@ -1698,18 +1716,9 @@ class VcnRef(AbstractNetworkRef):
     ) -> None:
         """Reject any non-empty rule list — security rules must live in the source stack.
 
-        `VcnRef` is a read-only handle to a VCN managed by another CloudSpells
-        stack.  Security lists in that stack are already finalised; this stack
-        cannot modify them.  Any spell that calls this method (OKE, Compute,
-        ScalableWorkload) requires those rules to exist **before** you deploy here.
-
-        When all arguments are `None` or empty the call is silently accepted as a
-        no-op (spells call this unconditionally; the no-op keeps spell code
-        branch-free).
-
-        **How to fix:** open the source CloudSpells stack, deploy the same spell
-        there first so its rules are written to the VCN security lists, then
-        re-run this stack.
+        The source stack owns the subnet security lists. An empty request
+        is accepted and has no effect. Workload NSGs can be created directly
+        in the referenced VCN.
 
         Args:
             public_ingress: Rules that cannot be applied (must be `None` or empty).
@@ -1754,27 +1763,32 @@ class VcnRef(AbstractNetworkRef):
         management_ingress: list[oci.core.SecurityListIngressSecurityRuleArgs] | None = None,
         management_egress: list[oci.core.SecurityListEgressSecurityRuleArgs] | None = None,
     ) -> None:
-        """No-op — security lists in the source stack are already finalised.
-
-        `VcnRef` is a read-only handle; the security lists it points to belong
-        to another CloudSpells stack and cannot be modified here.  This method
-        exists solely to make `VcnRef` structurally complete alongside `Vcn` so
-        callers do not need `isinstance` guards before calling
-        `add_unique_security_list_rules`.
+        """Reject explicit non-empty subnet rules on a referenced VCN.
 
         Args:
-            fingerprint: Ignored — no deduplication needed for a no-op.
-            public_ingress: Ignored.
-            public_egress: Ignored.
-            private_ingress: Ignored.
-            private_egress: Ignored.
-            secure_ingress: Ignored.
-            secure_egress: Ignored.
-            management_ingress: Ignored.
-            management_egress: Ignored.
+            fingerprint: Registration key used by a managed `Vcn`.
+            public_ingress: Requested public ingress rules.
+            public_egress: Requested public egress rules.
+            private_ingress: Requested private ingress rules.
+            private_egress: Requested private egress rules.
+            secure_ingress: Requested secure ingress rules.
+            secure_egress: Requested secure egress rules.
+            management_ingress: Requested management ingress rules.
+            management_egress: Requested management egress rules.
+
+        Raises:
+            RuntimeError: If any rules are supplied.
         """
-        # No-op: VcnRef cannot modify security lists owned by another stack.
-        return
+        self.add_security_list_rules(
+            public_ingress=public_ingress,
+            public_egress=public_egress,
+            private_ingress=private_ingress,
+            private_egress=private_egress,
+            secure_ingress=secure_ingress,
+            secure_egress=secure_egress,
+            management_ingress=management_ingress,
+            management_egress=management_egress,
+        )
 
     def get_public_subnet_cidr(self) -> pulumi.Input[str]:
         """Return the public subnet CIDR.

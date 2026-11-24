@@ -1,6 +1,7 @@
 """Unit tests for Nsg rule-generation helpers."""
 
 import unittest
+from unittest.mock import patch
 
 import pulumi
 
@@ -208,58 +209,37 @@ class TestNsgServes(unittest.TestCase):
     def _make_vcn(self) -> Vcn:
         return Vcn(name="serves-vcn", compartment_id=COMP_ID)
 
-    def test_serves_registers_cross_subnet_sl_rules_for_different_tiers(self):
-        """serves() between different-tier roles registers security list fingerprints."""
+    def test_serves_after_finalize_creates_only_nsg_rules(self) -> None:
+        """Cross-tier access works after finalization and avoids subnet-wide grants."""
         vcn = self._make_vcn()
+        vcn.finalize_network()
         lb = Nsg("lb", role=INTERNET_EDGE, ports=[HTTP, HTTPS], vcn=vcn, compartment_id=COMP_ID)
         app = Nsg("app", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
 
-        before = frozenset(vcn._applied_ambient_rule_fingerprints)
-        lb.serves(app, port=HTTP)
-        after = frozenset(vcn._applied_ambient_rule_fingerprints)
+        with (
+            patch.object(lb, "allow_to_nsg", wraps=lb.allow_to_nsg) as egress,
+            patch.object(app, "allow_from_nsg", wraps=app.allow_from_nsg) as ingress,
+        ):
+            lb.serves(app, port=8080)
+            lb.serves(app, port=8443)
+            lb.serves(app, port=SSH)
+            lb.serves(app, port=8080)
+        self.assertEqual([call.args[2] for call in egress.call_args_list], [8080, SSH, 8443])
+        self.assertEqual([call.args[2] for call in ingress.call_args_list], [8080, SSH, 8443])
+        self.assertEqual(vcn._private_ingress_rules, [])
 
-        new_fps = after - before
-        cross_subnet = {fp for fp in new_fps if "to-" in fp or "from-" in fp}
-        self.assertGreater(len(cross_subnet), 0, "Expected cross-subnet SL fingerprints")
-
-    def test_serves_same_tier_skips_sl_rules(self):
-        """serves() between same-tier NSGs adds no cross-subnet security list rules."""
+    def test_serves_with_ssh_false_omits_ssh_channel(self) -> None:
+        """serves(with_ssh=False) only adds the application port to both NSGs."""
         vcn = self._make_vcn()
-        app1 = Nsg("app1", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
-        app2 = Nsg("app2", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
-
-        before = frozenset(vcn._applied_ambient_rule_fingerprints)
-        app1.serves(app2, port=8080)
-        after = frozenset(vcn._applied_ambient_rule_fingerprints)
-
-        cross_subnet = {fp for fp in (after - before) if "to-" in fp or "from-" in fp}
-        self.assertEqual(len(cross_subnet), 0)
-
-    def test_serves_with_ssh_false_omits_ssh_channel(self):
-        """serves(with_ssh=False) does not add SSH management rules."""
-        vcn = self._make_vcn()
-        lb = Nsg("lb2", role=INTERNET_EDGE, ports=[HTTPS], vcn=vcn, compartment_id=COMP_ID)
-        app = Nsg("app3", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
-
-        before = frozenset(vcn._applied_ambient_rule_fingerprints)
-        lb.serves(app, port=HTTPS, with_ssh=False)
-        after = frozenset(vcn._applied_ambient_rule_fingerprints)
-
-        new_fps = after - before
-        ssh_fps = {fp for fp in new_fps if "-22-" in fp or "tcp-22" in fp}
-        self.assertEqual(len(ssh_fps), 0, "No SSH SL fingerprints expected when with_ssh=False")
-
-    def test_serves_no_role_skips_sl_rules(self):
-        """serves() without roles on either NSG adds no security list rules."""
-        vcn = self._make_vcn()
-        a = Nsg("bare-a", vcn=vcn, compartment_id=COMP_ID)
-        b = Nsg("bare-b", vcn=vcn, compartment_id=COMP_ID)
-
-        before = frozenset(vcn._applied_ambient_rule_fingerprints)
-        a.serves(b, port=8080)
-        after = frozenset(vcn._applied_ambient_rule_fingerprints)
-
-        self.assertEqual(before, after, "No SL fingerprints expected when NSGs have no role")
+        lb = Nsg("lb", role=INTERNET_EDGE, ports=[HTTPS], vcn=vcn, compartment_id=COMP_ID)
+        app = Nsg("app", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
+        with (
+            patch.object(lb, "allow_to_nsg", wraps=lb.allow_to_nsg) as egress,
+            patch.object(app, "allow_from_nsg", wraps=app.allow_from_nsg) as ingress,
+        ):
+            lb.serves(app, port=HTTPS, with_ssh=False)
+        egress.assert_called_once_with("out-app-443", app, HTTPS)
+        ingress.assert_called_once_with("in-lb-443", lb, HTTPS)
 
 
 class TestPortHelpers(unittest.TestCase):

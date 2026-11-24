@@ -48,9 +48,9 @@ The four tiers occupy the VCN CIDR contiguously with no gaps and no overlaps. Pr
 | `10.0.0.0/20` | `10.0.0.0/21` (2 046 h) | `10.0.8.0/22` (1 022 h) | `10.0.12.0/23` (510 h) | `10.0.14.0/23` (510 h) |
 | `10.0.0.0/24` | `10.0.0.0/25` (126 h) | `10.0.0.128/26` (62 h) | `10.0.0.192/27` (30 h) | `10.0.0.224/27` (30 h) |
 
-`h` = usable host IPs after subtracting the 5 addresses OCI reserves per subnet (network, broadcast, first, second, and last usable).
+The table shows host counts before OCI reservation of one additional IPv4 address. See [OCI subnet addresses](https://docs.oracle.com/en-us/iaas/Content/Network/Concepts/overview.htm).
 
-**Default CIDR:** `10.0.0.0/18`. Override via the `cidr_block` parameter.
+The default CIDR is `10.0.0.0/18`. Set `cidr_block` to a canonical IPv4 network with a prefix from `/16` to `/27`. Size each tier for the resources it will host.
 
 ### Subnet accessor methods
 
@@ -148,25 +148,15 @@ After neutralisation, only the four per-tier security lists created by `finalize
 
 ## Security list lifecycle (builder pattern)
 
-Security lists and subnets are **not** created in `Vcn.__init__`. They are created only when `finalize_network` is called. This is deliberate: multiple spells (OKE, Compute, ScalableWorkload) contribute rules to the same security lists, and OCI enforces a hard limit of **5 security lists per subnet**. By using one list per subnet and accumulating all rules before creating it, CloudSpells consumes 1 slot and leaves 4 free for additional services.
+The first call to `finalize_network()` creates one security list and one subnet per tier. Register any subnet-wide policy in the owning stack before that call. Workload NSGs are independent of the subnet lists and can be declared in any order relative to finalization.
 
-### Initialisation sequence
-
-```
-Vcn.__init__()                     ← creates VCN, gateways, route tables
-  │
-  ├─ spell1.add_security_list_rules(...)   ← accumulate rules
-  ├─ spell2.add_security_list_rules(...)   ← accumulate rules
-  │
-  └─ vcn.finalize_network()               ← creates security lists + subnets
-       (idempotent: subsequent calls are no-ops)
-```
-
-When other CloudSpells spells are used (OKE, Compute, ScalableWorkload), they call `finalize_network` automatically at the end of their `__init__`. In standalone mode — a VCN without other spells — call `finalize_network` explicitly.
+In standalone mode, call `vcn.finalize_network()` or `vcn.export()` to materialize the subnets.
 
 ### `add_security_list_rules`
 
-Accumulates rules into eight internal lists (one ingress + one egress per tier). Must be called **before** `finalize_network`. Raises `RuntimeError` if called after.
+Register explicit subnet rules before `finalize_network()`, including when a spell or `vcn.export()` makes that call. Late registrations raise `RuntimeError`.
+
+Each list merges equivalent rules in the same direction after resolving Pulumi inputs. Equivalent rules keep the first description. Direction, addresses, protocols, port or ICMP options, and stateful or stateless behavior remain part of the comparison. `add_unique_security_list_rules()` also records the supplied fingerprint for `has_ambient_rule()`. A reused fingerprint can add other rules before finalization.
 
 ```python
 vcn.add_security_list_rules(
@@ -200,7 +190,7 @@ If `flow_logs=True` was passed to `__init__`, a `VcnFlowLogs` component is also 
 
 ### Baseline security rules
 
-Before creating the security lists, `finalize_network` injects a fixed set of baseline rules that are always present regardless of which spells have contributed their own rules.
+Before creating the security lists, `finalize_network()` merges the VCN baseline with any explicit subnet rules.
 
 **Applied to the private tier (egress):**
 
@@ -215,15 +205,7 @@ Before creating the security lists, `finalize_network` injects a fixed set of ba
 |---|---|---|
 | ALL | `<services CIDR>` | Oracle service plane egress without internet transit |
 
-**Secure-tier segmentation (ingress):**
-
-| Protocol | Source | Description |
-|---|---|---|
-| TCP (all ports) | Private subnet CIDR | Only the private (application) tier may initiate connections into the secure (data) tier |
-
-The secure-tier rule establishes the canonical private→secure communication path (app servers → databases) at the security-list layer. All other inbound sources — public subnet, management subnet, internet — are implicitly denied by the deny-by-default model. OCI stateful connection tracking handles return packets; no matching egress rule is required.
-
-Individual spells and NSGs add port-specific rules on top of this baseline.
+Application ingress is expressed through workload NSGs. OCI combines their rules with all applicable subnet lists. The private tier's `0.0.0.0/0` egress also matches VCN-internal addresses, whose traffic follows the local route. See [OCI security rules](https://docs.oracle.com/en-us/iaas/Content/Network/Concepts/securityrules.htm).
 
 ---
 
@@ -248,11 +230,9 @@ Flow logs are **not enabled by default** — the additional OCI Logging cost may
 
 ## `VcnRef` — cross-stack reference
 
-`VcnRef` is a read-only handle to a CloudSpells VCN managed by a separate Pulumi stack. It exposes the same interface as `Vcn` (subnet accessors, security list references) so spells that accept `Vcn | VcnRef` work identically with either.
+`VcnRef` references subnets and other network resources owned by a separate stack. Service workloads can create their own NSGs in that VCN. Pass the required IAM permissions and compatible routes in the target environment. A non-empty request to `add_security_list_rules` raises `RuntimeError` because the owning stack manages those lists.
 
-**`VcnRef` is only supported for VCNs created by CloudSpells.** The source stack must export the standard CloudSpells output keys (all emitted automatically by `Vcn.export()`).
-
-**When `add_security_list_rules` is called on a `VcnRef`:** a `RuntimeError` is raised immediately, listing the rule sets that cannot be applied. Any security rules required by the deployed spells must already exist in the source CloudSpells VCN stack — add them there first, then re-run this stack.
+Use `Vcn.export()` to publish the canonical outputs for `from_stack_reference()`. Use the direct constructor for a network with fewer tiers.
 
 ### Constructing a `VcnRef` from a stack reference
 

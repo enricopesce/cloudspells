@@ -9,7 +9,7 @@ Mocked resource types and their injected computed outputs:
 
 | Resource type | Injected outputs |
 |---|---|
-| `oci:Core/vcn:Vcn` | `defaultRouteTableId`, `defaultSecurityListId` |
+| `oci:Core/vcn:Vcn` | `defaultRouteTableId`, `defaultSecurityListId`, `ipv6cidrBlocks` when enabled |
 | `oci:Core/subnet:Subnet` | `id` |
 | `oci:Core/internetGateway:InternetGateway` | `id` |
 | `oci:Core/natGateway:NatGateway` | `id` |
@@ -117,6 +117,8 @@ class OCIMocks(pulumi.runtime.Mocks):
         if typ == "oci:Core/vcn:Vcn":
             outputs["defaultRouteTableId"] = f"{args.name}-default-rt-id"
             outputs["defaultSecurityListId"] = f"{args.name}-default-sl-id"
+            if args.inputs.get("isIpv6enabled"):
+                outputs["ipv6cidrBlocks"] = ["2001:db8:1234:ab00::/56"]
         elif typ in (
             "oci:Core/subnet:Subnet",
             "oci:Core/internetGateway:InternetGateway",

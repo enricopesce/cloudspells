@@ -23,7 +23,7 @@ kubectl (port 6443)
 └────────────────────────────────────────────────────┘
 ```
 
-**What gets created:** 1 VCN (4 subnets + 3 gateways), 1 OKE BASIC_CLUSTER, 1 node pool spread across all ADs, 4 NSGs with 34 NSG rules, all required security list rules.
+**What gets created:** 1 VCN (4 subnets + 3 gateways), 1 OKE BASIC_CLUSTER, 1 node pool spread across all ADs, 4 NSGs with component-specific rules.
 
 ---
 
@@ -102,8 +102,7 @@ oke.create_kubeconfig(os.path.join(os.path.dirname(__file__), "kubeconfig"))
 `OkeCluster` handles all the complexity:
 
 - Accepts one or more `NodePoolConfig` descriptors — each produces an independent OCI node pool, enabling mixed shapes (e.g. system pool + GPU pool)
-- Adds 19 security list rules covering the Kubernetes control plane (6443), kubelet (10250), NodePort range (30000-32767), and kube-proxy (10256)
-- Creates 4 NSGs (`api_nsg`, `lb_nsg`, `worker_nsg`, `pod_nsg`) with 34 VNIC-level rules for fine-grained segmentation
+- Creates 4 NSGs (`api_nsg`, `lb_nsg`, `worker_nsg`, `pod_nsg`) for control-plane, kubelet, NodePort, and kube-proxy traffic
 - Places the API endpoint in the public subnet and worker/pod VNICs in the private subnet
 - Configures `OCI_VCN_IP_NATIVE` CNI so every pod gets a real VCN subnet IP
 - Spreads nodes across all Availability Domains automatically
@@ -131,7 +130,8 @@ apiVersion: v1
 kind: Service
 metadata:
   annotations:
-    oci.oraclecloud.com/security-group-ids: "<okeinfra_lb_nsg_id>"
+    oci.oraclecloud.com/oci-network-security-groups: "<okeinfra_lb_nsg_id>"
+    oci.oraclecloud.com/security-rule-management-mode: "None"
 spec:
   type: LoadBalancer
 ```
@@ -197,7 +197,7 @@ Key outputs (prefix `okeinfra_` matches the `name="okeinfra"` argument):
 |---|---|
 | `okeinfra_cluster_id` | OKE cluster OCID |
 | `okeinfra_kubernetes_version` | Kubernetes version deployed |
-| `okeinfra_lb_nsg_id` | `lb_nsg` OCID — use in `oci.oraclecloud.com/security-group-ids` annotation |
+| `okeinfra_lb_nsg_id` | `lb_nsg` OCID — use in `oci.oraclecloud.com/oci-network-security-groups` annotation |
 | `private_subnet_id` | Private subnet OCID (worker nodes and pods) |
 | `public_subnet_id` | Public subnet OCID (API endpoint, load balancers) |
 
@@ -219,7 +219,7 @@ Key outputs (prefix `okeinfra_` matches the `name="okeinfra"` argument):
 
 ## CIDR sizing note
 
-With VCN-native CNI, a 100-node cluster with 30 pods per node consumes ~3,100 IPs in the private subnet. The default `/18` VCN gives the private tier a `/19` (8 190 usable IPs), which is sufficient for moderate clusters. For larger deployments use a `/16` or `/17` VCN.
+With VCN-native CNI, a 100-node cluster with 30 pods per node consumes ~3,100 IPs in the private subnet. The default `/18` VCN gives the private tier a `/19` (8 189 usable IPs), which is sufficient for moderate clusters. For larger deployments use a `/16` or `/17` VCN.
 
 See [VCN Architecture → CIDR sizing guide](../reference/vcn-architecture.md#cidr-sizing-guide) for a full sizing table.
 

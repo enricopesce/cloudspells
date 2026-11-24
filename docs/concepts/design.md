@@ -17,7 +17,7 @@ That freedom is also the source of every misconfigured security rule, every miss
 | Define VCN, subnets, route tables, gateways, security lists — each resource individually | `Vcn("lab", compartment_id=cid)` — one call, full 4-tier architecture |
 | Calculate CIDR splits manually | Derived automatically from the VCN CIDR |
 | Wire NAT, Internet, and Service Gateways to the right route tables | Done by design |
-| Write security list rules for every tier | Added by role constants and `serves()` |
+| Wire network permissions between workloads | NSG roles and `serves()` |
 | Risk misconfiguring any of the above | Not possible — there are no knobs to misconfigure |
 
 ---
@@ -73,40 +73,15 @@ Caller-facing labels remain useful metadata. `VolumeSpec.label`, `NodePoolConfig
 
 ---
 
-## Two layers of security enforcement
+## Security lists and network security groups
 
-OCI enforces network rules at two levels: **Security Lists** (subnet-level, stateful) and **NSGs** (VNIC-level, stateful). CloudSpells populates both automatically so they are always consistent.
+Security lists apply to every VNIC in a subnet. NSGs apply to their members. OCI combines the permissions from the applicable lists and groups, including for traffic between VNICs in the same subnet.
 
-When you declare an NSG with a role:
+The VCN owns the subnet baseline. When you call `nsg.serves(target, port)`, CloudSpells adds egress on the source group and ingress on the target group. See [OCI security rules](https://docs.oracle.com/en-us/iaas/Content/Network/Concepts/securityrules.htm).
 
-1. The NSG gets the correct ambient VNIC-level rules (egress to services or internet depending on tier)
-2. The VCN security list for that subnet tier gets the corresponding subnet-level rules
+## Network finalization
 
-When you call `nsg.serves(target, port)`:
-
-1. Both NSGs get bilateral application-port rules
-2. When the two NSGs are in different tiers, the cross-subnet security list entries are also generated
-
-You never touch a security list directly. Consistent enforcement at both layers is the default, not an option you have to remember.
-
----
-
-## The lazy-init builder pattern
-
-The `Vcn` spell uses a lazy-init builder pattern. Security rules accumulate as spells are declared, and the actual OCI resources (subnets, security lists) are materialised in a single call to `finalize_network()`.
-
-```python
-vcn = Vcn("lab", compartment_id=compartment_id)
-
-# Rules accumulate here — no OCI API calls yet
-app_nsg = Nsg("app", role=APP_SERVER, vcn=vcn, ...)
-app_nsg.serves(db_nsg, port=5432)
-
-# ComputeInstance calls finalize_network() automatically
-instance = ComputeInstance("web", vcn=vcn, nsg=app_nsg, ...)
-```
-
-This means rule accumulation is order-independent within a stack: you can declare NSGs in any order and the final security list will be correct. `finalize_network()` is idempotent — calling it multiple times has no effect after the first.
+The first subnet consumer calls `finalize_network()` and materializes the four subnets with their lists. NSG rules can be declared before or after that call. Register any explicit subnet-wide policy with `vcn.add_security_rules(...)` before the first subnet consumer, `vcn.export()` or `vcn.finalize_network()`.
 
 ---
 
@@ -131,7 +106,7 @@ Think of a CloudSpells spell as a **constructor for a complete reference archite
 
 When you call `Vcn("lab", compartment_id=cid)` you are not creating one resource — you are accepting a pre-built, pre-audited network blueprint and stamping it with a name and a location. The blueprint encodes every decision: four subnet tiers at fixed CIDR ratios, a NAT Gateway for the private tier, no default route for the secure tier, a Service Gateway for OCI-managed traffic. None of those decisions are yours to make — and that is the point.
 
-The same logic applies to every spell. `OkeCluster` is not a thin wrapper over `oci.containerengine.Cluster` — it is an opinionated OKE deployment pattern that includes four NSGs, 34 NSG rules, 19 security list rules, cross-AD node placement, and VCN-native CNI. You supply a name, a compartment, and a VCN handle. The spell supplies everything else.
+The same logic applies to every spell. `OkeCluster` is not a thin wrapper over `oci.containerengine.Cluster` — it is an opinionated OKE deployment pattern that includes four NSGs with component-specific rules, cross-AD node placement, and VCN-native CNI. You supply a name, a compartment, and a VCN handle. The spell supplies everything else.
 
 The mental model transfer: **a spell is a building block, not a resource**. The block has one acceptable form. Your job is to choose the right block for the job, not to configure the block's internals.
 
@@ -142,10 +117,6 @@ The mental model transfer: **a spell is a building block, not a resource**. The 
 The fixed-architecture model changes how you write infrastructure code day-to-day:
 
 **Do not pass provider options through.** If a parameter is not in a spell's `__init__` signature, it is not supported. Attempting to forward a raw OCI provider argument is a sign you are reaching outside the spell's intended use. Use raw `pulumi_oci` resources for that resource instead.
-
-**Declare spells before `finalize_network()` runs.** Any spell that registers security rules — `Nsg`, `Bastion`, `VcnFlowLogs` — must be constructed before the first call to `finalize_network()`. Spells that trigger finalisation (`ComputeInstance`, `ScalableWorkload`, `OkeCluster`) must come last. The order rule is: accumulate first, materialise once.
-
-**`finalize_network()` is the boundary.** Before it runs: rules accumulate, no OCI network resources exist yet. After it runs: subnets and security lists are immutable for the remainder of the Pulumi run. Idempotency means you can call it from multiple spells — only the first call does work.
 
 **Check spell coverage before designing.** If the reference architecture you need does not match any existing spell, either compose multiple spells (which is the common case) or use raw Pulumi for the non-standard parts. Do not try to bend a spell into a shape it was not built for.
 

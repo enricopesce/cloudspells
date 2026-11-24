@@ -1,6 +1,7 @@
 """Unit tests for the Role system and Nsg.serves() relationship API."""
 
 import unittest
+from unittest.mock import patch
 
 import pulumi
 
@@ -134,127 +135,29 @@ class TestNsgWithRole(unittest.TestCase):
         nsg = Nsg("web", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
         self.assertIsInstance(nsg.id, pulumi.Output)
 
-    @pulumi.runtime.test
-    def test_internet_edge_registers_sl_rules(self):
-        """INTERNET_EDGE role registers port ingress rules on the public security list."""
-        vcn = self._make_vcn("ie-sl")
-        Nsg("lb", role=INTERNET_EDGE, ports=[80, 443, 22], vcn=vcn, compartment_id=COMP_ID)
+    def test_roles_configure_only_their_group(self) -> None:
+        """Role defaults use NSGs on an already finalized network."""
+        vcn = self._make_vcn("role-policy")
+        vcn.finalize_network()
+        with (
+            patch.object(Nsg, "allow_from_cidr", autospec=True, side_effect=Nsg.allow_from_cidr) as ingress,
+            patch.object(Nsg, "allow_to_cidr", autospec=True, side_effect=Nsg.allow_to_cidr) as egress,
+            patch.object(Nsg, "allow_to_services", autospec=True, side_effect=Nsg.allow_to_services) as services,
+        ):
+            lb = Nsg("lb", role=INTERNET_EDGE, ports=[80, 443, 22, 80], vcn=vcn, compartment_id=COMP_ID)
+            web = Nsg("web", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
+            db = Nsg("db", role=DATABASE, vcn=vcn, compartment_id=COMP_ID)
 
-        # The VCN accumulator should have received the three port rules.
-        fingerprints = vcn._applied_ambient_rule_fingerprints
-        self.assertIn("public-ingress-tcp-80", fingerprints)
-        self.assertIn("public-ingress-tcp-443", fingerprints)
-        self.assertIn("public-ingress-tcp-22", fingerprints)
-
-    @pulumi.runtime.test
-    def test_app_server_registers_sl_rules(self):
-        """APP_SERVER role registers egress rules on the private security list."""
-        vcn = self._make_vcn("as-sl")
-        Nsg("web", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
-
-        fingerprints = vcn._applied_ambient_rule_fingerprints
-        self.assertIn("private-egress-all-services", fingerprints)
-        self.assertIn("private-egress-all-internet", fingerprints)
-
-    @pulumi.runtime.test
-    def test_database_registers_sl_rules(self):
-        """DATABASE role registers services-egress rule on the secure security list."""
-        vcn = self._make_vcn("db-sl")
-        Nsg("db", role=DATABASE, vcn=vcn, compartment_id=COMP_ID)
-
-        fingerprints = vcn._applied_ambient_rule_fingerprints
-        self.assertIn("secure-egress-all-services", fingerprints)
-        self.assertNotIn("secure-egress-all-internet", fingerprints)
-
-    @pulumi.runtime.test
-    def test_duplicate_app_server_nsgs_deduplicates_sl_rules(self):
-        """Multiple NSGs of the same role add security list rules only once."""
-        vcn = self._make_vcn("dedup")
-        Nsg("web-1", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
-        Nsg("web-2", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
-        Nsg("web-3", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
-
-        # All three NSGs share the same fingerprints: private_egress_rules must
-        # have exactly 2 entries (services + internet) — not 6 (2 × 3 NSGs).
-        self.assertEqual(len(vcn._private_egress_rules), 2)
-
-
-class TestNsgServes(unittest.TestCase):
-    """Tests for the Nsg.serves() bilateral relationship method."""
-
-    def _make_trio(self, vcn_name: str = "trio") -> tuple[Vcn, Nsg, Nsg, Nsg]:
-        vcn = Vcn(name=vcn_name, compartment_id=COMP_ID)
-        lb = Nsg("lb", role=INTERNET_EDGE, ports=[80], vcn=vcn, compartment_id=COMP_ID)
-        web = Nsg("web", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
-        db = Nsg("db", role=DATABASE, vcn=vcn, compartment_id=COMP_ID)
-        return vcn, lb, web, db
-
-    @pulumi.runtime.test
-    def test_serves_registers_cross_subnet_app_port(self):
-        """serves() registers cross-subnet Security List rules for the app port."""
-        vcn, lb, web, _db = self._make_trio("serves-app")
-        lb.serves(web, port=8080)
-
-        fingerprints = vcn._applied_ambient_rule_fingerprints
-        self.assertIn("public-egress-tcp-8080-to-private", fingerprints)
-        self.assertIn("private-ingress-tcp-8080-from-public", fingerprints)
-
-    @pulumi.runtime.test
-    def test_serves_registers_ssh_management_by_default(self):
-        """serves() adds SSH (22) cross-subnet rules when with_ssh=True (default)."""
-        vcn, lb, web, _db = self._make_trio("serves-ssh")
-        lb.serves(web, port=8080)
-
-        fingerprints = vcn._applied_ambient_rule_fingerprints
-        self.assertIn("public-egress-tcp-22-to-private", fingerprints)
-        self.assertIn("private-ingress-tcp-22-from-public", fingerprints)
-
-    @pulumi.runtime.test
-    def test_serves_suppresses_ssh_when_with_ssh_false(self):
-        """serves(with_ssh=False) omits the SSH management channel."""
-        vcn, lb, web, _db = self._make_trio("serves-no-ssh")
-        lb.serves(web, port=8080, with_ssh=False)
-
-        fingerprints = vcn._applied_ambient_rule_fingerprints
-        self.assertNotIn("public-egress-tcp-22-to-private", fingerprints)
-        self.assertNotIn("private-ingress-tcp-22-from-public", fingerprints)
-
-    @pulumi.runtime.test
-    def test_serves_web_to_db(self):
-        """web→db serves() registers private↔secure cross-subnet rules."""
-        vcn, _lb, web, db = self._make_trio("serves-web-db")
-        web.serves(db, port=5432)
-
-        fingerprints = vcn._applied_ambient_rule_fingerprints
-        self.assertIn("private-egress-tcp-5432-to-secure", fingerprints)
-        self.assertIn("secure-ingress-tcp-5432-from-private", fingerprints)
-        self.assertIn("private-egress-tcp-22-to-secure", fingerprints)
-        self.assertIn("secure-ingress-tcp-22-from-private", fingerprints)
-
-    @pulumi.runtime.test
-    def test_serves_without_roles_skips_sl_rules(self):
-        """serves() between role-less NSGs creates NSG rules but no SL rules."""
-        vcn = Vcn(name="no-role-serves", compartment_id=COMP_ID)
-        a = Nsg("a", vcn=vcn, compartment_id=COMP_ID)
-        b = Nsg("b", vcn=vcn, compartment_id=COMP_ID)
-        a.serves(b, port=9000)
-
-        # No SL fingerprints should have been registered
-        self.assertEqual(len(vcn._applied_ambient_rule_fingerprints), 0)
-
-    @pulumi.runtime.test
-    def test_serves_same_tier_skips_sl_rules(self):
-        """serves() between NSGs in the same subnet tier adds no SL cross-subnet rules."""
-        vcn = Vcn(name="same-tier", compartment_id=COMP_ID)
-        web1 = Nsg("web-1", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
-        web2 = Nsg("web-2", role=APP_SERVER, vcn=vcn, compartment_id=COMP_ID)
-        before = frozenset(vcn._applied_ambient_rule_fingerprints)
-        web1.serves(web2, port=8080)
-
-        # No new cross-subnet fingerprints (both are private tier)
-        after = frozenset(vcn._applied_ambient_rule_fingerprints)
-        cross_subnet = {fp for fp in (after - before) if "to-" in fp or "from-" in fp}
-        self.assertEqual(len(cross_subnet), 0)
+        self.assertEqual(
+            [call.args[:4] for call in ingress.call_args_list],
+            [
+                (lb, "internet-in-80", 80, "0.0.0.0/0"),
+                (lb, "internet-in-443", 443, "0.0.0.0/0"),
+                (lb, "internet-in-22", 22, "0.0.0.0/0"),
+            ],
+        )
+        egress.assert_called_once_with(web, "inet-out", "0.0.0.0/0")
+        self.assertEqual([call.args[0] for call in services.call_args_list], [web, db])
 
 
 class TestTiersModule(unittest.TestCase):

@@ -7,8 +7,8 @@ Key behaviours:
 
 - Deploys to the VCN's private subnet by default (not directly
   internet-facing).
-- Adds a minimal SSH ingress rule to the appropriate security list
-  (port 22 from the public subnet CIDR for bastion-host access).
+- Uses the supplied NSG and the VCN's subnet policy for network access.
+  Configure SSH ingress on the target NSG when needed.
 - Auto-generates an RSA 4096-bit SSH key pair when no key is supplied;
   the keys are exported as Pulumi secrets.
 - Accepts a list of `VolumeSpec` objects to attach any number of block
@@ -175,7 +175,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         Args:
             name: Logical name for the instance (e.g. `"web-server"`).
             compartment_id: OCID of the OCI compartment to deploy into.
-            vcn: `Vcn` instance that provides the subnet and security list
+            vcn: `Vcn` or `VcnRef` providing the subnet and security list
                 for this instance.
             stack_name: Pulumi stack name.  Defaults to
                 `pulumi.get_stack()` when `None`.
@@ -239,7 +239,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         Raises:
             ValueError: If `volumes` is an explicitly empty list, or if any
                 two `VolumeSpec` entries share the same `label`.
-            RuntimeError: If any of the four VCN subnets is absent after
+            RuntimeError: If the selected VCN subnet is absent after
                 `finalize_network()` completes.
 
         Example:
@@ -298,20 +298,7 @@ class ComputeInstance(BaseResource, AbstractCompute):
         # SSH key setup
         self._setup_ssh_keys(ssh_public_key)
 
-        # Accumulate security rules, then materialise the VCN.
-        # Skip rule-addition when the network is already finalised (e.g. a
-        # sibling ComputeInstance was constructed first); the caller is
-        # responsible for adding any additional rules before the first spell
-        # triggers finalisation.
-        if isinstance(self.vcn, Vcn) and not self.vcn.is_finalized:
-            self._add_compute_security_rules()
         self.vcn.finalize_network()
-
-        self._assert_subnets_ready()
-        assert self.vcn.public_subnet is not None
-        assert self.vcn.private_subnet is not None
-        assert self.vcn.secure_subnet is not None
-        assert self.vcn.management_subnet is not None
 
         # ---- Encode cloud-init user data --------------------------------
         encoded_user_data: str | None = None
@@ -386,17 +373,13 @@ class ComputeInstance(BaseResource, AbstractCompute):
 
     def _resolve_subnet_id(self) -> pulumi.Input[str]:
         """Return the subnet OCID for the VNIC based on `self.subnet`."""
-        assert self.vcn.public_subnet is not None
-        assert self.vcn.private_subnet is not None
-        assert self.vcn.secure_subnet is not None
-        assert self.vcn.management_subnet is not None
         if self.subnet == SUBNET_PUBLIC:
-            return self.vcn.public_subnet.id
+            return self.vcn.get_public_subnet_id()
         if self.subnet == SUBNET_SECURE:
-            return self.vcn.secure_subnet.id
+            return self.vcn.get_secure_subnet_id()
         if self.subnet == SUBNET_MANAGEMENT:
-            return self.vcn.management_subnet.id
-        return self.vcn.private_subnet.id
+            return self.vcn.get_management_subnet_id()
+        return self.vcn.get_private_subnet_id()
 
     def _attach_block_volumes(
         self,
@@ -489,78 +472,6 @@ class ComputeInstance(BaseResource, AbstractCompute):
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
-
-    def _assert_subnets_ready(self) -> None:
-        """Raise `RuntimeError` if any VCN subnet is absent after `finalize_network()`.
-
-        All four subnets must be non-`None` before resources that reference
-        them can be created.  This should never fire for a properly constructed
-        `Vcn`; it can fire for a `VcnRef` whose source stack did not export
-        all expected subnet outputs.
-
-        Raises:
-            RuntimeError: If any of the four subnets is `None`.
-        """
-        for attr, label in (
-            ("private_subnet", "private"),
-            ("public_subnet", "public"),
-            ("secure_subnet", "secure"),
-            ("management_subnet", "management"),
-        ):
-            if getattr(self.vcn, attr) is None:
-                raise RuntimeError(f"VCN {label} subnet must exist after finalize_network().")
-
-    def _add_compute_security_rules(self) -> None:
-        """Add SSH ingress rule to the appropriate VCN security list.
-
-        For **private** subnet instances: allows TCP port 22 from the public
-        subnet CIDR (bastion-host pattern).
-
-        For **secure** / **management** subnet instances: allows TCP port 22
-        from the private subnet CIDR.
-
-        For **public** subnet instances: allows TCP port 22 from anywhere
-        (`0.0.0.0/0`).  Uses the same fingerprint (`"public-ingress-tcp-22"`)
-        as `Nsg._apply_role_ambient_rules` so that when an `INTERNET_EDGE`
-        NSG with `SSH` in `ports` has already registered the rule, this call
-        is silently ignored and no duplicate is created in the security list.
-        """
-        assert isinstance(self.vcn, Vcn)
-        ssh_rule = oci.core.SecurityListIngressSecurityRuleArgs(
-            protocol="6",
-            source_type="CIDR_BLOCK",
-            tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(min=22, max=22),
-            description=(
-                "SSH access from private subnet"
-                if self.subnet in (SUBNET_SECURE, SUBNET_MANAGEMENT)
-                else "SSH access from public subnet (bastion host)"
-                if self.subnet == SUBNET_PRIVATE
-                else "SSH access from the internet"
-            ),
-            source=(
-                self.vcn.get_private_subnet_cidr()
-                if self.subnet in (SUBNET_SECURE, SUBNET_MANAGEMENT)
-                else self.vcn.get_public_subnet_cidr()
-                if self.subnet == SUBNET_PRIVATE
-                else "0.0.0.0/0"
-            ),
-        )
-
-        if self.subnet == SUBNET_PRIVATE:
-            self.vcn.add_unique_security_list_rules("compute-private-ingress-tcp-22", private_ingress=[ssh_rule])
-        elif self.subnet == SUBNET_SECURE:
-            self.vcn.add_unique_security_list_rules("compute-secure-ingress-tcp-22", secure_ingress=[ssh_rule])
-        elif self.subnet == SUBNET_MANAGEMENT:
-            self.vcn.add_unique_security_list_rules("compute-management-ingress-tcp-22", management_ingress=[ssh_rule])
-        else:
-            # Use the same fingerprint as Nsg._apply_role_ambient_rules so the
-            # rule is deduplicated when an INTERNET_EDGE NSG already added it.
-            pulumi.warn(
-                f"ComputeInstance '{self.name}': SSH (port 22) is open to 0.0.0.0/0 on the "
-                "public subnet. Restrict access by placing this instance behind a bastion or "
-                "using an NSG with a narrower source CIDR."
-            )
-            self.vcn.add_unique_security_list_rules("public-ingress-tcp-22", public_ingress=[ssh_rule])
 
     # ------------------------------------------------------------------
     # Public accessors

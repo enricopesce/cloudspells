@@ -12,6 +12,7 @@ set_mocks()
 # Import AFTER mocks are set
 from cloudspells.providers.oci.bastion import Bastion
 from cloudspells.providers.oci.network import Vcn
+from cloudspells.providers.oci.nsg import Nsg
 
 
 class TestBastion(unittest.TestCase):
@@ -128,21 +129,31 @@ class TestBastion(unittest.TestCase):
 
         return bastion.get_access_endpoint().apply(check)
 
-    def test_bastion_raises_when_vcn_already_finalized(self):
-        """Bastion raises RuntimeError when the VCN is finalized without the SSH rule applied."""
-        vcn = Vcn(
-            name="pre-finalized-vcn",
-            compartment_id="ocid1.compartment.test",
-        )
-        # Finalize before any Bastion has registered its SSH rule.
+    @pulumi.runtime.test
+    def test_bastion_after_finalize_only_grants_ssh_to_the_target_group(self):
+        """The selected NSG gets SSH from the private endpoint IP only."""
+        vcn = self._make_vcn()
         vcn.finalize_network()
-        with self.assertRaises(RuntimeError):
-            Bastion(
-                name="late-bastion",
-                compartment_id="ocid1.compartment.test",
-                vcn=vcn,
-                allowed_client_cidrs=["0.0.0.0/0"],
-            )
+        target = Nsg("ssh-target", vcn=vcn, compartment_id="ocid1.compartment.test")
+        bastion = Bastion(
+            name="late-bastion",
+            compartment_id="ocid1.compartment.test",
+            vcn=vcn,
+            allowed_client_cidrs=["203.0.113.0/24"],
+        )
+        rule = bastion.allow_ssh_to(target)
+        self.assertEqual(vcn._private_ingress_rules, [])
+
+        def check(values):
+            source, endpoint, group, target_id, tcp = values
+            self.assertEqual(source, f"{endpoint}/32")
+            self.assertEqual(group, target_id)
+            self.assertEqual(tcp["destination_port_range"]["min"], 22)
+            self.assertEqual(tcp["destination_port_range"]["max"], 22)
+
+        return pulumi.Output.all(
+            rule.source, bastion.bastion_endpoint, rule.network_security_group_id, target.id, rule.tcp_options
+        ).apply(check)
 
     def test_bastion_raises_when_allowed_client_cidrs_is_none(self):
         """Bastion raises ValueError when allowed_client_cidrs is not provided."""
@@ -156,7 +167,7 @@ class TestBastion(unittest.TestCase):
         self.assertIn("allowed_client_cidrs", str(ctx.exception))
 
     def test_second_bastion_on_same_vcn_is_accepted(self):
-        """A second Bastion against the same VCN is a no-op (deduplication via fingerprint)."""
+        """A second Bastion can share the same VCN subnet."""
         vcn = Vcn(
             name="dedup-vcn",
             compartment_id="ocid1.compartment.test",

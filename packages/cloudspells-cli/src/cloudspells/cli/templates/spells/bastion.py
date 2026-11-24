@@ -34,6 +34,7 @@ def render(name: str, _stack: str) -> dict[str, str]:
         from cloudspells.providers.oci.bastion import Bastion
         from cloudspells.providers.oci.compute import ComputeInstance
         from cloudspells.providers.oci.network import Vcn
+        from cloudspells.providers.oci.nsg import Nsg
 
         config = Config()
         compartment_id = config.require("compartment_ocid")
@@ -47,12 +48,15 @@ def render(name: str, _stack: str) -> dict[str, str]:
             cidr_block=cidr_block,
         )
 
+        target_nsg = Nsg("ssh-target", vcn=vcn, compartment_id=compartment_id)
+
         instance = ComputeInstance(
             name="{name}",
             compartment_id=compartment_id,
             vcn=vcn,
             image_id=image_id,
             ssh_public_key=ssh_key,
+            nsg=target_nsg,
         )
 
         bastion = Bastion(
@@ -61,6 +65,8 @@ def render(name: str, _stack: str) -> dict[str, str]:
             vcn=vcn,
             allowed_client_cidrs=["0.0.0.0/0"],
         )
+
+        bastion.allow_ssh_to(target_nsg)
 
         vcn.export()
         instance.export()

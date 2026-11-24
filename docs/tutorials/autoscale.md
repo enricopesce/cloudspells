@@ -21,7 +21,7 @@ Internet (HTTP port 80)
 └─────────────────────────────────────────────────────┘
 ```
 
-**What gets created:** 1 VCN, 1 load balancer, 1 instance configuration, 1 instance pool, 1 autoscaling policy, security list rules for HTTP (80).
+**What gets created:** 1 VCN, 1 load balancer, 1 instance configuration, 1 instance pool, 1 autoscaling policy, two NSGs for client and backend traffic.
 
 > **Note:** An HTTPS listener and port 443 rules are only created when `ssl_certificate_name` is set in `OciLoadBalancerConfig`. See [Customising the load balancer](#customising-the-load-balancer) below for the full `OciLoadBalancerConfig` reference.
 
@@ -71,7 +71,7 @@ echo "OK" > /usr/share/nginx/html/health
 """
 ```
 
-CloudSpells base64-encodes `user_data` internally before passing it to OCI — pass the plain string or bytes directly.
+CloudSpells base64-encodes `cloud_init_script` internally before passing it to OCI — pass the plain string or bytes directly.
 
 The load balancer health check polls `/health` on port 80. Instances that fail health checks are removed from the rotation.
 
@@ -92,7 +92,7 @@ scalable_pool = ScalableWorkload(
     vcn=vcn,
     image_id=config.require("image_ocid"),
     ssh_public_key=config.get("ssh_key"),
-    user_data=user_data_script,
+    cloud_init_script=user_data_script,
     max_instances=3,
 )
 ```
@@ -102,7 +102,7 @@ scalable_pool = ScalableWorkload(
 `ScalableWorkload` encapsulates the entire tier:
 
 - Load balancer in the **public subnet**, listening on port 80
-- Instance pool in the **private subnet**, bootstrapped with your `user_data`
+- Instance pool in the **private subnet**, bootstrapped with your cloud-init script
 - CPU autoscaling: scale out when CPU > 80%, scale in when CPU < 20%
 - 300-second cooldown between scaling events
 - Defaults to `VM.Standard.E4.Flex` with 1 OCPU / 16 GB RAM
@@ -183,7 +183,7 @@ scalable_pool = ScalableWorkload(
     compartment_id=compartment_id,
     vcn=vcn,
     image_id=config.require("image_ocid"),
-    user_data=user_data_script,
+    cloud_init_script=user_data_script,
     load_balancer_config=OciLoadBalancerConfig(
         backend_port=8080,
         health_check_path="/api/health",
@@ -211,7 +211,7 @@ When `load_balancer_config` is omitted, `ScalableWorkload` uses `OciLoadBalancer
 
 ## SSH access to pool members
 
-Pool instances are in the private subnet and have no public IP. Use the OCI Bastion service or a jump host in the public subnet.
+Pool instances use the private subnet. Grant SSH through an explicit rule on the backend NSG.
 
 If you need direct SSH access during development, add a bastion to the same stack:
 
@@ -222,12 +222,18 @@ bastion = Bastion(
     name="mgmt",
     compartment_id=compartment_id,
     vcn=vcn,
+    allowed_client_cidrs=["203.0.113.0/24"],
 )
+bastion.allow_ssh_to(scalable_pool.backend_nsg)
 ```
 
-Declare the `Bastion` **before** `ScalableWorkload` so its SSH rule is registered before `finalize_network()` runs. See the [Bastion how-to guide](../how-to/bastion.md) for session creation steps.
+Use the [Bastion how-to guide](../how-to/bastion.md) to create a session. The pool backend NSG grants SSH only from the Bastion private endpoint.
 
 ---
+
+## Upgrade an existing pool
+
+OCI applies a new instance configuration to future pool instances. Before removing the old subnet ingress, add the new backend NSG to existing pool VNICs or replace the instances in batches and wait for healthy backends between batches. Keep the existing ingress during that transition by registering the legacy subnet rules in the VCN stack before finalization. The `<workload>_backend_nsg_id` stack output identifies the new group. See [Updating the instance configuration for an OCI instance pool](https://docs.oracle.com/en-us/iaas/Content/Compute/Tasks/updatinginstancepool-updating-instance-configuration.htm).
 
 ## Teardown
 

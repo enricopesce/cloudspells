@@ -28,7 +28,7 @@ If a value can be derived, computed, or defaulted securely, it **must** be. Para
 
 ## Prerequisites
 
-- **Python 3.8 or later**
+- **Python 3.11 or later** for core and OCI development. Install `cloudspells-cli` with Python 3.12 or later.
 - **Pulumi CLI** — [install guide](https://www.pulumi.com/docs/install/)
 - **OCI account** — required only for live end-to-end tests against real infrastructure (not needed for the unit test suite)
 - A working virtualenv — the project uses `.venv/` by convention

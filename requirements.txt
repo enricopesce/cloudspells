@@ -1,6 +1,6 @@
 # Core dependencies
-pulumi==3.219.0
-pulumi-oci==3.16.0
+pulumi==3.277.0
+pulumi-oci==3.18.0
 
 # Development tools
 pyright==1.1.408

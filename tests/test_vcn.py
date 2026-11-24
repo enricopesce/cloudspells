@@ -1,11 +1,13 @@
 """Unit tests for VCN block."""
 
 import unittest
+from unittest.mock import patch
 
 import pulumi
+import pulumi_oci as oci
 
 # Set up mocks BEFORE importing infrastructure
-from tests.mocks import set_mocks
+from tests.mocks import OCIMocks, set_mocks
 
 set_mocks()
 
@@ -74,6 +76,89 @@ class TestVcn(unittest.TestCase):
         self.assertIsNone(vcn.private_subnet, "Private subnet should be None before finalization")
         self.assertIsNone(vcn.secure_subnet, "Secure subnet should be None before finalization")
         self.assertIsNone(vcn.management_subnet, "Management subnet should be None before finalization")
+
+    def test_subnet_ids_require_finalization(self) -> None:
+        """An unfinalized VCN rejects subnet ID access for every tier."""
+        vcn = Vcn("early-subnets", "ocid1.compartment.test")
+        self.assertFalse(vcn.is_finalized)
+        for tier, accessor in (
+            ("public", vcn.get_public_subnet_id),
+            ("private", vcn.get_private_subnet_id),
+            ("secure", vcn.get_secure_subnet_id),
+            ("management", vcn.get_management_subnet_id),
+        ):
+            with self.subTest(tier=tier), self.assertRaisesRegex(RuntimeError, f"{tier} subnet.*finalize_network"):
+                accessor()
+
+    @pulumi.runtime.test
+    def test_ipv6_prefix_is_split_into_four_subnet_cidrs(self):
+        """OCI's assigned /56 yields a distinct /64 on each of the four tiers."""
+        vcn = Vcn("dual-addressing", "ocid1.compartment.test", ipv6_enabled=True)
+        vcn.finalize_network()
+        assert vcn.private_subnet is not None
+        assert vcn.secure_subnet is not None
+        assert vcn.public_subnet is not None
+        assert vcn.management_subnet is not None
+
+        def check(cidrs):
+            self.assertEqual(
+                cidrs,
+                [
+                    "2001:db8:1234:ab00::/64",
+                    "2001:db8:1234:ab01::/64",
+                    "2001:db8:1234:ab02::/64",
+                    "2001:db8:1234:ab03::/64",
+                ],
+            )
+
+        return pulumi.Output.all(
+            vcn.private_subnet.ipv6cidr_block,
+            vcn.secure_subnet.ipv6cidr_block,
+            vcn.public_subnet.ipv6cidr_block,
+            vcn.management_subnet.ipv6cidr_block,
+        ).apply(check)
+
+    @pulumi.runtime.test
+    async def test_export_round_trips_through_a_stack_reference(self):
+        """A standalone network exports the values imported by downstream stacks."""
+        vcn = Vcn("platform", "ocid1.compartment.test", drg=True, flow_logs=True)
+        published = {}
+        with patch("pulumi.export", side_effect=published.__setitem__):
+            vcn.export()
+        self.assertTrue(vcn.is_finalized)
+        exported = await pulumi.Output.all(**published).future()
+
+        original_new_resource = OCIMocks.new_resource
+
+        def read_resource(mocks: OCIMocks, args: pulumi.runtime.MockResourceArgs):
+            if args.typ == "pulumi:pulumi:StackReference":
+                self.assertEqual(args.inputs["name"], "acme/platform/dev")
+                return args.resource_id, {**args.inputs, "outputs": exported, "secretOutputNames": []}
+            return original_new_resource(mocks, args)
+
+        with patch.object(OCIMocks, "new_resource", autospec=True, side_effect=read_resource):
+            ref = VcnRef.from_stack_reference("acme/platform/dev")
+            assert ref.drg_id is not None
+            imported = await pulumi.Output.all(
+                vcn_id=ref.id,
+                cidr_block=ref.cidr_block,
+                public_subnet_id=ref.get_public_subnet_id(),
+                private_subnet_id=ref.get_private_subnet_id(),
+                secure_subnet_id=ref.get_secure_subnet_id(),
+                management_subnet_id=ref.get_management_subnet_id(),
+                public_subnet_cidr=ref.get_public_subnet_cidr(),
+                private_subnet_cidr=ref.get_private_subnet_cidr(),
+                secure_subnet_cidr=ref.get_secure_subnet_cidr(),
+                management_subnet_cidr=ref.get_management_subnet_cidr(),
+                drg_id=ref.drg_id,
+            ).future()
+        self.assertEqual(imported, {name: exported[name] for name in imported})
+        for tier in ("public", "private", "secure", "management"):
+            key = f"{tier}_security_list_id"
+            self.assertTrue(exported[key].endswith(f"-sl-{tier}-id"))
+        self.assertEqual(exported["cidr_block"], "10.0.0.0/18")
+        self.assertTrue(exported["drg_attachment_id"])
+        self.assertTrue(exported["network_audit_log_group_id"])
 
     @pulumi.runtime.test
     def test_vcn_subnets_created_after_finalize(self):
@@ -435,6 +520,61 @@ class TestVcn(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             vcn.add_security_list_rules(public_ingress=[])
 
+    def test_rejected_unique_rule_does_not_record_fingerprint(self) -> None:
+        """A rejected registration can never appear successfully applied."""
+        vcn = Vcn(name="finalized-vcn", compartment_id="ocid1.compartment.test")
+        vcn.finalize_network()
+        for _ in range(2):
+            with self.assertRaises(RuntimeError):
+                vcn.add_unique_security_list_rules("late-rule")
+            self.assertFalse(vcn.has_ambient_rule("late-rule"))
+
+    @pulumi.runtime.test
+    def test_equivalent_subnet_rules_are_deduplicated_after_resolving_inputs(self):
+        """Merge baseline, neutral and OCI rules without conflating distinct matches."""
+        vcn = Vcn(name="dedup-vcn", compartment_id="ocid1.compartment.test")
+        vcn.add_security_rules(
+            SecurityRules(
+                private_ingress=[
+                    IngressRule(protocol="tcp", source="10.0.0.0/24", port_min=8080, port_max=8080),
+                ],
+                private_egress=[EgressRule(protocol="all", destination="cloud-services")],
+            )
+        )
+
+        def ingress(port: int, *, stateless: bool = False) -> oci.core.SecurityListIngressSecurityRuleArgs:
+            return oci.core.SecurityListIngressSecurityRuleArgs(
+                protocol="6",
+                source=pulumi.Output.from_input("10.0.0.0/24"),
+                tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(min=port, max=port),
+                stateless=stateless,
+                description="Different description for the same connection",
+            )
+
+        vcn.add_unique_security_list_rules("custom", private_ingress=[ingress(8080), ingress(8080, stateless=True)])
+        vcn.add_unique_security_list_rules("custom", private_ingress=[ingress(8443)])
+        vcn.add_unique_security_list_rules("other", private_ingress=[ingress(8443)])
+        vcn.finalize_network()
+
+        def check(values):
+            incoming, outgoing = values
+            self.assertEqual(
+                [(r["tcp_options"]["min"], r.get("stateless", False)) for r in incoming],
+                [(8080, False), (8080, True), (8443, False)],
+            )
+            self.assertEqual(sum(r.get("destination_type") == "SERVICE_CIDR_BLOCK" for r in outgoing), 1)
+
+        return pulumi.Output.all(
+            vcn.private_security_list.ingress_security_rules, vcn.private_security_list.egress_security_rules
+        ).apply(check)
+
+    def test_primary_cidr_must_fit_four_ipv4_tiers(self) -> None:
+        """Reject wrong address families and ranges that cannot fit OCI tiers."""
+        for cidr in ("10.0.0.0/15", "10.0.0.0/28", "2001:db8::/32"):
+            with self.subTest(cidr=cidr), self.assertRaises(ValueError):
+                Vcn._split_tiers(cidr)
+        self.assertEqual(Vcn._split_tiers("10.0.0.0/27").management, "10.0.0.28/30")
+
     @pulumi.runtime.test
     def test_add_security_rules_translates_ingress_and_egress(self):
         """add_security_rules() populates public/private security lists via cloud-neutral rules."""
@@ -459,20 +599,31 @@ class TestVcn(unittest.TestCase):
         return pulumi.Output.all(public_check, private_check)
 
     @pulumi.runtime.test
-    def test_add_security_rules_management_tier(self):
-        """add_security_rules() correctly routes management_ingress rules."""
+    def test_add_security_rules_respects_tier_and_direction(self):
+        """Explicit permissions appear in the corresponding tier and direction."""
         vcn = Vcn(name="test-vcn", compartment_id="ocid1.compartment.test")
         rules = SecurityRules(
+            public_egress=[EgressRule(protocol="tcp", destination="10.0.0.0/8", port_min=443, port_max=443)],
+            secure_ingress=[IngressRule(protocol="tcp", source="10.0.0.0/8", port_min=5432, port_max=5432)],
             management_ingress=[IngressRule(protocol="tcp", source="10.0.0.0/8", port_min=22, port_max=22)],
         )
         vcn.add_security_rules(rules)
         vcn.finalize_network()
 
-        def check(ingress_rules):
-            sources = [r.get("source") for r in (ingress_rules or [])]
-            self.assertIn("10.0.0.0/8", sources)
+        def check(values):
+            public, secure, management = values
+            self.assertEqual(public[0]["destination"], "10.0.0.0/8")
+            self.assertEqual(public[0]["tcp_options"]["min"], 443)
+            self.assertEqual(secure[0]["source"], "10.0.0.0/8")
+            self.assertEqual(secure[0]["tcp_options"]["min"], 5432)
+            self.assertEqual(management[0]["source"], "10.0.0.0/8")
+            self.assertEqual(management[0]["tcp_options"]["min"], 22)
 
-        return vcn.management_security_list.ingress_security_rules.apply(check)
+        return pulumi.Output.all(
+            vcn.public_security_list.egress_security_rules,
+            vcn.secure_security_list.ingress_security_rules,
+            vcn.management_security_list.ingress_security_rules,
+        ).apply(check)
 
 
 class TestVcnRef(unittest.TestCase):
@@ -530,6 +681,18 @@ class TestVcnRef(unittest.TestCase):
             ref.get_secure_subnet_cidr()
         with self.assertRaises(ValueError):
             ref.get_management_subnet_cidr()
+        with self.assertRaisesRegex(RuntimeError, "secure_subnet_id"):
+            ref.get_secure_subnet_id()
+        with self.assertRaisesRegex(RuntimeError, "management_subnet_id"):
+            ref.get_management_subnet_id()
+
+    def test_vcnref_requires_complete_optional_tier_details(self) -> None:
+        """The optional tiers need both a subnet ID and CIDR when present."""
+        for tier in ("secure", "management"):
+            for field in ("id", "cidr"):
+                key = f"{tier}_subnet_{field}"
+                with self.subTest(missing=key), self.assertRaisesRegex(ValueError, key):
+                    self._make_ref(**{key: None})
 
     def test_vcnref_drg_id_none_by_default(self):
         """VcnRef.drg_id is None when not provided."""
@@ -543,14 +706,14 @@ class TestVcnRef(unittest.TestCase):
 
     def test_vcnref_add_security_list_rules_nonempty_raises(self):
         """VcnRef.add_security_list_rules() raises RuntimeError for non-empty rule lists."""
-        import pulumi_oci as oci
-
         ref = self._make_ref()
         dummy_rule = oci.core.SecurityListIngressSecurityRuleArgs(
             protocol="6", source="0.0.0.0/0", source_type="CIDR_BLOCK"
         )
         with self.assertRaises(RuntimeError):
             ref.add_security_list_rules(public_ingress=[dummy_rule])
+        with self.assertRaises(RuntimeError):
+            ref.add_unique_security_list_rules("public", public_ingress=[dummy_rule])
 
     def test_vcnref_add_security_list_rules_all_none_is_noop(self):
         """VcnRef.add_security_list_rules() accepts all-None without raising."""

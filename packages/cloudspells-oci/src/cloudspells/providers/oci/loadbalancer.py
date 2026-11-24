@@ -28,6 +28,7 @@ import pulumi_oci as oci
 from cloudspells.core.base import BaseResource
 
 from .network import Vcn, VcnRef
+from .nsg import INTERNET, Nsg
 
 # ── Private mixin ─────────────────────────────────────────────────────────────
 
@@ -47,7 +48,46 @@ class _LbMixin:
     """
 
     name: str
+    stack_name: str
     load_balancer: oci.loadbalancer.LoadBalancer
+    load_balancer_nsg: Nsg
+    backend_nsg: Nsg
+
+    def _configure_security_groups(
+        self,
+        vcn: Vcn | VcnRef,
+        compartment_id: pulumi.Input[str],
+        backend_nsg: Nsg | None,
+        backend_port: int,
+        *,
+        public: bool,
+    ) -> list[pulumi.Resource]:
+        """Create groups for listeners and register the backend traffic rules.
+
+        Args:
+            vcn: Network that hosts the frontend and backend groups.
+            compartment_id: Compartment for any new groups.
+            backend_nsg: Existing group attached to eligible backend VNICs.
+            backend_port: Destination port for traffic and health checks.
+            public: Whether to accept internet traffic and enable HTTPS ingress.
+
+        Returns:
+            Rules to provision before the load balancer.
+        """
+        opts = pulumi.ResourceOptions(parent=self)  # type: ignore[arg-type]
+        frontend = Nsg(f"{self.name}-frontend", vcn, compartment_id, stack_name=self.stack_name, opts=opts)
+        backend = backend_nsg or Nsg(f"{self.name}-backend", vcn, compartment_id, stack_name=self.stack_name, opts=opts)
+        self.load_balancer_nsg = frontend
+        self.backend_nsg = backend
+        client_cidr = INTERNET if public else vcn.cidr_block
+        rules: list[pulumi.Resource] = [
+            frontend.allow_from_cidr("http-in", 80, client_cidr, "HTTP client traffic"),
+            frontend.allow_to_nsg("backend-out", backend, backend_port),
+            backend.allow_from_nsg(f"load-balancer-{self.name}-in", frontend, backend_port),
+        ]
+        if public:
+            rules.append(frontend.allow_from_cidr("https-in", 443, client_cidr, "HTTPS client traffic"))
+        return rules
 
     def get_lb_id(self) -> pulumi.Output[str]:
         """Return the OCID of the load balancer.
@@ -93,7 +133,7 @@ class _LbMixin:
 # ── Spell classes ─────────────────────────────────────────────────────────────
 
 
-class LoadBalancer(BaseResource, _LbMixin):
+class LoadBalancer(_LbMixin, BaseResource):
     """Internet-facing HTTPS load balancer in the VCN public subnet.
 
     Creates a flexible-shape OCI Load Balancer with TLS termination.
@@ -110,18 +150,15 @@ class LoadBalancer(BaseResource, _LbMixin):
     - One `oci.loadbalancer.Listener` on HTTPS:443 with SSL termination.
     - One `oci.loadbalancer.Listener` on HTTP:80 with the redirect rule set.
 
-    Security rules added to the VCN (only when the network is not yet
-    finalised and the VCN is a `Vcn` rather than a `VcnRef`):
-
-    - Public subnet ingress: TCP 80 from `0.0.0.0/0`.
-    - Public subnet ingress: TCP 443 from `0.0.0.0/0`.
-    - Public subnet egress: TCP `backend_port` to private subnet CIDR.
-    - Private subnet ingress: TCP `backend_port` from public subnet CIDR.
+    The frontend NSG admits TCP 80 and 443 from the internet. Traffic and
+    health checks to `backend_port` are scoped to the backend NSG.
 
     Attributes:
         vcn: The `Vcn` or `VcnRef` this load balancer is deployed into.
         load_balancer: The underlying `oci.loadbalancer.LoadBalancer`.
         backend_set: The `oci.loadbalancer.BackendSet`.
+        load_balancer_nsg: Frontend group attached to the load balancer.
+        backend_nsg: Group to attach to backend VNICs.
         redirect_rule_set: The `oci.loadbalancer.RuleSet` for HTTP→HTTPS.
         listeners: List of `oci.loadbalancer.Listener` resources
             (`[https_listener, http_listener]`).
@@ -161,6 +198,8 @@ class LoadBalancer(BaseResource, _LbMixin):
         health_check_path: str = "/health",
         stack_name: str | None = None,
         opts: pulumi.ResourceOptions | None = None,
+        *,
+        backend_nsg: Nsg | None = None,
     ) -> None:
         """Create an internet-facing HTTPS load balancer.
 
@@ -183,6 +222,8 @@ class LoadBalancer(BaseResource, _LbMixin):
             stack_name: Pulumi stack name.  Defaults to
                 `pulumi.get_stack()` when `None`.
             opts: Pulumi resource options forwarded to the component.
+            backend_nsg: Existing group for backend VNICs. When omitted, attach
+                those VNICs to the group exposed as `self.backend_nsg`.
 
         Raises:
             ValueError: If `backend_port` is not in the range 1-65535.
@@ -197,11 +238,8 @@ class LoadBalancer(BaseResource, _LbMixin):
         self.vcn = vcn
         self.listeners = []
 
-        # 1. Register security rules before finalising the network.
-        if isinstance(self.vcn, Vcn):
-            self._add_security_rules(backend_port)
-        # finalize_network() is idempotent for Vcn and a no-op for VcnRef.
         self.vcn.finalize_network()
+        security_rules = self._configure_security_groups(vcn, compartment_id, backend_nsg, backend_port, public=True)
 
         # 2. Load balancer — flexible shape, public subnet, public IP.
         lb_name = self.create_resource_name("lb")
@@ -215,9 +253,10 @@ class LoadBalancer(BaseResource, _LbMixin):
                 maximum_bandwidth_in_mbps=100,
             ),
             subnet_ids=[self.vcn.get_public_subnet_id()],
+            network_security_group_ids=[self.load_balancer_nsg.id],
             is_private=False,
             freeform_tags=self.create_freeform_tags(lb_name, "load-balancer"),
-            opts=pulumi.ResourceOptions(parent=self),
+            opts=pulumi.ResourceOptions(parent=self, depends_on=security_rules),
         )
 
         # 3. Backend set — round-robin, HTTP health check on backend_port.
@@ -295,95 +334,8 @@ class LoadBalancer(BaseResource, _LbMixin):
             "lb_ip": self.lb_ip,
         })
 
-    def _add_security_rules(self, backend_port: int) -> None:
-        """Register load balancer security rules on the VCN public and private subnets.
 
-        Adds the following rules:
-
-        - Public subnet ingress TCP 80 from `0.0.0.0/0` (fingerprinted as
-          `"lb-public-ingress-tcp-80"` — deduplicated if another spell such
-          as `ScalableWorkload` registers the same rule on this VCN).
-        - Public subnet ingress TCP 443 from `0.0.0.0/0` (fingerprinted as
-          `"lb-public-ingress-tcp-443"`).
-        - Public subnet egress TCP `backend_port` to private subnet CIDR
-          (workload-specific, not fingerprinted).
-        - Private subnet ingress TCP `backend_port` from public subnet CIDR
-          (health checks and forwarded traffic from the LB).
-
-        Must be called before `Vcn.finalize_network`.
-
-        Args:
-            backend_port: Port on which backend instances accept forwarded
-                traffic and health-check probes.
-
-        Raises:
-            TypeError: If `self.vcn` is not a `Vcn` instance.
-        """
-        if not isinstance(self.vcn, Vcn):
-            raise TypeError(f"_add_security_rules requires a Vcn instance, got {type(self.vcn)!r}")
-
-        public_subnet_cidr: pulumi.Input[str] = self.vcn.get_public_subnet_cidr()
-        private_subnet_cidr: pulumi.Input[str] = self.vcn.get_private_subnet_cidr()
-
-        self.vcn.add_unique_security_list_rules(
-            "lb-public-ingress-tcp-80",
-            public_ingress=[
-                oci.core.SecurityListIngressSecurityRuleArgs(
-                    description="HTTP traffic from internet to load balancer",
-                    protocol="6",
-                    source="0.0.0.0/0",
-                    source_type="CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                        min=80,
-                        max=80,
-                    ),
-                ),
-            ],
-        )
-        self.vcn.add_unique_security_list_rules(
-            "lb-public-ingress-tcp-443",
-            public_ingress=[
-                oci.core.SecurityListIngressSecurityRuleArgs(
-                    description="HTTPS traffic from internet to load balancer",
-                    protocol="6",
-                    source="0.0.0.0/0",
-                    source_type="CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                        min=443,
-                        max=443,
-                    ),
-                ),
-            ],
-        )
-        self.vcn.add_security_list_rules(
-            public_egress=[
-                oci.core.SecurityListEgressSecurityRuleArgs(
-                    description=f"Load balancer forwards traffic to backend instances on port {backend_port}",
-                    protocol="6",
-                    destination=private_subnet_cidr,
-                    destination_type="CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                        min=backend_port,
-                        max=backend_port,
-                    ),
-                ),
-            ],
-            private_ingress=[
-                oci.core.SecurityListIngressSecurityRuleArgs(
-                    description=f"Traffic from load balancer to backend instances on port {backend_port}",
-                    protocol="6",
-                    source=public_subnet_cidr,
-                    source_type="CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                        min=backend_port,
-                        max=backend_port,
-                    ),
-                ),
-            ],
-        )
-
-
-class InternalLoadBalancer(BaseResource, _LbMixin):
+class InternalLoadBalancer(_LbMixin, BaseResource):
     """Private HTTP load balancer in the VCN private subnet.
 
     Creates a flexible-shape OCI Load Balancer with `is_private=True` placed
@@ -398,17 +350,15 @@ class InternalLoadBalancer(BaseResource, _LbMixin):
     - One `oci.loadbalancer.BackendSet` (ROUND_ROBIN, HTTP health check).
     - One `oci.loadbalancer.Listener` on HTTP:80.
 
-    Security rules added to the VCN (only when the network is not yet
-    finalised and the VCN is a `Vcn` rather than a `VcnRef`):
-
-    - Private subnet ingress: TCP 80 from VCN CIDR (restricts to
-      VCN-internal and on-premises traffic only).
-    - Private subnet egress: TCP `backend_port` to private subnet CIDR.
+    The frontend NSG admits TCP 80 from the primary VCN CIDR. Traffic and
+    health checks to `backend_port` are scoped to the backend NSG.
 
     Attributes:
         vcn: The `Vcn` or `VcnRef` this load balancer is deployed into.
         load_balancer: The underlying `oci.loadbalancer.LoadBalancer`.
         backend_set: The `oci.loadbalancer.BackendSet`.
+        load_balancer_nsg: Frontend group attached to the load balancer.
+        backend_nsg: Group to attach to backend VNICs.
         listener: The `oci.loadbalancer.Listener` on HTTP:80.
         lb_id: `pulumi.Output[str]` resolving to the load balancer OCID.
         lb_ip: `pulumi.Output[str]` resolving to the private VIP address.
@@ -443,6 +393,8 @@ class InternalLoadBalancer(BaseResource, _LbMixin):
         health_check_path: str = "/health",
         stack_name: str | None = None,
         opts: pulumi.ResourceOptions | None = None,
+        *,
+        backend_nsg: Nsg | None = None,
     ) -> None:
         """Create a private internal HTTP load balancer.
 
@@ -460,6 +412,8 @@ class InternalLoadBalancer(BaseResource, _LbMixin):
             stack_name: Pulumi stack name.  Defaults to
                 `pulumi.get_stack()` when `None`.
             opts: Pulumi resource options forwarded to the component.
+            backend_nsg: Existing group for backend VNICs. When omitted, attach
+                those VNICs to the group exposed as `self.backend_nsg`.
 
         Raises:
             ValueError: If `backend_port` is not in the range 1-65535.
@@ -473,11 +427,8 @@ class InternalLoadBalancer(BaseResource, _LbMixin):
 
         self.vcn = vcn
 
-        # 1. Register security rules before finalising the network.
-        if isinstance(self.vcn, Vcn):
-            self._add_security_rules(backend_port)
-        # finalize_network() is idempotent for Vcn and a no-op for VcnRef.
         self.vcn.finalize_network()
+        security_rules = self._configure_security_groups(vcn, compartment_id, backend_nsg, backend_port, public=False)
 
         # 2. Load balancer — flexible shape, private subnet, no public IP.
         lb_name = self.create_resource_name("lb")
@@ -491,9 +442,10 @@ class InternalLoadBalancer(BaseResource, _LbMixin):
                 maximum_bandwidth_in_mbps=100,
             ),
             subnet_ids=[self.vcn.get_private_subnet_id()],
+            network_security_group_ids=[self.load_balancer_nsg.id],
             is_private=True,
             freeform_tags=self.create_freeform_tags(lb_name, "load-balancer"),
-            opts=pulumi.ResourceOptions(parent=self),
+            opts=pulumi.ResourceOptions(parent=self, depends_on=security_rules),
         )
 
         # 3. Backend set — round-robin, HTTP health check on backend_port.
@@ -533,61 +485,6 @@ class InternalLoadBalancer(BaseResource, _LbMixin):
             "lb_id": self.load_balancer.id,
             "lb_ip": self.lb_ip,
         })
-
-    def _add_security_rules(self, backend_port: int) -> None:
-        """Register internal load balancer security rules on the VCN private subnet.
-
-        Adds the following rules:
-
-        - Private subnet ingress TCP 80 from `vcn.cidr_block` (fingerprinted as
-          `"lb-private-ingress-tcp-80"` — restricts ingress to VCN-internal and
-          on-premises traffic only).
-        - Private subnet egress TCP `backend_port` to private subnet CIDR
-          (forwarded traffic from the load balancer to backend instances).
-
-        Must be called before `Vcn.finalize_network`.
-
-        Args:
-            backend_port: Port on which backend instances accept forwarded
-                traffic and health-check probes.
-
-        Raises:
-            TypeError: If `self.vcn` is not a `Vcn` instance.
-        """
-        if not isinstance(self.vcn, Vcn):
-            raise TypeError(f"_add_security_rules requires a Vcn instance, got {type(self.vcn)!r}")
-
-        private_subnet_cidr: pulumi.Input[str] = self.vcn.get_private_subnet_cidr()
-
-        self.vcn.add_unique_security_list_rules(
-            "lb-private-ingress-tcp-80",
-            private_ingress=[
-                oci.core.SecurityListIngressSecurityRuleArgs(
-                    description="HTTP traffic to internal load balancer from VCN-internal sources only",
-                    protocol="6",
-                    source=self.vcn.cidr_block,
-                    source_type="CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListIngressSecurityRuleTcpOptionsArgs(
-                        min=80,
-                        max=80,
-                    ),
-                ),
-            ],
-        )
-        self.vcn.add_security_list_rules(
-            private_egress=[
-                oci.core.SecurityListEgressSecurityRuleArgs(
-                    description=f"Internal load balancer forwards traffic to backend instances on port {backend_port}",
-                    protocol="6",
-                    destination=private_subnet_cidr,
-                    destination_type="CIDR_BLOCK",
-                    tcp_options=oci.core.SecurityListEgressSecurityRuleTcpOptionsArgs(
-                        min=backend_port,
-                        max=backend_port,
-                    ),
-                ),
-            ],
-        )
 
 
 __all__ = [

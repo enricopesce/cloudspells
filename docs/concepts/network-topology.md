@@ -147,13 +147,7 @@ Three gateways are created for every VCN:
 
 ## Security enforcement
 
-OCI enforces network rules at two layers. CloudSpells populates both automatically:
-
-**Security Lists** — applied at the subnet boundary. OCI evaluates these rules before traffic enters or leaves the subnet. CloudSpells adds security list rules when role-bearing NSGs are declared, and cross-subnet rules when `nsg.serves()` is called between NSGs in different tiers.
-
-**NSGs** — applied at the VNIC (network interface) level. More granular than security lists; traffic between two NSGs in the same subnet is controlled entirely by NSG rules. CloudSpells generates NSG rules from the role and from `serves()` relationships.
-
-Both layers are always consistent. You never write a rule in one layer and forget the other.
+OCI allows a packet when a matching security rule exists in an applicable subnet security list or NSG. A subnet list applies to every VNIC on that subnet. An NSG applies to its members, and CloudSpells uses it for role defaults and `serves()` relationships, even between different tiers. The private subnet baseline permits broad outbound traffic, including connections within the VCN when the destination allows them.
 
 ---
 

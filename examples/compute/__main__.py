@@ -12,11 +12,8 @@ Internet
 └─────────────────────────────────────────────────────┘
 ```
 
-The `INTERNET_EDGE` role is **self-registering**: `Nsg.__init__` accumulates
-the inbound TCP security list rules on the `Vcn` object.  `ComputeInstance.__init__`
-then calls `vcn.finalize_network()` automatically, materialising all subnets with
-every accumulated rule in a single pass.  No manual `add_security_list_rules` or
-`finalize_network` calls are needed from the caller.
+The `INTERNET_EDGE` role adds the declared ports to the web server's NSG.
+`ComputeInstance` materializes the VCN subnets and attaches the group.
 
 ## Configuration
 
@@ -62,8 +59,6 @@ vcn: Vcn = Vcn(
 # ── Step 2 — NSG role ─────────────────────────────────────────────────────────
 #
 # INTERNET_EDGE: public subnet, accepts HTTP/HTTPS/SSH from 0.0.0.0/0.
-# Nsg.__init__ registers security list rules on `vcn`; finalize_network() is
-# called later by ComputeInstance.__init__.
 
 web_nsg: Nsg = Nsg(
     "web-server",

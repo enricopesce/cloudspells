@@ -33,7 +33,6 @@ db_nsg  = Nsg("database",      role=DATABASE,
 When you pass `role=`, CloudSpells automatically:
 
 - Adds ambient ingress/egress rules to the NSG (service egress, NAT egress — depending on role)
-- Accumulates the matching rules into the VCN's security list for that subnet tier
 - Records the subnet tier so `ComputeInstance` can infer subnet placement without an explicit `subnet=` argument
 
 ---
@@ -45,7 +44,6 @@ When you pass `role=`, CloudSpells automatically:
 - Egress from this NSG to `target` on `port`
 - Ingress on `target` from this NSG on `port`
 - (By default) SSH management channel in both directions — omit with `with_ssh=False`
-- Cross-subnet security list rules when the two NSGs are in different tiers
 
 ```python
 # LB → web backend (port 8080) + SSH management
@@ -60,7 +58,7 @@ web_nsg.serves(db_nsg, port=6379, with_ssh=False)
 
 ### Why serves() instead of individual allow_* calls
 
-A two-tier relationship (LB → app server) requires four NSG rules and potentially four security list rules. Writing them individually is tedious and error-prone — one missing rule causes a silent connectivity failure. `serves()` generates all required rules from the relationship intent.
+The same call configures egress from the source and ingress on the target, including across subnet tiers.
 
 ---
 

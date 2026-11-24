@@ -3,7 +3,7 @@
 **Stop configuring infrastructure. Start deploying architectures.**
 
 [![CI](https://github.com/enricopesce/cloudspells/actions/workflows/ci.yml/badge.svg)](https://github.com/enricopesce/cloudspells/actions/workflows/ci.yml)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/downloads/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/github/license/enricopesce/cloudspells)](LICENSE)
 [![Pulumi 3.x](https://img.shields.io/badge/pulumi-3.x-blueviolet)](https://www.pulumi.com/)
 [![OCI](https://img.shields.io/badge/cloud-OCI-red)](https://www.oracle.com/cloud/)
@@ -256,7 +256,7 @@ Subnet tier, gateway routing, and security posture are not configurable — they
 
 ### Prerequisites
 
-- Python 3.8 or later
+- Python 3.11 or later for the core and OCI packages. The `cs` CLI requires Python 3.12 or later.
 - [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/) installed and on your `PATH`
 - OCI credentials configured at `~/.oci/config` (see [OCI SDK and CLI Configuration](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/sdkconfig.htm))
 

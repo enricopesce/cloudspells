@@ -58,9 +58,11 @@ lb.export()
 - 1 BackendSet (ROUND_ROBIN, HTTP health check on `backend_port`)
 - 1 RuleSet (HTTP-to-HTTPS 301 redirect)
 - 2 Listeners (HTTPS:443 with SSL termination, HTTP:80 with redirect)
-- Security list rules: TCP 80 + 443 ingress on public subnet, backend port egress to private subnet
+- Frontend NSG ingress on TCP 80 and 443, with a path to the backend NSG on the configured port
 
 ### Adding backends
+
+Attach backend VNICs to `lb.backend_nsg` or pass their existing group as `backend_nsg=` when constructing the load balancer. For example, pass `nsg=lb.backend_nsg` when creating a `ComputeInstance`. The same pattern applies to `InternalLoadBalancer`.
 
 Backends are registered separately — either via `oci.loadbalancer.Backend` resources in your Pulumi program, or via the OCI Console/CLI after deployment:
 
@@ -97,13 +99,13 @@ ilb.export()
 - 1 flexible-shape Load Balancer (private subnet, `is_private=True`)
 - 1 BackendSet (ROUND_ROBIN, HTTP health check)
 - 1 Listener (HTTP:80)
-- Security list rules: TCP 80 ingress from VCN CIDR, backend port egress within private subnet
+- Frontend NSG ingress on TCP 80 from the primary VCN CIDR, with a path to the backend NSG on the configured port
 
 ---
 
 ## Using both together
 
-A common pattern places the public LB in front and the internal LB behind it. Both spells can be declared in any order; `finalize_network()` is idempotent.
+Both spells can share a VCN. Each applies its own NSG rules, and each backend must belong to the group authorized by its load balancer.
 
 ```python
 vcn = Vcn(name="prod", compartment_id=compartment_id)

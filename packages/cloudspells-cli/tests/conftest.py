@@ -14,6 +14,12 @@ def runner() -> CliRunner:
 
 
 @pytest.fixture
+def isolated_workdir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Run a test in its own temporary working directory."""
+    monkeypatch.chdir(tmp_path)
+
+
+@pytest.fixture
 def mock_stack() -> MagicMock:
     """Mock Pulumi Stack with pre-configured return values for all operations."""
     mock = MagicMock()
