@@ -1,0 +1,24 @@
+# Keep ordinary commands under the active sandbox and approval policy.
+prefix_rule(
+    pattern = ["git", "push", ["--force", "-f"]],
+    decision = "forbidden",
+    justification = "Use a regular push for CloudSpells branches.",
+    match = ["git push --force origin dev", "git push -f origin dev"],
+    not_match = ["git push origin dev"],
+)
+
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "forbidden",
+    justification = "Use a non-destructive Git operation to preserve working-tree changes.",
+    match = ["git reset --hard HEAD"],
+    not_match = ["git reset --soft HEAD"],
+)
+
+prefix_rule(
+    pattern = ["rm", ["-rf", "-fr"], "/"],
+    decision = "forbidden",
+    justification = "Preserve the filesystem root.",
+    match = ["rm -rf /", "rm -fr /"],
+    not_match = ["rm -rf dist"],
+)

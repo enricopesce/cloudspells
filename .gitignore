@@ -16,4 +16,4 @@ dist
 *.tmp
 .coverage
 htmlcov/
-.claude/review-reports
+/review-reports/

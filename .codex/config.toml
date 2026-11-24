@@ -1,0 +1,3 @@
+# CloudSpells uses project agents in agents/ and a command policy in rules/.
+# Codex loads this project configuration after you trust the repository.
+# Model, sandbox, and approval defaults come from the active Codex session.
