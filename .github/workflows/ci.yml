@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: ["**"]
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   quality-gate:
     name: Quality gate (Python ${{ matrix.python-version }})
@@ -21,15 +18,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Cache pip dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/pip
           key: pip-${{ matrix.python-version }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('packages/*/pyproject.toml') }}
@@ -60,9 +57,10 @@ jobs:
         run: .venv/bin/vulture packages/ --min-confidence 80
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: coverage-py${{ matrix.python-version }}
           path: .coverage
+          include-hidden-files: true
           retention-days: 7
